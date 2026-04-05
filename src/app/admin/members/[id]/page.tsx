@@ -1,0 +1,50 @@
+import Link from "next/link"
+import { notFound } from "next/navigation"
+import { requireAdmin } from "@/lib/auth/admin"
+import { fetchMemberDetail } from "@/lib/queries/members"
+import { AdminTopBar } from "@/components/admin/AdminTopBar"
+import { MemberStatusBadge } from "@/components/admin/MemberStatusBadge"
+import { MemberDetailCard } from "@/components/admin/MemberDetailCard"
+import { Button } from "@/components/ui/button"
+import { ClipboardList } from "lucide-react"
+
+interface Props {
+  params: Promise<{ id: string }>
+}
+
+export default async function MemberDetailPage({ params }: Props) {
+  const admin = await requireAdmin()
+  const { id } = await params
+
+  let member
+  try {
+    member = await fetchMemberDetail(id)
+  } catch {
+    notFound()
+  }
+
+  const identity = member.member_identity
+  const evaluation = member.interview_evaluations?.[0]
+
+  return (
+    <div>
+      <AdminTopBar admin={admin} title="成员详情" />
+      <div className="p-6 space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold">{identity?.full_name ?? "未知"}</h2>
+            <MemberStatusBadge status={member.status} />
+          </div>
+          <Link href={`/admin/members/${id}/interview`}>
+            <Button size="sm">
+              <ClipboardList className="size-4 mr-1" />
+              {evaluation ? "编辑面试评估" : "面试评估"}
+            </Button>
+          </Link>
+        </div>
+
+        <MemberDetailCard member={member} identity={identity} />
+      </div>
+    </div>
+  )
+}

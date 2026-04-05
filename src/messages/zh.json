@@ -98,6 +98,16 @@
     "unknown": "未知",
     "points": "分"
   },
+  "scripts": {
+    "title": "剧本库",
+    "emptyTitle": "暂无剧本",
+    "emptyDescription": "还没有发布的剧本",
+    "noCover": "暂无封面",
+    "by": "作者:",
+    "players": "人",
+    "minutes": "分钟",
+    "pdfPreview": "PDF 预览"
+  },
   "interview": {
     "title": "竹溪社 — 面试前信息表",
     "subtitle": "请填写以下信息，我们将在面试前了解你的基本情况",

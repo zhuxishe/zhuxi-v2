@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Shuffle, LogOut } from "lucide-react"
+import { LayoutDashboard, Users, Shuffle, BookOpen, LogOut } from "lucide-react"
 import { logoutAdmin } from "@/app/admin/login/actions"
 
 const NAV_ITEMS = [
   { href: "/admin", label: "仪表板", icon: LayoutDashboard },
   { href: "/admin/members", label: "成员管理", icon: Users },
   { href: "/admin/matching", label: "匹配管理", icon: Shuffle },
+  { href: "/admin/scripts", label: "剧本管理", icon: BookOpen },
 ]
 
 export function AdminSidebar() {

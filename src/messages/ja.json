@@ -98,6 +98,16 @@
     "unknown": "不明",
     "points": "点"
   },
+  "scripts": {
+    "title": "シナリオライブラリ",
+    "emptyTitle": "シナリオなし",
+    "emptyDescription": "まだ公開されたシナリオはありません",
+    "noCover": "カバーなし",
+    "by": "作者:",
+    "players": "人",
+    "minutes": "分",
+    "pdfPreview": "PDFプレビュー"
+  },
   "interview": {
     "title": "竹渓社 — 面接前アンケート",
     "subtitle": "以下の情報をご記入ください。面接前に基本的な状況を把握させていただきます",

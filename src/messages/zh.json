@@ -90,6 +90,14 @@
     "submitting": "保存中...",
     "cancel": "取消"
   },
+  "playerMatches": {
+    "title": "我的匹配",
+    "emptyTitle": "暂无匹配记录",
+    "emptyDescription": "管理员发起匹配后，你的配对结果会显示在这里",
+    "partner": "匹配对象",
+    "unknown": "未知",
+    "points": "分"
+  },
   "interview": {
     "title": "竹溪社 — 面试前信息表",
     "subtitle": "请填写以下信息，我们将在面试前了解你的基本情况",

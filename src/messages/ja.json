@@ -90,6 +90,14 @@
     "submitting": "保存中...",
     "cancel": "キャンセル"
   },
+  "playerMatches": {
+    "title": "マッチング結果",
+    "emptyTitle": "マッチング記録なし",
+    "emptyDescription": "管理者がマッチングを行うと、結果がここに表示されます",
+    "partner": "マッチング相手",
+    "unknown": "不明",
+    "points": "点"
+  },
   "interview": {
     "title": "竹渓社 — 面接前アンケート",
     "subtitle": "以下の情報をご記入ください。面接前に基本的な状況を把握させていただきます",

@@ -1,0 +1,150 @@
+/**
+ * 硬约束检查 — 不满足则直接排除，绝不放松
+ *
+ * 硬约束清单：
+ * 1. 性别倾向：双向满足
+ * 2. 共同时段：至少1个（在 scorer.ts 中检查）
+ * 3. 黑名单：绝对不配（1分自动 + 管理员手动）
+ * 4. 双五分冷却期：第2次必须跳过
+ */
+
+import type { MatchCandidate, MatchingConfig } from "./types"
+import type { PairRelation } from "./pair-history"
+import { getPairStatus } from "./pair-history"
+
+export interface ConstraintResult {
+  passed: boolean
+  reasons: string[]
+}
+
+/**
+ * 检查两个候选人是否满足所有硬约束
+ */
+export function checkHardConstraints(
+  a: MatchCandidate,
+  b: MatchCandidate,
+  config: MatchingConfig,
+  pairRelations?: Map<string, PairRelation>,
+): ConstraintResult {
+  const reasons: string[] = []
+
+  // 硬约束1: 性别倾向
+  if (config.hardConstraints.enforceGender) {
+    if (!isGenderCompatible(a, b)) {
+      reasons.push(`性别不兼容: ${a.name}偏好${a.genderPref}, ${b.name}是${b.gender || "未知"}`)
+    }
+  }
+
+  // 硬约束2+3: 黑名单 + 冷却期（需要配对关系数据）
+  if (pairRelations) {
+    const rel = getPairStatus(pairRelations, a.name, b.name)
+
+    if (rel.status === "blacklist") {
+      reasons.push(`黑名单: ${rel.reason}`)
+    }
+
+    if (rel.status === "cooldown") {
+      reasons.push(`双五分冷却期: ${rel.reason}`)
+    }
+  }
+
+  return {
+    passed: reasons.length === 0,
+    reasons,
+  }
+}
+
+/**
+ * 检查配对是否为"避免重复"（第一轮排除，第二轮允许）
+ * 返回 true = 应该在第一轮避免
+ */
+export function shouldAvoidPair(
+  a: MatchCandidate,
+  b: MatchCandidate,
+  pairRelations?: Map<string, PairRelation>,
+): boolean {
+  if (!pairRelations) return false
+  const rel = getPairStatus(pairRelations, a.name, b.name)
+  return rel.status === "avoid"
+}
+
+/**
+ * 获取双五分重逢加分
+ * 返回 > 0 表示应该优先配对
+ */
+export function getReunionBonus(
+  a: MatchCandidate,
+  b: MatchCandidate,
+  pairRelations?: Map<string, PairRelation>,
+): number {
+  if (!pairRelations) return 0
+  const rel = getPairStatus(pairRelations, a.name, b.name)
+  return rel.status === "reunion" ? 30 : 0
+}
+
+// ── 性别约束 ──
+
+function isGenderCompatible(a: MatchCandidate, b: MatchCandidate): boolean {
+  return (
+    isOneWayGenderOk(a.genderPref, b.gender) &&
+    isOneWayGenderOk(b.genderPref, a.gender)
+  )
+}
+
+function isOneWayGenderOk(pref: string, targetGender: string | null): boolean {
+  if (pref === "都可以") return true
+  if (!targetGender) return true
+  if (pref === "男" && targetGender === "男") return true
+  if (pref === "女" && targetGender === "女") return true
+  return false
+}
+
+// ── 多人组约束 ──
+
+/**
+ * 检查一个候选人能否加入一个多人组
+ * 检查：性别 + 黑名单 + 冷却期
+ */
+export function checkGroupConstraints(
+  candidate: MatchCandidate,
+  groupMembers: MatchCandidate[],
+  config: MatchingConfig,
+  pairRelations?: Map<string, PairRelation>,
+): boolean {
+  // 性别检查
+  if (config.hardConstraints.enforceGender) {
+    const allMembers = [...groupMembers, candidate]
+    const hasMale = allMembers.some((m) => m.gender === "男")
+    const hasFemale = allMembers.some((m) => m.gender === "女")
+
+    for (const member of allMembers) {
+      if (member.genderPref === "男" && !hasMale) return false
+      if (member.genderPref === "女" && !hasFemale) return false
+    }
+  }
+
+  // 黑名单 + 冷却期检查：候选人不能和组内任何人有黑名单/冷却关系
+  if (pairRelations) {
+    for (const member of groupMembers) {
+      const rel = getPairStatus(pairRelations, candidate.name, member.name)
+      if (rel.status === "blacklist" || rel.status === "cooldown") return false
+    }
+  }
+
+  return true
+}
+
+/**
+ * 检查多人组是否应该在第一轮避免（组内有非双五重复）
+ */
+export function groupHasAvoidPairs(
+  candidate: MatchCandidate,
+  groupMembers: MatchCandidate[],
+  pairRelations?: Map<string, PairRelation>,
+): boolean {
+  if (!pairRelations) return false
+  for (const member of groupMembers) {
+    if (shouldAvoidPair(candidate, member, pairRelations)) return true
+  }
+  return false
+}

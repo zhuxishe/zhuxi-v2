@@ -39,7 +39,7 @@ export async function signInWithGoogle() {
     provider: "google",
     options: {
       redirectTo: `${SITE_URL}/login/callback`,
-      queryParams: { prompt: "select_account" },
+      queryParams: { prompt: "consent select_account" },
     },
   })
 

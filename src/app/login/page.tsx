@@ -16,6 +16,16 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
 
+  async function handleLineLogin() {
+    setLoading(true)
+    setError(null)
+    const { authenticateWithLine } = await import("@/lib/liff/line-auth")
+    const result = await authenticateWithLine()
+    setLoading(false)
+    if (result.success) router.push("/app")
+    else if (result.error && result.error !== "Redirecting to LINE login") setError(result.error)
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -54,15 +64,17 @@ export default function LoginPage() {
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
         </div>
 
-        {/* Google Login */}
-        <Button
-          variant="outline"
-          className="w-full gap-2"
-          onClick={() => signInWithGoogle()}
-        >
-          <GoogleIcon />
-          {t("googleLogin")}
-        </Button>
+        {/* Social Login */}
+        <div className="space-y-2">
+          <Button variant="outline" className="w-full gap-2" onClick={() => signInWithGoogle()}>
+            <GoogleIcon />
+            {t("googleLogin")}
+          </Button>
+          <Button variant="outline" className="w-full gap-2" onClick={handleLineLogin} disabled={loading}>
+            <LineIcon />
+            {t("lineLogin")}
+          </Button>
+        </div>
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>
@@ -95,6 +107,14 @@ export default function LoginPage() {
         </form>
       </div>
     </div>
+  )
+}
+
+function LineIcon() {
+  return (
+    <svg className="size-4" viewBox="0 0 24 24" fill="#06C755">
+      <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738S0 4.935 0 10.304c0 4.814 4.27 8.846 10.035 9.608.391.084.922.258 1.057.592.121.303.079.777.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967C23.309 14.15 24 12.326 24 10.304"/>
+    </svg>
   )
 }
 

@@ -41,6 +41,7 @@
     "registerButton": "\u6CE8\u518C",
     "loading": "\u8BF7\u7A0D\u5019...",
     "googleLogin": "\u4F7F\u7528 Google \u767B\u5F55",
+    "lineLogin": "\u4F7F\u7528 LINE \u767B\u5F55",
     "orEmail": "\u6216\u4F7F\u7528\u90AE\u7BB1",
     "checkEmail": "\u8BF7\u67E5\u6536\u90AE\u4EF6",
     "confirmSent": "\u786E\u8BA4\u94FE\u63A5\u5DF2\u53D1\u9001\u5230 {email}\uFF0C\u8BF7\u70B9\u51FB\u90AE\u4EF6\u4E2D\u7684\u94FE\u63A5\u5B8C\u6210\u6CE8\u518C\u3002"

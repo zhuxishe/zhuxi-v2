@@ -1,0 +1,166 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --radius: 0.75rem;
+  /* -- Warm color palette (from prototype) -- */
+  --background: oklch(0.985 0.005 85);
+  --foreground: oklch(0.20 0.015 50);
+  --card: oklch(0.995 0.003 85);
+  --card-foreground: oklch(0.20 0.015 50);
+  --popover: oklch(0.995 0.003 85);
+  --popover-foreground: oklch(0.20 0.015 50);
+  --primary: oklch(0.55 0.07 155);
+  --primary-foreground: oklch(0.99 0.002 85);
+  --secondary: oklch(0.955 0.01 85);
+  --secondary-foreground: oklch(0.35 0.015 50);
+  --muted: oklch(0.96 0.008 85);
+  --muted-foreground: oklch(0.50 0.02 60);
+  --accent: oklch(0.94 0.02 85);
+  --accent-foreground: oklch(0.25 0.015 50);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.92 0.01 80);
+  --input: oklch(0.92 0.01 80);
+  --ring: oklch(0.55 0.07 155);
+}
+
+.dark {
+  --background: oklch(0.16 0.01 50);
+  --foreground: oklch(0.985 0.005 85);
+  --card: oklch(0.20 0.012 50);
+  --card-foreground: oklch(0.985 0.005 85);
+  --popover: oklch(0.20 0.012 50);
+  --popover-foreground: oklch(0.985 0.005 85);
+  --primary: oklch(0.70 0.08 155);
+  --primary-foreground: oklch(0.16 0.01 50);
+  --secondary: oklch(0.25 0.01 50);
+  --secondary-foreground: oklch(0.985 0.005 85);
+  --muted: oklch(0.25 0.01 50);
+  --muted-foreground: oklch(0.65 0.015 60);
+  --accent: oklch(0.25 0.01 50);
+  --accent-foreground: oklch(0.985 0.005 85);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.55 0.07 155);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: var(--font-geist-sans), "Hiragino Sans", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+
+  /* Extended color palette */
+  --color-sakura: oklch(0.78 0.08 350);
+  --color-sakura-light: oklch(0.92 0.04 350);
+  --color-gold: oklch(0.75 0.12 75);
+  --color-gold-light: oklch(0.93 0.04 80);
+  --color-sky: oklch(0.70 0.10 230);
+  --color-sky-light: oklch(0.92 0.04 230);
+  --color-lavender: oklch(0.72 0.08 300);
+  --color-lavender-light: oklch(0.93 0.03 300);
+  --color-coral: oklch(0.72 0.12 30);
+  --color-coral-light: oklch(0.93 0.04 30);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--background);
+  color: var(--foreground);
+  letter-spacing: 0.01em;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* -- Animations -- */
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-fade-in-up { animation: fade-in-up 0.5s ease-out both; }
+.animate-fade-in { animation: fade-in 0.4s ease-out both; }
+.animate-scale-in { animation: scale-in 0.4s ease-out both; }
+
+/* -- Decorative gradients -- */
+.gradient-warm {
+  background: linear-gradient(135deg, oklch(0.96 0.02 80) 0%, oklch(0.98 0.01 85) 50%, oklch(0.95 0.03 155 / 15%) 100%);
+}
+.gradient-hero {
+  background: linear-gradient(160deg, oklch(0.97 0.015 85) 0%, oklch(0.985 0.005 85) 40%, oklch(0.96 0.03 155 / 20%) 100%);
+}
+
+/* -- Glass card effect -- */
+.glass-card {
+  background: oklch(0.995 0.003 85 / 80%);
+  backdrop-filter: blur(12px);
+  border: 1px solid oklch(0.92 0.01 80 / 60%);
+}
+
+/* -- Card hover lift -- */
+.card-hover {
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px oklch(0.20 0.015 50 / 8%);
+}
+
+/* -- Button press effect -- */
+.btn-press {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-press:active {
+  transform: scale(0.97);
+}
+
+/* -- Tag pill interactive -- */
+.tag-interactive {
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+.tag-interactive:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px oklch(0.55 0.07 155 / 15%);
+}

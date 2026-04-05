@@ -1,8 +1,13 @@
-import { requireAdmin } from "@/lib/auth/admin"
+import { getAdmin } from "@/lib/auth/admin"
 import { AdminSidebar } from "@/components/admin/AdminSidebar"
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  await requireAdmin()
+  const admin = await getAdmin()
+
+  // If not admin (e.g. /admin/login page), render children without sidebar
+  if (!admin) {
+    return <>{children}</>
+  }
 
   return (
     <div className="flex h-screen bg-background">

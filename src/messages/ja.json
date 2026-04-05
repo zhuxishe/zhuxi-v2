@@ -98,6 +98,38 @@
     "unknown": "不明",
     "points": "点"
   },
+  "reviews": {
+    "title": "相互評価",
+    "subtitle": "パートナーを評価しましょう",
+    "scores": "スコア",
+    "overall": "総合評価",
+    "punctuality": "時間厳守",
+    "communication": "コミュニケーション",
+    "teamwork": "チームワーク",
+    "fun": "楽しさ",
+    "bad": "悪い", "great": "素晴らしい",
+    "late": "遅刻が多い", "onTime": "とても時間厳守",
+    "quiet": "静か", "active": "積極的",
+    "solo": "個人プレー", "teamPlayer": "チームプレーヤー",
+    "boring": "退屈", "funLabel": "楽しい",
+    "tags": "タグ評価",
+    "positiveTags": "良い点",
+    "negativeTags": "改善点",
+    "playAgain": "また一緒に遊びたい？",
+    "yes": "はい",
+    "no": "いいえ",
+    "commentPlaceholder": "その他コメント（任意）",
+    "submit": "評価を送信",
+    "submitting": "送信中..."
+  },
+  "playerStats": {
+    "title": "マイ統計",
+    "activities": "活動",
+    "reviews": "評価",
+    "avgScore": "平均点",
+    "recentActivities": "最近の活動",
+    "noActivities": "まだ活動に参加していません"
+  },
   "scripts": {
     "title": "シナリオライブラリ",
     "emptyTitle": "シナリオなし",

@@ -98,6 +98,38 @@
     "unknown": "未知",
     "points": "分"
   },
+  "reviews": {
+    "title": "互评",
+    "subtitle": "给你的搭档打个分吧",
+    "scores": "评分",
+    "overall": "总体评价",
+    "punctuality": "准时度",
+    "communication": "沟通",
+    "teamwork": "配合",
+    "fun": "趣味",
+    "bad": "不好", "great": "很好",
+    "late": "经常迟到", "onTime": "非常准时",
+    "quiet": "沉默", "active": "积极",
+    "solo": "单打独斗", "teamPlayer": "团队合作",
+    "boring": "无聊", "funLabel": "有趣",
+    "tags": "标签评价",
+    "positiveTags": "优点",
+    "negativeTags": "不足",
+    "playAgain": "愿意再次组队？",
+    "yes": "愿意",
+    "no": "不太想",
+    "commentPlaceholder": "其他想说的（可选）",
+    "submit": "提交评价",
+    "submitting": "提交中..."
+  },
+  "playerStats": {
+    "title": "我的统计",
+    "activities": "活动",
+    "reviews": "评价",
+    "avgScore": "平均分",
+    "recentActivities": "最近活动",
+    "noActivities": "还没有参加过活动"
+  },
   "scripts": {
     "title": "剧本库",
     "emptyTitle": "暂无剧本",

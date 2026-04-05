@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { signIn, signUp, signInWithGoogle } from "./actions"
@@ -15,6 +15,15 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
+
+  // Detect LIFF callback and auto-complete LINE auth
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.has("code") && params.has("liffClientId")) {
+      handleLineLogin()
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleLineLogin() {
     setLoading(true)

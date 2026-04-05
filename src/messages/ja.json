@@ -52,6 +52,28 @@
     "rejectedTitle": "\u5BE9\u67FB\u4E0D\u5408\u683C",
     "rejectedDescription": "\u7533\u3057\u8A33\u3054\u3056\u3044\u307E\u305B\u3093\u304C\u3001\u5BE9\u67FB\u3092\u901A\u904E\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002"
   },
+  "line": {
+    "accountTitle": "LINE \u30A2\u30AB\u30A6\u30F3\u30C8",
+    "bound": "\u9023\u643A\u6E08\u307F",
+    "unbound": "\u672A\u9023\u643A",
+    "bindLine": "LINE\u3092\u9023\u643A",
+    "unbind": "\u89E3\u9664",
+    "confirmUnbind": "LINE\u30A2\u30AB\u30A6\u30F3\u30C8\u306E\u9023\u643A\u3092\u89E3\u9664\u3057\u307E\u3059\u304B\uFF1F",
+    "unbindSuccess": "LINE\u9023\u643A\u3092\u89E3\u9664\u3057\u307E\u3057\u305F",
+    "processing": "\u51E6\u7406\u4E2D...",
+    "operationFailed": "\u64CD\u4F5C\u306B\u5931\u6557\u3057\u307E\u3057\u305F"
+  },
+  "profile": {
+    "title": "\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB",
+    "name": "\u6C0F\u540D",
+    "email": "\u30E1\u30FC\u30EB",
+    "number": "\u4F1A\u54E1\u756A\u53F7",
+    "editSupplementary": "\u8FFD\u52A0\u60C5\u5831\u3092\u7DE8\u96C6",
+    "editSupplementaryHint": "\u5834\u6240\u3001\u8A00\u8A9E\u3001\u6D3B\u52D5\u306E\u597D\u307F\u3001\u4EA4\u6D41\u76EE\u7684",
+    "editPersonality": "\u6027\u683C\u8A55\u4FA1\u3092\u7DE8\u96C6",
+    "editPersonalityHint": "10\u6B21\u5143\u306E\u6027\u683C\u8A55\u4FA1",
+    "logout": "\u30ED\u30B0\u30A2\u30A6\u30C8"
+  },
   "playerLogin": {
     "title": "竹渓社",
     "subtitle": "登録メールアドレスを入力すると、ログインリンクを送信します",

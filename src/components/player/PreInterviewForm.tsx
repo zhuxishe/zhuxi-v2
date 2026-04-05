@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import type { PreInterviewFormData } from "@/types"
 import { EMPTY_FORM } from "@/types"
-import { submitPreInterviewForm } from "@/app/interview-form/actions"
+import { submitPreInterviewForm } from "@/app/app/interview-form/actions"
 import { FormStepIndicator } from "@/components/shared/FormStepIndicator"
 import { Button } from "@/components/ui/button"
 import { InterviewStep1 } from "./InterviewStep1"
@@ -13,7 +13,7 @@ import { InterviewStep2 } from "./InterviewStep2"
 import { InterviewStep3 } from "./InterviewStep3"
 import { InterviewStep4 } from "./InterviewStep4"
 
-const STEPS = ["基���信息", "学业信息", "兴趣爱好", "自我评估"]
+const STEPS = ["\u57FA\u672C\u4FE1\u606F", "\u5B66\u4E1A\u4FE1\u606F", "\u5174\u8DA3\u7231\u597D", "\u81EA\u6211\u8BC4\u4F30"]
 
 export function PreInterviewForm() {
   const t = useTranslations("interview")
@@ -47,7 +47,7 @@ export function PreInterviewForm() {
     setSubmitting(false)
 
     if (result.success) {
-      router.push("/interview-form/success")
+      router.push("/app")
     } else {
       setError(result.error ?? t("submitError"))
     }

@@ -1,9 +1,5 @@
-import { PreInterviewForm } from "@/components/player/PreInterviewForm"
+import { redirect } from "next/navigation"
 
-export default function InterviewFormPage() {
-  return (
-    <main className="min-h-screen gradient-hero">
-      <PreInterviewForm />
-    </main>
-  )
+export default function LegacyInterviewForm() {
+  redirect("/login")
 }

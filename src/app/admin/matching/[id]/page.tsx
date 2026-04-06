@@ -1,8 +1,9 @@
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchMatchSession } from "@/lib/queries/matching"
+import { fetchMatchSession, fetchMatchCandidates } from "@/lib/queries/matching"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
-import { MatchResultsTable } from "@/components/admin/MatchResultsTable"
+import { MatchSessionView } from "@/components/admin/MatchSessionView"
+import { createClient } from "@/lib/supabase/server"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -21,25 +22,29 @@ export default async function MatchSessionDetailPage({ params }: Props) {
 
   const { session, results } = data
 
+  // Fetch unmatched diagnostics for this session
+  const supabase = await createClient()
+  const { data: diagnostics } = await supabase
+    .from("unmatched_diagnostics")
+    .select("*, member:members(member_identity(full_name))")
+    .eq("session_id", id)
+
+  // Get time slot data from approved candidates
+  const candidates = await fetchMatchCandidates()
+  const timeSlotData = candidates.map((c) => ({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    preferred_time_slots: ((c as any).member_interests?.preferred_time_slots ?? []) as string[],
+  }))
+
   return (
     <div>
       <AdminTopBar admin={admin} title={session.session_name ?? "匹配详情"} />
-      <div className="p-6 space-y-4">
-        <div className="flex gap-4 text-sm">
-          <span className="rounded-full bg-primary/10 text-primary px-3 py-1 font-medium">
-            {session.total_candidates} 人参与
-          </span>
-          <span className="rounded-full bg-green-500/10 text-green-600 px-3 py-1 font-medium">
-            {session.total_matched} 人匹配
-          </span>
-          {session.total_unmatched > 0 && (
-            <span className="rounded-full bg-orange-500/10 text-orange-600 px-3 py-1 font-medium">
-              {session.total_unmatched} 人未匹配
-            </span>
-          )}
-        </div>
-        <MatchResultsTable results={results} />
-      </div>
+      <MatchSessionView
+        session={session}
+        results={results}
+        diagnostics={diagnostics ?? []}
+        candidates={timeSlotData}
+      />
     </div>
   )
 }

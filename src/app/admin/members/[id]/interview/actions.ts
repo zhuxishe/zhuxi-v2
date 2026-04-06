@@ -12,14 +12,11 @@ export async function submitInterviewEval(
   const admin = await requireAdmin()
   const supabase = await createClient()
 
-  // 去掉 attractiveness_score（存 members 表）
-  const { attractiveness_score, ...evalData } = data
-
-  // Upsert: 同一面试官对同一成员只有一条记录
+  // Upsert: 同一面试官对同一成员只有一条记录（含 attractiveness_score）
   const { error: evalError } = await supabase
     .from("interview_evaluations")
     .upsert(
-      { member_id: memberId, interviewer_id: admin.id, interviewer_name: admin.name, ...evalData },
+      { member_id: memberId, interviewer_id: admin.id, interviewer_name: admin.name, ...data },
       { onConflict: "member_id,interviewer_id" },
     )
 
@@ -32,7 +29,7 @@ export async function submitInterviewEval(
     .update({
       interview_date: date,
       interviewer: admin.name,
-      attractiveness_score,
+      attractiveness_score: data.attractiveness_score,
     })
     .eq("id", memberId)
 

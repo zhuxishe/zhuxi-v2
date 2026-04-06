@@ -80,7 +80,7 @@ export function EvalTabView({ evaluations }: Props) {
         {EVAL_DIMENSIONS.map((dim) => (
           <ScoreBar key={dim.key} label={dim.label} value={current?.[dim.key]} />
         ))}
-        <ScoreBar label="吸引力" value={current?.attractiveness_score} />
+        <ScoreBar label="颜值" value={current?.attractiveness_score} />
       </div>
 
       {/* 备注 */}

@@ -50,7 +50,7 @@ export function StationSearchSelect({ value, onChange, className }: Props) {
     <div ref={ref} className="relative">
       <input
         className={className}
-        placeholder="\u99C5\u540D\u3092\u5165\u529B\u3057\u3066\u691C\u7D22"
+        placeholder={"駅名を入力して検索"}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value)

@@ -5,11 +5,13 @@ import { useRouter } from "next/navigation"
 import { MemberEditIdentity } from "./MemberEditIdentity"
 import { MemberEditLanguage } from "./MemberEditLanguage"
 import { MemberEditInterests } from "./MemberEditInterests"
+import { MemberEditPersonality } from "./MemberEditPersonality"
 import { MemberEditBoundaries } from "./MemberEditBoundaries"
 import {
   updateMemberIdentity,
   updateMemberLanguage,
   updateMemberInterests,
+  updateMemberPersonality,
   updateMemberBoundaries,
 } from "@/app/admin/members/[id]/edit/actions"
 
@@ -25,6 +27,7 @@ export function MemberEditForm({ memberId, member }: Props) {
   const [identity, setIdentity] = useState(member.member_identity ?? {})
   const [language, setLanguage] = useState(member.member_language ?? {})
   const [interests, setInterests] = useState(member.member_interests ?? {})
+  const [personality, setPersonality] = useState(member.member_personality ?? {})
   const [boundaries, setBoundaries] = useState(member.member_boundaries ?? {})
 
   async function handleSave() {
@@ -36,6 +39,7 @@ export function MemberEditForm({ memberId, member }: Props) {
       updateMemberIdentity(memberId, identity),
       updateMemberLanguage(memberId, language),
       updateMemberInterests(memberId, interests),
+      updateMemberPersonality(memberId, personality),
       updateMemberBoundaries(memberId, boundaries),
     ])
 
@@ -54,6 +58,7 @@ export function MemberEditForm({ memberId, member }: Props) {
       <MemberEditIdentity data={identity} onChange={setIdentity} />
       <MemberEditLanguage data={language} onChange={setLanguage} />
       <MemberEditInterests data={interests} onChange={setInterests} />
+      <MemberEditPersonality data={personality} onChange={setPersonality} />
       <MemberEditBoundaries data={boundaries} onChange={setBoundaries} />
 
       {error && <p className="text-sm text-destructive">{error}</p>}

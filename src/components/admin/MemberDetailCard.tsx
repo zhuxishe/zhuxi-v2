@@ -1,26 +1,40 @@
 import { TagBadge } from "@/components/shared/TagBadge"
-import { MemberLanguageSection } from "./MemberLanguageSection"
-import { MemberInterestsSection } from "./MemberInterestsSection"
-import { MemberPersonalitySection } from "./MemberPersonalitySection"
-import { MemberBoundarySection } from "./MemberBoundarySection"
+import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface Props { member: any; identity: any }
 
-function Field({ label, value }: { label: string; value: string | null | undefined }) {
+function Row({ label, value }: { label: string; value?: string | number | null }) {
   return (
-    <div>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
-      <dd className="text-sm font-medium">{value || "-"}</dd>
-    </div>
+    <tr className="border-b border-border/50 last:border-0">
+      <td className="py-2 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
+      <td className="py-2 text-sm">{value ?? <span className="text-muted-foreground">-</span>}</td>
+    </tr>
   )
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function TagRow({ label, tags, variant }: { label: string; tags?: string[]; variant?: "info" | "success" | "danger" }) {
   return (
-    <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-      <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-      {children}
+    <tr className="border-b border-border/50 last:border-0">
+      <td className="py-2 pr-4 text-xs text-muted-foreground whitespace-nowrap align-top w-24">{label}</td>
+      <td className="py-2">
+        {tags?.length ? tags.map((t) => <TagBadge key={t} label={t} variant={variant} className="mr-1 mb-1" />) : <span className="text-sm text-muted-foreground">-</span>}
+      </td>
+    </tr>
+  )
+}
+
+function SectionHeader({ title, color = "primary" }: { title: string; color?: string }) {
+  const colors: Record<string, string> = {
+    primary: "bg-primary/10 text-primary border-primary/20",
+    amber: "bg-amber-50 text-amber-700 border-amber-200",
+    blue: "bg-blue-50 text-blue-700 border-blue-200",
+    violet: "bg-violet-50 text-violet-700 border-violet-200",
+    rose: "bg-rose-50 text-rose-700 border-rose-200",
+  }
+  return (
+    <div className={`px-3 py-1.5 text-xs font-semibold rounded-md border ${colors[color] ?? colors.primary}`}>
+      {title}
     </div>
   )
 }
@@ -28,77 +42,134 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 export function MemberDetailCard({ member, identity }: Props) {
   if (!identity) return <p className="text-sm text-muted-foreground">无身份信息</p>
 
-  const evaluation = member.interview_evaluations?.[0]
+  const ev = member.interview_evaluations?.[0]
+  const lang = member.member_language
+  const interests = member.member_interests
+  const personality = member.member_personality
+  const bounds = member.member_boundaries
 
   return (
-    <div className="space-y-4">
-      {/* 1. 基本信息 */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <Section title="基本信息">
-          <dl className="grid grid-cols-2 gap-3">
-            <Field label="姓名" value={identity.full_name} />
-            <Field label="昵称" value={identity.nickname} />
-            <Field label="性别" value={identity.gender} />
-            <Field label="年龄段" value={identity.age_range} />
-            <Field label="国籍" value={identity.nationality} />
-            <Field label="所在地" value={identity.current_city} />
-          </dl>
-        </Section>
-
-        {/* 2. 学业信息 */}
-        <Section title="学业信息">
-          <dl className="grid grid-cols-2 gap-3">
-            <Field label="学校" value={identity.school_name} />
-            <Field label="学部/研究科" value={identity.department} />
-            <Field label="学位阶段" value={identity.degree_level} />
-            <Field label="课程语言" value={identity.course_language} />
-            <Field label="入学年份" value={identity.enrollment_year?.toString()} />
-            <Field label="面试日期" value={member.interview_date} />
-          </dl>
-        </Section>
+    <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">
+      {/* 基本 + 学业 */}
+      <div className="p-5 space-y-3">
+        <SectionHeader title="基本信息 / 学业" />
+        <table className="w-full"><tbody>
+          <Row label="姓名" value={identity.full_name} />
+          <Row label="昵称" value={identity.nickname} />
+          <Row label="性别" value={identity.gender} />
+          <Row label="年龄段" value={identity.age_range} />
+          <Row label="国籍" value={identity.nationality} />
+          <Row label="所在地" value={identity.current_city} />
+          <Row label="学校" value={identity.school_name} />
+          <Row label="学部" value={identity.department} />
+          <Row label="学位" value={identity.degree_level} />
+          <Row label="入学年" value={identity.enrollment_year} />
+        </tbody></table>
       </div>
 
-      {/* 3. 标签信息 */}
-      <Section title="标签信息">
-        <div className="space-y-2">
+      {/* 标签 */}
+      <div className="p-5 space-y-3">
+        <SectionHeader title="标签" color="blue" />
+        <table className="w-full"><tbody>
           <TagRow label="爱好" tags={identity.hobby_tags} />
-          <TagRow label="活动偏好" tags={identity.activity_type_tags} variant="info" />
-          <TagRow label="性格" tags={identity.personality_self_tags} variant="success" />
-          <TagRow label="禁忌" tags={identity.taboo_tags} variant="danger" />
-        </div>
-      </Section>
+          <TagRow label="活动类型" tags={identity.activity_type_tags} variant="info" />
+          <TagRow label="性格自评" tags={identity.personality_self_tags} variant="success" />
+          <TagRow label="个人NG" tags={identity.taboo_tags} variant="danger" />
+        </tbody></table>
+      </div>
 
-      {/* 4. 面试评估 */}
-      {evaluation && (
-        <Section title="面试评估">
-          <dl className="grid grid-cols-3 gap-3">
-            <Field label="面试官" value={evaluation.interviewer} />
-            <Field label="吸引力评分" value={evaluation.attractiveness_score?.toString()} />
-            <Field label="印象评分" value={evaluation.impression_score?.toString()} />
-          </dl>
-          {evaluation.notes && (
-            <p className="text-sm text-muted-foreground mt-2">{evaluation.notes}</p>
-          )}
-        </Section>
+      {/* 面试评估 */}
+      {ev && (
+        <div className="p-5 space-y-3">
+          <SectionHeader title="面试评估" color="amber" />
+          <table className="w-full"><tbody>
+            <Row label="面试官" value={ev.interviewer} />
+            <Row label="吸引力" value={ev.attractiveness_score} />
+            <Row label="印象" value={ev.impression_score} />
+            {ev.notes && <Row label="备注" value={ev.notes} />}
+          </tbody></table>
+        </div>
       )}
 
-      {/* 5-8. 补充信息区域 */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <MemberLanguageSection data={member.member_language} />
-        <MemberInterestsSection data={member.member_interests} />
+      {/* 补充信息 */}
+      <div className="p-5 space-y-3">
+        <SectionHeader title="补充信息" color="violet" />
+        {(!lang && !interests) ? <p className="text-sm text-muted-foreground">未填写</p> : (
+          <table className="w-full"><tbody>
+            {lang && <>
+              <TagRow label="沟通语言" tags={lang.communication_language_pref} variant="info" />
+              <Row label="日语水平" value={lang.japanese_level} />
+            </>}
+            {interests && <>
+              <Row label="活动区域" value={interests.activity_area} />
+              <Row label="最近车站" value={interests.nearest_station} />
+              <Row label="理想人数" value={interests.ideal_group_size} />
+              <Row label="活动频率" value={interests.activity_frequency} />
+              <Row label="预算" value={interests.budget_range} />
+              <Row label="移动范围" value={interests.travel_radius} />
+              <TagRow label="剧本类型" tags={interests.scenario_mode_pref} />
+              <TagRow label="时间偏好" tags={interests.preferred_time_slots} variant="info" />
+              <Row label="主要目标" value={interests.social_goal_primary} />
+              <Row label="次要目标" value={interests.social_goal_secondary} />
+              <Row label="接受新手" value={interests.accept_beginners ? "是" : "否"} />
+              <Row label="接受跨校" value={interests.accept_cross_school ? "是" : "否"} />
+            </>}
+          </tbody></table>
+        )}
       </div>
-      <MemberPersonalitySection data={member.member_personality} />
-      <MemberBoundarySection data={member.member_boundaries} />
-    </div>
-  )
-}
 
-function TagRow({ label, tags, variant }: { label: string; tags?: string[]; variant?: "info" | "success" | "danger" }) {
-  if (!tags?.length) return null
-  return (
-    <div>
-      <span className="text-xs text-muted-foreground mr-2">{label}:</span>
-      {tags.map((t: string) => <TagBadge key={t} label={t} variant={variant} className="mr-1 mb-1" />)}
+      {/* 性格 */}
+      <div className="p-5 space-y-3">
+        <SectionHeader title="性格评价" color="primary" />
+        {!personality ? <p className="text-sm text-muted-foreground">未填写</p> : (
+          <div className="space-y-2">
+            {PERSONALITY_DIMENSIONS.map((dim) => {
+              const val = personality[dim.key]
+              if (val == null) return null
+              if (dim.type === "slider") {
+                const pct = ((Number(val) - 1) / 4) * 100
+                return (
+                  <div key={dim.key} className="flex items-center gap-3">
+                    <span className="text-xs text-muted-foreground w-20 shrink-0">{dim.label}</span>
+                    <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                    <span className="text-xs font-medium w-4 text-right">{val}</span>
+                  </div>
+                )
+              }
+              if (dim.type === "multi" && Array.isArray(val)) {
+                return (
+                  <div key={dim.key} className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground w-20 shrink-0">{dim.label}</span>
+                    {val.map((t: string) => <TagBadge key={t} label={t} variant="info" className="mr-1" />)}
+                  </div>
+                )
+              }
+              return (
+                <div key={dim.key} className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground w-20 shrink-0">{dim.label}</span>
+                  <span className="text-sm">{val}</span>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 边界 */}
+      <div className="p-5 space-y-3">
+        <SectionHeader title="个人边界" color="rose" />
+        {!bounds ? <p className="text-sm text-muted-foreground">未填写</p> : (
+          <table className="w-full"><tbody>
+            <Row label="年龄范围" value={bounds.preferred_age_range} />
+            <Row label="性别比例" value={bounds.preferred_gender_mix} />
+            <TagRow label="禁忌" tags={bounds.taboo_tags} variant="danger" />
+            <TagRow label="绝不接受" tags={bounds.deal_breakers} variant="danger" />
+            {bounds.boundary_notes && <Row label="备注" value={bounds.boundary_notes} />}
+          </tbody></table>
+        )}
+      </div>
     </div>
   )
 }

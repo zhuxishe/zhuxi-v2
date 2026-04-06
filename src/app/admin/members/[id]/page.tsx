@@ -7,7 +7,7 @@ import { MemberStatusBadge } from "@/components/admin/MemberStatusBadge"
 import { MemberStatusActions } from "@/components/admin/MemberStatusActions"
 import { MemberDetailCard } from "@/components/admin/MemberDetailCard"
 import { Button } from "@/components/ui/button"
-import { ClipboardList } from "lucide-react"
+import { ClipboardList, Pencil } from "lucide-react"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -36,12 +36,20 @@ export default async function MemberDetailPage({ params }: Props) {
             <h2 className="text-xl font-bold">{identity?.full_name ?? "未知"}</h2>
             <MemberStatusBadge status={member.status} />
           </div>
-          <Link href={`/admin/members/${id}/interview`}>
-            <Button size="sm">
-              <ClipboardList className="size-4 mr-1" />
-              {evaluation ? "编辑面试评估" : "面试评估"}
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href={`/admin/members/${id}/edit`}>
+              <Button size="sm" variant="outline">
+                <Pencil className="size-4 mr-1" />
+                编辑信息
+              </Button>
+            </Link>
+            <Link href={`/admin/members/${id}/interview`}>
+              <Button size="sm">
+                <ClipboardList className="size-4 mr-1" />
+                {evaluation ? "编辑面试评估" : "面试评估"}
+              </Button>
+            </Link>
+          </div>
         </div>
 
         {/* 审批操作 */}

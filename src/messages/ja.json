@@ -87,11 +87,9 @@
     "welcome": "こんにちは、{name}さん",
     "subtitle": "プロフィールを充実させて、より良いマッチング体験を",
     "profileTitle": "プロフィール完成度",
-    "identity": "基本情報",
-    "language": "言語設定",
-    "interests": "活動の好み",
-    "personality": "性格評価",
-    "boundaries": "個人の境界"
+    "identity": "\u57FA\u672C\u60C5\u5831",
+    "supplementary": "\u8FFD\u52A0\u60C5\u5831",
+    "personality": "\u6027\u683C\u8A55\u4FA1"
   },
   "supplementary": {
     "title": "追加情報",

@@ -5,9 +5,9 @@ import type { SupplementaryFormData } from "@/types"
 import { SingleSelect } from "@/components/shared/SingleSelect"
 import {
   ACTIVITY_AREA_OPTIONS,
-  NEAREST_STATION_PLACEHOLDER,
   GRADUATION_YEAR_OPTIONS,
 } from "@/lib/constants/supplementary"
+import { StationSearchSelect } from "@/components/ui/StationSearchSelect"
 
 interface Props {
   data: SupplementaryFormData
@@ -30,11 +30,9 @@ export function SupplementaryStep1({ data, setField }: Props) {
 
       <div>
         <label className="text-sm font-medium mb-2 block">{t("nearestStation")}</label>
-        <input
-          type="text"
+        <StationSearchSelect
           value={data.nearest_station}
-          onChange={(e) => setField("nearest_station", e.target.value)}
-          placeholder={NEAREST_STATION_PLACEHOLDER}
+          onChange={(v) => setField("nearest_station", v)}
           className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary transition-colors"
         />
       </div>

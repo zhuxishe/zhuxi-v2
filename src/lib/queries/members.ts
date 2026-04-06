@@ -55,7 +55,11 @@ export async function fetchMemberDetail(id: string) {
     .select(`
       *,
       member_identity (*),
-      interview_evaluations (*)
+      interview_evaluations (*),
+      member_language (*),
+      member_interests (*),
+      member_personality (*),
+      member_boundaries (*)
     `)
     .eq("id", id)
     .single()

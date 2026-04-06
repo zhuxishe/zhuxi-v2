@@ -12,10 +12,8 @@ interface Props {
 
 const SECTIONS = [
   { key: "identity", href: null, tKey: "identity" },
-  { key: "language", href: "/app/profile/supplementary", tKey: "language" },
-  { key: "interests", href: "/app/profile/supplementary", tKey: "interests" },
+  { key: "supplementary", href: "/app/profile/supplementary", tKey: "supplementary" },
   { key: "personality", href: "/app/profile/personality", tKey: "personality" },
-  { key: "boundaries", href: "/app/profile/supplementary", tKey: "boundaries" },
 ] as const
 
 export function ProfileCompleteness({ completeness }: Props) {

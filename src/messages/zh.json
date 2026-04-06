@@ -88,10 +88,8 @@
     "subtitle": "完善资料，获得更好的匹配体验",
     "profileTitle": "资料完成度",
     "identity": "基本信息",
-    "language": "语言偏好",
-    "interests": "活动偏好",
-    "personality": "性格评价",
-    "boundaries": "个人边界"
+    "supplementary": "补充信息",
+    "personality": "性格评价"
   },
   "supplementary": {
     "title": "补充资料",

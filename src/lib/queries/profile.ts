@@ -22,10 +22,8 @@ export async function fetchPlayerProfile(memberId: string) {
 
 export interface ProfileCompleteness {
   identity: boolean
-  language: boolean
-  interests: boolean
+  supplementary: boolean
   personality: boolean
-  boundaries: boolean
   percentage: number
 }
 
@@ -37,13 +35,11 @@ export function calcCompleteness(profile: {
   member_boundaries: unknown
 }): ProfileCompleteness {
   const identity = !!profile.member_identity
-  const language = !!profile.member_language
-  const interests = !!profile.member_interests
+  const supplementary = !!profile.member_language || !!profile.member_interests
   const personality = !!profile.member_personality
-  const boundaries = !!profile.member_boundaries
 
-  const filled = [identity, language, interests, personality, boundaries].filter(Boolean).length
-  const percentage = Math.round((filled / 5) * 100)
+  const filled = [identity, supplementary, personality].filter(Boolean).length
+  const percentage = Math.round((filled / 3) * 100)
 
-  return { identity, language, interests, personality, boundaries, percentage }
+  return { identity, supplementary, personality, percentage }
 }

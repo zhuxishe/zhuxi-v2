@@ -29,7 +29,7 @@ export const SCENARIO_THEME_OPTIONS = [
 ] as const
 
 export const GROUP_SIZE_OPTIONS = [
-  "4-5人", "6-7人", "8-10人", "10人以上", "都可以",
+  "2人", "3-4人", "4-5人", "6-7人", "8-10人", "10人以上", "都可以",
 ] as const
 
 export const SCRIPT_PREFERENCE_OPTIONS = [

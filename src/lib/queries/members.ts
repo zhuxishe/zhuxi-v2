@@ -55,7 +55,7 @@ export async function fetchMemberDetail(id: string) {
     .select(`
       *,
       member_identity (*),
-      interview_evaluations (*, admin_users!interviewer_id (name)),
+      interview_evaluations (*),
       member_language (*),
       member_interests (*),
       member_personality (*),

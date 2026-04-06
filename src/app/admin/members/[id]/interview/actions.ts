@@ -19,7 +19,7 @@ export async function submitInterviewEval(
   const { error: evalError } = await supabase
     .from("interview_evaluations")
     .upsert(
-      { member_id: memberId, interviewer_id: admin.id, ...evalData },
+      { member_id: memberId, interviewer_id: admin.id, interviewer_name: admin.name, ...evalData },
       { onConflict: "member_id,interviewer_id" },
     )
 

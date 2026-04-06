@@ -42,7 +42,7 @@ export function EvalTabView({ evaluations }: Props) {
   const tabs = [
     ...evaluations.map((e) => ({
       id: e.interviewer_id,
-      label: e.admin_users?.name ?? "未知面试官",
+      label: e.interviewer_name ?? "未知面试官",
       data: e,
     })),
     { id: "average", label: "平均值", data: avg },

@@ -1,67 +1,66 @@
 # 会话交接 — 2026-04-06
 
 ## 当前状态
-- **分支 claude/naughty-burnell** 最新 commit `2bc8a75`，基于 main `662dea6`
-- Supabase 东京 (wjjhprflldvclulistcx)，需应用迁移 013-017
-- 四个阶段全部完成，构建通过
+- **主分支 main** commit `662dea6`，已推送 GitHub，Vercel 自动部署中
+- Supabase 东京 (wjjhprflldvclulistcx)，已应用 12 个迁移
+- Vercel: zhuxi-v2.vercel.app
 
-## 本次完成
+## 本次会话完成的工作
 
-### 阶段一：Bug修复 + 模板对齐 (commit 276e21e)
-- 触发器自动同步 attractiveness_score(AVG) 到 members 表
-- fetchMatchHistory 添加 ID 过滤 + 分批查询
-- 7 个 GIN 索引
-- TABOO_TAGS 7→20, HOBBY_TAGS 15→24, TIME_SLOT 4→9
-- matches 页面消除 as any
-- 资料完整度检查实际字段内容
-- 新增 game_type_pref / scenario_theme_tags 数据库字段
+### 管理员系统修复
+- 白名单 CRUD 切换到 service role client（绕过 RLS）
+- 管理员独立登录（不走 Google OAuth）
 
-### 阶段二：匹配系统集成 (commit f0c522a)
-- match_results 状态管理 (draft/confirmed/cancelled/locked)
-- 配对卡片 + 7因子条形图 + 未匹配诊断 + 时间段热力图
-- 锁定/拆散/恢复/确认发布 操作
-- 黑名单管理页面
-- 匹配详情页重构 (MatchSessionView)
+### 玩家首页优化
+- 最近车站 → 可搜索下拉菜单（`StationSearchSelect` + `stations.json` 101站）
+- 活动人数加 "2人"、"3-4人"
+- 个人边界从首页移除（无对应表单），分类 5→3
+- 语言+活动偏好合并为"补充信息"
 
-### 阶段三：剧本库实现 (commit 82a7729)
-- 封面上传(3:4) + PDF上传(50MB限制) + 角色列表编辑器
-- Storage 双 bucket (scripts-covers 公开 + scripts 私有)
-- 玩家端封面墙 2 列 Grid + 题材筛选
-- 剧本详情页分层展示 + can_view_full 权限控制
+### 管理后台 — 详情页重构
+- 6 分区布局：基本信息 / 面试评估(amber) / 补充信息(violet) / 性格评价(blue) / 个人边界(rose) / 验证状态(primary)
+- 展示成员所有字段（identity + language + interests + personality + boundaries + verification）
+- 面试评估用 `EvalTabView` 组件：多面试官 tab 切换 + 平均值
 
-### 阶段四：ZSP-15 性格测试 (commit 2bc8a75)
-- 15 题情景选择，5 维度 (E/A/O/C/N)
-- 评分 0-100 + 25 种社交风格类型
-- 逐题问答 UI + 结果雷达条形图
+### 管理后台 — 编辑页新增
+- 与详情页同布局 6 分区
+- 5 个子表（identity/language/interests/personality/boundaries）可编辑
+- 标签可编辑（hobby/activity_type/personality_self/taboo）
+- 面试评估 + 验证状态只读
 
-## 已验证
-- TypeScript tsc --noEmit 通过
-- pnpm build 全部路由编译成功（每阶段都验证）
+### 多面试官支持
+- DB: (member_id, interviewer_id) 联合唯一键
+- interviewer_name 冗余存储（PostgREST 嵌套 join 不可靠）
+- attractiveness_score 存入 interview_evaluations + members 两表
+- 标签统一为"颜值"
 
-## 未验证 / 需要做
-- **迁移 013-017 未应用到 Supabase 生产数据库** — 需要在 Supabase Dashboard 运行
-- **Supabase Storage buckets 未创建** — 需要手动创建 `scripts` 和 `scripts-covers` bucket
-- **匹配系统与性格测试集成** — scorer.ts 中新增 personality_compatibility 因子（方案已设计，待实现）
-- **剧本数据初始导入** — D:\OneDrive\7_竹溪社\2025策划案 的 34 个文件需手动上传
-- **合并到 main 分支** — 当前在 worktree 分支
+## 已应用的 DB Migrations
+- `010_multi_interviewer.sql` — 去 member_id UNIQUE，加联合唯一
+- `011_eval_interviewer_name.sql` — 加 interviewer_name 列
+- `012_eval_attractiveness.sql` — 加 attractiveness_score 列
 
-## 新增数据库迁移
-| # | 文件 | 内容 |
-|---|------|------|
-| 013 | fix_rls_indexes_transaction | GIN 索引 x7 + attractiveness 同步触发器 |
-| 014 | template_alignment | game_type_pref + scenario_theme_tags + phone/sns |
-| 015 | matching_enhance | match_results 状态 + unmatched_diagnostics 表 |
-| 016 | scripts_enhance | scripts 增强 + script_play_records 表 |
-| 017 | personality_quiz | personality_quiz_results 表 |
-
-## 新增文件清单
-阶段一(2): admin.ts, .env.example
-阶段二(10): pair-relationships.ts, MatchPairCard, ScoreBreakdownChart, UnmatchedDiagnostics, TimeSlotHeatmap, MatchSessionView, matching actions, blacklist page+actions
-阶段三(7): ScriptCoverUpload, ScriptPdfUpload, ScriptRoleEditor, ScriptContentFields, FormInputs, ScriptGenreFilter, ScriptRoleList
-阶段四(6): personality-quiz.ts, PersonalityQuiz, QuizResult, QuizPageClient, quiz page+actions
+## 未验证 / 需要测试
+- **成员详情页能否打开**（去掉嵌套 join 后理论修复，用户未确认）
+- **面试评估显示**（颜值评分改完后未测试）
+- **多面试官 tab 切换**（只有一个管理员测试过）
+- **编辑页标签编辑功能**
+- **整体端到端流程**
 
 ## 关键决策
-- 用 DB 触发器替代应用层双写（attractiveness_score 自动 AVG 同步）
-- 剧本封面必须单独上传（PDF 第一页内容不统一）
-- 性格测试使用 ZSP-15（已有完整设计文档）
-- 匹配人格兼容分权重 25 分（替代旧 social_complement 15 分）
+- PostgREST 嵌套 join → 冗余 interviewer_name（可靠性优先）
+- attractiveness_score 双写（members + interview_evaluations）
+- 详情/编辑页统一 6 分区布局
+
+## 关键文件
+- 详情页: `src/components/admin/MemberDetailCard.tsx`
+- 编辑页: `src/components/admin/MemberEditForm.tsx` + `MemberEdit*.tsx`
+- 面试 Tab: `src/components/admin/EvalTabView.tsx`
+- 面试表单: `src/components/admin/InterviewEvalForm.tsx`
+- 面试 action: `src/app/admin/members/[id]/interview/actions.ts`
+- 成员查询: `src/lib/queries/members.ts`
+- 评估维度: `src/lib/constants/interview.ts`
+
+## 服务清单
+- GitHub: zhuxisheapp/zhuxi-v2
+- Supabase: wjjhprflldvclulistcx (东京)
+- Vercel: zhuxi-v2.vercel.app

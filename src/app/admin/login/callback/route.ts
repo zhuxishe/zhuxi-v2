@@ -7,37 +7,40 @@ const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 /**
  * GET /admin/login/callback
- * Admin-only Google OAuth callback.
- * Uses service role client for admin_users checks (bypasses RLS,
- * because RLS auth.uid() may not be ready right after code exchange).
+ * 1. Exchange code → set session cookie
+ * 2. Check admin_users (service role, bypass RLS)
+ * 3. Whitelist auto-bind if needed
+ * 4. Non-admin → sign out
+ *
+ * Key: redirect uses forwardedHost for Vercel compatibility
  */
 export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url)
+  const { searchParams, origin } = new URL(req.url)
   const code = searchParams.get("code")
+  const forwardedHost = req.headers.get("x-forwarded-host")
+  const baseUrl = forwardedHost ? `https://${forwardedHost}` : origin
 
   if (!code) {
-    return NextResponse.redirect(new URL("/admin/login?error=no_code", req.url))
+    return NextResponse.redirect(`${baseUrl}/admin/login?error=no_code`)
   }
 
-  // Cookie-based client for session management
   const supabase = await createClient()
-
   const { error: sessionError } = await supabase.auth.exchangeCodeForSession(code)
   if (sessionError) {
-    return NextResponse.redirect(new URL("/admin/login?error=auth_failed", req.url))
+    return NextResponse.redirect(`${baseUrl}/admin/login?error=auth_failed`)
   }
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user || !user.email) {
-    return NextResponse.redirect(new URL("/admin/login?error=auth_failed", req.url))
+    return NextResponse.redirect(`${baseUrl}/admin/login?error=auth_failed`)
   }
 
-  // Service role client for admin_users queries (bypasses RLS)
+  // Service role for admin_users queries (bypasses RLS)
   const adminDb = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  // 1. Check if already activated (user_id bound)
+  // 1. Already activated?
   const { data: activated } = await adminDb
     .from("admin_users")
     .select("id")
@@ -45,10 +48,10 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (activated) {
-    return NextResponse.redirect(new URL("/admin", req.url))
+    return NextResponse.redirect(`${baseUrl}/admin`)
   }
 
-  // 2. Check whitelist by email (user_id is NULL = invited but not yet logged in)
+  // 2. Whitelist match? (user_id IS NULL = invited, not yet logged in)
   const { data: whitelisted } = await adminDb
     .from("admin_users")
     .select("id")
@@ -57,20 +60,14 @@ export async function GET(req: NextRequest) {
     .single()
 
   if (whitelisted) {
-    const { error: bindError } = await adminDb
+    await adminDb
       .from("admin_users")
       .update({ user_id: user.id, name: user.user_metadata?.full_name ?? user.email.split("@")[0] })
       .eq("id", whitelisted.id)
-
-    if (bindError) {
-      await supabase.auth.signOut()
-      return NextResponse.redirect(new URL("/admin/login?error=auth_failed", req.url))
-    }
-
-    return NextResponse.redirect(new URL("/admin", req.url))
+    return NextResponse.redirect(`${baseUrl}/admin`)
   }
 
   // 3. Not authorized
   await supabase.auth.signOut()
-  return NextResponse.redirect(new URL("/admin/login?error=not_admin", req.url))
+  return NextResponse.redirect(`${baseUrl}/admin/login?error=not_admin`)
 }

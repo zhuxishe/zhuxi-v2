@@ -1,9 +1,21 @@
 "use client"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props {
-  data: any
-  onChange: (data: any) => void
+interface Props { data: any; onChange: (data: any) => void }
+
+function InputRow({ label, name, data, onChange, placeholder }: {
+  label: string; name: string; data: any; onChange: (d: any) => void; placeholder?: string
+}) {
+  return (
+    <tr className="border-b border-border/50">
+      <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
+      <td className="py-2.5">
+        <input value={data[name] ?? ""} placeholder={placeholder}
+          onChange={(e) => onChange({ ...data, [name]: e.target.value })}
+          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
+      </td>
+    </tr>
+  )
 }
 
 export function MemberEditBoundaries({ data, onChange }: Props) {
@@ -13,55 +25,35 @@ export function MemberEditBoundaries({ data, onChange }: Props) {
   }
 
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className="text-xs text-muted-foreground">理想年龄范围</label>
-          <input
-            value={data.preferred_age_range ?? ""}
-            onChange={(e) => onChange({ ...data, preferred_age_range: e.target.value })}
-            placeholder="例：21-26"
-            className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-          />
-        </div>
-        <div>
-          <label className="text-xs text-muted-foreground">性别比例偏好</label>
-          <input
-            value={data.preferred_gender_mix ?? ""}
-            onChange={(e) => onChange({ ...data, preferred_gender_mix: e.target.value })}
-            placeholder="例：混合、同性"
-            className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-          />
-        </div>
-      </div>
-
-      <div>
-        <label className="text-xs text-muted-foreground">禁忌标签（逗号分隔）</label>
-        <input
-          value={(data.taboo_tags ?? []).join(", ")}
-          onChange={(e) => updateTags("taboo_tags", e.target.value)}
-          className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs text-muted-foreground">绝对不接受（逗号分隔）</label>
-        <input
-          value={(data.deal_breakers ?? []).join(", ")}
-          onChange={(e) => updateTags("deal_breakers", e.target.value)}
-          className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-        />
-      </div>
-
-      <div>
-        <label className="text-xs text-muted-foreground">备注</label>
-        <textarea
-          value={data.boundary_notes ?? ""}
-          onChange={(e) => onChange({ ...data, boundary_notes: e.target.value })}
-          rows={2}
-          className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary resize-none"
-        />
-      </div>
-    </div>
+    <table className="w-full"><tbody>
+      <InputRow label="年龄范围" name="preferred_age_range" data={data} onChange={onChange} placeholder="例：21-26" />
+      <InputRow label="性别比例" name="preferred_gender_mix" data={data} onChange={onChange} placeholder="例：混合、同性" />
+      <tr className="border-b border-border/50">
+        <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">禁忌标签</td>
+        <td className="py-2.5">
+          <input value={(data.taboo_tags ?? []).join(", ")}
+            onChange={(e) => updateTags("taboo_tags", e.target.value)}
+            placeholder="逗号分隔"
+            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
+        </td>
+      </tr>
+      <tr className="border-b border-border/50">
+        <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">绝不接受</td>
+        <td className="py-2.5">
+          <input value={(data.deal_breakers ?? []).join(", ")}
+            onChange={(e) => updateTags("deal_breakers", e.target.value)}
+            placeholder="逗号分隔"
+            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
+        </td>
+      </tr>
+      <tr className="border-b border-border/50">
+        <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24 align-top">备注</td>
+        <td className="py-2.5">
+          <textarea value={data.boundary_notes ?? ""} rows={2}
+            onChange={(e) => onChange({ ...data, boundary_notes: e.target.value })}
+            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary resize-none" />
+        </td>
+      </tr>
+    </tbody></table>
   )
 }

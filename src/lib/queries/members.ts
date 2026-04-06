@@ -59,7 +59,8 @@ export async function fetchMemberDetail(id: string) {
       member_language (*),
       member_interests (*),
       member_personality (*),
-      member_boundaries (*)
+      member_boundaries (*),
+      member_verification (*)
     `)
     .eq("id", id)
     .single()

@@ -47,6 +47,7 @@ export function MemberDetailCard({ member, identity }: Props) {
   const interests = member.member_interests
   const personality = member.member_personality
   const bounds = member.member_boundaries
+  const verification = member.member_verification
 
   return (
     <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">
@@ -85,8 +86,26 @@ export function MemberDetailCard({ member, identity }: Props) {
           <table className="w-full"><tbody>
             <Row label="面试官" value={ev.interviewer} />
             <Row label="吸引力" value={ev.attractiveness_score} />
-            <Row label="印象" value={ev.impression_score} />
-            {ev.notes && <Row label="备注" value={ev.notes} />}
+            <Row label="风险等级" value={ev.risk_level} />
+            <Row label="沟通能力" value={ev.communication} />
+            <Row label="表达清晰" value={ev.articulation} />
+            <Row label="积极性" value={ev.enthusiasm} />
+            <Row label="真诚度" value={ev.sincerity} />
+            <Row label="社交舒适" value={ev.social_comfort} />
+            <Row label="幽默感" value={ev.humor} />
+            <Row label="情绪稳定" value={ev.emotional_stability} />
+            <Row label="边界尊重" value={ev.boundary_respect} />
+            <Row label="团队倾向" value={ev.team_orientation} />
+            <Row label="兴趣匹配" value={ev.interest_alignment} />
+            <Row label="日语能力" value={ev.japanese_ability} />
+            <Row label="时间承诺" value={ev.time_commitment} />
+            <Row label="领导力" value={ev.leadership_potential} />
+            <Row label="开放性" value={ev.openness} />
+            <Row label="责任感" value={ev.responsibility} />
+            <Row label="第一印象" value={ev.first_impression} />
+            <Row label="总体推荐" value={ev.overall_recommendation} />
+            {ev.risk_notes && <Row label="风险备注" value={ev.risk_notes} />}
+            {ev.interviewer_notes && <Row label="面试备注" value={ev.interviewer_notes} />}
           </tbody></table>
         </div>
       )}
@@ -108,6 +127,8 @@ export function MemberDetailCard({ member, identity }: Props) {
               <Row label="预算" value={interests.budget_range} />
               <Row label="移动范围" value={interests.travel_radius} />
               <TagRow label="剧本类型" tags={interests.scenario_mode_pref} />
+              <TagRow label="剧本偏好" tags={interests.script_preference} variant="info" />
+              <TagRow label="非剧本" tags={interests.non_script_preference} variant="info" />
               <TagRow label="时间偏好" tags={interests.preferred_time_slots} variant="info" />
               <Row label="主要目标" value={interests.social_goal_primary} />
               <Row label="次要目标" value={interests.social_goal_secondary} />
@@ -167,6 +188,18 @@ export function MemberDetailCard({ member, identity }: Props) {
             <TagRow label="禁忌" tags={bounds.taboo_tags} variant="danger" />
             <TagRow label="绝不接受" tags={bounds.deal_breakers} variant="danger" />
             {bounds.boundary_notes && <Row label="备注" value={bounds.boundary_notes} />}
+          </tbody></table>
+        )}
+      </div>
+
+      {/* 验证状态 */}
+      <div className="p-5 space-y-3">
+        <SectionHeader title="验证状态" color="amber" />
+        {!verification ? <p className="text-sm text-muted-foreground">未验证</p> : (
+          <table className="w-full"><tbody>
+            <Row label="学生证" value={verification.student_id_verified ? "已验证" : "未验证"} />
+            <Row label="照片" value={verification.photo_verified ? "已验证" : "未验证"} />
+            {verification.verified_at && <Row label="验证时间" value={verification.verified_at} />}
           </tbody></table>
         )}
       </div>

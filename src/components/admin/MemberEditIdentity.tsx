@@ -1,59 +1,91 @@
 "use client"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props {
-  data: any
-  onChange: (data: any) => void
-}
+import {
+  HOBBY_TAGS, ACTIVITY_TYPE_TAGS,
+  PERSONALITY_SELF_TAGS, TABOO_TAGS,
+} from "@/lib/constants/tags"
 
-function Field({ label, name, data, onChange, type = "text" }: {
+/* eslint-disable @typescript-eslint/no-explicit-any */
+interface Props { data: any; onChange: (data: any) => void }
+
+function InputRow({ label, name, data, onChange, type = "text" }: {
   label: string; name: string; data: any; onChange: (d: any) => void; type?: string
 }) {
   return (
-    <div>
-      <label className="text-xs text-muted-foreground">{label}</label>
-      <input
-        type={type}
-        value={data[name] ?? ""}
-        onChange={(e) => onChange({ ...data, [name]: e.target.value })}
-        className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-      />
-    </div>
+    <tr className="border-b border-border/50">
+      <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
+      <td className="py-2.5">
+        <input type={type} value={data[name] ?? ""}
+          onChange={(e) => onChange({ ...data, [name]: type === "number" ? e.target.value : e.target.value })}
+          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
+      </td>
+    </tr>
   )
 }
 
-function SelectField({ label, name, options, data, onChange }: {
-  label: string; name: string; options: string[]; data: any; onChange: (d: any) => void
+function SelectRow({ label, name, options, data, onChange }: {
+  label: string; name: string; options: readonly string[]; data: any; onChange: (d: any) => void
 }) {
   return (
-    <div>
-      <label className="text-xs text-muted-foreground">{label}</label>
-      <select
-        value={data[name] ?? ""}
-        onChange={(e) => onChange({ ...data, [name]: e.target.value })}
-        className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
-      >
-        <option value="">-</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-      </select>
-    </div>
+    <tr className="border-b border-border/50">
+      <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
+      <td className="py-2.5">
+        <select value={data[name] ?? ""}
+          onChange={(e) => onChange({ ...data, [name]: e.target.value })}
+          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary">
+          <option value="">-</option>
+          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </td>
+    </tr>
+  )
+}
+
+function TagsRow({ label, name, options, data, onChange }: {
+  label: string; name: string; options: readonly string[]; data: any; onChange: (d: any) => void
+}) {
+  const selected: string[] = data[name] ?? []
+  function toggle(tag: string) {
+    const next = selected.includes(tag) ? selected.filter((t) => t !== tag) : [...selected, tag]
+    onChange({ ...data, [name]: next })
+  }
+  return (
+    <tr className="border-b border-border/50">
+      <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24 align-top">{label}</td>
+      <td className="py-2.5">
+        <div className="flex flex-wrap gap-1.5">
+          {options.map((t) => (
+            <button key={t} type="button" onClick={() => toggle(t)}
+              className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors border ${
+                selected.includes(t)
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-background text-foreground border-border hover:bg-muted"
+              }`}>{t}</button>
+          ))}
+        </div>
+      </td>
+    </tr>
   )
 }
 
 export function MemberEditIdentity({ data, onChange }: Props) {
   return (
-    <div className="grid grid-cols-2 gap-3">
-      <Field label="姓名" name="full_name" data={data} onChange={onChange} />
-      <Field label="昵称" name="nickname" data={data} onChange={onChange} />
-      <SelectField label="性别" name="gender" options={["male", "female", "other"]} data={data} onChange={onChange} />
-      <SelectField label="年龄段" name="age_range" options={["18-20", "21-23", "24-26", "27-29", "30+"]} data={data} onChange={onChange} />
-      <Field label="国籍" name="nationality" data={data} onChange={onChange} />
-      <Field label="所在地" name="current_city" data={data} onChange={onChange} />
-      <Field label="学校" name="school_name" data={data} onChange={onChange} />
-      <Field label="学部/研究科" name="department" data={data} onChange={onChange} />
-      <SelectField label="学位阶段" name="degree_level" options={["学士", "修士", "博士", "研究生", "别科", "语言学校"]} data={data} onChange={onChange} />
-      <Field label="课程语言" name="course_language" data={data} onChange={onChange} />
-      <Field label="入学年份" name="enrollment_year" data={data} onChange={onChange} type="number" />
-    </div>
+    <table className="w-full"><tbody>
+      <InputRow label="姓名" name="full_name" data={data} onChange={onChange} />
+      <InputRow label="昵称" name="nickname" data={data} onChange={onChange} />
+      <SelectRow label="性别" name="gender" options={["male", "female", "other"]} data={data} onChange={onChange} />
+      <SelectRow label="年龄段" name="age_range" options={["18-20", "21-23", "24-26", "27-29", "30+"]} data={data} onChange={onChange} />
+      <InputRow label="国籍" name="nationality" data={data} onChange={onChange} />
+      <InputRow label="所在地" name="current_city" data={data} onChange={onChange} />
+      <InputRow label="学校" name="school_name" data={data} onChange={onChange} />
+      <InputRow label="学部" name="department" data={data} onChange={onChange} />
+      <SelectRow label="学位" name="degree_level" options={["学士", "修士", "博士", "研究生", "别科", "语言学校"]} data={data} onChange={onChange} />
+      <InputRow label="课程语言" name="course_language" data={data} onChange={onChange} />
+      <InputRow label="入学年" name="enrollment_year" data={data} onChange={onChange} type="number" />
+      <TagsRow label="爱好" name="hobby_tags" options={HOBBY_TAGS} data={data} onChange={onChange} />
+      <TagsRow label="活动类型" name="activity_type_tags" options={ACTIVITY_TYPE_TAGS} data={data} onChange={onChange} />
+      <TagsRow label="性格自评" name="personality_self_tags" options={PERSONALITY_SELF_TAGS} data={data} onChange={onChange} />
+      <TagsRow label="个人NG" name="taboo_tags" options={TABOO_TAGS} data={data} onChange={onChange} />
+    </tbody></table>
   )
 }

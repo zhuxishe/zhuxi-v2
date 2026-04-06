@@ -6,9 +6,9 @@ import { loginAdmin, signInWithGoogleAdmin } from "./actions"
 import { Button } from "@/components/ui/button"
 
 const ERROR_MESSAGES: Record<string, string> = {
-  not_admin: "该账号不是管理��",
-  auth_failed: "认证失败，请重��",
-  no_code: "回调异常，请重试",
+  not_admin: "\u8BE5\u8D26\u53F7\u4E0D\u662F\u7BA1\u7406\u5458",
+  auth_failed: "\u8BA4\u8BC1\u5931\u8D25\uFF0C\u8BF7\u91CD\u8BD5",
+  no_code: "\u56DE\u8C03\u5F02\u5E38\uFF0C\u8BF7\u91CD\u8BD5",
 }
 
 export default function AdminLoginPage() {
@@ -74,7 +74,7 @@ export default function AdminLoginPage() {
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={pending}>
-            {pending ? "登录中..." : "登���"}
+            {pending ? "\u767B\u5F55\u4E2D..." : "\u767B\u5F55"}
           </Button>
         </form>
       </div>

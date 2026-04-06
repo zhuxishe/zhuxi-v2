@@ -3,6 +3,7 @@ import { requirePlayer } from "@/lib/auth/player"
 import { fetchScript, checkScriptAccess } from "@/lib/queries/scripts"
 import { TagBadge } from "@/components/shared/TagBadge"
 import { ScriptRoleList } from "@/components/player/ScriptRoleList"
+import { FlipBookViewer } from "@/components/player/FlipBookViewer"
 import { Clock, Users, AlertTriangle, Eye, Lock } from "lucide-react"
 import { SCRIPT_DIFFICULTY_OPTIONS } from "@/lib/constants/scripts"
 
@@ -81,8 +82,14 @@ export default async function ScriptDetailPage({ params }: Props) {
       {/* Roles */}
       <ScriptRoleList roles={script.roles} />
 
-      {/* Access control section */}
-      <AccessSection canViewFull={canViewFull} pdfUrl={script.pdf_url} />
+      {/* 翻页书阅读器 / 权限控制 */}
+      {canViewFull && script.page_images?.length > 0 ? (
+        <div className="rounded-xl overflow-hidden ring-1 ring-foreground/10">
+          <FlipBookViewer pages={script.page_images} title={script.title} />
+        </div>
+      ) : (
+        <AccessSection canViewFull={canViewFull} pdfUrl={script.pdf_url} />
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
+import { SectionHeader } from "./MemberDetailCard"
 import { MemberEditIdentity } from "./MemberEditIdentity"
 import { MemberEditLanguage } from "./MemberEditLanguage"
 import { MemberEditInterests } from "./MemberEditInterests"
@@ -18,16 +19,13 @@ import {
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface Props { memberId: string; member: any }
 
-const COLORS: Record<string, string> = {
-  primary: "bg-primary/10 text-primary border-primary/20",
-  amber: "bg-amber-50 text-amber-700 border-amber-200",
-  blue: "bg-blue-50 text-blue-700 border-blue-200",
-  violet: "bg-violet-50 text-violet-700 border-violet-200",
-  rose: "bg-rose-50 text-rose-700 border-rose-200",
-}
-
-function Header({ title, color = "primary" }: { title: string; color?: string }) {
-  return <div className={`px-3 py-1.5 text-xs font-semibold rounded-md border ${COLORS[color]}`}>{title}</div>
+function ReadOnlyRow({ label, value }: { label: string; value?: string | number | null }) {
+  return (
+    <tr className="border-b border-border/50 last:border-0">
+      <td className="py-2 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
+      <td className="py-2 text-sm">{value ?? <span className="text-muted-foreground">-</span>}</td>
+    </tr>
+  )
 }
 
 export function MemberEditForm({ memberId, member }: Props) {
@@ -36,6 +34,8 @@ export function MemberEditForm({ memberId, member }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
+  const ev = member.interview_evaluations?.[0]
+  const verification = member.member_verification
   const [identity, setIdentity] = useState(member.member_identity ?? {})
   const [language, setLanguage] = useState(member.member_language ?? {})
   const [interests, setInterests] = useState(member.member_interests ?? {})
@@ -43,9 +43,7 @@ export function MemberEditForm({ memberId, member }: Props) {
   const [boundaries, setBoundaries] = useState(member.member_boundaries ?? {})
 
   async function handleSave() {
-    setSaving(true)
-    setError(null)
-    setSuccess(false)
+    setSaving(true); setError(null); setSuccess(false)
     const results = await Promise.all([
       updateMemberIdentity(memberId, identity),
       updateMemberLanguage(memberId, language),
@@ -64,25 +62,53 @@ export function MemberEditForm({ memberId, member }: Props) {
   return (
     <div className="max-w-3xl space-y-4">
       <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">
+        {/* 1. 基本信息（可编辑） */}
         <div className="p-5 space-y-3">
-          <Header title="基本信息 / 学业" />
+          <SectionHeader title="基本信息" />
           <MemberEditIdentity data={identity} onChange={setIdentity} />
         </div>
+
+        {/* 2. 面试评估（只读 — 走独立编辑页） */}
         <div className="p-5 space-y-3">
-          <Header title="补充信息 — 语言" color="violet" />
-          <MemberEditLanguage data={language} onChange={setLanguage} />
+          <SectionHeader title="面试评估（只读）" color="amber" />
+          {!ev ? <p className="text-sm text-muted-foreground">未评估</p> : (
+            <table className="w-full"><tbody>
+              <ReadOnlyRow label="面试官" value={ev.interviewer} />
+              <ReadOnlyRow label="吸引力" value={ev.attractiveness_score} />
+              <ReadOnlyRow label="风险等级" value={ev.risk_level} />
+              <ReadOnlyRow label="总体推荐" value={ev.overall_recommendation} />
+            </tbody></table>
+          )}
         </div>
+
+        {/* 3. 补充信息（可编辑） */}
         <div className="p-5 space-y-3">
-          <Header title="补充信息 — 活动偏好" color="violet" />
+          <SectionHeader title="补充信息" color="violet" />
+          <MemberEditLanguage data={language} onChange={setLanguage} />
           <MemberEditInterests data={interests} onChange={setInterests} />
         </div>
+
+        {/* 4. 性格评价（可编辑） */}
         <div className="p-5 space-y-3">
-          <Header title="性格评价" color="primary" />
+          <SectionHeader title="性格评价" color="blue" />
           <MemberEditPersonality data={personality} onChange={setPersonality} />
         </div>
+
+        {/* 5. 个人边界（可编辑） */}
         <div className="p-5 space-y-3">
-          <Header title="个人边界" color="rose" />
+          <SectionHeader title="个人边界" color="rose" />
           <MemberEditBoundaries data={boundaries} onChange={setBoundaries} />
+        </div>
+
+        {/* 6. 验证状态（只读 — 走独立验证页） */}
+        <div className="p-5 space-y-3">
+          <SectionHeader title="验证状态（只读）" color="primary" />
+          {!verification ? <p className="text-sm text-muted-foreground">未验证</p> : (
+            <table className="w-full"><tbody>
+              <ReadOnlyRow label="学生证" value={verification.student_id_verified ? "已验证" : "未验证"} />
+              <ReadOnlyRow label="照片" value={verification.photo_verified ? "已验证" : "未验证"} />
+            </tbody></table>
+          )}
         </div>
       </div>
 

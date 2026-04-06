@@ -24,7 +24,7 @@ function TagRow({ label, tags, variant }: { label: string; tags?: string[]; vari
   )
 }
 
-function SectionHeader({ title, color = "primary" }: { title: string; color?: string }) {
+export function SectionHeader({ title, color = "primary" }: { title: string; color?: string }) {
   const colors: Record<string, string> = {
     primary: "bg-primary/10 text-primary border-primary/20",
     amber: "bg-amber-50 text-amber-700 border-amber-200",
@@ -32,11 +32,7 @@ function SectionHeader({ title, color = "primary" }: { title: string; color?: st
     violet: "bg-violet-50 text-violet-700 border-violet-200",
     rose: "bg-rose-50 text-rose-700 border-rose-200",
   }
-  return (
-    <div className={`px-3 py-1.5 text-xs font-semibold rounded-md border ${colors[color] ?? colors.primary}`}>
-      {title}
-    </div>
-  )
+  return <div className={`px-3 py-1.5 text-xs font-semibold rounded-md border ${colors[color] ?? colors.primary}`}>{title}</div>
 }
 
 export function MemberDetailCard({ member, identity }: Props) {
@@ -51,9 +47,9 @@ export function MemberDetailCard({ member, identity }: Props) {
 
   return (
     <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">
-      {/* 基本 + 学业 */}
+      {/* 1. 基本信息 / 学业 / 标签 */}
       <div className="p-5 space-y-3">
-        <SectionHeader title="基本信息 / 学业" />
+        <SectionHeader title="基本信息" />
         <table className="w-full"><tbody>
           <Row label="姓名" value={identity.full_name} />
           <Row label="昵称" value={identity.nickname} />
@@ -65,13 +61,6 @@ export function MemberDetailCard({ member, identity }: Props) {
           <Row label="学部" value={identity.department} />
           <Row label="学位" value={identity.degree_level} />
           <Row label="入学年" value={identity.enrollment_year} />
-        </tbody></table>
-      </div>
-
-      {/* 标签 */}
-      <div className="p-5 space-y-3">
-        <SectionHeader title="标签" color="blue" />
-        <table className="w-full"><tbody>
           <TagRow label="爱好" tags={identity.hobby_tags} />
           <TagRow label="活动类型" tags={identity.activity_type_tags} variant="info" />
           <TagRow label="性格自评" tags={identity.personality_self_tags} variant="success" />
@@ -79,10 +68,10 @@ export function MemberDetailCard({ member, identity }: Props) {
         </tbody></table>
       </div>
 
-      {/* 面试评估 */}
-      {ev && (
-        <div className="p-5 space-y-3">
-          <SectionHeader title="面试评估" color="amber" />
+      {/* 2. 面试评估 */}
+      <div className="p-5 space-y-3">
+        <SectionHeader title="面试评估" color="amber" />
+        {!ev ? <p className="text-sm text-muted-foreground">未评估</p> : (
           <table className="w-full"><tbody>
             <Row label="面试官" value={ev.interviewer} />
             <Row label="吸引力" value={ev.attractiveness_score} />
@@ -107,10 +96,10 @@ export function MemberDetailCard({ member, identity }: Props) {
             {ev.risk_notes && <Row label="风险备注" value={ev.risk_notes} />}
             {ev.interviewer_notes && <Row label="面试备注" value={ev.interviewer_notes} />}
           </tbody></table>
-        </div>
-      )}
+        )}
+      </div>
 
-      {/* 补充信息 */}
+      {/* 3. 补充信息 */}
       <div className="p-5 space-y-3">
         <SectionHeader title="补充信息" color="violet" />
         {(!lang && !interests) ? <p className="text-sm text-muted-foreground">未填写</p> : (
@@ -126,12 +115,12 @@ export function MemberDetailCard({ member, identity }: Props) {
               <Row label="活动频率" value={interests.activity_frequency} />
               <Row label="预算" value={interests.budget_range} />
               <Row label="移动范围" value={interests.travel_radius} />
+              <Row label="主要目标" value={interests.social_goal_primary} />
+              <Row label="次要目标" value={interests.social_goal_secondary} />
               <TagRow label="剧本类型" tags={interests.scenario_mode_pref} />
               <TagRow label="剧本偏好" tags={interests.script_preference} variant="info" />
               <TagRow label="非剧本" tags={interests.non_script_preference} variant="info" />
               <TagRow label="时间偏好" tags={interests.preferred_time_slots} variant="info" />
-              <Row label="主要目标" value={interests.social_goal_primary} />
-              <Row label="次要目标" value={interests.social_goal_secondary} />
               <Row label="接受新手" value={interests.accept_beginners ? "是" : "否"} />
               <Row label="接受跨校" value={interests.accept_cross_school ? "是" : "否"} />
             </>}
@@ -139,9 +128,9 @@ export function MemberDetailCard({ member, identity }: Props) {
         )}
       </div>
 
-      {/* 性格 */}
+      {/* 4. 性格评价 */}
       <div className="p-5 space-y-3">
-        <SectionHeader title="性格评价" color="primary" />
+        <SectionHeader title="性格评价" color="blue" />
         {!personality ? <p className="text-sm text-muted-foreground">未填写</p> : (
           <div className="space-y-2">
             {PERSONALITY_DIMENSIONS.map((dim) => {
@@ -178,7 +167,7 @@ export function MemberDetailCard({ member, identity }: Props) {
         )}
       </div>
 
-      {/* 边界 */}
+      {/* 5. 个人边界 */}
       <div className="p-5 space-y-3">
         <SectionHeader title="个人边界" color="rose" />
         {!bounds ? <p className="text-sm text-muted-foreground">未填写</p> : (
@@ -192,9 +181,9 @@ export function MemberDetailCard({ member, identity }: Props) {
         )}
       </div>
 
-      {/* 验证状态 */}
+      {/* 6. 验证状态 */}
       <div className="p-5 space-y-3">
-        <SectionHeader title="验证状态" color="amber" />
+        <SectionHeader title="验证状态" color="primary" />
         {!verification ? <p className="text-sm text-muted-foreground">未验证</p> : (
           <table className="w-full"><tbody>
             <Row label="学生证" value={verification.student_id_verified ? "已验证" : "未验证"} />

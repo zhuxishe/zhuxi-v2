@@ -34,7 +34,8 @@ export function MemberEditForm({ memberId, member }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  const ev = member.interview_evaluations
+  const rawEvals = member.interview_evaluations
+  const evals = Array.isArray(rawEvals) ? rawEvals : rawEvals ? [rawEvals] : []
   const verification = member.member_verification
   const [identity, setIdentity] = useState(member.member_identity ?? {})
   const [language, setLanguage] = useState(member.member_language ?? {})
@@ -71,12 +72,12 @@ export function MemberEditForm({ memberId, member }: Props) {
         {/* 2. 面试评估（只读 — 走独立编辑页） */}
         <div className="p-5 space-y-3">
           <SectionHeader title="面试评估（只读）" color="amber" />
-          {!ev ? <p className="text-sm text-muted-foreground">未评估</p> : (
+          {!evals.length ? <p className="text-sm text-muted-foreground">未评估</p> : (
             <table className="w-full"><tbody>
-              <ReadOnlyRow label="面试官" value={ev.interviewer} />
-              <ReadOnlyRow label="吸引力" value={ev.attractiveness_score} />
-              <ReadOnlyRow label="风险等级" value={ev.risk_level} />
-              <ReadOnlyRow label="总体推荐" value={ev.overall_recommendation} />
+              <ReadOnlyRow label="评估数" value={`${evals.length} 份`} />
+              {evals.map((e: any, i: number) => (
+                <ReadOnlyRow key={i} label={e.admin_users?.name ?? `面试官${i + 1}`} value={`推荐 ${e.overall_recommendation}/5 · 风险 ${e.risk_level}`} />
+              ))}
             </tbody></table>
           )}
         </div>

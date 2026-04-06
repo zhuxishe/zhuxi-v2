@@ -11,6 +11,7 @@ import { ScoreSlider } from "./ScoreSlider"
 interface Props {
   memberId: string
   memberName: string
+  adminName: string
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   existing?: any
 }
@@ -29,9 +30,12 @@ function buildInitial(existing?: Record<string, unknown>): InterviewEvalFormData
   return { ...defaults, ...existing } as InterviewEvalFormData
 }
 
-export function InterviewEvalForm({ memberId, memberName, existing }: Props) {
+export function InterviewEvalForm({ memberId, memberName, adminName, existing }: Props) {
   const router = useRouter()
   const [data, setData] = useState(() => buildInitial(existing))
+  const [interviewDate, setInterviewDate] = useState(
+    existing?.created_at?.split("T")[0] ?? new Date().toISOString().split("T")[0]
+  )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -42,7 +46,7 @@ export function InterviewEvalForm({ memberId, memberName, existing }: Props) {
   async function handleSubmit() {
     setSubmitting(true)
     setError(null)
-    const result = await submitInterviewEval(memberId, data)
+    const result = await submitInterviewEval(memberId, data, interviewDate)
     setSubmitting(false)
     if (result.error) setError(result.error)
     else router.push(`/admin/members/${memberId}`)
@@ -50,7 +54,24 @@ export function InterviewEvalForm({ memberId, memberName, existing }: Props) {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <p className="text-sm text-muted-foreground">评估对象: <strong>{memberName}</strong></p>
+      <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-3">
+        <div className="grid grid-cols-3 gap-4">
+          <div>
+            <label className="text-xs text-muted-foreground">评估对象</label>
+            <p className="text-sm font-medium mt-1">{memberName}</p>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">面试官</label>
+            <p className="text-sm font-medium mt-1">{adminName}</p>
+          </div>
+          <div>
+            <label className="text-xs text-muted-foreground">面试日期</label>
+            <input type="date" value={interviewDate}
+              onChange={(e) => setInterviewDate(e.target.value)}
+              className="w-full mt-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
+          </div>
+        </div>
+      </div>
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
         <h3 className="text-sm font-semibold">17 维度评分 (1-5)</h3>

@@ -25,7 +25,8 @@ export default async function MemberDetailPage({ params }: Props) {
   }
 
   const identity = member.member_identity
-  const evaluation = member.interview_evaluations
+  const rawEvals = member.interview_evaluations
+  const hasEval = Array.isArray(rawEvals) ? rawEvals.length > 0 : !!rawEvals
 
   return (
     <div>
@@ -46,7 +47,7 @@ export default async function MemberDetailPage({ params }: Props) {
             <Link href={`/admin/members/${id}/interview`}>
               <Button size="sm">
                 <ClipboardList className="size-4 mr-1" />
-                {evaluation ? "编辑面试评估" : "面试评估"}
+                {hasEval ? "编辑面试评估" : "面试评估"}
               </Button>
             </Link>
           </div>

@@ -20,7 +20,11 @@ export default async function InterviewEvalPage({ params }: Props) {
   }
 
   const identity = member.member_identity
-  const existing = member.interview_evaluations
+  // 1:N — 取当前管理员已有的评估
+  const evals = Array.isArray(member.interview_evaluations)
+    ? member.interview_evaluations
+    : member.interview_evaluations ? [member.interview_evaluations] : []
+  const myEval = evals.find((e: { interviewer_id: string }) => e.interviewer_id === admin.id)
 
   return (
     <div>
@@ -29,7 +33,8 @@ export default async function InterviewEvalPage({ params }: Props) {
         <InterviewEvalForm
           memberId={id}
           memberName={identity?.full_name ?? "未知"}
-          existing={existing}
+          adminName={admin.name}
+          existing={myEval}
         />
       </div>
     </div>

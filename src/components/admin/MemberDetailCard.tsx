@@ -1,5 +1,6 @@
 import { TagBadge } from "@/components/shared/TagBadge"
 import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
+import { EvalTabView } from "./EvalTabView"
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 interface Props { member: any; identity: any }
@@ -38,7 +39,8 @@ export function SectionHeader({ title, color = "primary" }: { title: string; col
 export function MemberDetailCard({ member, identity }: Props) {
   if (!identity) return <p className="text-sm text-muted-foreground">无身份信息</p>
 
-  const ev = member.interview_evaluations
+  const rawEvals = member.interview_evaluations
+  const evals: unknown[] = Array.isArray(rawEvals) ? rawEvals : rawEvals ? [rawEvals] : []
   const lang = member.member_language
   const interests = member.member_interests
   const personality = member.member_personality
@@ -68,35 +70,10 @@ export function MemberDetailCard({ member, identity }: Props) {
         </tbody></table>
       </div>
 
-      {/* 2. 面试评估 */}
+      {/* 2. 面试评估（支持多面试官 tab 切换） */}
       <div className="p-5 space-y-3">
         <SectionHeader title="面试评估" color="amber" />
-        {!ev ? <p className="text-sm text-muted-foreground">未评估</p> : (
-          <table className="w-full"><tbody>
-            <Row label="面试官" value={ev.interviewer} />
-            <Row label="吸引力" value={ev.attractiveness_score} />
-            <Row label="风险等级" value={ev.risk_level} />
-            <Row label="沟通能力" value={ev.communication} />
-            <Row label="表达清晰" value={ev.articulation} />
-            <Row label="积极性" value={ev.enthusiasm} />
-            <Row label="真诚度" value={ev.sincerity} />
-            <Row label="社交舒适" value={ev.social_comfort} />
-            <Row label="幽默感" value={ev.humor} />
-            <Row label="情绪稳定" value={ev.emotional_stability} />
-            <Row label="边界尊重" value={ev.boundary_respect} />
-            <Row label="团队倾向" value={ev.team_orientation} />
-            <Row label="兴趣匹配" value={ev.interest_alignment} />
-            <Row label="日语能力" value={ev.japanese_ability} />
-            <Row label="时间承诺" value={ev.time_commitment} />
-            <Row label="领导力" value={ev.leadership_potential} />
-            <Row label="开放性" value={ev.openness} />
-            <Row label="责任感" value={ev.responsibility} />
-            <Row label="第一印象" value={ev.first_impression} />
-            <Row label="总体推荐" value={ev.overall_recommendation} />
-            {ev.risk_notes && <Row label="风险备注" value={ev.risk_notes} />}
-            {ev.interviewer_notes && <Row label="面试备注" value={ev.interviewer_notes} />}
-          </tbody></table>
-        )}
+        <EvalTabView evaluations={evals as any[]} />
       </div>
 
       {/* 3. 补充信息 */}

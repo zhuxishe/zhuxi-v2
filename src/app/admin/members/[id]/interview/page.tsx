@@ -20,7 +20,7 @@ export default async function InterviewEvalPage({ params }: Props) {
   }
 
   const identity = member.member_identity
-  const existing = member.interview_evaluations?.[0]
+  const existing = member.interview_evaluations
 
   return (
     <div>

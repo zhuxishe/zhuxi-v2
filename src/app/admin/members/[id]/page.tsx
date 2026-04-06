@@ -25,7 +25,7 @@ export default async function MemberDetailPage({ params }: Props) {
   }
 
   const identity = member.member_identity
-  const evaluation = member.interview_evaluations?.[0]
+  const evaluation = member.interview_evaluations
 
   return (
     <div>

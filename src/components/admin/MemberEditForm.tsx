@@ -34,7 +34,7 @@ export function MemberEditForm({ memberId, member }: Props) {
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
 
-  const ev = member.interview_evaluations?.[0]
+  const ev = member.interview_evaluations
   const verification = member.member_verification
   const [identity, setIdentity] = useState(member.member_identity ?? {})
   const [language, setLanguage] = useState(member.member_language ?? {})

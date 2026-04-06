@@ -38,7 +38,7 @@ export function SectionHeader({ title, color = "primary" }: { title: string; col
 export function MemberDetailCard({ member, identity }: Props) {
   if (!identity) return <p className="text-sm text-muted-foreground">无身份信息</p>
 
-  const ev = member.interview_evaluations?.[0]
+  const ev = member.interview_evaluations
   const lang = member.member_language
   const interests = member.member_interests
   const personality = member.member_personality

@@ -14,6 +14,7 @@ const SECTIONS = [
   { key: "identity", href: null, tKey: "identity" },
   { key: "supplementary", href: "/app/profile/supplementary", tKey: "supplementary" },
   { key: "personality", href: "/app/profile/personality", tKey: "personality" },
+  { key: "quiz", href: "/app/profile/quiz", tKey: "quiz" },
 ] as const
 
 export function ProfileCompleteness({ completeness }: Props) {

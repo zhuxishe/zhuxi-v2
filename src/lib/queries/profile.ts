@@ -11,7 +11,8 @@ export async function fetchPlayerProfile(memberId: string) {
       member_language (*),
       member_interests (*),
       member_personality (*),
-      member_boundaries (*)
+      member_boundaries (*),
+      personality_quiz_results (score_e, score_a, score_o, score_c, score_n)
     `)
     .eq("id", memberId)
     .single()
@@ -24,6 +25,7 @@ export interface ProfileCompleteness {
   identity: boolean
   supplementary: boolean
   personality: boolean
+  quiz: boolean
   percentage: number
 }
 
@@ -34,6 +36,7 @@ export function calcCompleteness(profile: {
   member_interests: any
   member_personality: any
   member_boundaries: any
+  personality_quiz_results: any
 }): ProfileCompleteness {
   const identity = !!profile.member_identity
 
@@ -41,6 +44,9 @@ export function calcCompleteness(profile: {
   const lang = Array.isArray(profile.member_language) ? profile.member_language[0] : profile.member_language
   const interests = Array.isArray(profile.member_interests) ? profile.member_interests[0] : profile.member_interests
   const personality = Array.isArray(profile.member_personality) ? profile.member_personality[0] : profile.member_personality
+  const quizResult = Array.isArray(profile.personality_quiz_results)
+    ? profile.personality_quiz_results[0]
+    : profile.personality_quiz_results
 
   // Supplementary = language AND interests both have meaningful data
   const hasLanguage = !!lang &&
@@ -53,8 +59,11 @@ export function calcCompleteness(profile: {
     Array.isArray(personality.expression_style_tags) &&
     personality.expression_style_tags.length > 0
 
-  const filled = [identity, supplementary, hasPersonality].filter(Boolean).length
-  const percentage = Math.round((filled / 3) * 100)
+  // 性格测试：有任意分数则视为已完成
+  const quiz = !!quizResult && quizResult.score_e != null
 
-  return { identity, supplementary, personality: hasPersonality, percentage }
+  const filled = [identity, supplementary, hasPersonality, quiz].filter(Boolean).length
+  const percentage = Math.round((filled / 4) * 100)
+
+  return { identity, supplementary, personality: hasPersonality, quiz, percentage }
 }

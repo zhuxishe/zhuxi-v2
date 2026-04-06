@@ -58,6 +58,13 @@ export async function loginAdmin(formData: FormData) {
   redirect("/admin")
 }
 
+/** Check if current session is an admin (for login page auto-redirect) */
+export async function checkAdminSession(): Promise<boolean> {
+  const { getAdmin } = await import("@/lib/auth/admin")
+  const admin = await getAdmin()
+  return !!admin
+}
+
 export async function logoutAdmin() {
   const supabase = await createClient()
   await supabase.auth.signOut()

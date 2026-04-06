@@ -1,8 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams } from "next/navigation"
-import { loginAdmin, signInWithGoogleAdmin } from "./actions"
+import { useSearchParams, useRouter } from "next/navigation"
+import { loginAdmin, signInWithGoogleAdmin, checkAdminSession } from "./actions"
 import { Button } from "@/components/ui/button"
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -13,6 +13,7 @@ const ERROR_MESSAGES: Record<string, string> = {
 
 export default function AdminLoginPage() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
@@ -21,7 +22,12 @@ export default function AdminLoginPage() {
     if (errCode && ERROR_MESSAGES[errCode]) {
       setError(ERROR_MESSAGES[errCode])
     }
-  }, [searchParams])
+    // Redirect if already logged in as admin
+    checkAdminSession().then((isAdmin) => {
+      if (isAdmin) router.replace("/admin")
+    })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleSubmit(formData: FormData) {
     setPending(true)

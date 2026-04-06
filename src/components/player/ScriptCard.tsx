@@ -26,10 +26,12 @@ export function ScriptCard({ script }: { script: Script }) {
     >
       {script.cover_url ? (
         <img src={script.cover_url} alt={script.title}
-          className="w-full h-28 object-cover group-hover:scale-[1.02] transition-transform" />
+          className="aspect-[3/4] w-full object-cover group-hover:scale-[1.02] transition-transform" />
       ) : (
-        <div className="w-full h-28 bg-muted/50 flex items-center justify-center text-muted-foreground text-xs">
-          {t("noCover")}
+        <div className="aspect-[3/4] w-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center p-4">
+          <span className="text-lg font-bold text-foreground/60 text-center leading-tight line-clamp-3">
+            {script.title}
+          </span>
         </div>
       )}
       <div className="p-3 space-y-1.5">

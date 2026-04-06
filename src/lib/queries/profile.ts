@@ -27,19 +27,34 @@ export interface ProfileCompleteness {
   percentage: number
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function calcCompleteness(profile: {
   member_identity: unknown
-  member_language: unknown
-  member_interests: unknown
-  member_personality: unknown
-  member_boundaries: unknown
+  member_language: any
+  member_interests: any
+  member_personality: any
+  member_boundaries: any
 }): ProfileCompleteness {
   const identity = !!profile.member_identity
-  const supplementary = !!profile.member_language || !!profile.member_interests
-  const personality = !!profile.member_personality
 
-  const filled = [identity, supplementary, personality].filter(Boolean).length
+  // Unwrap: Supabase may return array or object for 1:1 joins
+  const lang = Array.isArray(profile.member_language) ? profile.member_language[0] : profile.member_language
+  const interests = Array.isArray(profile.member_interests) ? profile.member_interests[0] : profile.member_interests
+  const personality = Array.isArray(profile.member_personality) ? profile.member_personality[0] : profile.member_personality
+
+  // Supplementary = language AND interests both have meaningful data
+  const hasLanguage = !!lang &&
+    Array.isArray(lang.communication_language_pref) &&
+    lang.communication_language_pref.length > 0
+  const hasInterests = !!interests && !!interests.activity_frequency
+  const supplementary = hasLanguage && hasInterests
+
+  const hasPersonality = !!personality &&
+    Array.isArray(personality.expression_style_tags) &&
+    personality.expression_style_tags.length > 0
+
+  const filled = [identity, supplementary, hasPersonality].filter(Boolean).length
   const percentage = Math.round((filled / 3) * 100)
 
-  return { identity, supplementary, personality, percentage }
+  return { identity, supplementary, personality: hasPersonality, percentage }
 }

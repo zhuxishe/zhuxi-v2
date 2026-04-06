@@ -15,3 +15,11 @@ export const SCRIPT_DIFFICULTY_OPTIONS = [
 ] as const
 
 export const PLAYER_COUNT_OPTIONS = [2, 3, 4, 5, 6, 7, 8, 9, 10] as const
+
+export const SCRIPT_WARNING_OPTIONS = [
+  "恐怖内容",
+  "身体接触",
+  "高强度运动",
+  "饮酒",
+  "深夜",
+] as const

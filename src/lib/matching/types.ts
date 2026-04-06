@@ -81,6 +81,8 @@ export interface MatchCandidate {
   acceptCrossSchool?: boolean
   activityArea?: string | null
   reliabilityScore?: number
+  // ZSP-15 性格测试分数 (0-100)
+  quizScores?: { E: number; A: number; O: number; C: number; N: number } | null
 }
 
 // ── 评分 ──
@@ -136,6 +138,7 @@ export interface MatchingConfig {
     repeat_penalty: number
     gameMode_match: number
     level_proximity: number
+    personality_compatibility: number
   }
   complementPairs: [string, string][]
   hardConstraints: {

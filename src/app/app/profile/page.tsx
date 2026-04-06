@@ -38,6 +38,10 @@ export default async function ProfilePage() {
           <p className="text-sm font-medium">{t("editPersonality")}</p>
           <p className="text-xs text-muted-foreground">{t("editPersonalityHint")}</p>
         </Link>
+        <Link href="/app/profile/quiz" className="block rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/30 transition-all">
+          <p className="text-sm font-medium">社交人格测试</p>
+          <p className="text-xs text-muted-foreground">15道情景题，3分钟了解你的社交风格</p>
+        </Link>
       </div>
 
       <form action={signOut}>

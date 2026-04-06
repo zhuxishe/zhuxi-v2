@@ -26,6 +26,7 @@ export function ActivityRecordForm() {
     const result = await createActivityRecord({
       title, activity_date: date, location, activity_type: type,
       duration_minutes: duration, notes,
+      participant_ids: [], late_member_ids: [], no_show_member_ids: [],
     })
     setSubmitting(false)
     if (result.error) setError(result.error)

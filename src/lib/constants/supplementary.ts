@@ -24,6 +24,10 @@ export const SCENARIO_MODE_OPTIONS = [
   "推理本", "情感本", "恐怖本", "欢乐本", "机制本", "阵营本", "沉浸本",
 ] as const
 
+export const SCENARIO_THEME_OPTIONS = [
+  "情感", "推理", "机制", "恐怖", "欢乐", "沉浸", "硬核", "新手友好",
+] as const
+
 export const GROUP_SIZE_OPTIONS = [
   "4-5人", "6-7人", "8-10人", "10人以上", "都可以",
 ] as const

@@ -10,6 +10,9 @@ interface ActivityInput {
   activity_type: string
   duration_minutes: number
   notes: string
+  participant_ids: string[]
+  late_member_ids: string[]
+  no_show_member_ids: string[]
 }
 
 export async function createActivityRecord(input: ActivityInput) {
@@ -19,8 +22,16 @@ export async function createActivityRecord(input: ActivityInput) {
   const { error } = await supabase
     .from("activity_records")
     .insert({
-      ...input,
-      participant_count: 0,
+      title: input.title,
+      activity_date: input.activity_date,
+      location: input.location,
+      activity_type: input.activity_type,
+      duration_minutes: input.duration_minutes,
+      notes: input.notes,
+      participant_ids: input.participant_ids,
+      participant_count: input.participant_ids.length,
+      late_member_ids: input.late_member_ids,
+      no_show_member_ids: input.no_show_member_ids,
       created_by: admin.id,
     })
 

@@ -116,6 +116,7 @@ export interface SupplementaryFormData {
   japanese_level: string
   // Step 3: Activity preferences
   scenario_mode_pref: string[]
+  scenario_theme_tags: string[]
   ideal_group_size: string
   script_preference: string[]
   non_script_preference: string[]
@@ -137,6 +138,7 @@ export const EMPTY_SUPPLEMENTARY: SupplementaryFormData = {
   communication_language_pref: [],
   japanese_level: "",
   scenario_mode_pref: [],
+  scenario_theme_tags: [],
   ideal_group_size: "",
   script_preference: [],
   non_script_preference: [],

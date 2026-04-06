@@ -6,6 +6,7 @@ import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { SingleSelect } from "@/components/shared/SingleSelect"
 import {
   SCENARIO_MODE_OPTIONS,
+  SCENARIO_THEME_OPTIONS,
   GROUP_SIZE_OPTIONS,
   SCRIPT_PREFERENCE_OPTIONS,
   NON_SCRIPT_PREFERENCE_OPTIONS,
@@ -32,6 +33,16 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...SCENARIO_MODE_OPTIONS]}
           value={data.scenario_mode_pref}
           onChange={(v) => setField("scenario_mode_pref", v)}
+        />
+      </div>
+
+      <div>
+        <label className="text-sm font-medium mb-1 block">{t("scenarioTheme")}</label>
+        <p className="text-xs text-muted-foreground mb-2">{t("scenarioThemeHint")}</p>
+        <MultiTagSelect
+          options={[...SCENARIO_THEME_OPTIONS]}
+          value={data.scenario_theme_tags}
+          onChange={(v) => setField("scenario_theme_tags", v)}
         />
       </div>
 

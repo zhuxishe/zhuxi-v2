@@ -108,6 +108,8 @@
     "japaneseLevel": "日语水平",
     "scenarioMode": "喜欢的剧本类型",
     "scenarioModeHint": "可多选",
+    "scenarioTheme": "剧本主题偏好",
+    "scenarioThemeHint": "喜欢什么风格的剧本？可多选",
     "groupSize": "理想活动人数",
     "scriptPref": "剧本偏好",
     "nonScriptPref": "非剧本活动偏好",

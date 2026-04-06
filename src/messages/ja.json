@@ -108,6 +108,8 @@
     "japaneseLevel": "日本語レベル",
     "scenarioMode": "好きなシナリオタイプ",
     "scenarioModeHint": "複数選択可",
+    "scenarioTheme": "シナリオテーマの好み",
+    "scenarioThemeHint": "どんなジャンルが好きですか？複数選択可",
     "groupSize": "理想的な参加人数",
     "scriptPref": "シナリオの好み",
     "nonScriptPref": "シナリオ以外の活動の好み",

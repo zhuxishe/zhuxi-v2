@@ -50,15 +50,48 @@ export async function fetchMatchCandidates() {
   const { data, error } = await supabase
     .from("members")
     .select(`
-      id, member_number, status, attractiveness_score,
+      id, member_number, status, attractiveness_score, membership_type,
       member_identity (*),
       member_interests (*),
-      member_personality (*)
+      member_personality (*),
+      member_language (*),
+      member_boundaries (*),
+      member_dynamic_stats (activity_count, late_count, no_show_count, replay_willing_rate, reliability_score)
     `)
     .eq("status", "approved")
+    .eq("membership_type", "player")
 
   if (error) throw error
   return data ?? []
+}
+
+/** Fetch past match history for all candidates (for repeat penalty) */
+export async function fetchMatchHistory(memberIds: string[]) {
+  if (memberIds.length === 0) return new Map<string, { name: string; count: number }[]>()
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("match_results")
+    .select("member_a_id, member_b_id")
+
+  if (error) throw error
+
+  // Build history map: memberId → [{name: partnerId, count}]
+  const historyMap = new Map<string, Map<string, number>>()
+  for (const row of data ?? []) {
+    const a = row.member_a_id as string
+    const b = row.member_b_id as string
+    if (!historyMap.has(a)) historyMap.set(a, new Map())
+    if (!historyMap.has(b)) historyMap.set(b, new Map())
+    historyMap.get(a)!.set(b, (historyMap.get(a)!.get(b) ?? 0) + 1)
+    historyMap.get(b)!.set(a, (historyMap.get(b)!.get(a) ?? 0) + 1)
+  }
+
+  const result = new Map<string, { name: string; count: number }[]>()
+  for (const [mid, partners] of historyMap) {
+    result.set(mid, Array.from(partners, ([name, count]) => ({ name, count })))
+  }
+  return result
 }
 
 export async function fetchPlayerMatches(memberId: string) {

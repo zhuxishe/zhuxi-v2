@@ -73,6 +73,14 @@ export interface MatchCandidate {
   matchHistory: { name: string; count: number }[]
   gameMode: string | null
   hasProfile: boolean
+  // Extended fields for hard constraints
+  tabooTags?: string[]
+  languagePref?: string[]
+  japaneseLevel?: string | null
+  acceptBeginners?: boolean
+  acceptCrossSchool?: boolean
+  activityArea?: string | null
+  reliabilityScore?: number
 }
 
 // ── 评分 ──

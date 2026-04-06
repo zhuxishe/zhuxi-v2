@@ -35,7 +35,30 @@ export function checkHardConstraints(
     }
   }
 
-  // 硬约束2+3: 黑名单 + 冷却期（需要配对关系数据）
+  // 硬约束2: 禁忌标签互斥
+  if (a.tabooTags?.length || b.tabooTags?.length) {
+    const aTaboos = new Set(a.tabooTags ?? [])
+    const bTaboos = new Set(b.tabooTags ?? [])
+    // Check if any of b's traits overlap with a's taboos, and vice versa
+    const aTags = new Set([...(a.interestTags ?? []), ...(a.socialTags ?? [])])
+    const bTags = new Set([...(b.interestTags ?? []), ...(b.socialTags ?? [])])
+    for (const t of bTags) {
+      if (aTaboos.has(t)) reasons.push(`${a.name}的禁忌标签与${b.name}冲突: ${t}`)
+    }
+    for (const t of aTags) {
+      if (bTaboos.has(t)) reasons.push(`${b.name}的禁忌标签与${a.name}冲突: ${t}`)
+    }
+  }
+
+  // 硬约束3: 新手接受度
+  if (a.acceptBeginners === false && b.level === 0) {
+    reasons.push(`${a.name}不接受新手, ${b.name}是新手`)
+  }
+  if (b.acceptBeginners === false && a.level === 0) {
+    reasons.push(`${b.name}不接受新手, ${a.name}是新手`)
+  }
+
+  // 硬约束4+5: 黑名单 + 冷却期（需要配对关系数据）
   if (pairRelations) {
     const rel = getPairStatus(pairRelations, a.name, b.name)
 

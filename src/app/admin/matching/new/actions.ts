@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchMatchCandidates } from "@/lib/queries/matching"
+import { fetchMatchCandidates, fetchMatchHistory } from "@/lib/queries/matching"
 import { toMatchCandidates } from "@/lib/matching/adapter"
 import { runDuoMatching } from "@/lib/matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
@@ -23,8 +23,10 @@ export async function runMatching(input: RunMatchInput) {
     return { error: "至少需要 2 名已批准成员才能匹配" }
   }
 
-  // 2. Convert to MatchCandidate format
-  const candidates = toMatchCandidates(rawCandidates)
+  // 2. Fetch match history + convert to MatchCandidate format
+  const memberIds = rawCandidates.map((m) => m.id)
+  const historyMap = await fetchMatchHistory(memberIds)
+  const candidates = toMatchCandidates(rawCandidates, historyMap)
 
   // 3. Merge config
   const config: MatchingConfig = { ...DEFAULT_CONFIG, ...input.config }

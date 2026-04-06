@@ -56,22 +56,26 @@ export function ScriptUploadForm() {
     if (result.error) { setSubmitting(false); setError(result.error); return }
 
     const scriptId = result.scriptId!
-    await uploadFiles(scriptId)
+    const uploadErr = await uploadFiles(scriptId)
     setSubmitting(false)
+    if (uploadErr) { setError(uploadErr); return }
     router.push("/admin/scripts")
   }
 
-  async function uploadFiles(scriptId: string) {
+  async function uploadFiles(scriptId: string): Promise<string | null> {
     if (coverFile) {
       const fd = new FormData()
       fd.append("file", coverFile)
-      await uploadScriptCover(scriptId, fd)
+      const res = await uploadScriptCover(scriptId, fd)
+      if (res?.error) return `封面上传失败: ${res.error}`
     }
     if (pdfFile) {
       const fd = new FormData()
       fd.append("file", pdfFile)
-      await uploadScriptPdf(scriptId, fd)
+      const res = await uploadScriptPdf(scriptId, fd)
+      if (res?.error) return `PDF上传失败: ${res.error}`
     }
+    return null
   }
 
   return (

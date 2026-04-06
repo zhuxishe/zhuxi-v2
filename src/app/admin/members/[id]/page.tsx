@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMemberDetail } from "@/lib/queries/members"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MemberStatusBadge } from "@/components/admin/MemberStatusBadge"
+import { MemberStatusActions } from "@/components/admin/MemberStatusActions"
 import { MemberDetailCard } from "@/components/admin/MemberDetailCard"
 import { Button } from "@/components/ui/button"
 import { ClipboardList } from "lucide-react"
@@ -42,6 +43,9 @@ export default async function MemberDetailPage({ params }: Props) {
             </Button>
           </Link>
         </div>
+
+        {/* 审批操作 */}
+        <MemberStatusActions memberId={id} currentStatus={member.status} />
 
         <MemberDetailCard member={member} identity={identity} />
       </div>

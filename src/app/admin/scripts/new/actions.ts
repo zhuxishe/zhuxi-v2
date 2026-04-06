@@ -1,7 +1,14 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
+
+interface RoleInput {
+  name: string
+  gender: string
+  description: string
+}
 
 interface ScriptInput {
   title: string
@@ -14,6 +21,9 @@ interface ScriptInput {
   difficulty: string
   genre_tags: string[]
   theme_tags: string[]
+  content_html: string
+  warnings: string[]
+  roles: RoleInput[]
   is_published: boolean
 }
 
@@ -34,39 +44,66 @@ export async function createScript(input: ScriptInput) {
   return { success: true, scriptId: data.id }
 }
 
-export async function uploadScriptFile(formData: FormData) {
+export async function uploadScriptCover(
+  scriptId: string,
+  formData: FormData
+) {
   await requireAdmin()
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const file = formData.get("file") as File
-  const folder = formData.get("folder") as string // "covers" or "pdfs"
   if (!file) return { error: "文件不能为空" }
 
-  const ext = file.name.split(".").pop()
-  const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
+  const path = `covers/${scriptId}.webp`
 
-  const { error } = await supabase.storage
-    .from("scripts")
-    .upload(fileName, file)
+  const { error: uploadError } = await supabase.storage
+    .from("scripts-covers")
+    .upload(path, file, { upsert: true })
 
-  if (error) return { error: error.message }
+  if (uploadError) return { error: uploadError.message }
 
   const { data: urlData } = supabase.storage
-    .from("scripts")
-    .getPublicUrl(fileName)
+    .from("scripts-covers")
+    .getPublicUrl(path)
 
+  const { error: dbError } = await supabase
+    .from("scripts")
+    .update({ cover_url: urlData.publicUrl })
+    .eq("id", scriptId)
+
+  if (dbError) return { error: dbError.message }
   return { success: true, url: urlData.publicUrl }
 }
 
-export async function updateScriptUrls(scriptId: string, urls: { cover_url?: string; pdf_url?: string }) {
+export async function uploadScriptPdf(
+  scriptId: string,
+  formData: FormData
+) {
   await requireAdmin()
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
-  const { error } = await supabase
+  const file = formData.get("file") as File
+  if (!file) return { error: "文件不能为空" }
+
+  const path = `pdfs/${scriptId}/original.pdf`
+
+  const { error: uploadError } = await supabase.storage
     .from("scripts")
-    .update(urls)
+    .upload(path, file, { upsert: true })
+
+  if (uploadError) return { error: uploadError.message }
+
+  const { data: signedData, error: signError } = await supabase.storage
+    .from("scripts")
+    .createSignedUrl(path, 3600 * 24 * 365)
+
+  if (signError) return { error: signError.message }
+
+  const { error: dbError } = await supabase
+    .from("scripts")
+    .update({ pdf_url: signedData.signedUrl })
     .eq("id", scriptId)
 
-  if (error) return { error: error.message }
-  return { success: true }
+  if (dbError) return { error: dbError.message }
+  return { success: true, url: signedData.signedUrl }
 }

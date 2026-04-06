@@ -79,8 +79,7 @@ function Toggle({ label, name, data, onChange }: {
 
 export function MemberEditInterests({ data, onChange }: Props) {
   return (
-    <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-      <h3 className="text-sm font-semibold">活动偏好</h3>
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <SelectField label="活动区域" name="activity_area" options={ACTIVITY_AREA_OPTIONS} data={data} onChange={onChange} />
         <div>

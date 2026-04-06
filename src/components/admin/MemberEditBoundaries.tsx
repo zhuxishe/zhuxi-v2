@@ -13,8 +13,7 @@ export function MemberEditBoundaries({ data, onChange }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-      <h3 className="text-sm font-semibold">个人边界（仅管理员可编辑）</h3>
+    <div className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="text-xs text-muted-foreground">理想年龄范围</label>

@@ -56,7 +56,8 @@ export async function fetchMatchCandidates() {
       member_personality (*),
       member_language (*),
       member_boundaries (*),
-      member_dynamic_stats (activity_count, late_count, no_show_count, replay_willing_rate, reliability_score)
+      member_dynamic_stats (activity_count, late_count, no_show_count, replay_willing_rate, reliability_score),
+      personality_quiz_results (score_e, score_a, score_o, score_c, score_n)
     `)
     .eq("status", "approved")
     .eq("membership_type", "player")

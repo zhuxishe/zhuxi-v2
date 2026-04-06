@@ -45,7 +45,7 @@ export function scorePair(
     }
   }
 
-  // 7因子评分
+  // 8因子评分（personality_compatibility 替代 social_complement）
   const breakdown: ScoreComponent[] = [
     scoreInterestOverlap(a, b, config.weights.interest_overlap),
     scoreSocialComplement(a, b, config),
@@ -54,6 +54,7 @@ export function scorePair(
     scoreRepeatPenalty(a, b, config),
     scoreGameModeMatch(a, b, config.weights.gameMode_match),
     scoreLevelProximity(a, b, config.weights.level_proximity),
+    scorePersonalityCompatibility(a, b, config.weights.personality_compatibility),
   ]
 
   const totalScore = breakdown.reduce((sum, c) => sum + c.weightedScore, 0)
@@ -237,5 +238,53 @@ function scoreLevelProximity(
     rawScore,
     weightedScore: weight * rawScore,
     detail: `${a.name}:Lv${a.level} ↔ ${b.name}:Lv${b.level} (差${diff}级)`,
+  }
+}
+
+function scorePersonalityCompatibility(
+  a: MatchCandidate,
+  b: MatchCandidate,
+  weight: number,
+): ScoreComponent {
+  if (!a.quizScores || !b.quizScores) {
+    return {
+      factor: "personality_compatibility",
+      label: "人格兼容",
+      weight,
+      rawScore: 0.5,
+      weightedScore: weight * 0.5,
+      detail: "一方或双方未完成性格测试，使用默认分",
+    }
+  }
+
+  const qa = a.quizScores
+  const qb = b.quizScores
+
+  // E和A维度: 相似性越高越好（友谊形成最强预测因子）
+  const eSim = 1 - Math.abs(qa.E - qb.E) / 100
+  const aSim = 1 - Math.abs(qa.A - qb.A) / 100
+
+  // O维度: 适度差异为互补（20-50分差最优）
+  const oDiff = Math.abs(qa.O - qb.O)
+  const oScore = oDiff >= 20 && oDiff <= 50 ? 1.0 : oDiff < 20 ? 0.7 : 0.5
+
+  // C维度: 相似性较好
+  const cSim = 1 - Math.abs(qa.C - qb.C) / 100
+
+  // ES(情绪稳定性): 相似性较好
+  const esA = 100 - qa.N
+  const esB = 100 - qb.N
+  const esSim = 1 - Math.abs(esA - esB) / 100
+
+  // 加权平均 (E:30% A:30% O:15% C:10% ES:15%)
+  const rawScore = eSim * 0.3 + aSim * 0.3 + oScore * 0.15 + cSim * 0.1 + esSim * 0.15
+
+  return {
+    factor: "personality_compatibility",
+    label: "人格兼容",
+    weight,
+    rawScore,
+    weightedScore: weight * rawScore,
+    detail: `E相似:${(eSim * 100).toFixed(0)}% A相似:${(aSim * 100).toFixed(0)}% O互补:${(oScore * 100).toFixed(0)}%`,
   }
 }

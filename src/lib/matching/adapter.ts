@@ -89,15 +89,14 @@ export function toMatchCandidate(
     acceptCrossSchool: interests.accept_cross_school ?? true,
     activityArea: interests.activity_area ?? identity.current_city ?? null,
     reliabilityScore: stats.reliability_score ?? 5.0,
-    quizScores: member.personality_quiz_results
-      ? {
-          E: member.personality_quiz_results.score_e,
-          A: member.personality_quiz_results.score_a,
-          O: member.personality_quiz_results.score_o,
-          C: member.personality_quiz_results.score_c,
-          N: member.personality_quiz_results.score_n,
-        }
-      : null,
+    quizScores: (() => {
+      // Supabase may return array or object for 1:1 join
+      const q = Array.isArray(member.personality_quiz_results)
+        ? member.personality_quiz_results[0]
+        : member.personality_quiz_results
+      if (!q) return null
+      return { E: q.score_e, A: q.score_a, O: q.score_o, C: q.score_c, N: q.score_n }
+    })(),
   }
 }
 

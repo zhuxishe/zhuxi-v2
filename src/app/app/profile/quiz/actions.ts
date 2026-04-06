@@ -28,8 +28,13 @@ export async function submitQuiz(
       .upsert({
         member_id: player.memberId,
         answers: JSON.stringify(answers),
-        scores,
+        score_e: scores.E,
+        score_a: scores.A,
+        score_o: scores.O,
+        score_c: scores.C,
+        score_n: scores.N,
         personality_type: personalityType,
+        completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: "member_id" })
 

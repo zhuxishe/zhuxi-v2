@@ -1,67 +1,67 @@
-# Handoff — 竹溪社 V2 项目
+# 会话交接 — 2026-04-06
 
 ## 当前状态
-- **全部 7 个 Phase (0-6) 已完成并提交**
-- 分支: `claude/affectionate-lumiere` (8 commits, 待合并到 main)
-- 28 个路由, tsc 零错误, next build 通过
-- 6 个 DB 迁移已部署到 Supabase 东京 (wjjhprflldvclulistcx)
+- **分支 claude/naughty-burnell** 最新 commit `2bc8a75`，基于 main `662dea6`
+- Supabase 东京 (wjjhprflldvclulistcx)，需应用迁移 013-017
+- 四个阶段全部完成，构建通过
 
-## Git 提交历史
-- `a0cbae3` Phase 6: 活动记录/互评/核验/统计
-- `39a385b` Phase 5: 剧本库 (PDF预览)
-- `40c280c` Phase 4: 匹配系统 (7因子算法)
-- `92c4205` Phase 3: 玩家App (补充信息+性格自评)
-- `2a683a8` Phase 2: 管理后台 (面试录入)
-- `95a4b67` Phase 1: 面试前简表 (公开表单)
-- `fbb440a` Phase 0: 项目脚手架
-- `2308bd4` 初始化项目指令
+## 本次完成
 
-## 数据库 (Supabase 东京, 16 张表)
-### 核心表
-- members (+ user_id, email for magic link auth)
-- member_identity, member_language, member_interests
-- member_personality, member_boundaries
-- member_verification, member_dynamic_stats
-- admin_users, interview_evaluations
+### 阶段一：Bug修复 + 模板对齐 (commit 276e21e)
+- 触发器自动同步 attractiveness_score(AVG) 到 members 表
+- fetchMatchHistory 添加 ID 过滤 + 分批查询
+- 7 个 GIN 索引
+- TABOO_TAGS 7→20, HOBBY_TAGS 15→24, TIME_SLOT 4→9
+- matches 页面消除 as any
+- 资料完整度检查实际字段内容
+- 新增 game_type_pref / scenario_theme_tags 数据库字段
 
-### 事件表
-- match_sessions, match_results, pair_relationships
-- activity_records, mutual_reviews, member_notes, scripts
+### 阶段二：匹配系统集成 (commit f0c522a)
+- match_results 状态管理 (draft/confirmed/cancelled/locked)
+- 配对卡片 + 7因子条形图 + 未匹配诊断 + 时间段热力图
+- 锁定/拆散/恢复/确认发布 操作
+- 黑名单管理页面
+- 匹配详情页重构 (MatchSessionView)
 
-### 辅助
-- is_admin() 函数, update_updated_at() 触发器
-- update_review_stats() 触发器 (互评→自动更新统计)
-- RLS: 玩家只读写自己数据, 管理员全权
+### 阶段三：剧本库实现 (commit 82a7729)
+- 封面上传(3:4) + PDF上传(50MB限制) + 角色列表编辑器
+- Storage 双 bucket (scripts-covers 公开 + scripts 私有)
+- 玩家端封面墙 2 列 Grid + 题材筛选
+- 剧本详情页分层展示 + can_view_full 权限控制
 
-## 路由一览
-### 公开 (无需登录)
-- `/interview-form` — 面试前简表 4步
-- `/interview-form/success`
+### 阶段四：ZSP-15 性格测试 (commit 2bc8a75)
+- 15 题情景选择，5 维度 (E/A/O/C/N)
+- 评分 0-100 + 25 种社交风格类型
+- 逐题问答 UI + 结果雷达条形图
 
-### 管理端 `/admin/*` (需 admin_users 认证)
-- 仪表板, 成员管理(列表/详情/面试/统计/核验)
-- 匹配管理(列表/新建/结果), 剧本管理(列表/添加/详情)
-- 活动记录管理
+## 已验证
+- TypeScript tsc --noEmit 通过
+- pnpm build 全部路由编译成功（每阶段都验证）
 
-### 玩家端 `/app/*` (需 magic link 登录 + approved 状态)
-- 首页(资料完成度), 补充表单(4步17字段), 性格自评(10维度)
-- 匹配结果, 剧本浏览/详情, 互评, 个人统计
+## 未验证 / 需要做
+- **迁移 013-017 未应用到 Supabase 生产数据库** — 需要在 Supabase Dashboard 运行
+- **Supabase Storage buckets 未创建** — 需要手动创建 `scripts` 和 `scripts-covers` bucket
+- **匹配系统与性格测试集成** — scorer.ts 中新增 personality_compatibility 因子（方案已设计，待实现）
+- **剧本数据初始导入** — D:\OneDrive\7_竹溪社\2025策划案 的 34 个文件需手动上传
+- **合并到 main 分支** — 当前在 worktree 分支
 
-## 技术栈
-- Next.js 16.1.6 + React 19 + TypeScript 5 + Tailwind 4
-- Supabase SSR (@supabase/ssr) + next-intl (zh/ja)
-- 匹配算法: 7因子加权 + 贪心+增广+2-opt (从 zhuxi-matching 复制)
+## 新增数据库迁移
+| # | 文件 | 内容 |
+|---|------|------|
+| 013 | fix_rls_indexes_transaction | GIN 索引 x7 + attractiveness 同步触发器 |
+| 014 | template_alignment | game_type_pref + scenario_theme_tags + phone/sns |
+| 015 | matching_enhance | match_results 状态 + unmatched_diagnostics 表 |
+| 016 | scripts_enhance | scripts 增强 + script_play_records 表 |
+| 017 | personality_quiz | personality_quiz_results 表 |
 
-## 待办 / 已知问题
-1. **Vercel 部署**: 用户需要连接 GitHub 仓库到 Vercel
-2. **Supabase Storage**: 需手动创建 "scripts" bucket (剧本PDF/封面存储)
-3. **interview_evaluations upsert**: 需给 member_id 加 UNIQUE 约束
-4. **Magic link 回调**: 需在 Supabase Auth 设置中配置 Redirect URL
-5. **环境变量**: Vercel 需设置 NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, NEXT_PUBLIC_SITE_URL
-6. **管理员账号**: 需手动在 admin_users 表插入第一个管理员
-7. **功能测试**: 全部路由需手动走流程验证
+## 新增文件清单
+阶段一(2): admin.ts, .env.example
+阶段二(10): pair-relationships.ts, MatchPairCard, ScoreBreakdownChart, UnmatchedDiagnostics, TimeSlotHeatmap, MatchSessionView, matching actions, blacklist page+actions
+阶段三(7): ScriptCoverUpload, ScriptPdfUpload, ScriptRoleEditor, ScriptContentFields, FormInputs, ScriptGenreFilter, ScriptRoleList
+阶段四(6): personality-quiz.ts, PersonalityQuiz, QuizResult, QuizPageClient, quiz page+actions
 
-## 服务清单
-- GitHub: zhuxisheapp/zhuxi-v2
-- Supabase: zhuxishe's Org / wjjhprflldvclulistcx (东京)
-- Vercel: 待连接
+## 关键决策
+- 用 DB 触发器替代应用层双写（attractiveness_score 自动 AVG 同步）
+- 剧本封面必须单独上传（PDF 第一页内容不统一）
+- 性格测试使用 ZSP-15（已有完整设计文档）
+- 匹配人格兼容分权重 25 分（替代旧 social_complement 15 分）

@@ -20,10 +20,17 @@ export const JAPANESE_LEVEL_OPTIONS = [
   "N1", "N2", "N3", "N4", "N5", "无证书但能日常交流", "不会日语",
 ] as const
 
+// 玩本类型（单选）
+export const GAME_TYPE_PREF_OPTIONS = [
+  "双人本优先", "多人本优先", "都可以", "看活动而定",
+] as const
+
+// 剧本题材偏好（多选）
 export const SCENARIO_MODE_OPTIONS = [
   "推理本", "情感本", "恐怖本", "欢乐本", "机制本", "阵营本", "沉浸本",
 ] as const
 
+// 剧本主题标签（多选）
 export const SCENARIO_THEME_OPTIONS = [
   "情感", "推理", "机制", "恐怖", "欢乐", "沉浸", "硬核", "新手友好",
 ] as const
@@ -45,7 +52,9 @@ export const ACTIVITY_FREQUENCY_OPTIONS = [
 ] as const
 
 export const TIME_SLOT_OPTIONS = [
-  "工作日白天", "工作日晚上", "周末白天", "周末晚上",
+  "工作日白天", "工作日晚间", "周五晚",
+  "周六白天", "周六晚", "周日白天", "周日晚",
+  "节假日", "临时约也可",
 ] as const
 
 export const BUDGET_RANGE_OPTIONS = [
@@ -59,4 +68,5 @@ export const TRAVEL_RADIUS_OPTIONS = [
 export const SOCIAL_GOAL_OPTIONS = [
   "认识新朋友", "找固定玩伴", "练习日语",
   "体验文化", "打发时间", "拓展社交圈",
+  "找双人搭子", "找剧本杀搭子", "找旅行搭子",
 ] as const

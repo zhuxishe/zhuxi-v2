@@ -104,6 +104,15 @@ export interface InterviewEvalFormData {
   attractiveness_score: number
 }
 
+// ── Match result (player-facing) ─────────────────
+// Supabase PostgREST may return nested objects or arrays depending on FK cardinality
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type PlayerMatchResult = Record<string, any> & {
+  id: string
+  total_score: number
+  created_at: string
+}
+
 // ── Supplementary form (3a) ──────────────────────
 
 export interface SupplementaryFormData {
@@ -115,6 +124,7 @@ export interface SupplementaryFormData {
   communication_language_pref: string[]
   japanese_level: string
   // Step 3: Activity preferences
+  game_type_pref: string
   scenario_mode_pref: string[]
   scenario_theme_tags: string[]
   ideal_group_size: string
@@ -137,6 +147,7 @@ export const EMPTY_SUPPLEMENTARY: SupplementaryFormData = {
   graduation_year: null,
   communication_language_pref: [],
   japanese_level: "",
+  game_type_pref: "",
   scenario_mode_pref: [],
   scenario_theme_tags: [],
   ideal_group_size: "",

@@ -5,6 +5,7 @@ import type { SupplementaryFormData } from "@/types"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { SingleSelect } from "@/components/shared/SingleSelect"
 import {
+  GAME_TYPE_PREF_OPTIONS,
   SCENARIO_MODE_OPTIONS,
   SCENARIO_THEME_OPTIONS,
   GROUP_SIZE_OPTIONS,
@@ -26,6 +27,15 @@ export function SupplementaryStep3({ data, setField }: Props) {
 
   return (
     <div className="space-y-5">
+      <div>
+        <label className="text-sm font-medium mb-2 block">{t("gameTypePref")}</label>
+        <SingleSelect
+          options={[...GAME_TYPE_PREF_OPTIONS]}
+          value={data.game_type_pref}
+          onChange={(v) => setField("game_type_pref", v)}
+        />
+      </div>
+
       <div>
         <label className="text-sm font-medium mb-1 block">{t("scenarioMode")}</label>
         <p className="text-xs text-muted-foreground mb-2">{t("scenarioModeHint")}</p>

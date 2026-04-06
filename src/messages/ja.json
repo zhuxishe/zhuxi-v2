@@ -104,6 +104,7 @@
     "languagePref": "コミュニケーション言語",
     "languagePrefHint": "どの言語でコミュニケーションしたいですか？",
     "japaneseLevel": "日本語レベル",
+    "gameTypePref": "プレイタイプ",
     "scenarioMode": "好きなシナリオタイプ",
     "scenarioModeHint": "複数選択可",
     "scenarioTheme": "シナリオテーマの好み",

@@ -12,7 +12,8 @@ export async function submitInterviewEval(
   const admin = await requireAdmin()
   const supabase = await createClient()
 
-  // Upsert: 同一面试官对同一成员只有一条记录（含 attractiveness_score）
+  // Upsert evaluation — trigger `on_eval_upsert_sync_score` 会自动
+  // 计算 AVG(attractiveness_score) 并同步到 members 表（同一事务）
   const { error: evalError } = await supabase
     .from("interview_evaluations")
     .upsert(
@@ -21,19 +22,6 @@ export async function submitInterviewEval(
     )
 
   if (evalError) return { error: evalError.message }
-
-  // 更新 members 表
-  const date = interviewDate || new Date().toISOString().split("T")[0]
-  const { error: memberError } = await supabase
-    .from("members")
-    .update({
-      interview_date: date,
-      interviewer: admin.name,
-      attractiveness_score: data.attractiveness_score,
-    })
-    .eq("id", memberId)
-
-  if (memberError) return { error: memberError.message }
   return { success: true }
 }
 

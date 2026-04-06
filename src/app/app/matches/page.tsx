@@ -3,6 +3,7 @@ import { fetchPlayerMatches } from "@/lib/queries/matching"
 import { getTranslations } from "next-intl/server"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Users } from "lucide-react"
+// Supabase returns nested joins as arrays or objects depending on FK type
 
 export default async function PlayerMatchesPage() {
   const player = await requirePlayer()
@@ -26,16 +27,16 @@ export default async function PlayerMatchesPage() {
     <div className="p-6 space-y-4">
       <h1 className="text-xl font-bold">{t("title")}</h1>
       {matches.map((m) => {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const a = (m as any).member_a?.member_identity
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const b = (m as any).member_b?.member_identity
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const session = (m as any).session
+        // Unwrap Supabase nested joins (may be array or object)
+        const unwrap = (v: unknown) => (Array.isArray(v) ? v[0] : v) as Record<string, unknown> | undefined
+        const memberA = unwrap(m.member_a)
+        const memberB = unwrap(m.member_b)
+        const a = unwrap(memberA?.member_identity)
+        const b = unwrap(memberB?.member_identity)
+        const session = unwrap(m.session) as { session_name?: string } | undefined
 
         // Determine partner (the other person)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const isA = (m as any).member_a?.id === player.memberId
+        const isA = (memberA?.id as string) === player.memberId
         const partner = isA ? b : a
 
         return (
@@ -43,7 +44,7 @@ export default async function PlayerMatchesPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold">
-                  {t("partner")}: {partner?.full_name ?? partner?.nickname ?? t("unknown")}
+                  {t("partner")}: {String(partner?.full_name ?? partner?.nickname ?? t("unknown"))}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {session?.session_name ?? ""} · {new Date(m.created_at).toLocaleDateString("zh-CN")}

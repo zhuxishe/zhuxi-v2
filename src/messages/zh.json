@@ -104,6 +104,7 @@
     "languagePref": "交流语言偏好",
     "languagePrefHint": "你希望用什么语言交流？",
     "japaneseLevel": "日语水平",
+    "gameTypePref": "玩本类型",
     "scenarioMode": "喜欢的剧本类型",
     "scenarioModeHint": "可多选",
     "scenarioTheme": "剧本主题偏好",

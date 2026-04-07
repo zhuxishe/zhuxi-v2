@@ -35,6 +35,11 @@ export function checkHardConstraints(
     }
   }
 
+  // 硬约束1.5: 游戏类型兼容（双人≠多人）
+  if (!isGameTypeCompatible(a.gameTypePref, b.gameTypePref)) {
+    reasons.push(`游戏类型不兼容: ${a.name}选${a.gameTypePref}, ${b.name}选${b.gameTypePref}`)
+  }
+
   // 硬约束2: 禁忌标签互斥
   if (a.tabooTags?.length || b.tabooTags?.length) {
     const aTaboos = new Set(a.tabooTags ?? [])
@@ -112,6 +117,12 @@ function isGenderCompatible(a: MatchCandidate, b: MatchCandidate): boolean {
     isOneWayGenderOk(a.genderPref, b.gender) &&
     isOneWayGenderOk(b.genderPref, a.gender)
   )
+}
+
+/** 游戏类型兼容：双人和多人互斥，都可以兼容任何 */
+function isGameTypeCompatible(prefA: string, prefB: string): boolean {
+  if (prefA === "都可以" || prefB === "都可以") return true
+  return prefA === prefB // 双人=双人, 多人=多人
 }
 
 function isOneWayGenderOk(pref: string, targetGender: string | null): boolean {

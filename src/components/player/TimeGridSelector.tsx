@@ -77,7 +77,7 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
             <div
               key={date}
               className={`grid grid-cols-[1fr_repeat(3,44px)_44px] gap-1 items-center rounded-lg px-1 py-1.5 ${
-                isWeekend ? "bg-primary/5" : ""
+                isWeekend ? "bg-sakura-muted" : ""
               }`}
             >
               {/* 日期标签 */}
@@ -123,8 +123,8 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
 
       {/* 统计 */}
       <p className="text-xs text-muted-foreground text-center">
-        已选 <span className="font-semibold text-foreground">{totalSlots}</span> 个时段，
-        覆盖 <span className="font-semibold text-foreground">{totalDays}</span> 天
+        已选 <span className="font-semibold text-gold">{totalSlots}</span> 个时段，
+        覆盖 <span className="font-semibold text-gold">{totalDays}</span> 天
       </p>
     </div>
   )

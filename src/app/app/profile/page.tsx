@@ -19,9 +19,9 @@ export default async function ProfilePage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-xl font-bold">{t("title")}</h1>
+      <h1 className="heading-display text-2xl">{t("title")}</h1>
 
-      <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 space-y-2">
+      <div className="rounded-xl bg-card p-4 shadow-soft space-y-2">
         <p className="text-sm"><span className="text-muted-foreground">{t("name")}:</span> {player.name}</p>
         <p className="text-sm"><span className="text-muted-foreground">{t("email")}:</span> {member?.email ?? "-"}</p>
         <p className="text-sm"><span className="text-muted-foreground">{t("number")}:</span> {player.memberNumber ?? "-"}</p>
@@ -30,15 +30,15 @@ export default async function ProfilePage() {
       <LineBindingCard lineUserId={member?.line_user_id ?? null} />
 
       <div className="space-y-2">
-        <Link href="/app/profile/supplementary" className="block rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/30 transition-all">
+        <Link href="/app/profile/supplementary" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
           <p className="text-sm font-medium">{t("editSupplementary")}</p>
           <p className="text-xs text-muted-foreground">{t("editSupplementaryHint")}</p>
         </Link>
-        <Link href="/app/profile/personality" className="block rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/30 transition-all">
+        <Link href="/app/profile/personality" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
           <p className="text-sm font-medium">{t("editPersonality")}</p>
           <p className="text-xs text-muted-foreground">{t("editPersonalityHint")}</p>
         </Link>
-        <Link href="/app/profile/quiz" className="block rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/30 transition-all">
+        <Link href="/app/profile/quiz" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
           <p className="text-sm font-medium">社交人格测试</p>
           <p className="text-xs text-muted-foreground">15道情景题，3分钟了解你的社交风格</p>
         </Link>

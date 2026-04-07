@@ -47,21 +47,25 @@ export default async function PlayerHomePage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div>
-        <h1 className="text-xl font-bold">{t("welcome", { name: player.name })}</h1>
-        <p className="text-sm text-muted-foreground mt-1">{t("subtitle")}</p>
+      <div className="animate-fade-in-up">
+        <h1 className="heading-display text-2xl">{t("welcome", { name: player.name })}</h1>
+        <p className="text-sm text-muted-foreground mt-1.5 tracking-wide">{t("subtitle")}</p>
       </div>
 
       {/* 进行中的问卷入口 */}
       {openRound && (
-        <SurveyStatusCard
-          roundName={openRound.round_name}
-          surveyEnd={openRound.survey_end}
-          hasSubmitted={hasSubmitted}
-        />
+        <div className="animate-fade-in-up delay-1">
+          <SurveyStatusCard
+            roundName={openRound.round_name}
+            surveyEnd={openRound.survey_end}
+            hasSubmitted={hasSubmitted}
+          />
+        </div>
       )}
 
-      <ProfileCompleteness completeness={completeness} />
+      <div className="animate-fade-in-up delay-2">
+        <ProfileCompleteness completeness={completeness} />
+      </div>
     </div>
   )
 }

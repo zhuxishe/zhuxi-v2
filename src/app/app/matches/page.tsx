@@ -13,7 +13,7 @@ export default async function PlayerMatchesPage() {
   if (matches.length === 0) {
     return (
       <div className="p-6">
-        <h1 className="text-xl font-bold mb-6">{t("title")}</h1>
+        <h1 className="heading-display text-2xl mb-6">{t("title")}</h1>
         <EmptyState
           icon={Users}
           title={t("emptyTitle")}
@@ -25,7 +25,7 @@ export default async function PlayerMatchesPage() {
 
   return (
     <div className="p-6 space-y-4">
-      <h1 className="text-xl font-bold">{t("title")}</h1>
+      <h1 className="heading-display text-2xl">{t("title")}</h1>
       {matches.map((m) => {
         // Unwrap Supabase nested joins (may be array or object)
         const unwrap = (v: unknown) => (Array.isArray(v) ? v[0] : v) as Record<string, unknown> | undefined
@@ -40,7 +40,7 @@ export default async function PlayerMatchesPage() {
         const partner = isA ? b : a
 
         return (
-          <div key={m.id} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+          <div key={m.id} className="rounded-xl bg-card p-4 shadow-soft">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold">
@@ -50,7 +50,7 @@ export default async function PlayerMatchesPage() {
                   {session?.session_name ?? ""} · {new Date(m.created_at).toLocaleDateString("zh-CN")}
                 </p>
               </div>
-              <span className="rounded-full bg-primary/10 text-primary px-2.5 py-1 text-xs font-bold">
+              <span className="rounded-full bg-gold-light text-gold px-2.5 py-1 text-xs font-bold">
                 {typeof m.total_score === "number" ? m.total_score.toFixed(0) : m.total_score} {t("points")}
               </span>
             </div>

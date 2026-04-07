@@ -1,9 +1,9 @@
 import { TagBadge } from "@/components/shared/TagBadge"
 import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
 import { EvalTabView } from "./EvalTabView"
+import type { MemberDetail, MemberIdentityRow } from "@/types"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props { member: any; identity: any }
+interface Props { member: MemberDetail; identity: MemberIdentityRow | null }
 
 function Row({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -40,7 +40,7 @@ export function MemberDetailCard({ member, identity }: Props) {
   if (!identity) return <p className="text-sm text-muted-foreground">无身份信息</p>
 
   const rawEvals = member.interview_evaluations
-  const evals: unknown[] = Array.isArray(rawEvals) ? rawEvals : rawEvals ? [rawEvals] : []
+  const evals = Array.isArray(rawEvals) ? rawEvals : rawEvals ? [rawEvals] : []
   const lang = member.member_language
   const interests = member.member_interests
   const personality = member.member_personality
@@ -73,7 +73,7 @@ export function MemberDetailCard({ member, identity }: Props) {
       {/* 2. 面试评估（支持多面试官 tab 切换） */}
       <div className="p-5 space-y-3">
         <SectionHeader title="面试评估" color="amber" />
-        <EvalTabView evaluations={evals as any[]} />
+        <EvalTabView evaluations={evals} />
       </div>
 
       {/* 3. 补充信息 */}

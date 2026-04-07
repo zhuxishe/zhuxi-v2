@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import type { MemberWithIdentity } from "@/types"
+import type { MemberWithIdentity, MemberDetail } from "@/types"
 
 export async function fetchMembers(options?: {
   status?: string
@@ -47,7 +47,7 @@ export async function fetchMembers(options?: {
   return members
 }
 
-export async function fetchMemberDetail(id: string) {
+export async function fetchMemberDetail(id: string): Promise<MemberDetail> {
   const supabase = await createClient()
 
   const { data: member, error } = await supabase
@@ -66,5 +66,5 @@ export async function fetchMemberDetail(id: string) {
     .single()
 
   if (error) throw error
-  return member
+  return member as unknown as MemberDetail
 }

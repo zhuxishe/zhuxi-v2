@@ -18,8 +18,8 @@ export function LineBindingCard({ lineUserId: initial }: Props) {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   useEffect(() => {
-    const success = searchParams.get("line_success")
-    const error = searchParams.get("line_error")
+    const success = searchParams?.get("line_success")
+    const error = searchParams?.get("line_error")
     if (success) { setMsg({ ok: true, text: success }); setBound(true) }
     else if (error) { setMsg({ ok: false, text: error }) }
   }, [searchParams])

@@ -35,7 +35,7 @@ interface Props {
 
 function memberLabel(m: EnrichedMember | null): string {
   if (!m?.member_identity) return "未知"
-  return m.member_identity.nickname || m.member_identity.full_name
+  return m.member_identity.full_name || m.member_identity.nickname || "未知"
 }
 
 function scoreColor(score: number): string {

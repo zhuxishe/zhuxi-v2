@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import type { InterviewEvalFormData, RiskLevel } from "@/types"
+import type { InterviewEvalFormData, InterviewEvaluationRow, RiskLevel } from "@/types"
 import { EVAL_DIMENSIONS, RISK_LEVEL_OPTIONS } from "@/lib/constants/interview"
 import { submitInterviewEval } from "@/app/admin/members/[id]/interview/actions"
 import { Button } from "@/components/ui/button"
@@ -12,11 +12,10 @@ interface Props {
   memberId: string
   memberName: string
   adminName: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  existing?: any
+  existing?: InterviewEvaluationRow
 }
 
-function buildInitial(existing?: Record<string, unknown>): InterviewEvalFormData {
+function buildInitial(existing?: InterviewEvaluationRow): InterviewEvalFormData {
   const defaults: InterviewEvalFormData = {
     communication: 3, articulation: 3, enthusiasm: 3, sincerity: 3,
     social_comfort: 3, humor: 3, emotional_stability: 3, boundary_respect: 3,

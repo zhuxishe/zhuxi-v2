@@ -138,6 +138,7 @@
   },
   "playerMatches": {
     "title": "我的匹配",
+    "detailTitle": "匹配详情",
     "emptyTitle": "暂无匹配记录",
     "emptyDescription": "管理员发起匹配后，你的配对结果会显示在这里",
     "partner": "匹配对象",
@@ -146,7 +147,21 @@
     "socialStyle": "社交风格",
     "gameType": "游戏偏好",
     "review": "去评价",
-    "reviewed": "已评价"
+    "reviewed": "已评价",
+    "requestCancel": "申请取消匹配",
+    "cancelFormTitle": "提交取消申请",
+    "cancelReasonPlaceholder": "请填写取消原因（可选）",
+    "cancelBack": "返回",
+    "confirmCancel": "确认提交",
+    "submitting": "提交中...",
+    "cancelPending": "取消申请已提交，等待审核中",
+    "cancelPendingHint": "工作人员会尽快处理你的申请",
+    "cancelApproved": "匹配已取消",
+    "cancelRejected": "取消申请已被驳回",
+    "cancelRejectedHint": "如有疑问请联系工作人员",
+    "cancelBadgePending": "待审核",
+    "cancelBadgeApproved": "已取消",
+    "cancelBadgeRejected": "已驳回"
   },
   "reviews": {
     "title": "互评",

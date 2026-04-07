@@ -215,6 +215,12 @@ export type Database = {
       match_results: {
         Row: {
           best_slot: string | null
+          cancellation_reason: string | null
+          cancellation_requested_at: string | null
+          cancellation_requested_by: string | null
+          cancellation_reviewed_at: string | null
+          cancellation_reviewed_by: string | null
+          cancellation_status: string | null
           created_at: string
           group_members: string[] | null
           id: string
@@ -230,6 +236,12 @@ export type Database = {
         }
         Insert: {
           best_slot?: string | null
+          cancellation_reason?: string | null
+          cancellation_requested_at?: string | null
+          cancellation_requested_by?: string | null
+          cancellation_reviewed_at?: string | null
+          cancellation_reviewed_by?: string | null
+          cancellation_status?: string | null
           created_at?: string
           group_members?: string[] | null
           id?: string
@@ -245,6 +257,12 @@ export type Database = {
         }
         Update: {
           best_slot?: string | null
+          cancellation_reason?: string | null
+          cancellation_requested_at?: string | null
+          cancellation_requested_by?: string | null
+          cancellation_reviewed_at?: string | null
+          cancellation_reviewed_by?: string | null
+          cancellation_status?: string | null
           created_at?: string
           group_members?: string[] | null
           id?: string

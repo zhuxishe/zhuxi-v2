@@ -22,7 +22,7 @@ export function MemberListFilter({ currentStatus, currentSearch }: Props) {
   const searchParams = useSearchParams()
 
   function updateParam(key: string, value: string) {
-    const params = new URLSearchParams(searchParams.toString())
+    const params = new URLSearchParams(searchParams?.toString() ?? "")
     if (value && value !== "all") {
       params.set(key, value)
     } else {

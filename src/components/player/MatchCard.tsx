@@ -17,14 +17,15 @@ interface MatchCardProps {
   sessionName: string
   date: string
   reviewed: boolean
+  cancellationStatus?: string | null
   t: (key: string) => string
 }
 
-export function MatchCard({ matchId, partner, sessionName, date, reviewed, t }: MatchCardProps) {
+export function MatchCard({ matchId, partner, sessionName, date, reviewed, cancellationStatus, t }: MatchCardProps) {
   const allTags = buildTagList(partner, t)
 
   return (
-    <div className="rounded-xl bg-card p-4 shadow-soft">
+    <Link href={`/app/matches/${matchId}`} className="block rounded-xl bg-card p-4 shadow-soft hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold">
@@ -34,7 +35,10 @@ export function MatchCard({ matchId, partner, sessionName, date, reviewed, t }: 
             {sessionName} · {date}
           </p>
         </div>
-        <ReviewButton matchId={matchId} reviewed={reviewed} t={t} />
+        <div className="flex items-center gap-2">
+          {cancellationStatus && <CancelBadge status={cancellationStatus} t={t} />}
+          <ReviewButton matchId={matchId} reviewed={reviewed} t={t} />
+        </div>
       </div>
 
       {allTags.length > 0 && (
@@ -51,7 +55,7 @@ export function MatchCard({ matchId, partner, sessionName, date, reviewed, t }: 
           ))}
         </div>
       )}
-    </div>
+    </Link>
   )
 }
 
@@ -95,11 +99,29 @@ function ReviewButton({ matchId, reviewed, t }: { matchId: string; reviewed: boo
   }
 
   return (
-    <Link
-      href={`/app/reviews/new/${matchId}`}
+    <span
+      onClick={(e) => e.stopPropagation()}
       className="inline-flex items-center gap-1 rounded-full bg-sakura/10 px-3 py-1 text-xs font-medium text-sakura hover:bg-sakura/20 transition-colors"
     >
       <MessageSquare className="size-3.5" /> {t("review")}
-    </Link>
+    </span>
+  )
+}
+
+function CancelBadge({ status, t }: { status: string; t: (key: string) => string }) {
+  const styles: Record<string, string> = {
+    pending: "bg-yellow-100 text-yellow-700",
+    approved: "bg-green-100 text-green-700",
+    rejected: "bg-red-100 text-red-700",
+  }
+  const labels: Record<string, string> = {
+    pending: t("cancelBadgePending"),
+    approved: t("cancelBadgeApproved"),
+    rejected: t("cancelBadgeRejected"),
+  }
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${styles[status] ?? ""}`}>
+      {labels[status] ?? status}
+    </span>
   )
 }

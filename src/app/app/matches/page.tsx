@@ -42,6 +42,7 @@ export default async function PlayerMatchesPage() {
             sessionName={session?.session_name ?? ""}
             date={new Date(m.created_at).toLocaleDateString("zh-CN")}
             reviewed={reviewedIds.has(m.id)}
+            cancellationStatus={(m as Record<string, unknown>).cancellation_status as string | null}
             t={(key: string) => t(key)}
           />
         )

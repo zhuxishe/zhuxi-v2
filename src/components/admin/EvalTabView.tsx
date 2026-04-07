@@ -2,15 +2,18 @@
 
 import { useState } from "react"
 import { EVAL_DIMENSIONS } from "@/lib/constants/interview"
+import type { InterviewEvaluationRow } from "@/types"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props { evaluations: any[] }
+interface Props { evaluations: InterviewEvaluationRow[] }
 
-function calcAverage(evals: any[]) {
+type EvalScoreMap = Record<string, number>
+type EvalDisplayData = EvalScoreMap | InterviewEvaluationRow
+
+function calcAverage(evals: InterviewEvaluationRow[]): EvalScoreMap | null {
   if (!evals.length) return null
-  const avg: Record<string, number> = {}
+  const avg: EvalScoreMap = {}
   for (const dim of EVAL_DIMENSIONS) {
-    const sum = evals.reduce((s, e) => s + (Number(e[dim.key]) || 0), 0)
+    const sum = evals.reduce((s, e) => s + (Number(e[dim.key as keyof InterviewEvaluationRow]) || 0), 0)
     avg[dim.key] = Math.round((sum / evals.length) * 10) / 10
   }
   avg.attractiveness_score = Math.round(
@@ -39,15 +42,15 @@ export function EvalTabView({ evaluations }: Props) {
   if (!evaluations.length) return <p className="text-sm text-muted-foreground">未评估</p>
 
   const avg = calcAverage(evaluations)
-  const tabs = [
+  const tabs: { id: string; label: string; data: EvalDisplayData | null }[] = [
     ...evaluations.map((e) => ({
       id: e.interviewer_id,
       label: e.interviewer_name ?? "未知面试官",
-      data: e,
+      data: e as EvalDisplayData,
     })),
     { id: "average", label: "平均值", data: avg },
   ]
-  const current = tabs[activeIdx]?.data
+  const current = tabs[activeIdx]?.data as EvalScoreMap | undefined
 
   return (
     <div className="space-y-3">
@@ -84,16 +87,19 @@ export function EvalTabView({ evaluations }: Props) {
       </div>
 
       {/* 备注 */}
-      {activeIdx < evaluations.length && (
-        <>
-          {current?.risk_notes && (
-            <p className="text-xs text-muted-foreground">风险备注: {current.risk_notes}</p>
-          )}
-          {current?.interviewer_notes && (
-            <p className="text-xs text-muted-foreground">面试备注: {current.interviewer_notes}</p>
-          )}
-        </>
-      )}
+      {activeIdx < evaluations.length && (() => {
+        const evalRow = evaluations[activeIdx]
+        return (
+          <>
+            {evalRow?.risk_notes && (
+              <p className="text-xs text-muted-foreground">风险备注: {evalRow.risk_notes}</p>
+            )}
+            {evalRow?.interviewer_notes && (
+              <p className="text-xs text-muted-foreground">面试备注: {evalRow.interviewer_notes}</p>
+            )}
+          </>
+        )
+      })()}
     </div>
   )
 }

@@ -18,7 +18,7 @@ export default function AdminLoginPage() {
   const [pending, setPending] = useState(false)
 
   useEffect(() => {
-    const errCode = searchParams.get("error")
+    const errCode = searchParams?.get("error")
     if (errCode && ERROR_MESSAGES[errCode]) {
       setError(ERROR_MESSAGES[errCode])
     }

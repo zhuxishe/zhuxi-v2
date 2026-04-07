@@ -77,7 +77,7 @@ export async function fetchPlayerMatches(memberId: string) {
   const { data, error } = await supabase
     .from("match_results")
     .select(`
-      id, best_slot, rank, created_at,
+      id, best_slot, rank, created_at, status, cancellation_status,
       session:match_sessions (id, session_name, created_at),
       member_a:members!match_results_member_a_id_fkey (
         id,
@@ -97,6 +97,40 @@ export async function fetchPlayerMatches(memberId: string) {
 
   if (error) throw error
   return data ?? []
+}
+
+export async function fetchMatchDetail(matchId: string, memberId: string) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("match_results")
+    .select(`
+      id, member_a_id, member_b_id, best_slot, rank, status,
+      cancellation_status, cancellation_reason, cancellation_requested_by,
+      cancellation_requested_at,
+      session:match_sessions (id, session_name, created_at),
+      member_a:members!match_results_member_a_id_fkey (
+        id,
+        member_identity (full_name, nickname, hobby_tags),
+        member_interests (game_type_pref, scenario_theme_tags),
+        member_personality (expression_style_tags, group_role_tags)
+      ),
+      member_b:members!match_results_member_b_id_fkey (
+        id,
+        member_identity (full_name, nickname, hobby_tags),
+        member_interests (game_type_pref, scenario_theme_tags),
+        member_personality (expression_style_tags, group_role_tags)
+      )
+    `)
+    .eq("id", matchId)
+    .single()
+
+  if (error) return null
+  // Verify player is a participant
+  if (data.member_a_id !== memberId && data.member_b_id !== memberId) {
+    return null
+  }
+  return data
 }
 
 /** Fetch pair relationships for members in a given session's results */

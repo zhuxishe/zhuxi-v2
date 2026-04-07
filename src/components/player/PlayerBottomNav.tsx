@@ -25,7 +25,7 @@ export function PlayerBottomNav({ playerName: _playerName }: Props) {
     <nav aria-label="main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md shadow-[0_-2px_12px_oklch(0.18_0.02_45/6%)]">
       <div className="mx-auto flex max-w-lg items-center justify-around pb-[env(safe-area-inset-bottom)] pt-1.5 pb-2">
         {NAV_ITEMS.map(({ href, icon: Icon, tKey }) => {
-          const active = href === "/app" ? pathname === "/app" : pathname.startsWith(href)
+          const active = href === "/app" ? pathname === "/app" : pathname?.startsWith(href)
           return (
             <Link
               key={href}

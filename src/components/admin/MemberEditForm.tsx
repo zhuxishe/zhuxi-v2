@@ -15,9 +15,9 @@ import {
   updateMemberPersonality,
   updateMemberBoundaries,
 } from "@/app/admin/members/[id]/edit/actions"
+import type { MemberDetail, InterviewEvaluationRow } from "@/types"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props { memberId: string; member: any }
+interface Props { memberId: string; member: MemberDetail }
 
 function ReadOnlyRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
@@ -75,7 +75,7 @@ export function MemberEditForm({ memberId, member }: Props) {
           {!evals.length ? <p className="text-sm text-muted-foreground">未评估</p> : (
             <table className="w-full"><tbody>
               <ReadOnlyRow label="评估数" value={`${evals.length} 份`} />
-              {evals.map((e: any, i: number) => (
+              {evals.map((e: InterviewEvaluationRow, i: number) => (
                 <ReadOnlyRow key={i} label={e.interviewer_name ?? `面试官${i + 1}`} value={`推荐 ${e.overall_recommendation}/5 · 风险 ${e.risk_level}`} />
               ))}
             </tbody></table>

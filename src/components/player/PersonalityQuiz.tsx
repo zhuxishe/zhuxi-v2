@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback } from "react"
 import { ChevronLeft, ChevronRight, Check } from "lucide-react"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { QUIZ_QUESTIONS } from "@/lib/constants/personality-quiz"
 
@@ -22,6 +23,7 @@ function shuffleWithSeed<T>(arr: T[], seed: number): T[] {
 }
 
 export function PersonalityQuiz({ onComplete }: Props) {
+  const t = useTranslations("quiz")
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const total = QUIZ_QUESTIONS.length
@@ -63,7 +65,7 @@ export function PersonalityQuiz({ onComplete }: Props) {
       {/* Header + progress */}
       <div className="space-y-2">
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <span>性格测试</span>
+          <span>{t("title")}</span>
           <span>{current + 1} / {total}</span>
         </div>
         <div className="h-2 rounded-full bg-muted overflow-hidden">
@@ -116,17 +118,17 @@ export function PersonalityQuiz({ onComplete }: Props) {
           disabled={current === 0}
         >
           <ChevronLeft className="size-4" />
-          上一题
+          {t("prevQuestion")}
         </Button>
 
         {isLast ? (
           <Button onClick={handleFinish} disabled={!allAnswered}>
             <Check className="size-4" />
-            完成
+            {t("finish")}
           </Button>
         ) : (
           <Button onClick={goNext} disabled={!hasAnswer}>
-            下一题
+            {t("nextQuestion")}
             <ChevronRight className="size-4" />
           </Button>
         )}

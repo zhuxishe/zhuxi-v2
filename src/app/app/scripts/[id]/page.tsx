@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchScript, checkScriptAccess } from "@/lib/queries/scripts"
+import { getTranslations } from "next-intl/server"
 import { TagBadge } from "@/components/shared/TagBadge"
 import { ScriptRoleList } from "@/components/player/ScriptRoleList"
 import { FlipBookViewer } from "@/components/player/FlipBookViewer"
@@ -25,6 +26,7 @@ export default async function ScriptDetailPage({ params }: Props) {
   if (!script.is_published) notFound()
 
   const canViewFull = await checkScriptAccess(id, player.memberId)
+  const t = await getTranslations("scriptDetail")
   const diffLabel = SCRIPT_DIFFICULTY_OPTIONS.find((d) => d.value === script.difficulty)?.label ?? script.difficulty
 
   return (
@@ -40,16 +42,16 @@ export default async function ScriptDetailPage({ params }: Props) {
             {diffLabel}
           </span>
         </div>
-        {script.author && <p className="text-sm text-muted-foreground">作者: {script.author}</p>}
+        {script.author && <p className="text-sm text-muted-foreground">{t("author")} {script.author}</p>}
       </div>
 
       {/* Players + Duration */}
       <div className="flex gap-4 text-sm text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <Users className="size-4" />{script.player_count_min}-{script.player_count_max}人
+          <Users className="size-4" />{t("players", { min: script.player_count_min, max: script.player_count_max })}
         </span>
         <span className="flex items-center gap-1.5">
-          <Clock className="size-4" />{script.duration_minutes}分钟
+          <Clock className="size-4" />{t("duration", { minutes: script.duration_minutes })}
         </span>
       </div>
 
@@ -67,7 +69,7 @@ export default async function ScriptDetailPage({ params }: Props) {
       {/* Content HTML */}
       {script.content_html && (
         <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-          <h3 className="text-sm font-semibold mb-2">活动介绍</h3>
+          <h3 className="text-sm font-semibold mb-2">{t("intro")}</h3>
           <div className="text-sm leading-relaxed whitespace-pre-wrap">{script.content_html.replace(/<[^>]*>/g, "")}</div>
         </div>
       )}
@@ -88,7 +90,7 @@ export default async function ScriptDetailPage({ params }: Props) {
           <FlipBookViewer pages={script.page_images} title={script.title} />
         </div>
       ) : (
-        <AccessSection canViewFull={canViewFull} pdfUrl={script.pdf_url} />
+        <AccessSection canViewFull={canViewFull} pdfUrl={script.pdf_url} viewFullLabel={t("viewFull")} needAccessLabel={t("needAccess")} />
       )}
     </div>
   )
@@ -120,7 +122,7 @@ function TagSection({ genreTags, themeTags }: { genreTags?: string[]; themeTags?
   )
 }
 
-function AccessSection({ canViewFull, pdfUrl }: { canViewFull: boolean; pdfUrl?: string | null }) {
+function AccessSection({ canViewFull, pdfUrl, viewFullLabel, needAccessLabel }: { canViewFull: boolean; pdfUrl?: string | null; viewFullLabel: string; needAccessLabel: string }) {
   if (canViewFull && pdfUrl) {
     return (
       <a
@@ -130,7 +132,7 @@ function AccessSection({ canViewFull, pdfUrl }: { canViewFull: boolean; pdfUrl?:
         className="flex items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
       >
         <Eye className="size-4" />
-        查看完整内容
+        {viewFullLabel}
       </a>
     )
   }
@@ -138,7 +140,7 @@ function AccessSection({ canViewFull, pdfUrl }: { canViewFull: boolean; pdfUrl?:
   return (
     <div className="flex items-center gap-2 rounded-xl bg-muted p-4 text-sm text-muted-foreground">
       <Lock className="size-4 shrink-0" />
-      <span>想玩这个本？请联系管理员获取授权查看完整内容。</span>
+      <span>{needAccessLabel}</span>
     </div>
   )
 }

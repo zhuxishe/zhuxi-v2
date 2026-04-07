@@ -1,9 +1,12 @@
 "use client"
 
 import { useCallback } from "react"
+import { useTranslations } from "next-intl"
 
+/** DB keys — never change */
 const SLOTS = ["上午", "下午", "晚上"] as const
-const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"]
+const SLOT_I18N_KEYS = ["morning", "afternoon", "evening"] as const
+const WEEKDAY_KEYS = ["sun", "mon", "tue", "wed", "thu", "fri", "sat"] as const
 
 interface Props {
   /** 活动日期范围的起始日 */
@@ -16,6 +19,7 @@ interface Props {
 }
 
 export function TimeGridSelector({ startDate, endDate, value, onChange }: Props) {
+  const t = useTranslations("timeGrid")
   // 生成日期列表
   const dates: string[] = []
   const start = new Date(startDate)
@@ -58,9 +62,9 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
     <div className="space-y-3">
       {/* 表头 */}
       <div className="grid grid-cols-[1fr_repeat(3,44px)_44px] gap-1 text-[10px] font-medium text-muted-foreground px-1">
-        <span>日期</span>
-        {SLOTS.map((s) => <span key={s} className="text-center">{s}</span>)}
-        <span className="text-center">全天</span>
+        <span>{t("date")}</span>
+        {SLOT_I18N_KEYS.map((key) => <span key={key} className="text-center">{t(key)}</span>)}
+        <span className="text-center">{t("allDay")}</span>
       </div>
 
       {/* 日期行 */}
@@ -68,7 +72,7 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
         {dates.map((date) => {
           const d = new Date(date)
           const dayOfWeek = d.getDay()
-          const weekday = WEEKDAYS[dayOfWeek]
+          const weekday = t(`weekdays.${WEEKDAY_KEYS[dayOfWeek]}`)
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
           const selected = value[date] ?? []
           const allSelected = SLOTS.every((s) => selected.includes(s))
@@ -114,7 +118,7 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
                     : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
                 }`}
               >
-                全天
+                {t("allDay")}
               </button>
             </div>
           )
@@ -123,8 +127,11 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
 
       {/* 统计 */}
       <p className="text-xs text-muted-foreground text-center">
-        已选 <span className="font-semibold text-gold">{totalSlots}</span> 个时段，
-        覆盖 <span className="font-semibold text-gold">{totalDays}</span> 天
+        {t.rich("stats", {
+          slots: totalSlots,
+          days: totalDays,
+          b: (chunks) => <span className="font-semibold text-gold">{chunks}</span>,
+        })}
       </p>
     </div>
   )

@@ -186,6 +186,130 @@
     "minutes": "分钟",
     "pdfPreview": "PDF 预览"
   },
+  "survey": {
+    "heading": "填写你的匹配偏好",
+    "gameType": {
+      "title": "想玩什么类型？",
+      "duo": { "label": "双人本", "desc": "1对1 深度交流" },
+      "multi": { "label": "多人本", "desc": "3-6人 热闹社交" },
+      "either": { "label": "都可以", "desc": "交给我们安排" }
+    },
+    "gender": {
+      "title": "搭档性别偏好？",
+      "male": "男生搭档",
+      "female": "女生搭档",
+      "either": "都可以"
+    },
+    "timeSlots": { "title": "你的可用时段", "hint": "选择你方便参加活动的时间段（可多选）" },
+    "interestTags": "感兴趣的题材（可选）",
+    "socialStyle": {
+      "title": "你的社交风格（可选）",
+      "slowWarm": "慢热", "active": "活跃", "listener": "善于倾听",
+      "wideTopics": "话题广", "gentle": "温和", "competitive": "喜欢竞技"
+    },
+    "message": { "title": "想对工作人员说的话（可选）", "placeholder": "比如：想和上次的搭档再玩一次..." },
+    "submitting": "提交中...",
+    "update": "更新问卷",
+    "submit": "提交问卷",
+    "noTimeSlot": "请至少选择一个可用时段",
+    "backToHome": "返回首页",
+    "noRound": "当前没有进行中的问卷",
+    "noRoundHint": "请等待工作人员开放新一期匹配",
+    "success": {
+      "title": "问卷已提交！",
+      "description": "我们会在问卷截止后为你安排最佳搭档",
+      "backToHome": "返回首页",
+      "editSurvey": "修改问卷"
+    },
+    "status": {
+      "submitted": "已提交问卷 · 点击修改",
+      "newRound": "新一期匹配开始了！点击填写问卷",
+      "daysLeft": "剩{days}天"
+    }
+  },
+  "timeGrid": {
+    "date": "日期",
+    "morning": "上午",
+    "afternoon": "下午",
+    "evening": "晚上",
+    "allDay": "全天",
+    "weekdays": { "sun": "日", "mon": "月", "tue": "火", "wed": "水", "thu": "木", "fri": "金", "sat": "土" },
+    "stats": "已选 <b>{slots}</b> 个时段，覆盖 <b>{days}</b> 天"
+  },
+  "quiz": {
+    "title": "性格测试",
+    "prevQuestion": "上一题",
+    "nextQuestion": "下一题",
+    "finish": "完成",
+    "yourStyle": "你的社交风格",
+    "dimensionDetails": "维度详情",
+    "retake": "重新测试",
+    "emotionalStability": "情绪稳定",
+    "calculating": "正在计算你的社交风格...",
+    "retry": "重试",
+    "backToProfile": "返回资料",
+    "pageTitle": "ZSP-15 社交人格测试",
+    "profileTitle": "社交人格测试",
+    "profileHint": "15道情景题，3分钟了解你的社交风格",
+    "defaultDescription": "你有着独特的社交风格，让身边的人印象深刻",
+    "dimensionLabels": {
+      "E": "社交能量", "A": "社交温度", "O": "探索倾向", "C": "行动节奏", "N": "情绪敏感"
+    },
+    "typeDescriptions": {
+      "热情守护者": "你总能让身边的人感到被关注和被欢迎",
+      "热情探索者": "新地方、新朋友、新体验——你全都要",
+      "热情规划者": "你用热情点燃气氛，用计划让一切井然有序",
+      "热情安定者": "在任何社交场合都如鱼得水，而且从不紧张",
+      "温暖行动派": "你关心每个人，而且会用行动表达出来",
+      "温暖探索者": "对新事物充满好奇，但始终把身边人的感受放在心上",
+      "温暖规划者": "你总是那个默默准备好一切、又照顾到每个人的人",
+      "温暖安定者": "你的温柔和从容让身边的人都感到安心",
+      "好奇行动派": "一听到「没试过」三个字就两眼放光",
+      "好奇守护者": "喜欢带朋友一起探索新事物，确保大家都跟上",
+      "好奇规划者": "冒险也要有攻略——你是有策略的探索家",
+      "好奇安定者": "对未知充满兴趣，但心态始终平稳",
+      "稳健行动派": "你是最靠谱的执行者，说到做到",
+      "稳健守护者": "你细心又负责，团队有你在就放心",
+      "稳健探索者": "喜欢有计划地尝试新事物——冒险也要有策略",
+      "稳健安定者": "你是团队里最让人安心的存在",
+      "从容行动派": "什么场面你都能hold住，而且乐在其中",
+      "从容守护者": "你的淡定是会传染的，身边的人因为你而放松",
+      "从容探索者": "面对未知毫不慌张，享受每一次新鲜体验",
+      "从容规划者": "你心中有数、脚下有路，从不焦虑"
+    }
+  },
+  "flipbook": {
+    "noPages": "暂无页面",
+    "pageAlt": "{title} - 第{page}页",
+    "prevPage": "上一页",
+    "nextPage": "下一页"
+  },
+  "scriptDetail": {
+    "author": "作者:",
+    "players": "{min}-{max}人",
+    "duration": "{minutes}分钟",
+    "intro": "活动介绍",
+    "viewFull": "查看完整内容",
+    "needAccess": "想玩这个本？请联系管理员获取授权查看完整内容。",
+    "roles": "角色一览",
+    "genderMale": "男",
+    "genderFemale": "女",
+    "genderAny": "不限"
+  },
+  "error": {
+    "message": "出了点问题，请重试",
+    "retry": "重试"
+  },
+  "errors": {
+    "emailRequired": "请输入邮箱地址",
+    "emailNotRegistered": "此邮箱未注册，请联系管理员",
+    "accountNotApproved": "账号尚未通过审核，请联系管理员",
+    "roundNotFound": "轮次不存在",
+    "surveyClosed": "问卷已截止",
+    "surveyExpired": "问卷已过截止时间",
+    "noTimeSlot": "请至少选择一个可用时段",
+    "quizSubmitFailed": "提交失败，请重试"
+  },
   "interview": {
     "title": "竹溪社 — 面试前信息表",
     "subtitle": "请填写以下信息，我们将在面试前了解你的基本情况",

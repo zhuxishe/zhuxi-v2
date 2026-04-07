@@ -47,7 +47,7 @@ export async function submitQuiz(
     return {
       scores: { E: 0, A: 0, O: 0, C: 0, N: 0 },
       personalityType: "",
-      error: "提交失败，请重试",
+      error: "quizSubmitFailed",
     }
   }
 }

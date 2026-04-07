@@ -9,6 +9,7 @@ import Link from "next/link"
 export default async function ProfilePage() {
   const player = await requirePlayer()
   const t = await getTranslations("profile")
+  const tQuiz = await getTranslations("quiz")
   const supabase = await createClient()
 
   const { data: member } = await supabase
@@ -39,8 +40,8 @@ export default async function ProfilePage() {
           <p className="text-xs text-muted-foreground">{t("editPersonalityHint")}</p>
         </Link>
         <Link href="/app/profile/quiz" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
-          <p className="text-sm font-medium">社交人格测试</p>
-          <p className="text-xs text-muted-foreground">15道情景题，3分钟了解你的社交风格</p>
+          <p className="text-sm font-medium">{tQuiz("profileTitle")}</p>
+          <p className="text-xs text-muted-foreground">{tQuiz("profileHint")}</p>
         </Link>
       </div>
 

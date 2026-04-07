@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useTranslations } from "next-intl"
 import { PersonalityQuiz } from "./PersonalityQuiz"
 import { QuizResult } from "./QuizResult"
 import { submitQuiz } from "@/app/app/profile/quiz/actions"
@@ -16,6 +17,8 @@ interface Props {
 }
 
 export function QuizPageClient({ existing }: Props) {
+  const t = useTranslations("quiz")
+  const tErr = useTranslations("errors")
   const [result, setResult] = useState<ExistingResult | null>(existing)
   const [showQuiz, setShowQuiz] = useState(!existing)
   const [submitting, setSubmitting] = useState(false)
@@ -28,7 +31,7 @@ export function QuizPageClient({ existing }: Props) {
     setSubmitting(false)
 
     if (res.error) {
-      setError(res.error)
+      setError(tErr.has(res.error) ? tErr(res.error) : res.error)
       return
     }
 
@@ -46,7 +49,7 @@ export function QuizPageClient({ existing }: Props) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-3">
         <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-        <p className="text-sm text-muted-foreground">正在计算你的社交风格...</p>
+        <p className="text-sm text-muted-foreground">{t("calculating")}</p>
       </div>
     )
   }
@@ -60,7 +63,7 @@ export function QuizPageClient({ existing }: Props) {
             onClick={() => setShowQuiz(true)}
             className="text-sm text-primary underline"
           >
-            重试
+            {t("retry")}
           </button>
         </div>
       </div>

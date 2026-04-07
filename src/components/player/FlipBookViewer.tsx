@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
+import { useTranslations } from "next-intl"
 
 interface Props {
   pages: string[]       // WebP image URLs
@@ -9,6 +10,7 @@ interface Props {
 }
 
 export function FlipBookViewer({ pages, title }: Props) {
+  const t = useTranslations("flipbook")
   const [current, setCurrent] = useState(0)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
@@ -50,7 +52,7 @@ export function FlipBookViewer({ pages, title }: Props) {
   }
 
   if (total === 0) {
-    return <p className="text-sm text-muted-foreground text-center py-10">暂无页面</p>
+    return <p className="text-sm text-muted-foreground text-center py-10">{t("noPages")}</p>
   }
 
   return (
@@ -73,7 +75,7 @@ export function FlipBookViewer({ pages, title }: Props) {
         >
           <img
             src={pages[current]}
-            alt={`${title ?? "页面"} - 第${current + 1}页`}
+            alt={t("pageAlt", { title: title ?? "", page: current + 1 })}
             className="w-full h-auto"
             draggable={false}
           />
@@ -83,13 +85,13 @@ export function FlipBookViewer({ pages, title }: Props) {
         <button
           onClick={prev}
           className="absolute left-0 top-0 h-full w-1/3 opacity-0"
-          aria-label="上一页"
+          aria-label={t("prevPage")}
           disabled={current === 0}
         />
         <button
           onClick={next}
           className="absolute right-0 top-0 h-full w-1/3 opacity-0"
-          aria-label="下一页"
+          aria-label={t("nextPage")}
           disabled={current === total - 1}
         />
       </div>

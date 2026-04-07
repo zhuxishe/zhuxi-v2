@@ -24,17 +24,17 @@ export async function submitSurvey(input: SubmitSurveyInput) {
     .eq("id", input.roundId)
     .single()
 
-  if (roundErr || !round) return { error: roundErr?.message ?? "轮次不存在" }
-  if (round.status !== "open") return { error: "问卷已截止" }
+  if (roundErr || !round) return { error: roundErr?.message ?? "roundNotFound" }
+  if (round.status !== "open") return { error: "surveyClosed" }
 
   // 检查截止时间
   if (new Date(round.survey_end) < new Date()) {
-    return { error: "问卷已过截止时间" }
+    return { error: "surveyExpired" }
   }
 
   // 验证至少有一个时段
   const totalSlots = Object.values(input.availability).reduce((s, v) => s + v.length, 0)
-  if (totalSlots === 0) return { error: "请至少选择一个可用时段" }
+  if (totalSlots === 0) return { error: "noTimeSlot" }
 
   // Upsert（同一轮次同一用户只能提交一次）
   const { error } = await supabase

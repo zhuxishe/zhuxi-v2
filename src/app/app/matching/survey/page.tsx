@@ -1,5 +1,6 @@
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchOpenRound, fetchMySubmission } from "@/lib/queries/rounds"
+import { getTranslations } from "next-intl/server"
 import { SurveyForm } from "@/components/player/SurveyForm"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
@@ -7,16 +8,17 @@ import { ArrowLeft } from "lucide-react"
 export default async function SurveyPage() {
   const player = await requirePlayer()
   const round = await fetchOpenRound()
+  const t = await getTranslations("survey")
 
   if (!round) {
     return (
       <div className="px-4 py-6">
         <Link href="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground">
-          <ArrowLeft className="size-4" /> 返回首页
+          <ArrowLeft className="size-4" /> {t("backToHome")}
         </Link>
         <div className="text-center py-20">
-          <p className="text-muted-foreground">当前没有进行中的问卷</p>
-          <p className="text-xs text-muted-foreground mt-1">请等待工作人员开放新一期匹配</p>
+          <p className="text-muted-foreground">{t("noRound")}</p>
+          <p className="text-xs text-muted-foreground mt-1">{t("noRoundHint")}</p>
         </div>
       </div>
     )
@@ -27,7 +29,7 @@ export default async function SurveyPage() {
   return (
     <div className="px-4 py-6">
       <Link href="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground">
-        <ArrowLeft className="size-4" /> 返回首页
+        <ArrowLeft className="size-4" /> {t("backToHome")}
       </Link>
       <SurveyForm
         roundId={round.id}

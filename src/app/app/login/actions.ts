@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 
 export async function sendMagicLink(email: string) {
-  if (!email?.trim()) return { error: "请输入邮箱地址" }
+  if (!email?.trim()) return { error: "emailRequired" }
 
   const supabase = await createClient()
 
@@ -16,11 +16,11 @@ export async function sendMagicLink(email: string) {
     .single()
 
   if (!member) {
-    return { error: "此邮箱未注册，请联系管理员" }
+    return { error: "emailNotRegistered" }
   }
 
   if (member.status !== "approved") {
-    return { error: "账号尚未通过审核，请联系管理员" }
+    return { error: "accountNotApproved" }
   }
 
   // Send magic link

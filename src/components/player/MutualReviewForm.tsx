@@ -12,9 +12,10 @@ import { POSITIVE_REVIEW_TAGS, NEGATIVE_REVIEW_TAGS } from "@/lib/constants/revi
 interface Props {
   reviewerId: string
   revieweeId: string
+  matchResultId: string
 }
 
-export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId }: Props) {
+export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchResultId }: Props) {
   const router = useRouter()
   const t = useTranslations("reviews")
   const [overall, setOverall] = useState(3)
@@ -33,6 +34,7 @@ export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId }: Props)
     setSubmitting(true)
     setError(null)
     const result = await submitReview({
+      match_result_id: matchResultId,
       reviewee_id: revieweeId,
       overall_score: overall, punctuality_score: punctuality,
       communication_score: communication, teamwork_score: teamwork, fun_score: fun,

@@ -142,7 +142,9 @@
     "emptyDescription": "管理者がマッチングを行うと、結果がここに表示されます",
     "partner": "マッチング相手",
     "unknown": "不明",
-    "points": "点"
+    "points": "点",
+    "review": "評価する",
+    "reviewed": "評価済み"
   },
   "reviews": {
     "title": "相互評価",
@@ -308,7 +310,8 @@
     "surveyClosed": "アンケートは締め切られました",
     "surveyExpired": "アンケートの締め切りを過ぎています",
     "noTimeSlot": "少なくとも1つの時間帯を選んでください",
-    "quizSubmitFailed": "送信に失敗しました。もう一度お試しください"
+    "quizSubmitFailed": "送信に失敗しました。もう一度お試しください",
+    "alreadyReviewed": "このマッチングは既に評価済みです"
   },
   "interview": {
     "title": "竹渓社 — 面接前アンケート",

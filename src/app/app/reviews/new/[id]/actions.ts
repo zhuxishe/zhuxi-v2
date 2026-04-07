@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
 
 interface ReviewInput {
+  match_result_id: string
   reviewee_id: string
   overall_score: number
   punctuality_score: number
@@ -19,6 +20,16 @@ interface ReviewInput {
 export async function submitReview(input: ReviewInput) {
   const player = await requirePlayer()
   const supabase = await createClient()
+
+  // 防重复：检查是否已评价
+  const { data: existing } = await supabase
+    .from("mutual_reviews")
+    .select("id")
+    .eq("match_result_id", input.match_result_id)
+    .eq("reviewer_id", player.memberId)
+    .maybeSingle()
+
+  if (existing) return { error: "alreadyReviewed" }
 
   const { error } = await supabase
     .from("mutual_reviews")

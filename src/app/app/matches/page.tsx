@@ -1,14 +1,18 @@
+import Link from "next/link"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerMatches } from "@/lib/queries/matching"
+import { fetchReviewedMatchIds } from "@/lib/queries/reviews"
 import { getTranslations } from "next-intl/server"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { Users } from "lucide-react"
-// Supabase returns nested joins as arrays or objects depending on FK type
+import { Users, MessageSquare, CheckCircle } from "lucide-react"
 
 export default async function PlayerMatchesPage() {
   const player = await requirePlayer()
   const t = await getTranslations("playerMatches")
-  const matches = await fetchPlayerMatches(player.memberId)
+  const [matches, reviewedIds] = await Promise.all([
+    fetchPlayerMatches(player.memberId),
+    fetchReviewedMatchIds(player.memberId),
+  ])
 
   if (matches.length === 0) {
     return (
@@ -39,6 +43,8 @@ export default async function PlayerMatchesPage() {
         const isA = (memberA?.id as string) === player.memberId
         const partner = isA ? b : a
 
+        const reviewed = reviewedIds.has(m.id)
+
         return (
           <div key={m.id} className="rounded-xl bg-card p-4 shadow-soft">
             <div className="flex items-center justify-between">
@@ -53,6 +59,20 @@ export default async function PlayerMatchesPage() {
               <span className="rounded-full bg-gold-light text-gold px-2.5 py-1 text-xs font-bold">
                 {typeof m.total_score === "number" ? m.total_score.toFixed(0) : m.total_score} {t("points")}
               </span>
+            </div>
+            <div className="mt-3 flex justify-end">
+              {reviewed ? (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <CheckCircle className="size-3.5" /> {t("reviewed")}
+                </span>
+              ) : (
+                <Link
+                  href={`/app/reviews/new/${m.id}`}
+                  className="inline-flex items-center gap-1 rounded-full bg-sakura/10 px-3 py-1 text-xs font-medium text-sakura hover:bg-sakura/20 transition-colors"
+                >
+                  <MessageSquare className="size-3.5" /> {t("review")}
+                </Link>
+              )}
             </div>
           </div>
         )

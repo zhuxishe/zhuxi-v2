@@ -951,6 +951,7 @@ export type Database = {
           created_at: string
           fun_score: number
           id: string
+          match_result_id: string | null
           negative_tags: string[]
           overall_score: number
           positive_tags: string[]
@@ -967,6 +968,7 @@ export type Database = {
           created_at?: string
           fun_score: number
           id?: string
+          match_result_id?: string | null
           negative_tags?: string[]
           overall_score: number
           positive_tags?: string[]
@@ -983,6 +985,7 @@ export type Database = {
           created_at?: string
           fun_score?: number
           id?: string
+          match_result_id?: string | null
           negative_tags?: string[]
           overall_score?: number
           positive_tags?: string[]
@@ -998,6 +1001,13 @@ export type Database = {
             columns: ["activity_id"]
             isOneToOne: false
             referencedRelation: "activity_records"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mutual_reviews_match_result_id_fkey"
+            columns: ["match_result_id"]
+            isOneToOne: false
+            referencedRelation: "match_results"
             referencedColumns: ["id"]
           },
           {

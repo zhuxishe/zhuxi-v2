@@ -142,7 +142,9 @@
     "emptyDescription": "管理员发起匹配后，你的配对结果会显示在这里",
     "partner": "匹配对象",
     "unknown": "未知",
-    "points": "分"
+    "points": "分",
+    "review": "去评价",
+    "reviewed": "已评价"
   },
   "reviews": {
     "title": "互评",
@@ -308,7 +310,8 @@
     "surveyClosed": "问卷已截止",
     "surveyExpired": "问卷已过截止时间",
     "noTimeSlot": "请至少选择一个可用时段",
-    "quizSubmitFailed": "提交失败，请重试"
+    "quizSubmitFailed": "提交失败，请重试",
+    "alreadyReviewed": "你已经评价过这次匹配了"
   },
   "interview": {
     "title": "竹溪社 — 面试前信息表",

@@ -8,8 +8,10 @@ import { CheckCircle } from "lucide-react"
 import { MatchPairCard } from "./MatchPairCard"
 import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
+import { RematchPool } from "./RematchPool"
 import { lockPair, splitPair, restorePair, confirmSession } from "@/app/admin/matching/[id]/actions"
 import type { PairRelationship } from "./match-detail-types"
+import type { PoolMember } from "@/lib/queries/pool-members"
 
 interface Props {
   session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number }
@@ -17,9 +19,10 @@ interface Props {
   diagnostics: Array<Record<string, unknown>>
   candidates: Array<{ preferred_time_slots: string[] }>
   pairRelationships?: PairRelationship[]
+  poolMembers?: PoolMember[]
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [] }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [] }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -101,6 +104,13 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           />
         ))}
       </div>
+
+      {/* Rematch pool */}
+      <RematchPool
+        sessionId={session.id}
+        poolMembers={poolMembers}
+        onRefresh={() => router.refresh()}
+      />
 
       {/* Unmatched diagnostics */}
       {diagnostics.length > 0 && (

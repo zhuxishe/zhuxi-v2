@@ -27,6 +27,7 @@ interface RunResult {
   totalCandidates: number
   totalMatched: number
   totalUnmatched: number
+  unmatchedIds: string[]
 }
 
 /**
@@ -104,11 +105,16 @@ export function runFullMatching(
     }
   }
 
+  const unmatchedIds = candidates
+    .filter((c) => !matched.has(c.submissionId))
+    .map((c) => c.submissionId)
+
   return {
     rows,
     totalCandidates: candidates.length,
     totalMatched: matched.size,
-    totalUnmatched: candidates.length - matched.size,
+    totalUnmatched: unmatchedIds.length,
+    unmatchedIds,
   }
 }
 

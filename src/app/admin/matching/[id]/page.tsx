@@ -4,6 +4,7 @@ import { fetchMatchSession, fetchMatchCandidates, fetchPairRelationships } from 
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MatchSessionView } from "@/components/admin/MatchSessionView"
 import { createClient } from "@/lib/supabase/server"
+import { fetchPoolMembers } from "@/lib/queries/pool-members"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -30,10 +31,14 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     const b = (r as any).member_b?.id
     return [a, b].filter(Boolean) as string[]
   })
-  const pairRelationships = await fetchPairRelationships([...new Set(memberIds)])
 
-  // Fetch unmatched diagnostics for this session
-  const supabase = await createClient()
+  // Fetch pair relationships, pool members, diagnostics in parallel
+  const [pairRelationships, poolMembers, supabase] = await Promise.all([
+    fetchPairRelationships([...new Set(memberIds)]),
+    fetchPoolMembers(id),
+    createClient(),
+  ])
+
   const { data: diagnostics } = await supabase
     .from("unmatched_diagnostics")
     .select("*, member:members(member_identity(full_name))")
@@ -55,6 +60,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         diagnostics={diagnostics ?? []}
         candidates={timeSlotData}
         pairRelationships={pairRelationships}
+        poolMembers={poolMembers}
       />
     </div>
   )

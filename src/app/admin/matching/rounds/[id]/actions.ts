@@ -106,7 +106,18 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     if (rErr) return { error: rErr.message }
   }
 
-  // 8. 更新轮次状态为 matched
+  // 8. 保存未匹配诊断
+  if (result.unmatchedIds.length > 0) {
+    const diagRows = result.unmatchedIds.map((subId) => ({
+      session_id: session.id,
+      member_id: subIdToMemberId.get(subId) ?? subId,
+      reason: "unmatched_after_all_stages",
+      details: { stage: "overflow" } as import("@/types/database.types").Json,
+    }))
+    await supabase.from("unmatched_diagnostics").insert(diagRows)
+  }
+
+  // 9. 更新轮次状态为 matched
   await supabase.from("match_rounds").update({ status: "matched" }).eq("id", roundId)
 
   return { success: true, sessionId: session.id }

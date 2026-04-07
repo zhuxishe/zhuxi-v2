@@ -9,6 +9,7 @@ const REASON_LABELS: Record<string, string> = {
   constraint_conflict: "硬约束冲突",
   insufficient_candidates: "候选不足",
   low_score: "匹配分过低",
+  unmatched_after_all_stages: "三阶段后未匹配",
 }
 
 interface DiagnosticItem {

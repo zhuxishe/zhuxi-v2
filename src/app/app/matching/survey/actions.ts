@@ -18,13 +18,13 @@ export async function submitSurvey(input: SubmitSurveyInput) {
   const supabase = await createClient()
 
   // 验证轮次存在且 open
-  const { data: round } = await supabase
+  const { data: round, error: roundErr } = await supabase
     .from("match_rounds")
     .select("id, status, survey_end")
     .eq("id", input.roundId)
     .single()
 
-  if (!round) return { error: "轮次不存在" }
+  if (roundErr || !round) return { error: roundErr?.message ?? "轮次不存在" }
   if (round.status !== "open") return { error: "问卷已截止" }
 
   // 检查截止时间

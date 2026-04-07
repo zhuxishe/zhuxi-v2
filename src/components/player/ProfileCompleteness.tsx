@@ -21,16 +21,16 @@ export function ProfileCompleteness({ completeness }: Props) {
   const t = useTranslations("playerHome")
 
   return (
-    <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
+    <div className="rounded-xl bg-card p-5 shadow-soft space-y-4">
       <div className="flex items-center justify-between">
-        <h2 className="text-sm font-semibold">{t("profileTitle")}</h2>
-        <span className="text-2xl font-bold text-primary">{completeness.percentage}%</span>
+        <h2 className="heading-display text-sm">{t("profileTitle")}</h2>
+        <span className="text-2xl font-bold text-gold">{completeness.percentage}%</span>
       </div>
 
       {/* Progress bar */}
-      <div className="h-2 rounded-full bg-muted overflow-hidden">
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
         <div
-          className="h-full rounded-full bg-primary transition-all duration-500"
+          className="h-full rounded-full bg-gradient-to-r from-primary to-gold transition-all duration-700 ease-out"
           style={{ width: `${completeness.percentage}%` }}
         />
       </div>

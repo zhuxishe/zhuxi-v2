@@ -22,8 +22,8 @@ export function PlayerBottomNav({ playerName: _playerName }: Props) {
   const t = useTranslations("nav")
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-lg items-center justify-around py-2">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md shadow-[0_-2px_12px_oklch(0.18_0.02_45/6%)]">
+      <div className="mx-auto flex max-w-lg items-center justify-around pb-[env(safe-area-inset-bottom)] pt-1.5 pb-2">
         {NAV_ITEMS.map(({ href, icon: Icon, tKey }) => {
           const active = href === "/app" ? pathname === "/app" : pathname.startsWith(href)
           return (
@@ -31,12 +31,15 @@ export function PlayerBottomNav({ playerName: _playerName }: Props) {
               key={href}
               href={href}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1 text-xs transition-colors",
+                "relative flex flex-col items-center gap-0.5 px-4 py-2 text-[11px] tracking-wide transition-colors",
                 active ? "text-primary" : "text-muted-foreground"
               )}
             >
-              <Icon className="size-5" />
-              <span>{t(tKey)}</span>
+              <Icon className="size-[22px]" strokeWidth={active ? 2 : 1.5} />
+              <span className="font-medium">{t(tKey)}</span>
+              {active && (
+                <span className="absolute top-0.5 left-1/2 -translate-x-1/2 h-[3px] w-5 rounded-full bg-sakura" />
+              )}
             </Link>
           )
         })}

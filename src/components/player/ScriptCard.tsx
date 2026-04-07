@@ -22,14 +22,14 @@ export function ScriptCard({ script }: { script: Script }) {
   return (
     <Link
       href={`/app/scripts/${script.id}`}
-      className="group rounded-xl bg-card ring-1 ring-foreground/10 hover:ring-primary/30 transition-all overflow-hidden"
+      className="group rounded-xl bg-card shadow-soft hover:shadow-soft-lg transition-all overflow-hidden"
     >
       {script.cover_url ? (
         <img src={script.cover_url} alt={script.title}
           className="aspect-[3/4] w-full object-cover group-hover:scale-[1.02] transition-transform" />
       ) : (
-        <div className="aspect-[3/4] w-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center p-4">
-          <span className="text-lg font-bold text-foreground/60 text-center leading-tight line-clamp-3">
+        <div className="aspect-[3/4] w-full bg-gradient-to-br from-sakura-light via-gold-muted to-card flex items-center justify-center p-4">
+          <span className="heading-display text-lg text-foreground/50 text-center leading-tight line-clamp-3">
             {script.title}
           </span>
         </div>

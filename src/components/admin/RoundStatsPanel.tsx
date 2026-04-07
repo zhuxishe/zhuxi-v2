@@ -28,7 +28,7 @@ export function RoundStatsPanel({ stats, activityStart, activityEnd }: Props) {
   return (
     <div className="space-y-4">
       {/* KPI 卡片 */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
         <KpiCard label="总报名" value={total} />
         <KpiCard label="双人" value={gameTypeDist.duo} color="text-pink-600" />
         <KpiCard label="多人" value={gameTypeDist.multi} color="text-blue-600" />
@@ -37,7 +37,7 @@ export function RoundStatsPanel({ stats, activityStart, activityEnd }: Props) {
 
       {/* 时段热力图 */}
       {total > 0 && (
-        <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+        <div className="rounded-xl bg-card p-4 shadow-soft">
           <h4 className="text-xs font-semibold mb-3">时段热力图</h4>
           <div className="overflow-x-auto">
             <table className="text-[10px] w-full">
@@ -92,7 +92,7 @@ export function RoundStatsPanel({ stats, activityStart, activityEnd }: Props) {
 
 function KpiCard({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
-    <div className="rounded-lg bg-card p-3 ring-1 ring-foreground/10 text-center">
+    <div className="rounded-lg bg-card p-3 shadow-soft text-center">
       <p className={`text-xl font-bold ${color ?? ""}`}>{value}</p>
       <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
     </div>

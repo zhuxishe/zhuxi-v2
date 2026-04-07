@@ -19,7 +19,7 @@ export default async function PlayerScriptsPage({ searchParams }: Props) {
 
   return (
     <div className="p-4 space-y-4">
-      <h1 className="text-xl font-bold">{t("title")}</h1>
+      <h1 className="heading-display text-2xl">{t("title")}</h1>
 
       <Suspense fallback={null}>
         <ScriptGenreFilter />

@@ -71,23 +71,23 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
   return (
     <div className="space-y-6 pb-24">
       <div className="text-center">
-        <h1 className="text-lg font-bold">{roundName}</h1>
-        <p className="text-xs text-muted-foreground mt-1">填写你的匹配偏好</p>
+        <h1 className="heading-display text-xl">{roundName}</h1>
+        <p className="text-xs text-muted-foreground mt-1.5 tracking-wide">填写你的匹配偏好</p>
       </div>
 
       {/* 游戏类型 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">想玩什么类型？</h2>
+        <h2 className="heading-display text-sm">想玩什么类型？</h2>
         <div className="grid grid-cols-3 gap-2">
           {GAME_TYPE_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               onClick={() => setGameType(opt.value)}
-              className={`rounded-xl p-3 text-center transition-all ring-1 ${
+              className={`rounded-xl p-3 text-center transition-all shadow-soft ${
                 gameType === opt.value
-                  ? "ring-primary bg-primary/10 shadow-sm"
-                  : "ring-foreground/10 hover:ring-foreground/20"
+                  ? "bg-primary text-primary-foreground shadow-soft-lg"
+                  : "bg-card hover:bg-accent"
               }`}
             >
               <p className="text-sm font-semibold">{opt.label}</p>
@@ -99,17 +99,17 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
 
       {/* 性别偏好 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">搭档性别偏好？</h2>
+        <h2 className="heading-display text-sm">搭档性别偏好？</h2>
         <div className="grid grid-cols-3 gap-2">
           {GENDER_OPTIONS.map((opt) => (
             <button
               key={opt.value}
               type="button"
               onClick={() => setGenderPref(opt.value)}
-              className={`rounded-xl py-3 text-center text-sm font-medium transition-all ring-1 ${
+              className={`rounded-xl py-3 text-center text-sm font-medium transition-all shadow-soft ${
                 genderPref === opt.value
-                  ? "ring-primary bg-primary/10"
-                  : "ring-foreground/10 hover:ring-foreground/20"
+                  ? "bg-primary text-primary-foreground shadow-soft-lg"
+                  : "bg-card hover:bg-accent"
               }`}
             >
               {opt.label}
@@ -120,7 +120,7 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
 
       {/* 14天时段选择 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">你的可用时段</h2>
+        <h2 className="heading-display text-sm">你的可用时段</h2>
         <p className="text-xs text-muted-foreground">选择你方便参加活动的时间段（可多选）</p>
         <TimeGridSelector
           startDate={activityStart}
@@ -132,7 +132,7 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
 
       {/* 兴趣标签 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">感兴趣的题材（可选）</h2>
+        <h2 className="heading-display text-sm">感兴趣的题材（可选）</h2>
         <MultiTagSelect
           options={[...SCRIPT_GENRE_OPTIONS]}
           value={interestTags}
@@ -142,17 +142,17 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
 
       {/* 社交风格 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">你的社交风格（可选）</h2>
+        <h2 className="heading-display text-sm">你的社交风格（可选）</h2>
         <div className="flex flex-wrap gap-2">
           {SOCIAL_STYLES.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setSocialStyle(socialStyle === s ? "" : s)}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-all ring-1 ${
+              className={`rounded-full px-4 py-1.5 text-xs font-medium transition-all ${
                 socialStyle === s
-                  ? "ring-primary bg-primary/10"
-                  : "ring-foreground/10 hover:ring-foreground/20"
+                  ? "bg-sakura text-white shadow-sm"
+                  : "bg-muted hover:bg-accent text-muted-foreground"
               }`}
             >
               {s}
@@ -163,7 +163,7 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
 
       {/* 留言 */}
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold">想对工作人员说的话（可选）</h2>
+        <h2 className="heading-display text-sm">想对工作人员说的话（可选）</h2>
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
@@ -175,7 +175,7 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
 
       {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t border-border p-4 safe-area-bottom">
+      <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md shadow-[0_-2px_12px_oklch(0.18_0.02_45/6%)] p-4 pb-[env(safe-area-inset-bottom)]">
         <Button onClick={handleSubmit} disabled={submitting || totalSlots === 0} className="w-full">
           {submitting ? "提交中..." : existing ? "更新问卷" : "提交问卷"}
         </Button>

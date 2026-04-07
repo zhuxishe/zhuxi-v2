@@ -16,11 +16,11 @@ const STAT_CARDS = [
 
 export function DashboardStats({ stats }: { stats: Stats }) {
   return (
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {STAT_CARDS.map(({ key, label, icon: Icon, color }) => (
         <div
           key={key}
-          className="rounded-xl bg-card p-4 ring-1 ring-foreground/10"
+          className="rounded-xl bg-card p-4 shadow-soft"
         >
           <div className="flex items-center gap-2 mb-2">
             <Icon className={`size-4 ${color}`} />

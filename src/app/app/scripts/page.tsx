@@ -1,4 +1,3 @@
-import { Suspense } from "react"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPublishedScripts } from "@/lib/queries/scripts"
 import { getTranslations } from "next-intl/server"
@@ -21,9 +20,7 @@ export default async function PlayerScriptsPage({ searchParams }: Props) {
     <div className="p-4 space-y-4">
       <h1 className="heading-display text-2xl">{t("title")}</h1>
 
-      <Suspense fallback={null}>
-        <ScriptGenreFilter />
-      </Suspense>
+      <ScriptGenreFilter currentGenre={genre ?? ""} />
 
       {scripts.length === 0 ? (
         <EmptyState icon={BookOpen} title={t("emptyTitle")} description={t("emptyDescription")} />

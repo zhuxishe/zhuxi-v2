@@ -89,7 +89,8 @@
     "profileTitle": "プロフィール完成度",
     "identity": "\u57FA\u672C\u60C5\u5831",
     "supplementary": "\u8FFD\u52A0\u60C5\u5831",
-    "personality": "\u6027\u683C\u8A55\u4FA1"
+    "personality": "\u6027\u683C\u8A55\u4FA1",
+    "quiz": "\u30BD\u30FC\u30B7\u30E3\u30EB\u30D1\u30FC\u30BD\u30CA\u30EA\u30C6\u30A3\u30C6\u30B9\u30C8"
   },
   "supplementary": {
     "title": "追加情報",

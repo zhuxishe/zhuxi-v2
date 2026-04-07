@@ -9,11 +9,11 @@ const STATUS_MAP: Record<MemberStatus, { label: string; className: string }> = {
 }
 
 interface Props {
-  status: MemberStatus
+  status: string
 }
 
 export function MemberStatusBadge({ status }: Props) {
-  const { label, className } = STATUS_MAP[status] ?? STATUS_MAP.pending
+  const { label, className } = STATUS_MAP[status as MemberStatus] ?? STATUS_MAP.pending
   return (
     <span className={cn("inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium", className)}>
       {label}

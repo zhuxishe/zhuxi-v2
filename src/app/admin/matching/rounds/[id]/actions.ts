@@ -65,7 +65,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
       session_name: sessionName || `${new Date().toLocaleDateString("zh-CN")} 匹配`,
       round_id: roundId,
       algorithm: result.metadata.algorithmUsed,
-      config: config as unknown as Record<string, unknown>,
+      config: config as unknown as import("@/types/database.types").Json,
       total_candidates: result.metadata.candidateCount,
       total_matched: result.pairs.length * 2,
       total_unmatched: result.unmatched.length,
@@ -91,7 +91,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
       member_a_id: aId,
       member_b_id: bId,
       total_score: pair.score.totalScore,
-      score_breakdown: pair.score.breakdown,
+      score_breakdown: pair.score.breakdown as unknown as import("@/types/database.types").Json,
       rank: pair.rank,
     }
   })

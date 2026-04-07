@@ -53,7 +53,7 @@ export default async function RoundsPage() {
                       </p>
                     </div>
                     <span className="text-xs text-muted-foreground">
-                      {new Date(r.created_at).toLocaleDateString("zh-CN")}
+                      {r.created_at ? new Date(r.created_at).toLocaleDateString("zh-CN") : ""}
                     </span>
                   </div>
                 </Link>

@@ -35,6 +35,7 @@ export async function createScript(input: ScriptInput) {
     .from("scripts")
     .insert({
       ...input,
+      roles: input.roles as unknown as import("@/types/database.types").Json,
       created_by: admin.id,
     })
     .select("id")

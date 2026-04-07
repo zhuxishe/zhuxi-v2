@@ -50,18 +50,24 @@ export async function fetchRoundSubmissions(roundId: string) {
   return data ?? []
 }
 
-/** 获取某轮次的问卷统计 */
+/** 获取某轮次的问卷统计（轻量查询，仅读 game_type_pref + availability） */
 export async function fetchRoundStats(roundId: string) {
-  const submissions = await fetchRoundSubmissions(roundId)
+  const supabase = await createClient()
+  const { data: submissions, error } = await supabase
+    .from("match_round_submissions")
+    .select("game_type_pref, availability")
+    .eq("round_id", roundId)
 
-  const total = submissions.length
-  const duoCount = submissions.filter((s) => s.game_type_pref === "双人").length
-  const multiCount = submissions.filter((s) => s.game_type_pref === "多人").length
-  const eitherCount = submissions.filter((s) => s.game_type_pref === "都可以").length
+  if (error) throw error
+  const total = (submissions ?? []).length
+  const list = submissions ?? []
+  const duoCount = list.filter((s) => s.game_type_pref === "双人").length
+  const multiCount = list.filter((s) => s.game_type_pref === "多人").length
+  const eitherCount = list.filter((s) => s.game_type_pref === "都可以").length
 
   // 时段热力图
   const slotCounts: Record<string, number> = {}
-  for (const sub of submissions) {
+  for (const sub of list) {
     const avail = sub.availability as Record<string, string[]>
     for (const [date, slots] of Object.entries(avail)) {
       for (const slot of slots) {

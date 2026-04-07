@@ -45,7 +45,7 @@ export async function handleAuthCallback() {
   const { data: member } = await supabase
     .from("members")
     .select("id, user_id")
-    .eq("email", user.email)
+    .eq("email", user.email ?? "")
     .single()
 
   if (member && !member.user_id) {

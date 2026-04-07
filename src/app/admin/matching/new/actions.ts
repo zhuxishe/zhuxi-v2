@@ -40,7 +40,7 @@ export async function runMatching(input: RunMatchInput) {
     .insert({
       session_name: input.sessionName || `匹配 ${new Date().toLocaleDateString("zh-CN")}`,
       algorithm: result.metadata.algorithmUsed,
-      config: config as unknown as Record<string, unknown>,
+      config: config as unknown as import("@/types/database.types").Json,
       total_candidates: result.metadata.candidateCount,
       total_matched: result.pairs.length * 2,
       total_unmatched: result.unmatched.length,
@@ -65,7 +65,7 @@ export async function runMatching(input: RunMatchInput) {
     member_a_id: nameToId.get(pair.userA) ?? rawCandidates[0]?.id,
     member_b_id: nameToId.get(pair.userB) ?? rawCandidates[1]?.id,
     total_score: pair.score.totalScore,
-    score_breakdown: pair.score.breakdown,
+    score_breakdown: pair.score.breakdown as unknown as import("@/types/database.types").Json,
     rank: pair.rank,
   }))
 

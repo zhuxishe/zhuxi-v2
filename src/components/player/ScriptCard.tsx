@@ -9,10 +9,10 @@ interface Script {
   id: string
   title: string
   author: string | null
-  player_count_min: number
-  player_count_max: number
-  duration_minutes: number
-  genre_tags: string[]
+  player_count_min: number | null
+  player_count_max: number | null
+  duration_minutes: number | null
+  genre_tags: string[] | null
   cover_url: string | null
 }
 
@@ -38,12 +38,12 @@ export function ScriptCard({ script }: { script: Script }) {
         <p className="text-sm font-semibold line-clamp-1">{script.title}</p>
         {script.author && <p className="text-xs text-muted-foreground">{script.author}</p>}
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Users className="size-3" />{script.player_count_min}-{script.player_count_max}</span>
-          <span className="flex items-center gap-1"><Clock className="size-3" />{script.duration_minutes}min</span>
+          <span className="flex items-center gap-1"><Users className="size-3" />{script.player_count_min ?? 0}-{script.player_count_max ?? 0}</span>
+          <span className="flex items-center gap-1"><Clock className="size-3" />{script.duration_minutes ?? 0}min</span>
         </div>
-        {script.genre_tags.length > 0 && (
+        {(script.genre_tags?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-1">
-            {script.genre_tags.slice(0, 3).map((t) => <TagBadge key={t} label={t} className="text-[10px] px-1.5 py-0.5" />)}
+            {script.genre_tags?.slice(0, 3).map((t) => <TagBadge key={t} label={t} className="text-[10px] px-1.5 py-0.5" />)}
           </div>
         )}
       </div>

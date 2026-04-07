@@ -10,7 +10,7 @@ import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { lockPair, splitPair, restorePair, confirmSession } from "@/app/admin/matching/[id]/actions"
 
 interface Props {
-  session: { id: string; session_name: string; status: string; total_candidates: number; total_matched: number; total_unmatched: number }
+  session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number }
   results: Array<Record<string, unknown>>
   diagnostics: Array<Record<string, unknown>>
   candidates: Array<{ preferred_time_slots: string[] }>

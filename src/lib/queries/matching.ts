@@ -74,7 +74,7 @@ export async function fetchMatchHistory(memberIds: string[]) {
 
   // Filter by candidate IDs — batch if >50 to avoid URL length limits
   const batchSize = 50
-  let allData: { member_a_id: string; member_b_id: string }[] = []
+  let allData: { member_a_id: string; member_b_id: string | null }[] = []
 
   for (let i = 0; i < memberIds.length; i += batchSize) {
     const batch = memberIds.slice(i, i + batchSize)

@@ -48,10 +48,10 @@ export default async function ScriptDetailPage({ params }: Props) {
       {/* Players + Duration */}
       <div className="flex gap-4 text-sm text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <Users className="size-4" />{t("players", { min: script.player_count_min, max: script.player_count_max })}
+          <Users className="size-4" />{t("players", { min: script.player_count_min ?? 0, max: script.player_count_max ?? 0 })}
         </span>
         <span className="flex items-center gap-1.5">
-          <Clock className="size-4" />{t("duration", { minutes: script.duration_minutes })}
+          <Clock className="size-4" />{t("duration", { minutes: script.duration_minutes ?? 0 })}
         </span>
       </div>
 
@@ -82,12 +82,12 @@ export default async function ScriptDetailPage({ params }: Props) {
       )}
 
       {/* Roles */}
-      <ScriptRoleList roles={script.roles} />
+      <ScriptRoleList roles={script.roles as { name: string; gender?: string; description?: string }[] | null} />
 
       {/* 翻页书阅读器 / 权限控制 */}
-      {canViewFull && script.page_images?.length > 0 ? (
+      {canViewFull && (script.page_images?.length ?? 0) > 0 ? (
         <div className="rounded-xl overflow-hidden ring-1 ring-foreground/10">
-          <FlipBookViewer pages={script.page_images} title={script.title} />
+          <FlipBookViewer pages={script.page_images as string[]} title={script.title} />
         </div>
       ) : (
         <AccessSection canViewFull={canViewFull} pdfUrl={script.pdf_url} viewFullLabel={t("viewFull")} needAccessLabel={t("needAccess")} />

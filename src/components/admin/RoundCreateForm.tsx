@@ -75,7 +75,7 @@ export function RoundCreateForm() {
       </div>
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-        <h3 className="text-sm font-semibold">活动日期（14天）</h3>
+        <h3 className="text-sm font-semibold">活动日期范围</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium mb-1 block">开始日期</label>
@@ -93,7 +93,7 @@ export function RoundCreateForm() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          选择开始日期后自动设置 14 天范围，可手动调整
+          选择开始日期后自动填充14天，可修改结束日期调整天数
         </p>
       </div>
 

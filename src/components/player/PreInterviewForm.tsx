@@ -15,11 +15,15 @@ import { InterviewStep4 } from "./InterviewStep4"
 
 const STEPS = ["\u57FA\u672C\u4FE1\u606F", "\u5B66\u4E1A\u4FE1\u606F", "\u5174\u8DA3\u7231\u597D", "\u81EA\u6211\u8BC4\u4F30"]
 
-export function PreInterviewForm() {
+interface Props {
+  defaultValues?: PreInterviewFormData
+}
+
+export function PreInterviewForm({ defaultValues }: Props) {
   const t = useTranslations("interview")
   const router = useRouter()
   const [step, setStep] = useState(0)
-  const [data, setData] = useState<PreInterviewFormData>(EMPTY_FORM)
+  const [data, setData] = useState<PreInterviewFormData>(defaultValues ?? EMPTY_FORM)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 

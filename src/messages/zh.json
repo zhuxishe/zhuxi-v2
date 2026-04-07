@@ -93,6 +93,7 @@
   "pending": {
     "title": "\u7B49\u5F85\u5BA1\u6838\u4E2D",
     "description": "\u4F60\u7684\u4FE1\u606F\u5DF2\u63D0\u4EA4\uFF0C\u8BF7\u7B49\u5F85\u7BA1\u7406\u5458\u5BA1\u6838\u3002\u6211\u4EEC\u4F1A\u5C3D\u5FEB\u5B89\u6392\u9762\u8BD5\u3002",
+    "editInfo": "\u7F16\u8F91\u6CE8\u518C\u4FE1\u606F",
     "rejectedTitle": "\u672A\u901A\u8FC7\u5BA1\u6838",
     "rejectedDescription": "\u5F88\u62B1\u6B49\uFF0C\u4F60\u7684\u7533\u8BF7\u672A\u901A\u8FC7\u3002\u5982\u6709\u7591\u95EE\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458\u3002"
   },
@@ -116,7 +117,8 @@
     "editSupplementaryHint": "\u4F4D\u7F6E\u3001\u8BED\u8A00\u3001\u6D3B\u52A8\u504F\u597D\u3001\u793E\u4EA4\u76EE\u6807",
     "editPersonality": "\u7F16\u8F91\u6027\u683C\u81EA\u8BC4",
     "editPersonalityHint": "10 \u4E2A\u7EF4\u5EA6\u7684\u6027\u683C\u8BC4\u4F30",
-    "logout": "\u9000\u51FA\u767B\u5F55"
+    "logout": "\u9000\u51FA\u767B\u5F55",
+    "language": "\u8BED\u8A00"
   },
   "playerLogin": {
     "title": "竹溪社",
@@ -276,9 +278,14 @@
     "update": "更新问卷",
     "submit": "提交问卷",
     "noTimeSlot": "请至少选择一个可用时段",
+    "noTimeSlotHint": "请至少选择一个时段才能提交",
     "backToHome": "返回首页",
     "noRound": "当前没有进行中的问卷",
     "noRoundHint": "请等待工作人员开放新一期匹配",
+    "roundDraft": "问卷尚未开放",
+    "roundDraftHint": "工作人员正在准备中，请稍后再来",
+    "roundClosed": "问卷已截止",
+    "roundClosedHint": "本期问卷已结束，请等待下一期",
     "success": {
       "title": "问卷已提交！",
       "description": "我们会在问卷截止后为你安排最佳搭档",
@@ -398,7 +405,7 @@
     "personalityTags": "性格自评",
     "personalityTagsHint": "选择最符合你的标签（最多5个）",
     "tabooTags": "个人禁忌",
-    "tabooTagsHint": "有什么不能接受的？（可不选）",
+    "tabooTagsHint": "有什么不能接受的？（可选）",
     "previous": "上一步",
     "next": "下一步",
     "submit": "提交",

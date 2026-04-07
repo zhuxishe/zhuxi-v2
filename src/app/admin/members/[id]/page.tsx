@@ -6,6 +6,7 @@ import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MemberStatusBadge } from "@/components/admin/MemberStatusBadge"
 import { MemberStatusActions } from "@/components/admin/MemberStatusActions"
 import { MemberDetailCard } from "@/components/admin/MemberDetailCard"
+import { MemberDeleteButton } from "@/components/admin/MemberDeleteButton"
 import { Button } from "@/components/ui/button"
 import { ClipboardList, Pencil } from "lucide-react"
 
@@ -54,7 +55,10 @@ export default async function MemberDetailPage({ params }: Props) {
         </div>
 
         {/* 审批操作 */}
-        <MemberStatusActions memberId={id} currentStatus={member.status} />
+        <div className="flex items-center gap-4">
+          <MemberStatusActions memberId={id} currentStatus={member.status} />
+          <MemberDeleteButton memberId={id} memberName={identity?.full_name ?? "未知"} />
+        </div>
 
         <MemberDetailCard member={member} identity={identity} />
       </div>

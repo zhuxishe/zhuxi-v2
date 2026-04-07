@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import { Menu, X } from "lucide-react"
+import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 
 const NAV_LINKS = [
   { key: "navAbout", href: "#mission" },
@@ -35,6 +36,7 @@ export function LandingNav() {
               {t(key)}
             </a>
           ))}
+          <LocaleSwitcher />
         </div>
 
         {/* Mobile toggle */}
@@ -60,6 +62,9 @@ export function LandingNav() {
               {t(key)}
             </a>
           ))}
+          <div className="pt-2 border-t border-border/30">
+            <LocaleSwitcher />
+          </div>
         </div>
       )}
     </nav>

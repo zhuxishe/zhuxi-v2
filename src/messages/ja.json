@@ -93,6 +93,7 @@
   "pending": {
     "title": "\u5BE9\u67FB\u4E2D",
     "description": "\u60C5\u5831\u304C\u9001\u4FE1\u3055\u308C\u307E\u3057\u305F\u3002\u7BA1\u7406\u8005\u306E\u5BE9\u67FB\u3092\u304A\u5F85\u3061\u304F\u3060\u3055\u3044\u3002",
+    "editInfo": "\u767B\u9332\u60C5\u5831\u3092\u7DE8\u96C6",
     "rejectedTitle": "\u5BE9\u67FB\u4E0D\u5408\u683C",
     "rejectedDescription": "\u7533\u3057\u8A33\u3054\u3056\u3044\u307E\u305B\u3093\u304C\u3001\u5BE9\u67FB\u3092\u901A\u904E\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002"
   },
@@ -116,7 +117,8 @@
     "editSupplementaryHint": "\u5834\u6240\u3001\u8A00\u8A9E\u3001\u6D3B\u52D5\u306E\u597D\u307F\u3001\u4EA4\u6D41\u76EE\u7684",
     "editPersonality": "\u6027\u683C\u8A55\u4FA1\u3092\u7DE8\u96C6",
     "editPersonalityHint": "10\u6B21\u5143\u306E\u6027\u683C\u8A55\u4FA1",
-    "logout": "\u30ED\u30B0\u30A2\u30A6\u30C8"
+    "logout": "\u30ED\u30B0\u30A2\u30A6\u30C8",
+    "language": "\u8A00\u8A9E"
   },
   "playerLogin": {
     "title": "竹渓社",
@@ -276,9 +278,14 @@
     "update": "アンケート更新",
     "submit": "アンケート送信",
     "noTimeSlot": "少なくとも1つの時間帯を選んでください",
+    "noTimeSlotHint": "少なくとも1つの時間帯を選択してください",
     "backToHome": "ホームに戻る",
     "noRound": "現在進行中のアンケートはありません",
     "noRoundHint": "スタッフが新しいマッチングを開始するまでお待ちください",
+    "roundDraft": "アンケートはまだ公開されていません",
+    "roundDraftHint": "スタッフが準備中です。しばらくお待ちください",
+    "roundClosed": "アンケートは締め切られました",
+    "roundClosedHint": "今期のアンケートは終了しました。次回をお待ちください",
     "success": {
       "title": "アンケート送信完了！",
       "description": "締め切り後に最適なパートナーをお探しします",
@@ -398,7 +405,7 @@
     "personalityTags": "性格の自己評価",
     "personalityTagsHint": "自分に最も合うタグを選んでください（最大5個）",
     "tabooTags": "個人的なNG",
-    "tabooTagsHint": "受け入れられないことはありますか？（選択任意）",
+    "tabooTagsHint": "受け入れられないことはありますか？（任意）",
     "previous": "前へ",
     "next": "次へ",
     "submit": "送信",

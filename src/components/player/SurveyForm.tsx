@@ -174,6 +174,9 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
         <Button onClick={handleSubmit} disabled={submitting || totalSlots === 0} className="w-full">
           {submitting ? t("submitting") : existing ? t("update") : t("submit")}
         </Button>
+        {totalSlots === 0 && (
+          <p className="text-xs text-muted-foreground text-center mt-2">{t("noTimeSlotHint")}</p>
+        )}
       </div>
     </div>
   )

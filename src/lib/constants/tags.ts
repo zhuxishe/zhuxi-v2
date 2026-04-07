@@ -35,7 +35,7 @@ export const TABOO_TAGS = [
 ] as const
 
 export const AGE_RANGE_OPTIONS = [
-  "18-20", "21-23", "24-26", "27-29", "30+",
+  "18以下", "18-20", "21-23", "24-26", "27-29", "30+",
 ] as const
 
 export const NATIONALITY_OPTIONS = [

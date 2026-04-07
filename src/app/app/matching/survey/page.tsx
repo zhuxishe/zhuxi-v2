@@ -1,9 +1,26 @@
 import { requirePlayer } from "@/lib/auth/player"
-import { fetchOpenRound, fetchMySubmission } from "@/lib/queries/rounds"
+import { fetchOpenRound, fetchLatestRound, fetchMySubmission } from "@/lib/queries/rounds"
 import { getTranslations } from "next-intl/server"
 import { SurveyForm } from "@/components/player/SurveyForm"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+
+function BackLink({ label }: { label: string }) {
+  return (
+    <Link href="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground">
+      <ArrowLeft className="size-4" /> {label}
+    </Link>
+  )
+}
+
+function StatusMessage({ text, hint }: { text: string; hint?: string }) {
+  return (
+    <div className="text-center py-20">
+      <p className="text-muted-foreground">{text}</p>
+      {hint && <p className="text-xs text-muted-foreground mt-1">{hint}</p>}
+    </div>
+  )
+}
 
 export default async function SurveyPage() {
   const player = await requirePlayer()
@@ -11,15 +28,25 @@ export default async function SurveyPage() {
   const t = await getTranslations("survey")
 
   if (!round) {
+    const latest = await fetchLatestRound()
+    let statusText = t("noRound")
+    let statusHint = t("noRoundHint")
+
+    if (latest) {
+      const expired = latest.survey_end && new Date(latest.survey_end) < new Date()
+      if (latest.status === "draft") {
+        statusText = t("roundDraft")
+        statusHint = t("roundDraftHint")
+      } else if (latest.status === "closed" || expired) {
+        statusText = t("roundClosed")
+        statusHint = t("roundClosedHint")
+      }
+    }
+
     return (
       <div className="px-4 py-6">
-        <Link href="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground">
-          <ArrowLeft className="size-4" /> {t("backToHome")}
-        </Link>
-        <div className="text-center py-20">
-          <p className="text-muted-foreground">{t("noRound")}</p>
-          <p className="text-xs text-muted-foreground mt-1">{t("noRoundHint")}</p>
-        </div>
+        <BackLink label={t("backToHome")} />
+        <StatusMessage text={statusText} hint={statusHint} />
       </div>
     )
   }
@@ -28,9 +55,7 @@ export default async function SurveyPage() {
 
   return (
     <div className="px-4 py-6">
-      <Link href="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground">
-        <ArrowLeft className="size-4" /> {t("backToHome")}
-      </Link>
+      <BackLink label={t("backToHome")} />
       <SurveyForm
         roundId={round.id}
         roundName={round.round_name}

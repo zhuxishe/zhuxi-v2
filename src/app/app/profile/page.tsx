@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server"
 import { LineBindingCard } from "@/components/player/LineBindingCard"
 import { signOut } from "@/app/login/actions"
 import { Button } from "@/components/ui/button"
+import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 import Link from "next/link"
 
 export default async function ProfilePage() {
@@ -43,6 +44,11 @@ export default async function ProfilePage() {
           <p className="text-sm font-medium">{tQuiz("profileTitle")}</p>
           <p className="text-xs text-muted-foreground">{tQuiz("profileHint")}</p>
         </Link>
+      </div>
+
+      <div className="flex items-center justify-between rounded-xl bg-card p-4 shadow-soft">
+        <span className="text-sm font-medium">{t("language")}</span>
+        <LocaleSwitcher />
       </div>
 
       <form action={signOut}>

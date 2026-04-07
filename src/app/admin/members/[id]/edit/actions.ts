@@ -92,3 +92,15 @@ export async function updateMemberBoundaries(memberId: string, data: Record<stri
   if (error) return { error: error.message }
   return { success: true }
 }
+
+/** 彻底删除成员（CASCADE 会清理关联表） */
+export async function hardDeleteMember(memberId: string) {
+  await requireAdmin()
+  const db = getAdminDb()
+  const { error } = await db
+    .from("members")
+    .delete()
+    .eq("id", memberId)
+  if (error) return { error: error.message }
+  return { success: true }
+}

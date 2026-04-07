@@ -98,6 +98,19 @@ export async function fetchOpenRound() {
   return data
 }
 
+/** 获取最新轮次（不限状态，用于非 open 时展示状态提示） */
+export async function fetchLatestRound() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("match_rounds")
+    .select("id, round_name, status, survey_end")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  return data
+}
+
 /** 获取玩家在某轮次的提交 */
 export async function fetchMySubmission(roundId: string, memberId: string) {
   const supabase = await createClient()

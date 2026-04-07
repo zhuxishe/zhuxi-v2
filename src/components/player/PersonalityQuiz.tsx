@@ -2,9 +2,9 @@
 
 import { useState, useMemo, useCallback } from "react"
 import { ChevronLeft, ChevronRight, Check } from "lucide-react"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { QUIZ_QUESTIONS } from "@/lib/constants/personality-quiz"
+import { getQuizQuestions } from "@/lib/constants/personality-quiz-loader"
 
 interface Props {
   onComplete: (answers: { questionId: number; score: number }[]) => void
@@ -24,10 +24,12 @@ function shuffleWithSeed<T>(arr: T[], seed: number): T[] {
 
 export function PersonalityQuiz({ onComplete }: Props) {
   const t = useTranslations("quiz")
+  const locale = useLocale()
+  const questions = useMemo(() => getQuizQuestions(locale), [locale])
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
-  const total = QUIZ_QUESTIONS.length
-  const question = QUIZ_QUESTIONS[current]
+  const total = questions.length
+  const question = questions[current]
   const progress = Math.round(((current + 1) / total) * 100)
 
   // Shuffle options per question (stable across re-renders)
@@ -49,7 +51,7 @@ export function PersonalityQuiz({ onComplete }: Props) {
   }
 
   function handleFinish() {
-    const result = QUIZ_QUESTIONS.map((q) => ({
+    const result = questions.map((q) => ({
       questionId: q.id,
       score: answers[q.id] ?? 3,
     }))
@@ -58,7 +60,7 @@ export function PersonalityQuiz({ onComplete }: Props) {
 
   const isLast = current === total - 1
   const hasAnswer = answers[question.id] !== undefined
-  const allAnswered = QUIZ_QUESTIONS.every((q) => answers[q.id] !== undefined)
+  const allAnswered = questions.every((q) => answers[q.id] !== undefined)
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

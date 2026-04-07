@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMatchCandidates, fetchMatchHistory } from "@/lib/queries/matching"
+import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { toMatchCandidates } from "@/lib/matching/adapter"
 import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
@@ -28,17 +29,22 @@ export async function runMatching(input: RunMatchInput) {
   const historyMap = await fetchMatchHistory(memberIds)
   const candidates = toMatchCandidates(rawCandidates, historyMap)
 
-  // 3. Merge config
+  // 3. 构建配对历史关系（黑名单、互评、配对次数）
+  const idToName = new Map<string, string>()
+  for (const c of candidates) idToName.set(c.submissionId, c.name)
+  const pairRelations = await fetchPairRelations(memberIds, idToName)
+
+  // 4. Merge config
   const config: MatchingConfig = { ...DEFAULT_CONFIG, ...input.config }
 
-  // 4. 三阶段分流匹配（双人 → 多人 → 回流）
+  // 5. 三阶段分流匹配（双人 → 多人 → 回流）
   // toMatchCandidates 使用 memberId 作为 submissionId
   const idMap = new Map<string, string>()
   for (const c of candidates) idMap.set(c.submissionId, c.submissionId)
 
-  const result = runFullMatching(candidates, config, idMap)
+  const result = runFullMatching(candidates, config, idMap, pairRelations)
 
-  // 5. Save session
+  // 6. Save session
   const { data: session, error: sErr } = await supabase
     .from("match_sessions")
     .insert({
@@ -55,7 +61,7 @@ export async function runMatching(input: RunMatchInput) {
 
   if (sErr) return { error: sErr.message }
 
-  // 6. Save match results
+  // 7. Save match results
   const resultRows = result.rows.map((r) => ({
     session_id: session.id,
     member_a_id: r.member_a_id,

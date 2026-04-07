@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchRoundSubmissions } from "@/lib/queries/rounds"
 import { fetchMatchHistory } from "@/lib/queries/matching"
+import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { submissionToCandidate } from "@/lib/matching/adapter"
 import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
@@ -54,14 +55,23 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     return submissionToCandidate(sub, member, history)
   })
 
-  // 4. 三阶段分流匹配（双人池 → 多人池 → 回流兜底）
+  // 4. 构建配对历史关系（黑名单、互评、配对次数）
+  // buildPairRelations 用 MatchCandidate.name 作为 key
+  const idToName = new Map<string, string>()
+  for (const c of candidates) {
+    const memberId = submissions.find((s) => s.id === c.submissionId)?.member_id
+    if (memberId) idToName.set(memberId, c.name)
+  }
+  const pairRelations = await fetchPairRelations(memberIds, idToName)
+
+  // 5. 三阶段分流匹配（双人池 → 多人池 → 回流兜底）
   const config: MatchingConfig = { ...DEFAULT_CONFIG }
   const subIdToMemberId = new Map<string, string>()
   for (const sub of submissions) subIdToMemberId.set(sub.id, sub.member_id)
 
-  const result = runFullMatching(candidates, config, subIdToMemberId)
+  const result = runFullMatching(candidates, config, subIdToMemberId, pairRelations)
 
-  // 5. 保存 match_session
+  // 6. 保存 match_session
   const { data: session, error: sErr } = await supabase
     .from("match_sessions")
     .insert({
@@ -79,7 +89,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
 
   if (sErr) return { error: sErr.message }
 
-  // 6. 保存 match_results
+  // 7. 保存 match_results
   const rows = result.rows.map((r) => ({
     session_id: session.id,
     member_a_id: r.member_a_id,
@@ -96,7 +106,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     if (rErr) return { error: rErr.message }
   }
 
-  // 7. 更新轮次状态为 matched
+  // 8. 更新轮次状态为 matched
   await supabase.from("match_rounds").update({ status: "matched" }).eq("id", roundId)
 
   return { success: true, sessionId: session.id }

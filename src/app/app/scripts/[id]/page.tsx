@@ -68,7 +68,7 @@ export default async function ScriptDetailPage({ params }: Props) {
       {script.content_html && (
         <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
           <h3 className="text-sm font-semibold mb-2">活动介绍</h3>
-          <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: script.content_html }} />
+          <div className="text-sm leading-relaxed whitespace-pre-wrap">{script.content_html.replace(/<[^>]*>/g, "")}</div>
         </div>
       )}
 

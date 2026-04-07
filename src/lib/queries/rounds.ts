@@ -34,9 +34,12 @@ export async function fetchRoundSubmissions(roundId: string) {
       *,
       member:members (
         id, member_number, status, attractiveness_score,
-        member_identity (full_name, nickname, gender, school_name),
+        member_identity (*),
         member_personality (warmup_speed, expression_style_tags, group_role_tags),
-        member_interests (scenario_mode_pref, preferred_time_slots),
+        member_interests (*),
+        member_language (*),
+        member_boundaries (*),
+        member_dynamic_stats (*),
         personality_quiz_results (score_e, score_a, score_o, score_c, score_n)
       )
     `)

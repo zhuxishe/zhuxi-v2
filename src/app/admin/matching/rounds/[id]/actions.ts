@@ -34,14 +34,23 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     return { error: "至少需要 2 人提交问卷才能匹配" }
   }
 
-  // 2. 获取匹配历史
+  // 2. 获取匹配历史，并将 partnerId 转为 submissionId
   const memberIds = submissions.map((s) => s.member_id)
   const historyMap = await fetchMatchHistory(memberIds)
+
+  // 建立 memberId → submissionId 映射（用于历史中的 partnerId 转换）
+  const memberToSubId = new Map<string, string>()
+  for (const sub of submissions) memberToSubId.set(sub.member_id, sub.id)
 
   // 3. 转换为 MatchCandidate（从 submission 读取本轮偏好）
   const candidates = submissions.map((sub) => {
     const member = Array.isArray(sub.member) ? sub.member[0] : sub.member
-    const history = historyMap.get(sub.member_id) ?? []
+    const rawHistory = historyMap.get(sub.member_id) ?? []
+    // 将 partnerId 转为 submissionId，使 scorer 能正确查找
+    const history = rawHistory.map((h) => ({
+      name: memberToSubId.get(h.name) ?? h.name,
+      count: h.count,
+    }))
     return submissionToCandidate(sub, member, history)
   })
 
@@ -67,22 +76,25 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
 
   if (sErr) return { error: sErr.message }
 
-  // 6. 保存 match_results
-  const memberIdByName = new Map<string, string>()
+  // 6. 保存 match_results — 用 submissionId 映射回 member_id
+  const subIdToMemberId = new Map<string, string>()
   for (const sub of submissions) {
-    const m = Array.isArray(sub.member) ? sub.member[0] : sub.member
-    const name = m?.member_identity?.full_name ?? m?.member_identity?.nickname
-    if (name) memberIdByName.set(name, sub.member_id)
+    subIdToMemberId.set(sub.id, sub.member_id)
   }
 
-  const rows = result.pairs.map((pair) => ({
-    session_id: session.id,
-    member_a_id: memberIdByName.get(pair.userA) ?? submissions[0]?.member_id,
-    member_b_id: memberIdByName.get(pair.userB) ?? submissions[1]?.member_id,
-    total_score: pair.score.totalScore,
-    score_breakdown: pair.score.breakdown,
-    rank: pair.rank,
-  }))
+  const rows = result.pairs.map((pair) => {
+    const aId = subIdToMemberId.get(pair.userA)
+    const bId = subIdToMemberId.get(pair.userB)
+    if (!aId || !bId) throw new Error(`找不到 member_id: ${pair.userA} / ${pair.userB}`)
+    return {
+      session_id: session.id,
+      member_a_id: aId,
+      member_b_id: bId,
+      total_score: pair.score.totalScore,
+      score_breakdown: pair.score.breakdown,
+      rank: pair.rank,
+    }
+  })
 
   if (rows.length > 0) {
     const { error: rErr } = await supabase.from("match_results").insert(rows)

@@ -181,9 +181,9 @@ function scoreRepeatPenalty(
   config: MatchingConfig,
 ): ScoreComponent {
   const weight = config.weights.repeat_penalty
-  // 查找历史配对次数
-  const histA = a.matchHistory.find((h) => h.name === b.name)
-  const histB = b.matchHistory.find((h) => h.name === a.name)
+  // 查找历史配对次数（history.name 可能是 partnerId 或 name，都检查）
+  const histA = a.matchHistory.find((h) => h.name === b.name || h.name === b.submissionId)
+  const histB = b.matchHistory.find((h) => h.name === a.name || h.name === a.submissionId)
   const repeatCount = Math.max(histA?.count || 0, histB?.count || 0)
 
   // 首次配对满分，每次重复衰减

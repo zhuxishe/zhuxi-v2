@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchMatchSession, fetchMatchCandidates } from "@/lib/queries/matching"
+import { fetchMatchSession, fetchMatchCandidates, fetchPairRelationships } from "@/lib/queries/matching"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MatchSessionView } from "@/components/admin/MatchSessionView"
 import { createClient } from "@/lib/supabase/server"
@@ -21,6 +21,16 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   }
 
   const { session, results } = data
+
+  // Collect member IDs for pair relationship lookup
+  const memberIds = results.flatMap((r: Record<string, unknown>) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const a = (r as any).member_a?.id
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const b = (r as any).member_b?.id
+    return [a, b].filter(Boolean) as string[]
+  })
+  const pairRelationships = await fetchPairRelationships([...new Set(memberIds)])
 
   // Fetch unmatched diagnostics for this session
   const supabase = await createClient()
@@ -44,6 +54,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         results={results}
         diagnostics={diagnostics ?? []}
         candidates={timeSlotData}
+        pairRelationships={pairRelationships}
       />
     </div>
   )

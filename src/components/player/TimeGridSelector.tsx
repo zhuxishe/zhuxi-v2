@@ -90,12 +90,14 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
               </span>
 
               {/* 时段按钮 */}
-              {SLOTS.map((slot) => {
+              {SLOTS.map((slot, i) => {
                 const active = selected.includes(slot)
                 return (
                   <button
                     key={slot}
                     type="button"
+                    aria-label={`${date.slice(5)} ${t(SLOT_I18N_KEYS[i])}`}
+                    aria-pressed={active}
                     onClick={() => toggleSlot(date, slot)}
                     className={`h-8 rounded-md text-[10px] font-medium transition-all ${
                       active
@@ -111,6 +113,8 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
               {/* 全天按钮 */}
               <button
                 type="button"
+                aria-label={`${date.slice(5)} ${t("allDay")}`}
+                aria-pressed={allSelected}
                 onClick={() => toggleAllDay(date)}
                 className={`h-8 rounded-md text-[10px] font-medium transition-all ${
                   allSelected

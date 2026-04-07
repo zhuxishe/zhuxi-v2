@@ -142,7 +142,9 @@
     "emptyDescription": "管理者がマッチングを行うと、結果がここに表示されます",
     "partner": "マッチング相手",
     "unknown": "不明",
-    "points": "点",
+    "interests": "趣味・興味",
+    "socialStyle": "交流スタイル",
+    "gameType": "ゲームの好み",
     "review": "評価する",
     "reviewed": "評価済み"
   },

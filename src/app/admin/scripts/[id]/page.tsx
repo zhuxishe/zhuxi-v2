@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
@@ -44,9 +45,17 @@ export default async function AdminScriptDetailPage({ params }: Props) {
         <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-3">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold">{script.title}</h2>
-            <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${script.is_published ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-500"}`}>
-              {script.is_published ? "已发布" : "草稿"}
-            </span>
+            <div className="flex items-center gap-2">
+              <Link
+                href={`/admin/scripts/${id}/edit`}
+                className="text-xs font-medium px-2.5 py-1 rounded-full bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+              >
+                编辑
+              </Link>
+              <span className={`text-xs font-medium px-2.5 py-1 rounded-full ${script.is_published ? "bg-green-500/10 text-green-600" : "bg-orange-500/10 text-orange-500"}`}>
+                {script.is_published ? "已发布" : "草稿"}
+              </span>
+            </div>
           </div>
           {script.title_ja && <p className="text-sm text-muted-foreground">{script.title_ja}</p>}
           <p className="text-sm">{script.description || "暂无简介"}</p>

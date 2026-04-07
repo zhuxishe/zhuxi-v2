@@ -2,24 +2,17 @@
 
 import { Lock, Unlock, Scissors, RotateCcw } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScoreBreakdownChart } from "./ScoreBreakdownChart"
+import { PlayerInfoPopover } from "./PlayerInfoPopover"
+import type { EnrichedMember, PairRelationship } from "./match-detail-types"
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: "草稿", className: "bg-gray-100 text-gray-700" },
   confirmed: { label: "已确认", className: "bg-green-100 text-green-800" },
   locked: { label: "已锁定", className: "bg-blue-100 text-blue-800" },
   cancelled: { label: "已取消", className: "bg-red-100 text-red-700" },
-}
-
-interface MemberInfo {
-  id: string
-  member_number: string | null
-  member_identity: {
-    full_name: string
-    nickname: string | null
-    school_name: string | null
-  } | null
 }
 
 interface Props {
@@ -29,91 +22,109 @@ interface Props {
     rank: number
     status: string
     best_slot: string | null
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     score_breakdown: Record<string, any> | null
-    member_a: MemberInfo | null
-    member_b: MemberInfo | null
+    member_a: EnrichedMember | null
+    member_b: EnrichedMember | null
   }
+  pairRel?: PairRelationship | null
   onLock?: (id: string) => void
   onSplit?: (id: string) => void
   onRestore?: (id: string) => void
 }
 
-function memberLabel(m: MemberInfo | null): string {
+function memberLabel(m: EnrichedMember | null): string {
   if (!m?.member_identity) return "未知"
-  const name = m.member_identity.nickname || m.member_identity.full_name
-  const school = m.member_identity.school_name
-  return school ? `${name} (${school})` : name
+  return m.member_identity.nickname || m.member_identity.full_name
 }
 
 function scoreColor(score: number): string {
-  if (score >= 70) return "text-green-700"
+  if (score >= 60) return "text-green-700"
   if (score >= 40) return "text-amber-600"
   return "text-red-600"
 }
 
-export function MatchPairCard({ result, onLock, onSplit, onRestore }: Props) {
+function scoreBgClass(score: number): string {
+  if (score >= 60) return "bg-green-500/10"
+  if (score >= 40) return "bg-amber-500/10"
+  return "bg-red-500/10"
+}
+
+export function MatchPairCard({ result, pairRel, onLock, onSplit, onRestore }: Props) {
   const { id, total_score, rank, status, best_slot, score_breakdown } = result
   const badge = STATUS_STYLES[status] ?? STATUS_STYLES.draft
+  const gameType = result.member_a?.member_interests?.game_type_pref
 
   return (
     <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">
       {/* Header: rank + status */}
       <div className="flex items-center justify-between px-4 py-2.5">
         <span className="text-sm font-semibold">#{rank}</span>
-        <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", badge.className)}>
-          {badge.label}
-        </span>
+        <div className="flex items-center gap-2">
+          {gameType && <Badge variant="outline" className="text-xs">{gameType}</Badge>}
+          <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", badge.className)}>
+            {badge.label}
+          </span>
+        </div>
       </div>
 
-      {/* Member pair */}
-      <div className="px-4 py-3 space-y-1">
+      {/* Member pair with popover */}
+      <div className="px-4 py-3 space-y-1.5">
         <p className="text-sm font-medium">
-          {memberLabel(result.member_a)}
+          <PlayerInfoPopover member={result.member_a}>{memberLabel(result.member_a)}</PlayerInfoPopover>
           <span className="mx-2 text-muted-foreground">--</span>
-          {memberLabel(result.member_b)}
+          <PlayerInfoPopover member={result.member_b}>{memberLabel(result.member_b)}</PlayerInfoPopover>
         </p>
-        {best_slot && (
-          <p className="text-xs text-muted-foreground">
-            最佳时段: {best_slot}
-          </p>
-        )}
+        <div className="flex flex-wrap gap-1.5">
+          {best_slot && (
+            <Badge variant="outline" className="text-xs font-normal">时段: {best_slot}</Badge>
+          )}
+          <PairRelBadge rel={pairRel} />
+        </div>
       </div>
 
       {/* Score + breakdown */}
       <div className="px-4 py-3 space-y-3">
         <p className="text-sm">
-          总分: <span className={cn("font-bold", scoreColor(total_score))}>{total_score}</span>
+          总分:{" "}
+          <span className={cn("font-bold px-1.5 py-0.5 rounded", scoreColor(total_score), scoreBgClass(total_score))}>
+            {total_score.toFixed(1)}
+          </span>
         </p>
         {score_breakdown && <ScoreBreakdownChart breakdown={score_breakdown} />}
       </div>
 
       {/* Actions */}
-      <div className="px-4 py-2.5 flex gap-2">
-        {status === "draft" && (
-          <>
-            {onLock && (
-              <Button variant="outline" size="sm" onClick={() => onLock(id)}>
-                <Lock className="size-3.5" /> 锁定
-              </Button>
-            )}
-            {onSplit && (
-              <Button variant="destructive" size="sm" onClick={() => onSplit(id)}>
-                <Scissors className="size-3.5" /> 拆散
-              </Button>
-            )}
-          </>
-        )}
-        {status === "locked" && onLock && (
-          <Button variant="outline" size="sm" onClick={() => onLock(id)}>
-            <Unlock className="size-3.5" /> 解锁
-          </Button>
-        )}
-        {status === "cancelled" && onRestore && (
-          <Button variant="outline" size="sm" onClick={() => onRestore(id)}>
-            <RotateCcw className="size-3.5" /> 恢复
-          </Button>
-        )}
-      </div>
+      <ActionBar id={id} status={status} onLock={onLock} onSplit={onSplit} onRestore={onRestore} />
+    </div>
+  )
+}
+
+function PairRelBadge({ rel }: { rel?: PairRelationship | null }) {
+  if (!rel || rel.pair_count === 0) return null
+  const labels: Record<string, { text: string; cls: string }> = {
+    good_partner: { text: "好搭档", cls: "bg-pink-50 text-pink-700" },
+    reunion: { text: "重逢", cls: "bg-pink-50 text-pink-700" },
+    cooldown: { text: "冷却期", cls: "bg-amber-50 text-amber-700" },
+  }
+  const info = labels[rel.status] ?? { text: `历史${rel.pair_count}次`, cls: "bg-gray-50 text-gray-600" }
+  return <Badge variant="outline" className={`text-xs font-normal ${info.cls}`}>{info.text}</Badge>
+}
+
+function ActionBar({ id, status, onLock, onSplit, onRestore }: {
+  id: string; status: string
+  onLock?: (id: string) => void; onSplit?: (id: string) => void; onRestore?: (id: string) => void
+}) {
+  return (
+    <div className="px-4 py-2.5 flex gap-2">
+      {status === "draft" && (
+        <>
+          {onLock && <Button variant="outline" size="sm" onClick={() => onLock(id)}><Lock className="size-3.5" /> 锁定</Button>}
+          {onSplit && <Button variant="destructive" size="sm" onClick={() => onSplit(id)}><Scissors className="size-3.5" /> 拆散</Button>}
+        </>
+      )}
+      {status === "locked" && onLock && <Button variant="outline" size="sm" onClick={() => onLock(id)}><Unlock className="size-3.5" /> 解锁</Button>}
+      {status === "cancelled" && onRestore && <Button variant="outline" size="sm" onClick={() => onRestore(id)}><RotateCcw className="size-3.5" /> 恢复</Button>}
     </div>
   )
 }

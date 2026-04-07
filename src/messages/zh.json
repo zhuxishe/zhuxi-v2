@@ -142,7 +142,9 @@
     "emptyDescription": "管理员发起匹配后，你的配对结果会显示在这里",
     "partner": "匹配对象",
     "unknown": "未知",
-    "points": "分",
+    "interests": "兴趣爱好",
+    "socialStyle": "社交风格",
+    "gameType": "游戏偏好",
     "review": "去评价",
     "reviewed": "已评价"
   },

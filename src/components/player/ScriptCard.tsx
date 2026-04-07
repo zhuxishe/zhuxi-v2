@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useTranslations } from "next-intl"
-import { Clock, Users } from "lucide-react"
+import { Users, MapPin, Banknote } from "lucide-react"
 import { TagBadge } from "@/components/shared/TagBadge"
 
 interface Script {
@@ -11,7 +11,8 @@ interface Script {
   author: string | null
   player_count_min: number | null
   player_count_max: number | null
-  duration_minutes: number | null
+  budget: string | null
+  location: string | null
   genre_tags: string[] | null
   cover_url: string | null
 }
@@ -37,9 +38,10 @@ export function ScriptCard({ script }: { script: Script }) {
       <div className="p-3 space-y-1.5">
         <p className="text-sm font-semibold line-clamp-1">{script.title}</p>
         {script.author && <p className="text-xs text-muted-foreground">{script.author}</p>}
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1"><Users className="size-3" />{script.player_count_min ?? 0}-{script.player_count_max ?? 0}</span>
-          <span className="flex items-center gap-1"><Clock className="size-3" />{script.duration_minutes ?? 0}min</span>
+          {script.budget && <span className="flex items-center gap-1"><Banknote className="size-3" />{script.budget}</span>}
+          {script.location && <span className="flex items-center gap-1"><MapPin className="size-3" />{script.location}</span>}
         </div>
         {(script.genre_tags?.length ?? 0) > 0 && (
           <div className="flex flex-wrap gap-1">

@@ -25,7 +25,7 @@ export default async function PlayerScriptsPage({ searchParams }: Props) {
       {scripts.length === 0 ? (
         <EmptyState icon={BookOpen} title={t("emptyTitle")} description={t("emptyDescription")} />
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           {scripts.map((s) => (
             <ScriptCard key={s.id} script={s} />
           ))}

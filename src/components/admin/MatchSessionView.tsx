@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
@@ -8,18 +9,38 @@ import { MatchPairCard } from "./MatchPairCard"
 import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { lockPair, splitPair, restorePair, confirmSession } from "@/app/admin/matching/[id]/actions"
+import type { PairRelationship } from "./match-detail-types"
 
 interface Props {
   session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number }
   results: Array<Record<string, unknown>>
   diagnostics: Array<Record<string, unknown>>
   candidates: Array<{ preferred_time_slots: string[] }>
+  pairRelationships?: PairRelationship[]
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [] }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
+
+  // Build pair relationship lookup map
+  const relMap = useMemo(() => {
+    const map = new Map<string, PairRelationship>()
+    for (const rel of pairRelationships) {
+      const key = rel.member_a_id < rel.member_b_id
+        ? `${rel.member_a_id}||${rel.member_b_id}`
+        : `${rel.member_b_id}||${rel.member_a_id}`
+      map.set(key, rel)
+    }
+    return map
+  }, [pairRelationships])
+
+  const findRel = (aId?: string, bId?: string): PairRelationship | undefined => {
+    if (!aId || !bId) return undefined
+    const key = aId < bId ? `${aId}||${bId}` : `${bId}||${aId}`
+    return relMap.get(key)
+  }
 
   const handleAction = (action: (id: string) => Promise<{ error?: string; success?: boolean }>, id: string) => {
     startTransition(async () => {
@@ -73,6 +94,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates }: 
           <MatchPairCard
             key={r.id}
             result={r}
+            pairRel={findRel(r.member_a?.id, r.member_b?.id)}
             onLock={(id) => handleAction(r.status === "locked" ? restorePair : lockPair, id)}
             onSplit={(id) => handleAction(splitPair, id)}
             onRestore={(id) => handleAction(restorePair, id)}

@@ -22,7 +22,7 @@ export function PlayerBottomNav({ playerName: _playerName }: Props) {
   const t = useTranslations("nav")
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md shadow-[0_-2px_12px_oklch(0.18_0.02_45/6%)]">
+    <nav aria-label="main navigation" className="fixed bottom-0 left-0 right-0 z-50 bg-background/90 backdrop-blur-md shadow-[0_-2px_12px_oklch(0.18_0.02_45/6%)]">
       <div className="mx-auto flex max-w-lg items-center justify-around pb-[env(safe-area-inset-bottom)] pt-1.5 pb-2">
         {NAV_ITEMS.map(({ href, icon: Icon, tKey }) => {
           const active = href === "/app" ? pathname === "/app" : pathname.startsWith(href)
@@ -30,6 +30,8 @@ export function PlayerBottomNav({ playerName: _playerName }: Props) {
             <Link
               key={href}
               href={href}
+              aria-label={t(tKey)}
+              aria-current={active ? "page" : undefined}
               className={cn(
                 "relative flex flex-col items-center gap-0.5 px-4 py-2 text-[11px] tracking-wide transition-colors",
                 active ? "text-primary" : "text-muted-foreground"

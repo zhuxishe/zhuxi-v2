@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { fetchRoundSubmissions } from "@/lib/queries/rounds"
 import { fetchMatchHistory } from "@/lib/queries/matching"
 import { submissionToCandidate } from "@/lib/matching/adapter"
-import { runDuoMatching } from "@/lib/matching"
+import { runMaxCoverageDuoMatching } from "@/lib/matching/max-match"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import type { MatchingConfig } from "@/lib/matching/types"
 
@@ -54,9 +54,9 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     return submissionToCandidate(sub, member, history)
   })
 
-  // 4. 运行匹配算法
+  // 4. 运行最大覆盖匹配算法（pairRelations 后续接入）
   const config: MatchingConfig = { ...DEFAULT_CONFIG }
-  const result = runDuoMatching(candidates, config)
+  const result = runMaxCoverageDuoMatching(candidates, config)
 
   // 5. 保存 match_session（关联 round_id）
   const { data: session, error: sErr } = await supabase
@@ -64,7 +64,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     .insert({
       session_name: sessionName || `${new Date().toLocaleDateString("zh-CN")} 匹配`,
       round_id: roundId,
-      algorithm: result.metadata.algorithmUsed,
+      algorithm: "max_coverage",
       config: config as unknown as import("@/types/database.types").Json,
       total_candidates: result.metadata.candidateCount,
       total_matched: result.pairs.length * 2,
@@ -82,17 +82,18 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     subIdToMemberId.set(sub.id, sub.member_id)
   }
 
-  const rows = result.pairs.map((pair) => {
-    const aId = subIdToMemberId.get(pair.userA)
-    const bId = subIdToMemberId.get(pair.userB)
-    if (!aId || !bId) throw new Error(`找不到 member_id: ${pair.userA} / ${pair.userB}`)
+  const rows = result.pairs.map((pair, i) => {
+    const aId = subIdToMemberId.get(pair.a.submissionId)
+    const bId = subIdToMemberId.get(pair.b.submissionId)
+    if (!aId || !bId) throw new Error(`找不到 member_id: ${pair.a.submissionId} / ${pair.b.submissionId}`)
     return {
       session_id: session.id,
       member_a_id: aId,
       member_b_id: bId,
       total_score: pair.score.totalScore,
       score_breakdown: pair.score.breakdown as unknown as import("@/types/database.types").Json,
-      rank: pair.rank,
+      rank: i + 1,
+      best_slot: pair.bestSlot || null,
     }
   })
 

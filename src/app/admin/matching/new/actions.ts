@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMatchCandidates, fetchMatchHistory } from "@/lib/queries/matching"
 import { toMatchCandidates } from "@/lib/matching/adapter"
-import { runDuoMatching } from "@/lib/matching"
+import { runMaxCoverageDuoMatching } from "@/lib/matching/max-match"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import type { MatchingConfig } from "@/lib/matching/types"
 
@@ -31,15 +31,15 @@ export async function runMatching(input: RunMatchInput) {
   // 3. Merge config
   const config: MatchingConfig = { ...DEFAULT_CONFIG, ...input.config }
 
-  // 4. Run matching algorithm
-  const result = runDuoMatching(candidates, config)
+  // 4. Run max-coverage matching algorithm (pairRelations to be wired later)
+  const result = runMaxCoverageDuoMatching(candidates, config)
 
   // 5. Save session
   const { data: session, error: sErr } = await supabase
     .from("match_sessions")
     .insert({
       session_name: input.sessionName || `匹配 ${new Date().toLocaleDateString("zh-CN")}`,
-      algorithm: result.metadata.algorithmUsed,
+      algorithm: "max_coverage",
       config: config as unknown as import("@/types/database.types").Json,
       total_candidates: result.metadata.candidateCount,
       total_matched: result.pairs.length * 2,
@@ -51,22 +51,19 @@ export async function runMatching(input: RunMatchInput) {
 
   if (sErr) return { error: sErr.message }
 
-  // 6. Save match results
-  // Build name→memberId map
-  const nameToId = new Map<string, string>()
-  for (const m of rawCandidates) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const name = (m as any).member_identity?.full_name
-    if (name) nameToId.set(name, m.id)
-  }
+  // 6. Save match results — submissionId → memberId via adapter naming convention
+  // toMatchCandidates 使用 memberId 作为 submissionId
+  const subIdToMemberId = new Map<string, string>()
+  for (const c of candidates) subIdToMemberId.set(c.submissionId, c.submissionId)
 
-  const resultRows = result.pairs.map((pair) => ({
+  const resultRows = result.pairs.map((pair, i) => ({
     session_id: session.id,
-    member_a_id: nameToId.get(pair.userA) ?? rawCandidates[0]?.id,
-    member_b_id: nameToId.get(pair.userB) ?? rawCandidates[1]?.id,
+    member_a_id: subIdToMemberId.get(pair.a.submissionId) ?? pair.a.submissionId,
+    member_b_id: subIdToMemberId.get(pair.b.submissionId) ?? pair.b.submissionId,
     total_score: pair.score.totalScore,
     score_breakdown: pair.score.breakdown as unknown as import("@/types/database.types").Json,
-    rank: pair.rank,
+    rank: i + 1,
+    best_slot: pair.bestSlot || null,
   }))
 
   if (resultRows.length > 0) {

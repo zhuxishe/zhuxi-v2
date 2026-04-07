@@ -34,5 +34,18 @@
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "@tarojs/binding",
+      "esbuild",
+      "@parcel/watcher",
+      "sharp",
+      "unrs-resolver",
+      "core-js",
+      "core-js-pure",
+      "@tarojs/cli"
+    ]
   }
 }

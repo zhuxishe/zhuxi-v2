@@ -6,7 +6,7 @@ export default async function PlayerAppLayout({ children }: { children: React.Re
 
   return (
     <div className="flex min-h-screen flex-col bg-background pb-16">
-      <main className="flex-1">{children}</main>
+      <main className="mx-auto w-full max-w-md flex-1">{children}</main>
       <PlayerBottomNav playerName="" />
     </div>
   )

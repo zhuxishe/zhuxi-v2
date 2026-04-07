@@ -205,3 +205,59 @@ body {
   transform: translateY(-1px);
   box-shadow: 0 2px 8px oklch(0.48 0.06 160 / 15%);
 }
+
+/* -- Landing page styles -- */
+.glass-nav {
+  background: rgba(255, 255, 255, 0.72);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-bottom: 1px solid rgba(226, 228, 233, 0.5);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, oklch(0.60 0.18 260), oklch(0.55 0.20 290));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.section-padding {
+  padding-top: 7rem;
+  padding-bottom: 7rem;
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.landing-card {
+  background: var(--card);
+  border-radius: 1rem;
+  border: 1px solid var(--border);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.landing-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 24px -4px oklch(0.60 0.18 260 / 10%);
+}
+
+/* FAQ accordion */
+.faq-item summary {
+  cursor: pointer;
+  list-style: none;
+}
+.faq-item summary::-webkit-details-marker {
+  display: none;
+}
+.faq-item[open] summary .faq-chevron {
+  transform: rotate(180deg);
+}
+.faq-chevron {
+  transition: transform 0.2s ease;
+}
+
+@keyframes bounce-down {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(6px); }
+}
+.animate-bounce-down {
+  animation: bounce-down 2s ease-in-out infinite;
+}

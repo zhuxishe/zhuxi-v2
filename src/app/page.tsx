@@ -1,18 +1,27 @@
-import { useTranslations } from "next-intl"
+import { LandingNav } from "@/components/landing/LandingNav"
+import { HeroSection } from "@/components/landing/HeroSection"
+import { MissionSection } from "@/components/landing/MissionSection"
+import { ScriptsSection } from "@/components/landing/ScriptsSection"
+import { TeamSection } from "@/components/landing/TeamSection"
+import { TestimonialsSection } from "@/components/landing/TestimonialsSection"
+import { FaqSection } from "@/components/landing/FaqSection"
+import { ContactSection } from "@/components/landing/ContactSection"
+import { LandingFooter } from "@/components/landing/LandingFooter"
 
 export default function HomePage() {
-  const t = useTranslations("home")
-
   return (
-    <main className="min-h-screen gradient-hero">
-      <div className="mx-auto max-w-md px-4 py-16 text-center">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">
-          {t("title")}
-        </h1>
-        <p className="mt-4 text-muted-foreground">
-          {t("description")}
-        </p>
-      </div>
-    </main>
+    <>
+      <LandingNav />
+      <main>
+        <HeroSection />
+        <MissionSection />
+        <ScriptsSection />
+        <TeamSection />
+        <TestimonialsSection />
+        <FaqSection />
+        <ContactSection />
+      </main>
+      <LandingFooter />
+    </>
   )
 }

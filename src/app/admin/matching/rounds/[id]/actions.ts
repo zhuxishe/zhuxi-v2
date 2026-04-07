@@ -5,7 +5,7 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { fetchRoundSubmissions } from "@/lib/queries/rounds"
 import { fetchMatchHistory } from "@/lib/queries/matching"
 import { submissionToCandidate } from "@/lib/matching/adapter"
-import { runMaxCoverageDuoMatching } from "@/lib/matching/max-match"
+import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import type { MatchingConfig } from "@/lib/matching/types"
 
@@ -54,21 +54,24 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     return submissionToCandidate(sub, member, history)
   })
 
-  // 4. 运行最大覆盖匹配算法（pairRelations 后续接入）
+  // 4. 三阶段分流匹配（双人池 → 多人池 → 回流兜底）
   const config: MatchingConfig = { ...DEFAULT_CONFIG }
-  const result = runMaxCoverageDuoMatching(candidates, config)
+  const subIdToMemberId = new Map<string, string>()
+  for (const sub of submissions) subIdToMemberId.set(sub.id, sub.member_id)
 
-  // 5. 保存 match_session（关联 round_id）
+  const result = runFullMatching(candidates, config, subIdToMemberId)
+
+  // 5. 保存 match_session
   const { data: session, error: sErr } = await supabase
     .from("match_sessions")
     .insert({
       session_name: sessionName || `${new Date().toLocaleDateString("zh-CN")} 匹配`,
       round_id: roundId,
-      algorithm: "max_coverage",
+      algorithm: "max_coverage_split",
       config: config as unknown as import("@/types/database.types").Json,
-      total_candidates: result.metadata.candidateCount,
-      total_matched: result.pairs.length * 2,
-      total_unmatched: result.unmatched.length,
+      total_candidates: result.totalCandidates,
+      total_matched: result.totalMatched,
+      total_unmatched: result.totalUnmatched,
       created_by: admin.id,
     })
     .select("id")
@@ -76,26 +79,17 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
 
   if (sErr) return { error: sErr.message }
 
-  // 6. 保存 match_results — 用 submissionId 映射回 member_id
-  const subIdToMemberId = new Map<string, string>()
-  for (const sub of submissions) {
-    subIdToMemberId.set(sub.id, sub.member_id)
-  }
-
-  const rows = result.pairs.map((pair, i) => {
-    const aId = subIdToMemberId.get(pair.a.submissionId)
-    const bId = subIdToMemberId.get(pair.b.submissionId)
-    if (!aId || !bId) throw new Error(`找不到 member_id: ${pair.a.submissionId} / ${pair.b.submissionId}`)
-    return {
-      session_id: session.id,
-      member_a_id: aId,
-      member_b_id: bId,
-      total_score: pair.score.totalScore,
-      score_breakdown: pair.score.breakdown as unknown as import("@/types/database.types").Json,
-      rank: i + 1,
-      best_slot: pair.bestSlot || null,
-    }
-  })
+  // 6. 保存 match_results
+  const rows = result.rows.map((r) => ({
+    session_id: session.id,
+    member_a_id: r.member_a_id,
+    member_b_id: r.member_b_id,
+    group_members: r.group_members,
+    total_score: r.total_score,
+    score_breakdown: r.score_breakdown as import("@/types/database.types").Json,
+    rank: r.rank,
+    best_slot: r.best_slot,
+  }))
 
   if (rows.length > 0) {
     const { error: rErr } = await supabase.from("match_results").insert(rows)

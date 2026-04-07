@@ -1,7 +1,9 @@
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
+import { createClient } from "@/lib/supabase/server"
 import { fetchScript } from "@/lib/queries/scripts"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
+import { ScriptAccessPanel } from "@/components/admin/ScriptAccessPanel"
 import { TagBadge } from "@/components/shared/TagBadge"
 
 interface Props {
@@ -18,6 +20,18 @@ export default async function AdminScriptDetailPage({ params }: Props) {
   } catch {
     notFound()
   }
+
+  // 获取所有 approved 玩家（用于授权面板）
+  const supabase = await createClient()
+  const { data: members } = await supabase
+    .from("members")
+    .select("id, member_number, member_identity(full_name)")
+    .eq("status", "approved")
+    .eq("membership_type", "player")
+  const allMembers = (members ?? []).map((m) => {
+    const identity = Array.isArray(m.member_identity) ? m.member_identity[0] : m.member_identity
+    return { id: m.id, name: (identity as { full_name?: string })?.full_name ?? m.id, memberNumber: m.member_number }
+  })
 
   return (
     <div>
@@ -56,6 +70,8 @@ export default async function AdminScriptDetailPage({ params }: Props) {
             <iframe src={script.pdf_url} className="w-full h-[500px] rounded-lg border border-border" />
           </div>
         )}
+
+        <ScriptAccessPanel scriptId={id} allMembers={allMembers} />
       </div>
     </div>
   )

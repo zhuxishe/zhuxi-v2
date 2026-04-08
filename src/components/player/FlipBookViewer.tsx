@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useTranslations } from "next-intl"
 
 interface Props {
-  pages: string[]       // WebP image URLs
+  pages: string[]
   title?: string
 }
 
@@ -14,48 +14,34 @@ export function FlipBookViewer({ pages, title }: Props) {
   const [current, setCurrent] = useState(0)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
-  const [isAnimating, setIsAnimating] = useState(false)
-  const [direction, setDirection] = useState<"left" | "right" | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const total = pages.length
 
   const goTo = useCallback((page: number) => {
     const clamped = Math.max(0, Math.min(total - 1, page))
-    if (clamped === current || isAnimating) return
-    setDirection(clamped > current ? "left" : "right")
-    setIsAnimating(true)
-    setTimeout(() => {
-      setCurrent(clamped)
-      setDirection(null)
-      setIsAnimating(false)
-    }, 250)
+    if (clamped === current) return
+    setCurrent(clamped)
     setDragOffset(0)
-  }, [total, current, isAnimating])
+  }, [total, current])
 
   const prev = useCallback(() => goTo(current - 1), [current, goTo])
   const next = useCallback(() => goTo(current + 1), [current, goTo])
 
-  // 触摸滑动
   function handleTouchStart(e: React.TouchEvent) {
     setTouchStartX(e.touches[0].clientX)
   }
-
   function handleTouchMove(e: React.TouchEvent) {
     if (touchStartX === null) return
-    const diff = e.touches[0].clientX - touchStartX
-    setDragOffset(diff)
+    setDragOffset(e.touches[0].clientX - touchStartX)
   }
-
   function handleTouchEnd() {
     if (touchStartX === null) return
-    const threshold = 50
-    if (dragOffset < -threshold) next()
-    else if (dragOffset > threshold) prev()
+    if (dragOffset < -50) next()
+    else if (dragOffset > 50) prev()
+    else setDragOffset(0)
     setTouchStartX(null)
-    setDragOffset(0)
   }
 
-  // 键盘
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === "ArrowLeft") prev()
     else if (e.key === "ArrowRight") next()
@@ -64,6 +50,10 @@ export function FlipBookViewer({ pages, title }: Props) {
   if (total === 0) {
     return <p className="text-sm text-muted-foreground text-center py-10">{t("noPages")}</p>
   }
+
+  // 拖拽时实时偏移，松手后 snap 回位
+  const isDragging = touchStartX !== null
+  const translateX = isDragging ? dragOffset : 0
 
   return (
     <div
@@ -75,26 +65,25 @@ export function FlipBookViewer({ pages, title }: Props) {
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
     >
-      {/* 页面展示 */}
+      {/* 页面展示 — 横向滚动条，CSS scroll-snap 翻页 */}
       <div className="relative overflow-hidden rounded-xl bg-black/5 dark:bg-white/5">
         <div
-          className="transition-transform duration-250 ease-out"
+          className="flex"
           style={{
-            transform: isAnimating
-              ? `translateX(${direction === "left" ? "-100%" : "100%"})`
-              : `translateX(${dragOffset * 0.3}px)`,
-            opacity: isAnimating ? 0 : 1,
-            transition: isAnimating
-              ? "transform 250ms ease-out, opacity 200ms ease-out"
-              : "transform 300ms ease-out",
+            transform: `translateX(calc(-${current * 100}% + ${translateX * 0.4}px))`,
+            transition: isDragging ? "none" : "transform 300ms cubic-bezier(0.25,0.1,0.25,1)",
           }}
         >
-          <img
-            src={pages[current]}
-            alt={t("pageAlt", { title: title ?? "", page: current + 1 })}
-            className="w-full h-auto"
-            draggable={false}
-          />
+          {pages.map((url, i) => (
+            <img
+              key={i}
+              src={url}
+              alt={t("pageAlt", { title: title ?? "", page: i + 1 })}
+              className="w-full h-auto shrink-0"
+              draggable={false}
+              loading={Math.abs(i - current) <= 1 ? "eager" : "lazy"}
+            />
+          ))}
         </div>
 
         {/* 左右半区点击 */}
@@ -126,12 +115,9 @@ export function FlipBookViewer({ pages, title }: Props) {
           <span className="text-xs text-muted-foreground">
             {current + 1} / {total}
           </span>
-          {/* 页面指示器（最多显示 7 个点） */}
           <div className="flex gap-1">
             {Array.from({ length: Math.min(total, 7) }, (_, i) => {
-              const pageIdx = total <= 7
-                ? i
-                : Math.round((i / 6) * (total - 1))
+              const pageIdx = total <= 7 ? i : Math.round((i / 6) * (total - 1))
               return (
                 <button
                   key={i}

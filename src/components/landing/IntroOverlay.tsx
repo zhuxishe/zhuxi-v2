@@ -1,154 +1,122 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
-
 /**
- * 全平台统一 CSS 开场动画 — 不依赖视频，任何分辨率都清晰
+ * Intro overlay — pure browser animation ported from Remotion B-Ripple-V2.
+ * Canvas for network + particles, DOM for logo reveal. ~9s total.
  *
- * 时间线（~6s）：
- * 0.4s  Logo 轮廓淡入
- * 1.2s  Logo 填充弹跳滑入对齐
- * 2.2s  "竹溪社" 三字逐字弹出
- * 3.2s  副标题 + 水墨线展开
- * 4.8s  整体淡出
+ * Timeline: Network 0-4s | Particles 4-6s | Logo 6-8s | Fade 8-9s
  */
+import { useEffect, useRef, useState, useCallback } from "react"
+import { interpolate } from "./intro/animation-utils"
+import { projectUniversities, computeNetworkParticles, buildScrollOrder } from "./intro/university-data"
+import { initNetworkState, drawNetwork } from "./intro/network-canvas"
+import { initParticles, drawParticles, generateLogoTargets } from "./intro/particle-canvas"
+import { LogoReveal } from "./intro/LogoReveal"
+import { ScrollPicker } from "./intro/ScrollPicker"
+
+const BG = "#f7f3eb"
+const PAPER_GRAD = `radial-gradient(ellipse at 30% 20%,#ede8dd80 0%,transparent 50%),
+  radial-gradient(ellipse at 70% 60%,#ede8dd60 0%,transparent 40%)`
+
 export function IntroOverlay() {
-  const [phase, setPhase] = useState(0)
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const rafRef = useRef(0)
+  const startRef = useRef(0)
   const [hidden, setHidden] = useState(false)
+  const [time, setTime] = useState(0) // for DOM components
 
   const done = useCallback(() => {
-    setPhase(5)
-    setTimeout(() => setHidden(true), 600)
+    cancelAnimationFrame(rafRef.current)
+    setTime(99) // trigger fade
+    setTimeout(() => setHidden(true), 700)
   }, [])
 
   useEffect(() => {
-    const t = [
-      setTimeout(() => setPhase(1), 400),
-      setTimeout(() => setPhase(2), 1200),
-      setTimeout(() => setPhase(3), 2200),
-      setTimeout(() => setPhase(4), 3200),
-      setTimeout(done, 4800),
-    ]
-    return () => t.forEach(clearTimeout)
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext("2d")
+    if (!ctx) return
+
+    const resize = () => {
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = window.innerWidth * dpr
+      canvas.height = window.innerHeight * dpr
+      canvas.style.width = `${window.innerWidth}px`
+      canvas.style.height = `${window.innerHeight}px`
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+    }
+    resize()
+    window.addEventListener("resize", resize)
+
+    const w = window.innerWidth, h = window.innerHeight
+    const screenPos = projectUniversities(w, h)
+    const ns = initNetworkState(w, h, screenPos)
+    const sourceParticles = computeNetworkParticles(screenPos, 12)
+    const logoSize = Math.min(w, h) * 0.28
+    const logoCX = w / 2, logoCY = h * 0.38
+    const targets = generateLogoTargets(sourceParticles.length, logoCX, logoCY, logoSize)
+    const particles = initParticles(sourceParticles, targets)
+
+    startRef.current = performance.now()
+
+    const tick = () => {
+      const t = (performance.now() - startRef.current) / 1000
+      setTime(t)
+      const netOp = interpolate(t, [4.0, 4.8], [1, 0])
+      drawNetwork(ctx, ns, Math.min(t, 4.5), w, h, netOp)
+
+      // Particle phase: 4s-6s
+      if (t >= 3.5 && t < 7) {
+        const localT = (t - 3.5) * 1.3 // speed up slightly
+        ctx.save()
+        ctx.globalAlpha = interpolate(t, [3.5, 4, 6.5, 7], [0, 1, 1, 0])
+        drawParticles(ctx, particles, localT, w, h)
+        ctx.restore()
+      }
+
+      if (t < 9) {
+        rafRef.current = requestAnimationFrame(tick)
+      } else {
+        done()
+      }
+    }
+    rafRef.current = requestAnimationFrame(tick)
+
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      window.removeEventListener("resize", resize)
+    }
   }, [done])
 
   if (hidden) return null
 
+  const scrollOrder = typeof window !== "undefined" ? buildScrollOrder(
+    projectUniversities(window.innerWidth, window.innerHeight)
+  ) : []
+  const logoSize = typeof window !== "undefined"
+    ? Math.min(window.innerWidth, window.innerHeight) * 0.28 : 200
+  const logoProgress = interpolate(time, [6, 8], [0, 1])
+  const fadeOp = time >= 8 ? interpolate(time, [8, 9], [1, 0]) : 1
+
   return (
-    <div
-      className="fixed inset-0 z-50 flex flex-col items-center justify-center gap-6 sm:gap-8 px-8"
-      style={{
-        backgroundColor: "#f7f3eb",
-        opacity: phase >= 5 ? 0 : 1,
-        transition: "opacity 0.6s ease-out",
-      }}
-    >
-      {/* 竹叶飘落 */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(7)].map((_, i) => (
-          <span
-            key={i}
-            className="absolute select-none"
-            style={{
-              color: `rgba(143,168,143,${0.06 + i * 0.01})`,
-              fontSize: `${14 + i * 4}px`,
-              left: `${8 + i * 13}%`,
-              top: `-8%`,
-              animation: `leaf-fall ${10 + i * 1.5}s linear infinite`,
-              animationDelay: `${i * 0.6}s`,
-            }}
-          >
-            🌿
-          </span>
-        ))}
-      </div>
+    <div className="fixed inset-0 z-50" style={{
+      backgroundColor: BG, backgroundImage: PAPER_GRAD,
+      opacity: fadeOp, transition: time >= 99 ? "opacity 0.6s ease-out" : undefined,
+    }}>
+      <canvas ref={canvasRef} className="absolute inset-0" />
 
-      {/* Logo 分层揭示 */}
-      <div className="relative size-20 sm:size-28 md:size-36 z-10">
-        {/* 轮廓（始终最上层） */}
-        <img
-          src="/logo-outline.png"
-          alt=""
-          className="absolute inset-0 w-full h-full object-contain z-20"
-          style={{
-            opacity: phase >= 1 ? 1 : 0,
-            transform: phase >= 1 ? "scale(1)" : "scale(0.75)",
-            transition: "all 0.8s cubic-bezier(0.22, 1, 0.36, 1)",
-          }}
-        />
-        {/* 填充（弹跳滑入） */}
-        <img
-          src="/logo-fill.png"
-          alt=""
-          className="absolute inset-0 w-full h-full object-contain z-10"
-          style={{
-            opacity: phase >= 2 ? 1 : 0,
-            transform: phase >= 2
-              ? "translate(0,0) scale(1)"
-              : "translate(10px,10px) scale(0.85)",
-            transition: "all 0.9s cubic-bezier(0.34, 1.56, 0.64, 1)",
-          }}
-        />
-      </div>
+      {/* Scroll picker (desktop) — network phase */}
+      {time < 5 && <ScrollPicker scrollOrder={scrollOrder} t={time} />}
 
-      {/* 竹溪社 逐字弹出 */}
-      <div className="flex gap-2 sm:gap-4 md:gap-5 relative z-10">
-        {"竹溪社".split("").map((c, i) => (
-          <span
-            key={c}
-            className="text-3xl sm:text-5xl md:text-6xl font-bold"
-            style={{
-              fontFamily: '"Noto Serif JP","Hiragino Mincho ProN",Georgia,serif',
-              letterSpacing: "0.1em",
-              color: "#2d3a2e",
-              opacity: phase >= 3 ? 1 : 0,
-              transform: phase >= 3 ? "translateY(0) scale(1)" : "translateY(24px) scale(0.8)",
-              transition: `all 0.55s cubic-bezier(0.34,1.56,0.64,1) ${i * 0.15}s`,
-            }}
-          >
-            {c}
-          </span>
-        ))}
-      </div>
+      {/* Logo reveal — DOM layer */}
+      {time >= 5.5 && <LogoReveal progress={logoProgress} logoSize={logoSize} />}
 
-      {/* 副标题 */}
-      <p
-        className="text-[10px] sm:text-xs md:text-sm tracking-[0.3em] relative z-10 uppercase"
-        style={{
-          color: "#6b7c6b",
-          opacity: phase >= 4 ? 1 : 0,
-          transition: "opacity 0.6s ease-out",
-        }}
-      >
-        zhuxishe
-      </p>
-
-      {/* 水墨线展开 */}
-      <div
-        className="h-px relative z-10"
-        style={{
-          width: phase >= 4 ? "5rem" : "0",
-          background: "linear-gradient(90deg, transparent, #8fa88f50, transparent)",
-          transition: "width 1s cubic-bezier(0.22,1,0.36,1) 0.2s",
-        }}
-      />
-
-      {/* 跳过 */}
-      <button
-        onClick={done}
-        className="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 text-xs sm:text-sm text-[#6b7c6b]/40 hover:text-[#2d3a2e] active:text-[#2d3a2e] transition-colors z-20"
-      >
-        跳过 →
+      {/* Skip button */}
+      <button onClick={done}
+        className="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 text-xs sm:text-sm z-20
+          text-[#6b7c6b]/40 hover:text-[#2d3a2e] active:text-[#2d3a2e] transition-colors">
+        跳过 &rarr;
       </button>
-
-      <style>{`
-        @keyframes leaf-fall {
-          0% { transform: translateY(-10vh) rotate(0deg); opacity: 0; }
-          10% { opacity: 1; }
-          90% { opacity: 1; }
-          100% { transform: translateY(110vh) rotate(360deg); opacity: 0; }
-        }
-      `}</style>
     </div>
   )
 }

@@ -70,7 +70,7 @@ export function IntroOverlay() {
         const localT = (t - 3.5) * 1.3 // speed up slightly
         ctx.save()
         ctx.globalAlpha = interpolate(t, [3.5, 4, 6.5, 7], [0, 1, 1, 0])
-        drawParticles(ctx, particles, localT, w, h)
+        drawParticles(ctx, particles, localT)
         ctx.restore()
       }
 

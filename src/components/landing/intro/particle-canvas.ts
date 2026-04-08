@@ -1,7 +1,8 @@
-/** Canvas-based particle morph system (scatter -> gather to logo shape) */
+/** Canvas-based particle morph system — ported 1:1 from Remotion ParticleMorph */
 
 import type { Point2D } from './animation-utils'
 import { interpolate, spring, seededRandom } from './animation-utils'
+import LOGO_OUTLINE from './logo-points.json'
 
 const ZX_GREEN = '#4a7c59'
 const ZX_GREEN_LIGHT = '#7db88f'
@@ -20,10 +21,39 @@ export interface Particle {
   spinAmount: number
 }
 
+/** Sample N points from real logo outline (from bamboo-paths.ts logic) */
+function sampleLogoPoints(count: number): Point2D[] {
+  const src = LOGO_OUTLINE as Point2D[]
+  if (src.length === 0) return Array.from({ length: count }, () => ({ x: 50, y: 50 }))
+  if (count <= src.length) {
+    const step = src.length / count
+    return Array.from({ length: count }, (_, i) => {
+      const idx = Math.floor(i * step) % src.length
+      return { x: src[idx].x, y: src[idx].y }
+    })
+  }
+  // count > source: cycle with jitter
+  return Array.from({ length: count }, (_, i) => {
+    const base = src[i % src.length]
+    const jitter = i >= src.length ? (i * 0.1) % 1.5 : 0
+    return { x: base.x + jitter, y: base.y + jitter }
+  })
+}
+
+/** Convert normalized [0,100] coords to screen pixels (from bamboo-paths.ts) */
+export function generateLogoTargets(
+  count: number, cx: number, cy: number, size: number,
+): Point2D[] {
+  const normalized = sampleLogoPoints(count)
+  return normalized.map((p) => ({
+    x: cx + ((p.x - 50) / 100) * size,
+    y: cy + ((p.y - 50) / 100) * size,
+  }))
+}
+
 /** Pre-compute all particle state (called once) */
 export function initParticles(
-  sources: Point2D[],
-  targets: Point2D[],
+  sources: Point2D[], targets: Point2D[],
 ): Particle[] {
   const count = Math.min(sources.length, targets.length, 300)
   return Array.from({ length: count }, (_, i) => ({
@@ -40,45 +70,36 @@ export function initParticles(
   }))
 }
 
-/** Draw all particles for the given local time (0 = start of particle phase) */
+/** Draw all particles for the given local time (seconds since particle phase) */
 export function drawParticles(
   ctx: CanvasRenderingContext2D,
   particles: Particle[],
-  localT: number, // seconds since particle phase start
-  w: number, h: number,
+  localT: number,
 ): void {
-  // Map seconds to ~frames for spring math (original was 30fps)
-  const frame = localT * 30
+  const frame = localT * 30 // map to Remotion's 30fps frame count
 
   for (const p of particles) {
-    // Scatter phase (frame 0-30 -> 0-1s)
     const scatterProg = interpolate(frame, [0, 30], [0, 1])
     const sx = p.source.x + Math.cos(p.scatterAngle) * p.scatterDist * scatterProg
     const sy = p.source.y + Math.sin(p.scatterAngle) * p.scatterDist * scatterProg
 
-    // Wobble
     const wobX = Math.sin(frame * 0.2 + p.wobbleSeedX) * 4
     const wobY = Math.cos(frame * 0.15 + p.wobbleSeedY) * 4
 
-    // Morph phase (frame 50+ -> 1.67s+)
     const morphFrame = Math.max(0, frame - 50 - p.morphDelay)
     const morphSpring = spring(morphFrame, {
       damping: 15, stiffness: 80, mass: p.mass,
     })
 
-    const x = interpolate(morphSpring, [0, 1], [sx, p.target.x]) +
-      wobX * (1 - morphSpring)
-    const y = interpolate(morphSpring, [0, 1], [sy, p.target.y]) +
-      wobY * (1 - morphSpring)
+    const x = interpolate(morphSpring, [0, 1], [sx, p.target.x]) + wobX * (1 - morphSpring)
+    const y = interpolate(morphSpring, [0, 1], [sy, p.target.y]) + wobY * (1 - morphSpring)
 
-    // Size + opacity
     const fadeIn = interpolate(frame, [0, 8], [0, 1])
     const size = interpolate(morphSpring, [0, 1], [5, 3])
     const color = morphSpring < 0.5 ? ZX_GREEN_LIGHT : ZX_GREEN
     const glowColor = morphSpring < 0.5 ? ZX_GREEN_LIGHT : ZX_LEAF
     const rotation = p.rotBase + interpolate(morphSpring, [0, 1], [0, p.spinAmount])
 
-    // Draw leaf-shaped ellipse
     ctx.save()
     ctx.translate(x, y)
     ctx.rotate((rotation * Math.PI) / 180)
@@ -92,29 +113,4 @@ export function drawParticles(
     ctx.shadowBlur = 0
     ctx.restore()
   }
-}
-
-/** Generate simple circular logo target positions (fallback if no outline data) */
-export function generateLogoTargets(
-  count: number,
-  cx: number, cy: number, size: number,
-): Point2D[] {
-  const pts: Point2D[] = []
-  const r = size / 2
-  // Concentric rings
-  const rings = 5
-  let placed = 0
-  for (let ring = 0; ring < rings && placed < count; ring++) {
-    const ringR = (r * (ring + 1)) / rings
-    const circum = 2 * Math.PI * ringR
-    const n = Math.min(Math.ceil(circum / 8), count - placed)
-    for (let j = 0; j < n && placed < count; j++) {
-      const angle = (j / n) * Math.PI * 2 + ring * 0.3
-      pts.push({ x: cx + Math.cos(angle) * ringR, y: cy + Math.sin(angle) * ringR })
-      placed++
-    }
-  }
-  // Fill remaining at center
-  while (pts.length < count) pts.push({ x: cx, y: cy })
-  return pts
 }

@@ -11,8 +11,9 @@
  *   310-400: LogoReveal (progress = interpolate(frame,[310,400],[0,1]))
  *   400-420: Fade out whole overlay
  *
- * Performance: frame stored in ref, React only re-renders on phase transitions
- * (network -> morph -> logo -> fade -> done), ~4-5 renders total.
+ * Performance: Canvas runs at full 30fps via rAF.
+ * DOM components (ScrollPicker, LogoReveal) update at ~10fps via throttled domFrame state.
+ * During morph-only phase (225-310), no DOM updates at all.
  */
 import { useEffect, useRef, useState, useCallback } from "react"
 import { interpolate } from "./intro/animation-utils"
@@ -46,6 +47,8 @@ export function IntroOverlay() {
 
   const [hidden, setHidden] = useState(false)
   const [phase, setPhase] = useState<Phase>("network")
+  const [domFrame, setDomFrame] = useState(0)
+  const lastDomUpdateRef = useRef(0)
 
   const done = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
@@ -88,12 +91,17 @@ export function IntroOverlay() {
       const f = Math.min(elapsed * FPS, TOTAL_FRAMES)
       frameRef.current = f
 
-      // Only trigger React re-render on phase transitions
+      // Phase transitions (conditional rendering)
       const newPhase = getPhase(f)
-      setPhase((prev) => {
-        if (prev !== newPhase) return newPhase
-        return prev
-      })
+      setPhase((prev) => prev !== newPhase ? newPhase : prev)
+
+      // Throttled DOM frame updates (~10fps) for ScrollPicker/LogoReveal animation
+      // Only during phases that have DOM animation components
+      const needsDom = newPhase === "network" || newPhase === "logo" || newPhase === "fade"
+      if (needsDom && f - lastDomUpdateRef.current >= 3) {
+        lastDomUpdateRef.current = f
+        setDomFrame(f)
+      }
 
       const { w: cw, h: ch } = sizeRef.current
       ctx.clearRect(0, 0, cw, ch)
@@ -138,8 +146,8 @@ export function IntroOverlay() {
   const { w, h } = sizeRef.current
   const logoCX = w / 2
   const logoCY = h * 0.38
-  const logoProgress = phase === "logo" || phase === "fade" ? interpolate(frameRef.current, [310, 400], [0, 1]) : 0
-  const fadeOp = phase === "fade" ? interpolate(frameRef.current, [400, 420], [1, 0]) : 1
+  const logoProgress = interpolate(domFrame, [310, 400], [0, 1])
+  const fadeOp = domFrame >= 400 ? interpolate(domFrame, [400, 420], [1, 0]) : 1
 
   return (
     <div className="fixed inset-0 z-50" style={{
@@ -149,7 +157,7 @@ export function IntroOverlay() {
 
       {/* ScrollPicker: visible during network phase */}
       {phase === "network" && (
-        <ScrollPicker scrollOrder={scrollOrderRef.current} frame={frameRef.current} />
+        <ScrollPicker scrollOrder={scrollOrderRef.current} frame={domFrame} />
       )}
 
       {/* LogoReveal: DOM layer, starts at logo phase */}

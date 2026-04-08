@@ -3,10 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateScript } from "@/app/admin/scripts/[id]/edit/actions"
-import {
-  uploadScriptCover,
-  uploadScriptPdf,
-} from "@/app/admin/scripts/new/actions"
+import { uploadScriptCover } from "@/app/admin/scripts/new/actions"
 import { Button } from "@/components/ui/button"
 import { ScriptEditBasicFields } from "@/components/admin/ScriptEditBasicFields"
 import { ScriptContentFields } from "@/components/admin/ScriptContentFields"
@@ -29,6 +26,7 @@ export interface ScriptData {
   roles: ScriptRole[] | null
   cover_url: string | null
   pdf_url: string | null
+  page_images: string[] | null
   is_published: boolean | null
   budget: string | null
   location: string | null
@@ -52,7 +50,7 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
   const [budget, setBudget] = useState(script.budget ?? "")
   const [location, setLocation] = useState(script.location ?? "")
   const [coverFile, setCoverFile] = useState<File | null>(null)
-  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pageImages, setPageImages] = useState<string[] | null>(script.page_images)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -86,11 +84,6 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
       const res = await uploadScriptCover(script.id, fd)
       if (res?.error) return `封面上传失败: ${res.error}`
     }
-    if (pdfFile) {
-      const fd = new FormData(); fd.append("file", pdfFile)
-      const res = await uploadScriptPdf(script.id, fd)
-      if (res?.error) return `PDF上传失败: ${res.error}`
-    }
     return null
   }
 
@@ -115,7 +108,9 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
         warnings={warnings} onWarningsChange={setWarnings}
         roles={roles} onRolesChange={setRoles}
         coverUrl={script.cover_url} onCoverUpload={setCoverFile}
-        pdfUrl={script.pdf_url} onPdfUpload={setPdfFile}
+        scriptId={script.id}
+        existingPages={pageImages}
+        onConverted={setPageImages}
       />
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-3">

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import {
   createScript,
   uploadScriptCover,
-  uploadScriptPdf,
 } from "@/app/admin/scripts/new/actions"
 import { Button } from "@/components/ui/button"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
@@ -35,7 +34,6 @@ export function ScriptUploadForm() {
   const [warnings, setWarnings] = useState<string[]>([])
   const [roles, setRoles] = useState<ScriptRole[]>([])
   const [coverFile, setCoverFile] = useState<File | null>(null)
-  const [pdfFile, setPdfFile] = useState<File | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -68,12 +66,6 @@ export function ScriptUploadForm() {
       fd.append("file", coverFile)
       const res = await uploadScriptCover(scriptId, fd)
       if (res?.error) return `封面上传失败: ${res.error}`
-    }
-    if (pdfFile) {
-      const fd = new FormData()
-      fd.append("file", pdfFile)
-      const res = await uploadScriptPdf(scriptId, fd)
-      if (res?.error) return `PDF上传失败: ${res.error}`
     }
     return null
   }
@@ -126,7 +118,6 @@ export function ScriptUploadForm() {
         warnings={warnings} onWarningsChange={setWarnings}
         roles={roles} onRolesChange={setRoles}
         coverUrl={null} onCoverUpload={setCoverFile}
-        pdfUrl={null} onPdfUpload={setPdfFile}
       />
 
       {error && <p className="text-sm text-destructive">{error}</p>}

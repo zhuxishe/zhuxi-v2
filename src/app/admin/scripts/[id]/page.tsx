@@ -73,12 +73,28 @@ export default async function AdminScriptDetailPage({ params }: Props) {
           <div className="flex flex-wrap gap-1">{script.theme_tags?.map((t: string) => <TagBadge key={t} label={t} variant="info" className="mr-1" />)}</div>
         </div>
 
-        {script.pdf_url && (
+        {script.page_images && script.page_images.length > 0 ? (
           <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
-            <p className="text-sm font-semibold mb-3">PDF 预览</p>
-            <iframe src={script.pdf_url} className="w-full h-[500px] rounded-lg border border-border" />
+            <p className="text-sm font-semibold mb-3">剧本预览</p>
+            <div className="flex items-center gap-3">
+              <img
+                src={script.page_images[0]}
+                alt="第一页"
+                className="w-24 h-32 object-cover rounded border border-border"
+              />
+              <span className="text-sm text-muted-foreground">
+                {script.page_images.length} 页已转换
+              </span>
+            </div>
           </div>
-        )}
+        ) : script.pdf_url ? (
+          <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+            <p className="text-sm font-semibold mb-2">剧本文件</p>
+            <p className="text-xs text-muted-foreground">
+              PDF 已上传但未转换为图片。请进入编辑页面进行转换。
+            </p>
+          </div>
+        ) : null}
 
         <ScriptAccessPanel scriptId={id} allMembers={allMembers} />
       </div>

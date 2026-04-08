@@ -4,9 +4,10 @@ import {
   COMMUNICATION_LANGUAGE_OPTIONS,
   JAPANESE_LEVEL_OPTIONS,
 } from "@/lib/constants/supplementary"
+import type { MemberLanguageRow } from "@/types/member-detail"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props { data: any; onChange: (data: any) => void }
+type LanguageData = Partial<MemberLanguageRow>
+interface Props { data: LanguageData; onChange: (data: LanguageData) => void }
 
 export function MemberEditLanguage({ data, onChange }: Props) {
   const prefs: string[] = data.communication_language_pref ?? []

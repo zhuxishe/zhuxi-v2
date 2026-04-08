@@ -12,11 +12,11 @@ const REASON_LABELS: Record<string, string> = {
   unmatched_after_all_stages: "三阶段后未匹配",
 }
 
-interface DiagnosticItem {
+export interface DiagnosticItem {
   id: string
   member_id: string
   reason: string
-  details: Record<string, unknown> | null
+  details: unknown
   member?: { member_identity?: { full_name: string } | null } | null
 }
 

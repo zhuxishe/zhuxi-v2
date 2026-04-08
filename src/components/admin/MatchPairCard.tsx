@@ -19,11 +19,10 @@ interface Props {
   result: {
     id: string
     total_score: number
-    rank: number
+    rank: number | null
     status: string
     best_slot: string | null
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    score_breakdown: Record<string, any> | null
+    score_breakdown: unknown
     member_a: EnrichedMember | null
     member_b: EnrichedMember | null
   }
@@ -91,7 +90,11 @@ export function MatchPairCard({ result, pairRel, onLock, onSplit, onRestore }: P
             {total_score.toFixed(1)}
           </span>
         </p>
-        {score_breakdown && <ScoreBreakdownChart breakdown={score_breakdown} />}
+        {score_breakdown != null && (
+          <ScoreBreakdownChart
+            breakdown={score_breakdown as Record<string, { raw: number; weighted: number; maxRaw: number }>}
+          />
+        )}
       </div>
 
       {/* Actions */}

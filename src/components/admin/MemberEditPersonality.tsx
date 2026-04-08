@@ -1,9 +1,10 @@
 "use client"
 
 import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
+import type { MemberPersonalityRow } from "@/types/member-detail"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props { data: any; onChange: (data: any) => void }
+type PersonalityData = Partial<MemberPersonalityRow>
+interface Props { data: PersonalityData; onChange: (data: PersonalityData) => void }
 
 export function MemberEditPersonality({ data, onChange }: Props) {
   return (

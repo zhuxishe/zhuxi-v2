@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { createHmac } from "crypto"
 
 /**
@@ -8,8 +8,6 @@ import { createHmac } from "crypto"
  * Body: { idToken, profile: { userId, displayName, pictureUrl? } }
  */
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID!
 const LINE_USER_SECRET = process.env.LINE_USER_SECRET!
 
@@ -45,9 +43,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 2. Check existing member
-    const supabase = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    const supabase = createAdminClient()
 
     const { data: existingMember } = await supabase
       .from("members")

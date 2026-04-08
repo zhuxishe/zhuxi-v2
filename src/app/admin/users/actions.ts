@@ -1,15 +1,10 @@
 "use server"
 
-import { createClient as createServiceClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
-
 function getAdminDb() {
-  return createServiceClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  return createAdminClient()
 }
 
 /** 添加管理员白名单（预注册，user_id 留空） */

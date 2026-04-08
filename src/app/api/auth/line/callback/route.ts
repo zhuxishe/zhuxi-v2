@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID!
 const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
@@ -54,9 +52,7 @@ export async function GET(req: NextRequest) {
     const lineUserId = lineProfile.userId as string
 
     // Check conflict
-    const serviceClient = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-      auth: { autoRefreshToken: false, persistSession: false },
-    })
+    const serviceClient = createAdminClient()
 
     const { data: existing } = await serviceClient
       .from("members")

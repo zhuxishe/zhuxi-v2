@@ -6,10 +6,11 @@ import { updateVerification } from "@/app/admin/members/[id]/verify/actions"
 import { Button } from "@/components/ui/button"
 import { CheckCircle, Circle } from "lucide-react"
 
+import type { MemberVerificationRow } from "@/types/member-detail"
+
 interface Props {
   memberId: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  existing: any
+  existing: Partial<MemberVerificationRow> | null
 }
 
 export function VerificationPanel({ memberId, existing }: Props) {

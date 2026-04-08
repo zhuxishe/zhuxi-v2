@@ -47,6 +47,24 @@ export async function fetchMembers(options?: {
   return members
 }
 
+export async function fetchMemberBriefList() {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("members")
+    .select("id, member_identity(full_name)")
+    .eq("status", "approved")
+    .order("created_at", { ascending: false })
+  return (data ?? []).map((m) => {
+    const identity = Array.isArray(m.member_identity)
+      ? m.member_identity[0]
+      : m.member_identity
+    return {
+      id: m.id,
+      name: (identity as { full_name?: string })?.full_name ?? m.id,
+    }
+  })
+}
+
 export async function fetchMemberDetail(id: string): Promise<MemberDetail> {
   const supabase = await createClient()
 

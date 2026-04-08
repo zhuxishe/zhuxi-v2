@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
-import { createClient as createAdminClient } from "@supabase/supabase-js"
+import { createAdminClient } from "@/lib/supabase/admin"
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
 const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID!
 
 /** POST: Bind LINE account to current user */
@@ -23,9 +21,7 @@ export async function POST(req: NextRequest) {
   })
   if (!verifyRes.ok) return NextResponse.json({ error: "LINE verification failed" }, { status: 401 })
 
-  const serviceClient = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const serviceClient = createAdminClient()
 
   // Check conflict
   const { data: existing } = await serviceClient
@@ -53,9 +49,7 @@ export async function DELETE() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 })
 
-  const serviceClient = createAdminClient(SUPABASE_URL, SUPABASE_SERVICE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const serviceClient = createAdminClient()
 
   const { error } = await serviceClient
     .from("members")

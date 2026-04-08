@@ -29,14 +29,13 @@ export interface ProfileCompleteness {
   percentage: number
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function calcCompleteness(profile: {
   member_identity: unknown
-  member_language: any
-  member_interests: any
-  member_personality: any
-  member_boundaries: any
-  personality_quiz_results: any
+  member_language: { communication_language_pref?: string[] | null } | { communication_language_pref?: string[] | null }[] | null
+  member_interests: { activity_frequency?: string | null } | { activity_frequency?: string | null }[] | null
+  member_personality: { expression_style_tags?: string[] | null } | { expression_style_tags?: string[] | null }[] | null
+  member_boundaries: unknown
+  personality_quiz_results: { score_e?: number | null } | { score_e?: number | null }[] | null
 }): ProfileCompleteness {
   const identity = !!profile.member_identity
 

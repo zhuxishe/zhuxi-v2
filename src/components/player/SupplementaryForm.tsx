@@ -15,13 +15,11 @@ import { SupplementaryStep4 } from "./SupplementaryStep4"
 
 interface Props {
   memberId: string
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  existingInterests?: any
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  existingLanguage?: any
+  existingInterests?: Record<string, unknown> | null
+  existingLanguage?: Record<string, unknown> | null
 }
 
-function buildInitial(interests?: Record<string, unknown>, language?: Record<string, unknown>): SupplementaryFormData {
+function buildInitial(interests?: Record<string, unknown> | null, language?: Record<string, unknown> | null): SupplementaryFormData {
   if (!interests && !language) return EMPTY_SUPPLEMENTARY
   return {
     ...EMPTY_SUPPLEMENTARY,

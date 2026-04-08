@@ -5,9 +5,14 @@ import { useRouter } from "next/navigation"
 import { createActivityRecord } from "@/app/admin/activity-records/actions"
 import { Button } from "@/components/ui/button"
 import { SingleSelect } from "@/components/shared/SingleSelect"
+import { MemberMultiSelect } from "@/components/admin/MemberMultiSelect"
 import { ACTIVITY_TYPE_OPTIONS } from "@/lib/constants/reviews"
 
-export function ActivityRecordForm() {
+interface Props {
+  members: { id: string; name: string }[]
+}
+
+export function ActivityRecordForm({ members }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [title, setTitle] = useState("")
@@ -16,6 +21,9 @@ export function ActivityRecordForm() {
   const [type, setType] = useState("")
   const [duration, setDuration] = useState(180)
   const [notes, setNotes] = useState("")
+  const [participantIds, setParticipantIds] = useState<string[]>([])
+  const [lateIds, setLateIds] = useState<string[]>([])
+  const [noShowIds, setNoShowIds] = useState<string[]>([])
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -26,7 +34,9 @@ export function ActivityRecordForm() {
     const result = await createActivityRecord({
       title, activity_date: date, location, activity_type: type,
       duration_minutes: duration, notes,
-      participant_ids: [], late_member_ids: [], no_show_member_ids: [],
+      participant_ids: participantIds,
+      late_member_ids: lateIds,
+      no_show_member_ids: noShowIds,
     })
     setSubmitting(false)
     if (result.error) setError(result.error)
@@ -66,6 +76,9 @@ export function ActivityRecordForm() {
           <SingleSelect options={[...ACTIVITY_TYPE_OPTIONS]} value={type} onChange={setType} />
         </div>
       </div>
+      <MemberMultiSelect members={members} selected={participantIds} onChange={setParticipantIds} label="参与成员" />
+      <MemberMultiSelect members={members} selected={lateIds} onChange={setLateIds} label="迟到成员" />
+      <MemberMultiSelect members={members} selected={noShowIds} onChange={setNoShowIds} label="缺席成员" />
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="备注..."
         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
       {error && <p className="text-sm text-destructive">{error}</p>}

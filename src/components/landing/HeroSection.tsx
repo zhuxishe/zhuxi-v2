@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { getTranslations } from "next-intl/server"
 import { ChevronDown } from "lucide-react"
 
@@ -7,10 +8,13 @@ export async function HeroSection() {
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden grain-overlay">
       {/* Background image */}
-      <img
+      <Image
         src="https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=1920&q=80"
-        alt=""
-        className="absolute inset-0 w-full h-full object-cover"
+        alt="Tokyo campus"
+        fill
+        className="object-cover"
+        priority
+        sizes="100vw"
       />
 
       {/* Layered overlay — ink wash gradient */}

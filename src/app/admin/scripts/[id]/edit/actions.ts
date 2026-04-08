@@ -54,3 +54,18 @@ export async function updateScript(scriptId: string, data: UpdateData) {
   revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }
 }
+
+export async function toggleScriptPublish(scriptId: string, isPublished: boolean) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("scripts")
+    .update({ is_published: !isPublished })
+    .eq("id", scriptId)
+
+  if (error) return { error: error.message }
+  revalidatePath("/admin/scripts")
+  revalidatePath(`/admin/scripts/${scriptId}`)
+  return { success: true }
+}

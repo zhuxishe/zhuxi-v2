@@ -1,16 +1,18 @@
 "use client"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props { data: any; onChange: (data: any) => void }
+import type { MemberBoundariesRow } from "@/types/member-detail"
+
+type BoundariesData = Partial<MemberBoundariesRow> & Record<string, unknown>
+interface Props { data: BoundariesData; onChange: (data: BoundariesData) => void }
 
 function InputRow({ label, name, data, onChange, placeholder }: {
-  label: string; name: string; data: any; onChange: (d: any) => void; placeholder?: string
+  label: string; name: string; data: BoundariesData; onChange: (d: BoundariesData) => void; placeholder?: string
 }) {
   return (
     <tr className="border-b border-border/50">
       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
       <td className="py-2.5">
-        <input value={data[name] ?? ""} placeholder={placeholder}
+        <input value={(data[name] as string) ?? ""} placeholder={placeholder}
           onChange={(e) => onChange({ ...data, [name]: e.target.value })}
           className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
       </td>

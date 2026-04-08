@@ -31,8 +31,7 @@ export async function getPlayerInfo(): Promise<PlayerInfo | null> {
 
   if (!member) return null
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const identity = (member as any).member_identity
+  const identity = member.member_identity as { full_name: string } | null
 
   return {
     memberId: member.id,
@@ -56,8 +55,7 @@ export async function requirePlayer(): Promise<PlayerInfo> {
 
   if (!member || member.status !== "approved") redirect("/app")
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const identity = (member as any).member_identity
+  const identity = member.member_identity as { full_name: string } | null
 
   return {
     memberId: member.id,

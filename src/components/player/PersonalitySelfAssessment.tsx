@@ -13,11 +13,10 @@ import { SingleSelect } from "@/components/shared/SingleSelect"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 
 interface Props {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  existing?: any
+  existing?: Record<string, unknown> | null
 }
 
-function buildInitial(existing?: Record<string, unknown>): PersonalitySelfData {
+function buildInitial(existing?: Record<string, unknown> | null): PersonalitySelfData {
   if (!existing) return EMPTY_PERSONALITY
   return { ...EMPTY_PERSONALITY, ...existing } as PersonalitySelfData
 }

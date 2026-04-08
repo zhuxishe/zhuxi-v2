@@ -38,6 +38,18 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   const admin = await requireAdmin()
   const supabase = await createClient()
 
+  // 0. 前置状态校验：只有 closed 状态的轮次才能执行匹配
+  const { data: round, error: roundErr } = await supabase
+    .from("match_rounds")
+    .select("status")
+    .eq("id", roundId)
+    .single()
+
+  if (roundErr || !round) return { error: "轮次不存在" }
+  if (round.status !== "closed") {
+    return { error: `当前轮次状态为「${round.status}」，只有「closed」状态才能执行匹配` }
+  }
+
   // 1. 获取问卷提交（含用户资料）
   const submissions = await fetchRoundSubmissions(roundId)
   if (submissions.length < 2) {

@@ -6,18 +6,19 @@ import {
   SOCIAL_GOAL_OPTIONS, SCENARIO_MODE_OPTIONS, SCRIPT_PREFERENCE_OPTIONS,
   NON_SCRIPT_PREFERENCE_OPTIONS,
 } from "@/lib/constants/supplementary"
+import type { MemberInterestsRow } from "@/types/member-detail"
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Props { data: any; onChange: (data: any) => void }
+type InterestsData = Partial<MemberInterestsRow> & Record<string, unknown>
+interface Props { data: InterestsData; onChange: (data: InterestsData) => void }
 
 function SelectRow({ label, name, options, data, onChange }: {
-  label: string; name: string; options: readonly string[]; data: any; onChange: (d: any) => void
+  label: string; name: string; options: readonly string[]; data: InterestsData; onChange: (d: InterestsData) => void
 }) {
   return (
     <tr className="border-b border-border/50">
       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
       <td className="py-2.5">
-        <select value={data[name] ?? ""}
+        <select value={(data[name] as string) ?? ""}
           onChange={(e) => onChange({ ...data, [name]: e.target.value })}
           className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary">
           <option value="">-</option>
@@ -29,9 +30,9 @@ function SelectRow({ label, name, options, data, onChange }: {
 }
 
 function TagsRow({ label, name, options, data, onChange }: {
-  label: string; name: string; options: readonly string[]; data: any; onChange: (d: any) => void
+  label: string; name: string; options: readonly string[]; data: InterestsData; onChange: (d: InterestsData) => void
 }) {
-  const selected: string[] = data[name] ?? []
+  const selected: string[] = (data[name] as string[]) ?? []
   function toggle(tag: string) {
     const next = selected.includes(tag) ? selected.filter((t) => t !== tag) : [...selected, tag]
     onChange({ ...data, [name]: next })
@@ -55,9 +56,9 @@ function TagsRow({ label, name, options, data, onChange }: {
 }
 
 function ToggleRow({ label, name, data, onChange }: {
-  label: string; name: string; data: any; onChange: (d: any) => void
+  label: string; name: string; data: InterestsData; onChange: (d: InterestsData) => void
 }) {
-  const val = data[name] ?? true
+  const val = (data[name] as boolean) ?? true
   return (
     <tr className="border-b border-border/50">
       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
@@ -72,13 +73,13 @@ function ToggleRow({ label, name, data, onChange }: {
 }
 
 function InputRow({ label, name, data, onChange }: {
-  label: string; name: string; data: any; onChange: (d: any) => void
+  label: string; name: string; data: InterestsData; onChange: (d: InterestsData) => void
 }) {
   return (
     <tr className="border-b border-border/50">
       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
       <td className="py-2.5">
-        <input value={data[name] ?? ""}
+        <input value={(data[name] as string) ?? ""}
           onChange={(e) => onChange({ ...data, [name]: e.target.value })}
           className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
       </td>

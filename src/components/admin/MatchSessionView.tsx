@@ -10,13 +10,14 @@ import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { RematchPool } from "./RematchPool"
 import { lockPair, splitPair, restorePair, confirmSession } from "@/app/admin/matching/[id]/actions"
-import type { PairRelationship } from "./match-detail-types"
+import type { EnrichedMatchResult, PairRelationship } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
+import type { DiagnosticItem } from "./UnmatchedDiagnostics"
 
 interface Props {
   session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number }
-  results: Array<Record<string, unknown>>
-  diagnostics: Array<Record<string, unknown>>
+  results: EnrichedMatchResult[]
+  diagnostics: DiagnosticItem[]
   candidates: Array<{ preferred_time_slots: string[] }>
   pairRelationships?: PairRelationship[]
   poolMembers?: PoolMember[]
@@ -92,8 +93,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
 
       {/* Pair cards */}
       <div className="space-y-4">
-        {/* eslint-disable-next-line @typescript-eslint/no-explicit-any */}
-        {results.map((r: any) => (
+        {results.map((r) => (
           <MatchPairCard
             key={r.id}
             result={r}
@@ -114,8 +114,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
 
       {/* Unmatched diagnostics */}
       {diagnostics.length > 0 && (
-        /* eslint-disable-next-line @typescript-eslint/no-explicit-any */
-        <UnmatchedDiagnostics diagnostics={diagnostics as any} />
+        <UnmatchedDiagnostics diagnostics={diagnostics} />
       )}
     </div>
   )

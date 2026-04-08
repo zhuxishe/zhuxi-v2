@@ -1,6 +1,7 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { redirect } from "next/navigation"
 
 export async function sendMagicLink(email: string) {
@@ -49,10 +50,12 @@ export async function handleAuthCallback() {
     .single()
 
   if (member && !member.user_id) {
-    await supabase
+    const admin = createAdminClient()
+    await admin
       .from("members")
       .update({ user_id: user.id })
       .eq("id", member.id)
+      .is("user_id", null)
   }
 
   redirect("/app")

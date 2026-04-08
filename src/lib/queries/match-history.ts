@@ -1,9 +1,11 @@
 import { createClient } from "@/lib/supabase/server"
+import { validateUuids } from "@/lib/sanitize"
 
 /** Fetch past match history for given candidates (for repeat penalty) */
 export async function fetchMatchHistory(memberIds: string[]) {
   if (memberIds.length === 0) return new Map<string, { name: string; count: number }[]>()
 
+  validateUuids(memberIds)
   const supabase = await createClient()
 
   // Filter by candidate IDs — batch if >50 to avoid URL length limits
@@ -34,6 +36,7 @@ export async function fetchMatchHistory(memberIds: string[]) {
   // Build history map: memberId → [{name: partnerId, count}]
   const historyMap = new Map<string, Map<string, number>>()
   for (const row of data ?? []) {
+    if (!row.member_b_id) continue
     const a = row.member_a_id as string
     const b = row.member_b_id as string
     if (!historyMap.has(a)) historyMap.set(a, new Map())

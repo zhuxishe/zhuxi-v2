@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { sanitizePostgrestValue } from "@/lib/sanitize"
 
 export async function fetchPublishedScripts(search?: string, genre?: string) {
   const supabase = await createClient()
@@ -10,7 +11,8 @@ export async function fetchPublishedScripts(search?: string, genre?: string) {
     .order("created_at", { ascending: false })
 
   if (search) {
-    query = query.or(`title.ilike.%${search}%,author.ilike.%${search}%`)
+    const safe = sanitizePostgrestValue(search)
+    query = query.or(`title.ilike.%${safe}%,author.ilike.%${safe}%`)
   }
   if (genre) {
     query = query.contains("genre_tags", [genre])

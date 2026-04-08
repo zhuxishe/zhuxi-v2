@@ -43,7 +43,7 @@ export function LandingNav() {
           <div className="w-px h-4 bg-border/60" />
           <LocaleSwitcher />
           <Link
-            href="/app/login"
+            href="/login"
             className="rounded-lg bg-primary px-4 py-1.5 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all duration-200"
           >
             {t("navLogin")}
@@ -76,7 +76,7 @@ export function LandingNav() {
           <div className="pt-3 border-t border-border/30 flex items-center justify-between">
             <LocaleSwitcher />
             <Link
-              href="/app/login"
+              href="/login"
               className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               onClick={() => setOpen(false)}
             >

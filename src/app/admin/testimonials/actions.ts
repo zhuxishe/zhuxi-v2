@@ -30,13 +30,22 @@ export async function createTestimonial(input: TestimonialInput) {
   return { success: true }
 }
 
+const ALLOWED_UPDATE_FIELDS = new Set(["name", "school", "quote", "is_published", "sort_order"])
+
 export async function updateTestimonial(id: string, input: Partial<TestimonialInput>) {
   await requireAdmin()
   const supabase = createAdminClient()
 
+  // 字段白名单过滤
+  const filtered: Record<string, unknown> = {}
+  for (const [key, val] of Object.entries(input)) {
+    if (ALLOWED_UPDATE_FIELDS.has(key)) filtered[key] = val
+  }
+  if (Object.keys(filtered).length === 0) return { error: "无有效更新字段" }
+
   const { error } = await supabase
     .from("testimonials")
-    .update(input)
+    .update(filtered)
     .eq("id", id)
 
   if (error) return { error: error.message }

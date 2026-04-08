@@ -90,7 +90,13 @@ export function BambooLeaves() {
     const onMouse = (e: MouseEvent) => {
       mouseRef.current = { x: e.clientX, y: e.clientY }
     }
+    const onTouch = (e: TouchEvent) => {
+      if (e.touches.length > 0) {
+        mouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+      }
+    }
     window.addEventListener("mousemove", onMouse)
+    window.addEventListener("touchmove", onTouch, { passive: true })
     window.addEventListener("resize", resize)
 
     const tick = () => {
@@ -137,6 +143,7 @@ export function BambooLeaves() {
     return () => {
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener("mousemove", onMouse)
+      window.removeEventListener("touchmove", onTouch)
       window.removeEventListener("resize", resize)
     }
   }, [])

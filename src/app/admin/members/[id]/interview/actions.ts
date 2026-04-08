@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import type { InterviewEvalFormData } from "@/types"
@@ -22,13 +23,21 @@ export async function submitInterviewEval(
     )
 
   if (evalError) return { error: evalError.message }
+  revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
 
 export async function updateMemberStatus(memberId: string, status: string) {
   await requireAdmin()
+
+  const VALID_STATUSES = ['pending', 'approved', 'rejected', 'inactive']
+  if (!VALID_STATUSES.includes(status)) {
+    return { error: `无效状态: ${status}` }
+  }
+
   const supabase = await createClient()
   const { error } = await supabase.from("members").update({ status }).eq("id", memberId)
   if (error) return { error: error.message }
+  revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }

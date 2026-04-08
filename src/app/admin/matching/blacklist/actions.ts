@@ -16,7 +16,7 @@ export async function searchMembersForBlacklist(query: string) {
   const { data: allData } = await supabase
     .from("members")
     .select("id, member_number, member_identity(full_name, nickname)")
-    .eq("status", "active")
+    .eq("status", "approved")
     .limit(200)
 
   if (!allData) return []

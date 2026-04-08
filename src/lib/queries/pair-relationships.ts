@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { validateUuids } from "@/lib/sanitize"
 
 export interface PairRelation {
   relationId: string
@@ -15,6 +16,7 @@ export async function fetchPairRelationships(
   const result = new Map<string, PairRelation[]>()
   if (memberIds.length === 0) return result
 
+  validateUuids(memberIds)
   const supabase = await createClient()
 
   const batchSize = 50

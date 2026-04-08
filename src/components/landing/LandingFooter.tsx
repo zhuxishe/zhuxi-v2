@@ -1,7 +1,7 @@
-import { useTranslations } from "next-intl"
+import { getTranslations } from "next-intl/server"
 
-export function LandingFooter() {
-  const t = useTranslations("home")
+export async function LandingFooter() {
+  const t = await getTranslations("home")
 
   return (
     <footer className="py-10 px-4 border-t border-border/40" style={{ background: "var(--washi-dark, var(--muted))" }}>

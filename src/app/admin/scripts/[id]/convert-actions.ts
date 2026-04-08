@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
 
@@ -17,5 +18,6 @@ export async function updatePageImages(
     .eq("id", scriptId)
 
   if (error) return { error: error.message }
+  revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }
 }

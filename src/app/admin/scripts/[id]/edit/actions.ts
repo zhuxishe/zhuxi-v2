@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import type { Json } from "@/types/database.types"
@@ -49,5 +50,7 @@ export async function updateScript(scriptId: string, data: UpdateData) {
     .eq("id", scriptId)
 
   if (error) return { error: error.message }
+  revalidatePath("/admin/scripts")
+  revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }
 }

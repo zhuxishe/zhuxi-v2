@@ -1,5 +1,6 @@
 "use client"
 
+import { useRef } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { FilterBar } from "@/components/shared/FilterBar"
 import { Search } from "lucide-react"
@@ -20,6 +21,7 @@ interface Props {
 export function MemberListFilter({ currentStatus, currentSearch }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -46,8 +48,9 @@ export function MemberListFilter({ currentStatus, currentSearch }: Props) {
           placeholder="搜索姓名/昵称/学校..."
           className="w-full sm:w-60 rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           onChange={(e) => {
-            const timer = setTimeout(() => updateParam("search", e.target.value), 300)
-            return () => clearTimeout(timer)
+            const value = e.target.value
+            if (timerRef.current) clearTimeout(timerRef.current)
+            timerRef.current = setTimeout(() => updateParam("search", value), 300)
           }}
         />
       </div>

@@ -1,11 +1,13 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { toMatchCandidate } from "@/lib/matching/adapter"
 import { checkHardConstraints } from "@/lib/matching/constraints"
 import { scorePair } from "@/lib/matching/scorer"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
+import { validateUuids } from "@/lib/sanitize"
 
 /** 获取单个成员完整资料 */
 async function fetchMemberFull(memberId: string) {
@@ -34,6 +36,7 @@ export async function checkPairCompatibility(
   memberAId: string,
   memberBId: string,
 ) {
+  validateUuids([memberAId, memberBId])
   await requireAdmin()
 
   const [memberA, memberB] = await Promise.all([
@@ -85,6 +88,7 @@ export async function manualPair(
   memberAId: string,
   memberBId: string,
 ) {
+  validateUuids([sessionId, memberAId, memberBId])
   const admin = await requireAdmin()
   const supabase = await createClient()
 
@@ -109,5 +113,6 @@ export async function manualPair(
   })
 
   if (error) return { error: error.message }
+  revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true }
 }

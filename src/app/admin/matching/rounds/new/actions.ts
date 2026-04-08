@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 
@@ -41,5 +42,7 @@ export async function createRound(input: CreateRoundInput) {
     .single()
 
   if (error) return { error: error.message }
+  revalidatePath("/admin/matching/rounds")
+  revalidatePath("/admin/matching")
   return { roundId: data.id }
 }

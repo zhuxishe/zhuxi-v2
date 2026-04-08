@@ -11,6 +11,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { buildPairRelations } from "@/lib/matching/pair-history"
 import type { PairRelation, FeedbackRecord, BlacklistRecord } from "@/lib/matching/pair-history"
+import { validateUuids } from "@/lib/sanitize"
 import { fetchMatchHistory } from "./matching"
 
 /**
@@ -24,6 +25,8 @@ export async function fetchPairRelations(
   idToName: Map<string, string>,
 ): Promise<Map<string, PairRelation>> {
   if (memberIds.length === 0) return new Map()
+
+  validateUuids(memberIds)
 
   const [blacklist, feedbacks, rawHistory] = await Promise.all([
     fetchBlacklist(memberIds, idToName),

@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMatchHistory } from "@/lib/queries/matching"
@@ -107,5 +108,6 @@ export async function runPoolRematch(sessionId: string) {
     if (error) return { error: error.message }
   }
 
+  revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true, matchCount: result.rows.length }
 }

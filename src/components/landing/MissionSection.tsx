@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl"
+import { getTranslations } from "next-intl/server"
 import { BookOpen, Users, GraduationCap } from "lucide-react"
 
 const FEATURES = [
@@ -7,8 +7,8 @@ const FEATURES = [
   { key: "Campus", icon: GraduationCap },
 ] as const
 
-export function MissionSection() {
-  const t = useTranslations("home")
+export async function MissionSection() {
+  const t = await getTranslations("home")
 
   return (
     <section id="mission" className="section-padding relative">

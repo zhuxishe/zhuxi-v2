@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { validateUuids } from "@/lib/sanitize"
 
 export async function fetchMatchSessions() {
   const supabase = await createClient()
@@ -72,6 +73,7 @@ export async function fetchMatchCandidates() {
 export { fetchMatchHistory } from "./match-history"
 
 export async function fetchPlayerMatches(memberId: string) {
+  validateUuids([memberId])
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -136,6 +138,7 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
 /** Fetch pair relationships for members in a given session's results */
 export async function fetchPairRelationships(memberIds: string[]) {
   if (memberIds.length === 0) return []
+  validateUuids(memberIds)
   const supabase = await createClient()
 
   const idList = memberIds.join(",")

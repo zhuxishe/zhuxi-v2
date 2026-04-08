@@ -1,8 +1,8 @@
-import { useTranslations } from "next-intl"
+import { getTranslations } from "next-intl/server"
 import { ChevronDown } from "lucide-react"
 
-export function HeroSection() {
-  const t = useTranslations("home")
+export async function HeroSection() {
+  const t = await getTranslations("home")
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden grain-overlay">

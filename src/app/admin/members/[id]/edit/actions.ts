@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient as createServiceClient } from "@supabase/supabase-js"
 import { requireAdmin } from "@/lib/auth/admin"
 
@@ -42,6 +43,7 @@ export async function updateMemberIdentity(memberId: string, data: Record<string
     .update({ ...clean, updated_at: new Date().toISOString() })
     .eq("member_id", memberId)
   if (error) return { error: error.message }
+  revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
 
@@ -54,6 +56,7 @@ export async function updateMemberLanguage(memberId: string, data: Record<string
     .from("member_language")
     .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
   if (error) return { error: error.message }
+  revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
 
@@ -66,6 +69,7 @@ export async function updateMemberInterests(memberId: string, data: Record<strin
     .from("member_interests")
     .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
   if (error) return { error: error.message }
+  revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
 
@@ -78,6 +82,7 @@ export async function updateMemberPersonality(memberId: string, data: Record<str
     .from("member_personality")
     .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
   if (error) return { error: error.message }
+  revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
 
@@ -90,12 +95,16 @@ export async function updateMemberBoundaries(memberId: string, data: Record<stri
     .from("member_boundaries")
     .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
   if (error) return { error: error.message }
+  revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
 
-/** 彻底删除成员（CASCADE 会清理关联表） */
+/** 彻底删除成员（CASCADE 会清理关联表） — 仅限 super_admin */
 export async function hardDeleteMember(memberId: string) {
-  await requireAdmin()
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") {
+    return { error: "只有超级管理员才能删除成员" }
+  }
   const db = getAdminDb()
   const { error } = await db
     .from("members")

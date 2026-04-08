@@ -10,6 +10,9 @@
  *   200-340: ParticleMorph (Sequence from=200, duration=140)
  *   310-400: LogoReveal (progress = interpolate(frame,[310,400],[0,1]))
  *   400-420: Fade out whole overlay
+ *
+ * Performance: frame stored in ref, React only re-renders on phase transitions
+ * (network -> morph -> logo -> fade -> done), ~4-5 renders total.
  */
 import { useEffect, useRef, useState, useCallback } from "react"
 import { interpolate } from "./intro/animation-utils"
@@ -24,12 +27,25 @@ const TOTAL_FRAMES = 420
 const BG = "#f7f3eb"
 const LOGO_SIZE = 400
 
+type Phase = "network" | "morph" | "logo" | "fade" | "done"
+
+function getPhase(f: number): Phase {
+  if (f >= 400) return "fade"
+  if (f >= 310) return "logo"
+  if (f >= 225) return "morph"
+  return "network"
+}
+
 export function IntroOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const startRef = useRef(0)
+  const frameRef = useRef(0)
+  const sizeRef = useRef({ w: 1280, h: 720 })
+  const scrollOrderRef = useRef<ReturnType<typeof buildScrollOrder>>([])
+
   const [hidden, setHidden] = useState(false)
-  const [frame, setFrame] = useState(0)
+  const [phase, setPhase] = useState<Phase>("network")
 
   const done = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
@@ -44,16 +60,17 @@ export function IntroOverlay() {
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1
-      canvas.width = window.innerWidth * dpr
-      canvas.height = window.innerHeight * dpr
-      canvas.style.width = `${window.innerWidth}px`
-      canvas.style.height = `${window.innerHeight}px`
+      sizeRef.current = { w: window.innerWidth, h: window.innerHeight }
+      canvas.width = sizeRef.current.w * dpr
+      canvas.height = sizeRef.current.h * dpr
+      canvas.style.width = `${sizeRef.current.w}px`
+      canvas.style.height = `${sizeRef.current.h}px`
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
     resize()
     window.addEventListener("resize", resize)
 
-    const w = window.innerWidth, h = window.innerHeight
+    const { w, h } = sizeRef.current
     const logoCX = w / 2, logoCY = h * 0.38
     const screenPos = projectUniversities(w, h)
     const ns = initNetworkState(screenPos)
@@ -61,14 +78,25 @@ export function IntroOverlay() {
     const targets = generateLogoTargets(sourceParticles.length, logoCX, logoCY, LOGO_SIZE)
     const particles = initParticles(sourceParticles, targets)
 
+    // Cache scrollOrder in ref once
+    scrollOrderRef.current = buildScrollOrder(screenPos)
+
     startRef.current = performance.now()
 
     const tick = () => {
       const elapsed = (performance.now() - startRef.current) / 1000
       const f = Math.min(elapsed * FPS, TOTAL_FRAMES)
-      setFrame(f)
+      frameRef.current = f
 
-      ctx.clearRect(0, 0, w, h)
+      // Only trigger React re-render on phase transitions
+      const newPhase = getPhase(f)
+      setPhase((prev) => {
+        if (prev !== newPhase) return newPhase
+        return prev
+      })
+
+      const { w: cw, h: ch } = sizeRef.current
+      ctx.clearRect(0, 0, cw, ch)
 
       // Background opacity: frames 0-20
       const bgOp = interpolate(f, [0, 20], [0, 1])
@@ -77,7 +105,7 @@ export function IntroOverlay() {
       // Grid / Network: visible frames 0-235, fade at 200-225
       if (f < 235) {
         const netOp = interpolate(f, [200, 225], [1, 0])
-        drawNetwork(ctx, ns, f, w, h, netOp)
+        drawNetwork(ctx, ns, f, cw, ch, netOp)
       }
 
       // Particles: Sequence from=200 duration=140 (frames 200-340)
@@ -107,15 +135,11 @@ export function IntroOverlay() {
 
   if (hidden) return null
 
-  const w = typeof window !== "undefined" ? window.innerWidth : 1280
-  const h = typeof window !== "undefined" ? window.innerHeight : 720
+  const { w, h } = sizeRef.current
   const logoCX = w / 2
   const logoCY = h * 0.38
-  const scrollOrder = typeof window !== "undefined" ? buildScrollOrder(projectUniversities(w, h)) : []
-
-  const logoProgress = interpolate(frame, [310, 400], [0, 1])
-  // 背景始终不透明（遮住主页），只在最后20帧淡出
-  const fadeOp = frame >= 400 ? interpolate(frame, [400, 420], [1, 0]) : 1
+  const logoProgress = phase === "logo" || phase === "fade" ? interpolate(frameRef.current, [310, 400], [0, 1]) : 0
+  const fadeOp = phase === "fade" ? interpolate(frameRef.current, [400, 420], [1, 0]) : 1
 
   return (
     <div className="fixed inset-0 z-50" style={{
@@ -124,10 +148,12 @@ export function IntroOverlay() {
       <canvas ref={canvasRef} className="absolute inset-0" />
 
       {/* ScrollPicker: visible during network phase */}
-      {frame < 225 && <ScrollPicker scrollOrder={scrollOrder} frame={frame} />}
+      {phase === "network" && (
+        <ScrollPicker scrollOrder={scrollOrderRef.current} frame={frameRef.current} />
+      )}
 
-      {/* LogoReveal: DOM layer, starts at frame 310 */}
-      {frame >= 300 && (
+      {/* LogoReveal: DOM layer, starts at logo phase */}
+      {(phase === "logo" || phase === "fade") && (
         <LogoReveal progress={logoProgress} centerX={logoCX} centerY={logoCY} logoSize={LOGO_SIZE} />
       )}
 

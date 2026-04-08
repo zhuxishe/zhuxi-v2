@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 
@@ -17,6 +18,7 @@ export async function lockPair(resultId: string) {
     .eq("id", resultId)
 
   if (error) return { error: error.message }
+  revalidatePath("/admin/matching", "layout")
   return { success: true }
 }
 
@@ -30,6 +32,7 @@ export async function splitPair(resultId: string) {
     .eq("id", resultId)
 
   if (error) return { error: error.message }
+  revalidatePath("/admin/matching", "layout")
   return { success: true }
 }
 
@@ -43,6 +46,7 @@ export async function restorePair(resultId: string) {
     .eq("id", resultId)
 
   if (error) return { error: error.message }
+  revalidatePath("/admin/matching", "layout")
   return { success: true }
 }
 
@@ -64,5 +68,6 @@ export async function confirmSession(sessionId: string) {
     .eq("status", "draft")
 
   if (rErr) return { error: rErr.message }
+  revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true }
 }

@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchRoundSubmissions } from "@/lib/queries/rounds"
@@ -13,6 +14,12 @@ import type { MatchingConfig } from "@/lib/matching/types"
 /** 更新轮次状态 */
 export async function updateRoundStatus(roundId: string, status: string) {
   await requireAdmin()
+
+  const VALID_STATUSES = ['draft', 'open', 'closed', 'matched']
+  if (!VALID_STATUSES.includes(status)) {
+    return { error: `无效状态: ${status}` }
+  }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -21,6 +28,8 @@ export async function updateRoundStatus(roundId: string, status: string) {
     .eq("id", roundId)
 
   if (error) return { error: error.message }
+  revalidatePath(`/admin/matching/rounds/${roundId}`)
+  revalidatePath("/admin/matching")
   return { success: true }
 }
 

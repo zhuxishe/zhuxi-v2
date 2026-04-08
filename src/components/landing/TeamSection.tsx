@@ -1,4 +1,4 @@
-import { useTranslations } from "next-intl"
+import { getTranslations } from "next-intl/server"
 
 const MEMBERS = [
   { emoji: "👩‍🎓", name: "林芷萱", role: "社长", school: "东京大学 / 社会学" },
@@ -9,8 +9,8 @@ const MEMBERS = [
   { emoji: "📊", name: "刘浩然", role: "财务长", school: "东京工业大学 / 机械" },
 ]
 
-export function TeamSection() {
-  const t = useTranslations("home")
+export async function TeamSection() {
+  const t = await getTranslations("home")
 
   return (
     <section id="team" className="section-padding">

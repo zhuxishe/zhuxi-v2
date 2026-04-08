@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 
@@ -17,5 +18,6 @@ export async function updateVerification(memberId: string, data: { student_id_ve
     }, { onConflict: "member_id" })
 
   if (error) return { error: error.message }
+  revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }

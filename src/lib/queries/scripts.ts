@@ -5,7 +5,7 @@ export async function fetchPublishedScripts(search?: string, genre?: string) {
 
   let query = supabase
     .from("scripts")
-    .select("*")
+    .select("id, title, cover_url, genre_tags, player_count_min, player_count_max, budget, location, author, created_at")
     .eq("is_published", true)
     .order("created_at", { ascending: false })
 
@@ -18,6 +18,20 @@ export async function fetchPublishedScripts(search?: string, genre?: string) {
 
   const { data, error } = await query
   if (error) throw error
+  return data ?? []
+}
+
+export async function fetchLandingScripts(limit = 6) {
+  const supabase = await createClient()
+
+  const { data, error } = await supabase
+    .from("scripts")
+    .select("id, title, genre_tags, player_count_min, player_count_max, budget, location")
+    .eq("is_published", true)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (error) return []
   return data ?? []
 }
 

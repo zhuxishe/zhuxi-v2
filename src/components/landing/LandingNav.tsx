@@ -2,13 +2,13 @@
 
 import { useState } from "react"
 import { useTranslations } from "next-intl"
+import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 
 const NAV_LINKS = [
   { key: "navAbout", href: "#mission" },
   { key: "navScripts", href: "#scripts" },
-  { key: "navTeam", href: "#team" },
   { key: "navTestimonials", href: "#testimonials" },
   { key: "navFaq", href: "#faq" },
   { key: "navContact", href: "#contact" },
@@ -22,6 +22,7 @@ export function LandingNav() {
     <nav className="glass-nav fixed top-0 left-0 right-0 z-50">
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
         <a href="#" className="flex items-center gap-2 font-display text-lg font-bold text-primary">
+          <img src="/logo.png" alt="logo" className="size-7 rounded-md object-contain" />
           {t("title")}
         </a>
 
@@ -37,6 +38,12 @@ export function LandingNav() {
             </a>
           ))}
           <LocaleSwitcher />
+          <Link
+            href="/app/login"
+            className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            {t("navLogin")}
+          </Link>
         </div>
 
         {/* Mobile toggle */}
@@ -62,8 +69,15 @@ export function LandingNav() {
               {t(key)}
             </a>
           ))}
-          <div className="pt-2 border-t border-border/30">
+          <div className="pt-3 border-t border-border/30 flex items-center justify-between">
             <LocaleSwitcher />
+            <Link
+              href="/app/login"
+              className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              {t("navLogin")}
+            </Link>
           </div>
         </div>
       )}

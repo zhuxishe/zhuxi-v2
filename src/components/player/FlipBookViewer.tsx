@@ -14,13 +14,23 @@ export function FlipBookViewer({ pages, title }: Props) {
   const [current, setCurrent] = useState(0)
   const [touchStartX, setTouchStartX] = useState<number | null>(null)
   const [dragOffset, setDragOffset] = useState(0)
+  const [isAnimating, setIsAnimating] = useState(false)
+  const [direction, setDirection] = useState<"left" | "right" | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const total = pages.length
 
   const goTo = useCallback((page: number) => {
-    setCurrent(Math.max(0, Math.min(total - 1, page)))
+    const clamped = Math.max(0, Math.min(total - 1, page))
+    if (clamped === current || isAnimating) return
+    setDirection(clamped > current ? "left" : "right")
+    setIsAnimating(true)
+    setTimeout(() => {
+      setCurrent(clamped)
+      setDirection(null)
+      setIsAnimating(false)
+    }, 250)
     setDragOffset(0)
-  }, [total])
+  }, [total, current, isAnimating])
 
   const prev = useCallback(() => goTo(current - 1), [current, goTo])
   const next = useCallback(() => goTo(current + 1), [current, goTo])
@@ -68,9 +78,15 @@ export function FlipBookViewer({ pages, title }: Props) {
       {/* 页面展示 */}
       <div className="relative overflow-hidden rounded-xl bg-black/5 dark:bg-white/5">
         <div
-          className="transition-transform duration-300 ease-out"
+          className="transition-transform duration-250 ease-out"
           style={{
-            transform: `translateX(${dragOffset * 0.3}px)`,
+            transform: isAnimating
+              ? `translateX(${direction === "left" ? "-100%" : "100%"})`
+              : `translateX(${dragOffset * 0.3}px)`,
+            opacity: isAnimating ? 0 : 1,
+            transition: isAnimating
+              ? "transform 250ms ease-out, opacity 200ms ease-out"
+              : "transform 300ms ease-out",
           }}
         >
           <img

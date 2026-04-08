@@ -23,7 +23,7 @@ export function LandingNav() {
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
         {/* Brand */}
         <a href="#" className="flex items-center gap-2 group">
-          <img src="/logo.png" alt="" className="size-7 transition-transform duration-300 group-hover:rotate-6" />
+          <img src="/logo.svg" alt="" className="size-7 transition-transform duration-300 group-hover:rotate-6" />
           <span className="font-display text-lg font-bold text-primary tracking-wide">
             {t("title")}
           </span>

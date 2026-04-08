@@ -79,14 +79,14 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
         transform: `translate(${fillX}px,${fillY}px) rotate(${fillRot}deg)`,
         opacity: fillOp,
       }}>
-        <img src="/logo-fill.png" alt="" width={logoSize} height={logoSize} />
+        <img src="/logo-fill.svg" alt="" width={logoSize} height={logoSize} />
       </div>
       {/* Black outline (stays fixed at center) */}
       <div className="absolute" style={{
         left: centerX - halfLogo, top: centerY - halfLogo,
         width: logoSize, height: logoSize, opacity: outlineOp,
       }}>
-        <img src="/logo-outline.png" alt="" width={logoSize} height={logoSize} />
+        <img src="/logo-outline.svg" alt="" width={logoSize} height={logoSize} />
       </div>
       {/* English: fontSize=52, letterSpacing="0.25em", startProgress=0.55 */}
       <div className="absolute flex justify-center" style={{

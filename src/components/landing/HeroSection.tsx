@@ -32,7 +32,7 @@ export function HeroSection() {
       <div className="relative z-10 text-center px-6 max-w-3xl mx-auto">
         {/* Decorative bamboo mark */}
         <div className="mb-6 animate-fade-in">
-          <img src="/logo.png" alt="" className="size-12 mx-auto opacity-80" />
+          <img src="/logo.svg" alt="" className="size-12 mx-auto opacity-80" />
         </div>
 
         <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-bold text-white leading-[1.15] tracking-wide animate-fade-in-up">

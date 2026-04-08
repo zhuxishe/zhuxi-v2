@@ -21,26 +21,30 @@ export function LandingNav() {
   return (
     <nav className="glass-nav fixed top-0 left-0 right-0 z-50">
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
-        <a href="#" className="flex items-center gap-2 font-display text-lg font-bold text-primary">
-          <img src="/logo.png" alt="logo" className="size-7 rounded-md object-contain" />
-          {t("title")}
+        {/* Brand */}
+        <a href="#" className="flex items-center gap-2 group">
+          <img src="/logo.png" alt="" className="size-7 transition-transform duration-300 group-hover:rotate-6" />
+          <span className="font-display text-lg font-bold text-primary tracking-wide">
+            {t("title")}
+          </span>
         </a>
 
         {/* Desktop links */}
-        <div className="hidden md:flex items-center gap-6">
+        <div className="hidden md:flex items-center gap-5">
           {NAV_LINKS.map(({ key, href }) => (
             <a
               key={key}
               href={href}
-              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="text-[13px] font-medium text-muted-foreground hover:text-foreground transition-colors duration-200"
             >
               {t(key)}
             </a>
           ))}
+          <div className="w-px h-4 bg-border/60" />
           <LocaleSwitcher />
           <Link
             href="/app/login"
-            className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="rounded-lg bg-primary px-4 py-1.5 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all duration-200"
           >
             {t("navLogin")}
           </Link>
@@ -48,7 +52,7 @@ export function LandingNav() {
 
         {/* Mobile toggle */}
         <button
-          className="md:hidden p-2 rounded-lg hover:bg-accent"
+          className="md:hidden p-2 rounded-lg hover:bg-accent transition-colors"
           onClick={() => setOpen(!open)}
           aria-label="Toggle menu"
         >
@@ -58,12 +62,12 @@ export function LandingNav() {
 
       {/* Mobile menu */}
       {open && (
-        <div className="md:hidden border-t border-border/50 bg-card/95 backdrop-blur-lg px-4 pb-4">
+        <div className="md:hidden border-t border-border/40 bg-card/95 backdrop-blur-xl px-4 pb-4 animate-fade-in">
           {NAV_LINKS.map(({ key, href }) => (
             <a
               key={key}
               href={href}
-              className="block py-3 text-sm font-medium text-muted-foreground hover:text-foreground"
+              className="block py-3 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setOpen(false)}
             >
               {t(key)}

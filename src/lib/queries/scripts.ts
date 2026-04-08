@@ -26,7 +26,7 @@ export async function fetchLandingScripts(limit = 6) {
 
   const { data, error } = await supabase
     .from("scripts")
-    .select("id, title, genre_tags, player_count_min, player_count_max, budget, location")
+    .select("id, title, cover_url, genre_tags, player_count_min, player_count_max, budget, location")
     .eq("is_published", true)
     .order("created_at", { ascending: false })
     .limit(limit)

@@ -1,9 +1,8 @@
 "use client"
 
 /**
- * DOM-based logo reveal -- 1:1 Remotion LogoRevealV2 port.
- * Positioned at SAME centerX, centerY as particle targets.
- * logoSize=400 FIXED.
+ * DOM-based logo reveal — fill starts directly BELOW outline,
+ * bounces up with real spring physics (3 visible bounces then settles).
  *
  * progress maps frame 310-400 to 0-1 (from parent).
  */
@@ -15,19 +14,21 @@ const ZX_TEXT_MUTED = '#6b7c6b'
 const FONT_EN = "'Cormorant Garamond','Georgia',serif"
 const FONT_CN = "'Noto Serif SC','Source Han Serif SC',serif"
 
-/** Exact 7-point bounce curve from Remotion LogoRevealV2 */
-function bounceInterp(moveT: number): number {
-  return interpolate(moveT,
-    [0, 0.35, 0.52, 0.68, 0.82, 0.92, 1.0],
-    [0, 1.35, 0.85, 1.10, 0.96, 1.02, 1.0],
-  )
+/**
+ * Smooth spring bounce: converts progress(0-1) to a spring value
+ * that overshoots, bounces ~3 times, and settles at 1.0
+ * Uses the spring() physics sim with low damping for visible bounces
+ */
+function springBounce(progress: number): number {
+  // Map progress 0-1 to ~60 spring frames (gives 3 clear bounces)
+  const f = progress * 60
+  return spring(f, { damping: 8, stiffness: 120, mass: 0.6 })
 }
 
 function AnimatedChar({ ch, i, startP, progress, size, font, color, spacing }: {
   ch: string; i: number; startP: number; progress: number
   size: number; font: string; color: string; spacing: string
 }) {
-  // charDelay = i * 3 (in Remotion frame units mapped to progress scale)
   const charFrame = Math.max(0, Math.floor((progress - startP) * 100) - i * 3)
   const sc = spring(charFrame, { damping: 12, stiffness: 200, mass: 0.5 })
   const ty = interpolate(sc, [0, 1], [30, 0])
@@ -42,20 +43,23 @@ function AnimatedChar({ ch, i, startP, progress, size, font, color, spacing }: {
 }
 
 export function LogoReveal({ progress, centerX, centerY, logoSize }: {
-  progress: number  // 0..1 mapped from frames 310-400
-  centerX: number   // w / 2
-  centerY: number   // h * 0.38
-  logoSize: number  // 400 fixed
+  progress: number
+  centerX: number
+  centerY: number
+  logoSize: number
 }) {
-  // Exact Remotion LogoRevealV2 timing
   const outlineOp = interpolate(progress, [0.0, 0.20], [0, 1])
-  const fillOp = interpolate(progress, [0.15, 0.30], [0, 1])
-  const moveT = interpolate(progress, [0.20, 0.58], [0, 1])
-  const bounce = bounceInterp(moveT)
-  // Remotion原值(-19.86,-10.97)在1920px画面上合适，浏览器里放大3倍更明显
-  const fillX = interpolate(bounce, [0, 1], [-60, 0])
-  const fillY = interpolate(bounce, [0, 1], [-33, 0])
-  const fillRot = interpolate(bounce, [0, 1], [-15, 0])
+  const fillOp = interpolate(progress, [0.12, 0.25], [0, 1])
+
+  // Fill starts directly below outline (+50px down), spring bounces up to 0
+  const moveProgress = interpolate(progress, [0.18, 0.70], [0, 1])
+  const bounceVal = springBounce(moveProgress)
+  // bounceVal: 0 → overshoot past 1 → bounce back → settle at 1
+  // fillY: starts at +50 (below), ends at 0 (aligned)
+  const fillY = interpolate(bounceVal, [0, 1], [50, 0])
+  // Slight rotation that settles
+  const fillRot = interpolate(bounceVal, [0, 1], [6, 0])
+
   const glowOp = interpolate(progress, [0.75, 0.95], [0, 0.25])
 
   const titleEn = 'ZHUXISHE'
@@ -73,23 +77,23 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
         background: `radial-gradient(ellipse,${ZX_GOLD_LIGHT}30 0%,transparent 60%)`,
         opacity: glowOp,
       }} />
-      {/* Green fill (bounces from offset to center) */}
+      {/* Green fill — starts below outline, bounces up to align */}
       <div className="absolute" style={{
         left: centerX - halfLogo, top: centerY - halfLogo,
         width: logoSize, height: logoSize,
-        transform: `translate(${fillX}px,${fillY}px) rotate(${fillRot}deg)`,
+        transform: `translateY(${fillY}px) rotate(${fillRot}deg)`,
         opacity: fillOp,
       }}>
         <img src="/logo-fill.svg" alt="" width={logoSize} height={logoSize} />
       </div>
-      {/* Black outline (stays fixed at center) */}
+      {/* Black outline (stays fixed) */}
       <div className="absolute" style={{
         left: centerX - halfLogo, top: centerY - halfLogo,
         width: logoSize, height: logoSize, opacity: outlineOp,
       }}>
         <img src="/logo-outline.svg" alt="" width={logoSize} height={logoSize} />
       </div>
-      {/* English: fontSize=52, letterSpacing="0.25em", startProgress=0.55 */}
+      {/* English title */}
       <div className="absolute flex justify-center" style={{
         left: 0, right: 0, top: textTop,
       }}>
@@ -98,7 +102,7 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
             size={52} font={FONT_EN} color={ZX_TEXT} spacing="0.25em" />
         ))}
       </div>
-      {/* Chinese: fontSize=28, letterSpacing="0.5em", startProgress=0.70 */}
+      {/* Chinese title */}
       <div className="absolute flex justify-center" style={{
         left: 0, right: 0, top: textTop + 64,
       }}>

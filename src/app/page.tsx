@@ -1,4 +1,5 @@
 import { IntroOverlay } from "@/components/landing/IntroOverlay"
+import { BambooLeaves } from "@/components/landing/BambooLeaves"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { HeroSection } from "@/components/landing/HeroSection"
 import { MissionSection } from "@/components/landing/MissionSection"
@@ -12,6 +13,7 @@ export default function HomePage() {
   return (
     <>
       <IntroOverlay />
+      <BambooLeaves />
       <LandingNav />
       <main>
         <HeroSection />

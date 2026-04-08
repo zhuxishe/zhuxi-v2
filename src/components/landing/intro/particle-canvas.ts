@@ -7,8 +7,8 @@ import type { Point2D } from './animation-utils'
 import { interpolate, spring, seededRandom } from './animation-utils'
 import LOGO_OUTLINE from './logo-points.json'
 
-const ZX_GREEN = '#4a7c59'
-const ZX_GREEN_LIGHT = '#7db88f'
+const ZX_GREEN_LIGHT = '#7db88f'  // 散射阶段
+const ZX_LOGO_FILL = '#a2d1a6'   // 聚拢后 = SVG fill 颜色
 const ZX_LEAF = '#8fbc8f'
 
 export interface Particle {
@@ -98,7 +98,7 @@ export function drawParticles(
 
     const fadeIn = interpolate(localFrame, [0, 8], [0, 1])
     const size = interpolate(morphSpring, [0, 1], [5, 3])
-    const color = morphSpring < 0.5 ? ZX_GREEN_LIGHT : ZX_GREEN
+    const color = morphSpring < 0.5 ? ZX_GREEN_LIGHT : ZX_LOGO_FILL
     const glowColor = morphSpring < 0.5 ? ZX_GREEN_LIGHT : ZX_LEAF
     const rotation = p.rotBase + interpolate(morphSpring, [0, 1], [0, p.spinAmount])
 

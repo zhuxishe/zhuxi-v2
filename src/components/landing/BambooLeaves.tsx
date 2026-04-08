@@ -4,10 +4,8 @@ import { useEffect, useRef } from "react"
 
 /**
  * 全页竹叶飘落 + 鼠标交互物理效果
- * 灵感：Google Antigravity — 粒子 + 鼠标斥力场
- *
- * 竹叶缓慢飘落，鼠标靠近时被推开并旋转加速。
- * 用 Canvas 渲染，覆盖着陆页全页，pointer-events: none 不阻碍交互。
+ * Canvas fixed 在 viewport，叶子在可见区域内循环飘落。
+ * 鼠标靠近时推开（带重力，不会飘上天），打转后继续落。
  */
 
 interface Leaf {
@@ -20,23 +18,23 @@ interface Leaf {
 
 const LEAF_COUNT = 18
 const MOUSE_RADIUS = 120
-const MOUSE_FORCE = 2.5
-const GRAVITY = 0.12
-const FRICTION = 0.985
+const MOUSE_FORCE = 1.2        // 柔和推力（减半）
+const GRAVITY = 0.06           // 速度减半
+const FRICTION = 0.988
 const COLORS = ["#4a7c59", "#7db88f", "#8fbc8f", "#5a9a6a"]
 
-function createLeaf(w: number, h: number, startTop = false): Leaf {
+function createLeaf(w: number, h: number, fromTop = false): Leaf {
   return {
     x: Math.random() * w,
-    y: startTop ? -20 - Math.random() * 200 : Math.random() * h,
-    vx: (Math.random() - 0.5) * 0.3,
-    vy: 0.2 + Math.random() * 0.5,
+    y: fromTop ? -10 - Math.random() * 100 : Math.random() * h,
+    vx: (Math.random() - 0.5) * 0.15,
+    vy: 0.1 + Math.random() * 0.25,   // 初速也减半
     rotation: Math.random() * Math.PI * 2,
-    rotSpeed: (Math.random() - 0.5) * 0.01,
+    rotSpeed: (Math.random() - 0.5) * 0.008,
     size: 8 + Math.random() * 10,
-    opacity: 0.15 + Math.random() * 0.2,
+    opacity: 0.12 + Math.random() * 0.18,
     wobblePhase: Math.random() * Math.PI * 2,
-    wobbleSpeed: 0.005 + Math.random() * 0.01,
+    wobbleSpeed: 0.004 + Math.random() * 0.008,
   }
 }
 
@@ -46,24 +44,19 @@ function drawLeaf(ctx: CanvasRenderingContext2D, l: Leaf, color: string) {
   ctx.rotate(l.rotation)
   ctx.globalAlpha = l.opacity
   ctx.fillStyle = color
-
-  // 竹叶形状：两段贝塞尔曲线
   const s = l.size
   ctx.beginPath()
   ctx.moveTo(0, -s)
   ctx.bezierCurveTo(s * 0.6, -s * 0.6, s * 0.5, s * 0.3, 0, s)
   ctx.bezierCurveTo(-s * 0.5, s * 0.3, -s * 0.6, -s * 0.6, 0, -s)
   ctx.fill()
-
-  // 叶脉
   ctx.strokeStyle = color
-  ctx.globalAlpha = l.opacity * 0.5
+  ctx.globalAlpha = l.opacity * 0.4
   ctx.lineWidth = 0.5
   ctx.beginPath()
-  ctx.moveTo(0, -s * 0.8)
-  ctx.lineTo(0, s * 0.8)
+  ctx.moveTo(0, -s * 0.7)
+  ctx.lineTo(0, s * 0.7)
   ctx.stroke()
-
   ctx.restore()
 }
 
@@ -79,10 +72,11 @@ export function BambooLeaves() {
     const ctx = canvas.getContext("2d")
     if (!ctx) return
 
+    let w = window.innerWidth, h = window.innerHeight
+
     const resize = () => {
+      w = window.innerWidth; h = window.innerHeight
       const dpr = window.devicePixelRatio || 1
-      const w = window.innerWidth
-      const h = document.documentElement.scrollHeight
       canvas.width = w * dpr
       canvas.height = h * dpr
       canvas.style.width = `${w}px`
@@ -90,64 +84,52 @@ export function BambooLeaves() {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
     }
     resize()
-
-    // 初始化竹叶
-    const w = window.innerWidth
-    const h = document.documentElement.scrollHeight
     leavesRef.current = Array.from({ length: LEAF_COUNT }, () => createLeaf(w, h))
 
+    // 鼠标用 clientX/clientY（viewport 坐标，和 fixed canvas 对齐）
     const onMouse = (e: MouseEvent) => {
-      mouseRef.current = { x: e.clientX, y: e.clientY + window.scrollY }
+      mouseRef.current = { x: e.clientX, y: e.clientY }
     }
-    const onScroll = () => resize()
     window.addEventListener("mousemove", onMouse)
     window.addEventListener("resize", resize)
-    window.addEventListener("scroll", onScroll, { passive: true })
 
     const tick = () => {
-      const cw = window.innerWidth
-      const ch = document.documentElement.scrollHeight
-      ctx.clearRect(0, 0, cw, ch)
-
-      const mx = mouseRef.current.x
-      const my = mouseRef.current.y
+      ctx.clearRect(0, 0, w, h)
+      const mx = mouseRef.current.x, my = mouseRef.current.y
 
       for (let i = 0; i < leavesRef.current.length; i++) {
         const l = leavesRef.current[i]
 
         // 重力 + 横向摇摆
         l.wobblePhase += l.wobbleSpeed
-        l.vx += Math.sin(l.wobblePhase) * 0.02
-        l.vy += GRAVITY * (l.size / 15) // 大叶子落得快
+        l.vx += Math.sin(l.wobblePhase) * 0.012
+        l.vy += GRAVITY * (l.size / 15)
 
-        // 鼠标斥力
+        // 鼠标推力（主要向两侧推，向上力减弱）
         const dx = l.x - mx, dy = l.y - my
         const dist = Math.sqrt(dx * dx + dy * dy)
         if (dist < MOUSE_RADIUS && dist > 1) {
           const force = (1 - dist / MOUSE_RADIUS) * MOUSE_FORCE
-          l.vx += (dx / dist) * force
-          l.vy += (dy / dist) * force
-          l.rotSpeed += (Math.random() - 0.5) * 0.08 // 打转
+          l.vx += (dx / dist) * force              // 水平方向正常推
+          l.vy += (dy / dist) * force * 0.3         // 垂直方向只给30%的力
+          l.vy += GRAVITY * 2                        // 额外重力补偿，防止上飘
+          l.rotSpeed += (Math.random() - 0.5) * 0.06
         }
 
-        // 摩擦
         l.vx *= FRICTION
         l.vy *= FRICTION
-        l.rotSpeed *= 0.995
-
-        // 更新位置
+        l.rotSpeed *= 0.996
         l.x += l.vx
         l.y += l.vy
         l.rotation += l.rotSpeed
 
-        // 重生：掉出底部或飘出两侧
-        if (l.y > ch + 30 || l.x < -50 || l.x > cw + 50) {
-          leavesRef.current[i] = createLeaf(cw, ch, true)
+        // 落出 viewport 底部或两侧 → 从顶部重生
+        if (l.y > h + 30 || l.x < -40 || l.x > w + 40) {
+          leavesRef.current[i] = createLeaf(w, h, true)
         }
 
         drawLeaf(ctx, l, COLORS[i % COLORS.length])
       }
-
       rafRef.current = requestAnimationFrame(tick)
     }
     rafRef.current = requestAnimationFrame(tick)
@@ -156,7 +138,6 @@ export function BambooLeaves() {
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener("mousemove", onMouse)
       window.removeEventListener("resize", resize)
-      window.removeEventListener("scroll", onScroll)
     }
   }, [])
 

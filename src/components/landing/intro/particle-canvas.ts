@@ -7,9 +7,9 @@ import type { Point2D } from './animation-utils'
 import { interpolate, spring, seededRandom } from './animation-utils'
 import LOGO_OUTLINE from './logo-points.json'
 
-const ZX_GREEN_LIGHT = '#7db88f'  // 散射阶段
-const ZX_LOGO_FILL = '#a2d1a6'   // 聚拢后 = SVG fill 颜色
-const ZX_LEAF = '#8fbc8f'
+const ZX_GREEN_LIGHT = '#a2d1a6'  // 全程统一 = SVG fill 颜色
+const ZX_LOGO_FILL = '#a2d1a6'
+const ZX_LEAF = '#a2d1a6'
 
 export interface Particle {
   source: Point2D

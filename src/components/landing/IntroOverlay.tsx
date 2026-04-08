@@ -113,13 +113,13 @@ export function IntroOverlay() {
   const logoCY = h * 0.38
   const scrollOrder = typeof window !== "undefined" ? buildScrollOrder(projectUniversities(w, h)) : []
 
-  const bgOp = interpolate(frame, [0, 20], [0, 1])
   const logoProgress = interpolate(frame, [310, 400], [0, 1])
-  const fadeOp = interpolate(frame, [400, 420], [1, 0])
+  // 背景始终不透明（遮住主页），只在最后20帧淡出
+  const fadeOp = frame >= 400 ? interpolate(frame, [400, 420], [1, 0]) : 1
 
   return (
     <div className="fixed inset-0 z-50" style={{
-      backgroundColor: BG, opacity: fadeOp * bgOp,
+      backgroundColor: BG, opacity: fadeOp,
     }}>
       <canvas ref={canvasRef} className="absolute inset-0" />
 

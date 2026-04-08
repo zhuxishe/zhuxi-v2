@@ -4,8 +4,8 @@ import type { Point2D } from './animation-utils'
 import { interpolate, spring, easeBezier } from './animation-utils'
 import { UNIVERSITIES, CONNECTIONS } from './university-data'
 
-const ZX_GREEN = '#4a7c59'
-const ZX_GREEN_LIGHT = '#7db88f'
+const ZX_GREEN = '#a2d1a6'       // 和 SVG fill 统一
+const ZX_GREEN_LIGHT = '#a2d1a6'
 const WASEDA_IDX = 2
 const UNI_START = 10
 const UNI_GAP = 9

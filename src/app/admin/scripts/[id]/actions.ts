@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
+import { revalidatePath } from "next/cache"
 
 /** 批量授予剧本访问权 */
 export async function grantScriptAccess(scriptId: string, memberIds: string[]) {
@@ -20,6 +21,7 @@ export async function grantScriptAccess(scriptId: string, memberIds: string[]) {
     .upsert(rows, { onConflict: "script_id,member_id" })
 
   if (error) return { error: error.message }
+  revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true, count: memberIds.length }
 }
 
@@ -35,6 +37,7 @@ export async function revokeScriptAccess(scriptId: string, memberId: string) {
     .eq("member_id", memberId)
 
   if (error) return { error: error.message }
+  revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }
 }
 

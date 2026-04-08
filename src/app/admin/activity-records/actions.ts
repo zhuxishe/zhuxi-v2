@@ -2,6 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
+import { revalidatePath } from "next/cache"
 
 interface ActivityInput {
   title: string
@@ -36,5 +37,6 @@ export async function createActivityRecord(input: ActivityInput) {
     })
 
   if (error) return { error: error.message }
+  revalidatePath("/admin/activity-records")
   return { success: true }
 }

@@ -1,3 +1,4 @@
+import { IntroOverlay } from "@/components/landing/IntroOverlay"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { HeroSection } from "@/components/landing/HeroSection"
 import { MissionSection } from "@/components/landing/MissionSection"
@@ -10,6 +11,7 @@ import { LandingFooter } from "@/components/landing/LandingFooter"
 export default function HomePage() {
   return (
     <>
+      <IntroOverlay />
       <LandingNav />
       <main>
         <HeroSection />

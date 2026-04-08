@@ -6,8 +6,8 @@ import { IntroAnimationMobile } from "./IntroAnimationMobile"
 /**
  * 开场动画入口 — 自动选择最佳模式
  *
- * 桌面/横屏: 播放 Remotion 渲染的完整视频（16:9 网络扩散+Logo）
- * 手机/竖屏: 原生 CSS 动画（Logo+文字弹出+竹叶飘落），零加载
+ * 桌面 (≥768px): 播放视频，object-cover 全屏填满
+ * 手机 (<768px):  CSS 动画（Logo 分层揭示 + 文字弹出）
  */
 export function IntroOverlay() {
   const videoRef = useRef<HTMLVideoElement>(null)
@@ -17,9 +17,7 @@ export function IntroOverlay() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    // 用宽度判断而非方向，平板横屏也走视频
-    const mobile = window.innerWidth < 768
-    setIsMobile(mobile)
+    setIsMobile(window.innerWidth < 768)
     setReady(true)
   }, [])
 
@@ -30,15 +28,13 @@ export function IntroOverlay() {
 
   if (hidden || !ready) return null
 
-  // 手机 → CSS 动画
   if (isMobile) {
     return <IntroAnimationMobile onDone={handleDone} />
   }
 
-  // 桌面 → 视频
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden"
+      className="fixed inset-0 z-50 overflow-hidden"
       style={{
         backgroundColor: "#f7f3eb",
         opacity: fading ? 0 : 1,
@@ -51,7 +47,7 @@ export function IntroOverlay() {
         muted
         playsInline
         onEnded={handleDone}
-        className="w-full h-full object-contain"
+        className="absolute inset-0 w-full h-full object-cover"
         style={{ backgroundColor: "#f7f3eb" }}
       >
         <source src="/video/zhuxishe-intro-v2.webm" type="video/webm" />
@@ -60,7 +56,7 @@ export function IntroOverlay() {
 
       <button
         onClick={handleDone}
-        className="absolute bottom-8 right-8 text-sm text-[#6b7c6b]/70 hover:text-[#2d3a2e] transition-colors z-10"
+        className="absolute bottom-6 right-6 text-sm text-[#6b7c6b]/60 hover:text-[#2d3a2e] transition-colors z-10"
       >
         跳过 →
       </button>

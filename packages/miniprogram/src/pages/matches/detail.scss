@@ -1,0 +1,71 @@
+.detail-page { min-height: 100vh; padding: 24px 28px; background: #F7F6F2; }
+.loading, .error { display: block; text-align: center; padding: 80px 0; font-size: 28px; color: #7A7A6E; }
+.error { color: #C25450; }
+
+.card {
+  background: #fff; border-radius: 20px; padding: 32px;
+  margin-bottom: 16px; box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+}
+
+.partner-name { display: block; font-size: 40px; font-weight: 600; color: #2C2C2C; margin-bottom: 24px; }
+
+.info-grid { display: flex; flex-wrap: wrap; gap: 16px; }
+.info-item { width: calc(50% - 8px); }
+.info-label { display: block; font-size: 22px; color: #ABABAB; }
+.info-value { display: block; font-size: 28px; color: #2C2C2C; margin-top: 4px; }
+
+// 取消状态
+.cancel-card { border-left: 6px solid #D4A853; }
+.cancel-title { display: block; font-size: 28px; font-weight: 500; color: #2C2C2C; margin-bottom: 12px; }
+.cancel-badge {
+  display: inline-flex; padding: 6px 20px; border-radius: 12px; margin-bottom: 12px;
+  &.pending { background: #FFF8E1; }
+  &.approved { background: #E7F0E9; }
+  &.rejected { background: #FDF2F2; }
+}
+.cancel-badge-text {
+  font-size: 24px; font-weight: 500;
+  .pending & { color: #D4A853; }
+  .approved & { color: #3C6E47; }
+  .rejected & { color: #C25450; }
+}
+.cancel-reason { display: block; font-size: 26px; color: #7A7A6E; margin-bottom: 8px; }
+.cancel-time { display: block; font-size: 22px; color: #ABABAB; }
+
+// 取消按钮
+.cancel-btn {
+  padding: 24px; text-align: center; background: #fff; border-radius: 20px;
+  border: 2px solid #C25450; margin-bottom: 16px;
+  &:active { background: #FDF2F2; }
+}
+.cancel-btn-text { font-size: 30px; color: #C25450; }
+
+.section-title { display: block; font-size: 28px; font-weight: 500; color: #2C2C2C; margin-bottom: 16px; }
+
+.reason-input {
+  width: 100%; min-height: 120px; font-size: 28px; color: #2C2C2C;
+  background: #F7F6F2; border-radius: 12px; padding: 20px; box-sizing: border-box;
+  margin-bottom: 20px;
+}
+
+.cancel-actions { display: flex; gap: 16px; }
+.action-btn {
+  flex: 1; height: 80px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  &.secondary { background: #F7F6F2; }
+  &.danger { background: #C25450; }
+  &:active { opacity: 0.8; }
+}
+.action-text {
+  font-size: 28px; font-weight: 500;
+  &.sec-text { color: #7A7A6E; }
+  &.danger-text { color: #fff; }
+}
+
+// 评价入口
+.review-entry {
+  background: #E7F0E9; border-radius: 16px; padding: 24px; text-align: center;
+  margin-top: 8px;
+  &:active { opacity: 0.8; }
+}
+.review-entry-text { font-size: 30px; font-weight: 500; color: #3C6E47; }

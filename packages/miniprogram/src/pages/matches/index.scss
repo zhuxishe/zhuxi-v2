@@ -1,0 +1,104 @@
+.matches-page {
+  padding: 24px 28px;
+  min-height: 100vh;
+  background-color: #F7F6F2;
+}
+
+.loading, .error {
+  display: block;
+  text-align: center;
+  padding: 80px 0;
+  font-size: 30px;
+  color: #7A7A6E;
+}
+
+.error {
+  color: #C25450;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 120px 0;
+}
+
+.empty-text {
+  font-size: 32px;
+  color: #7A7A6E;
+}
+
+.empty-hint {
+  font-size: 24px;
+  color: #ABABAB;
+  margin-top: 12px;
+}
+
+.match-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 28px 32px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+}
+
+.match-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.partner-name {
+  font-size: 34px;
+  font-weight: 600;
+  color: #2C2C2C;
+}
+
+.slot-tag {
+  font-size: 22px;
+  color: #3C6E47;
+  background: #E7F0E9;
+  padding: 6px 16px;
+  border-radius: 8px;
+}
+
+.match-meta {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.match-date {
+  font-size: 24px;
+  color: #7A7A6E;
+}
+
+.match-rank {
+  font-size: 24px;
+  color: #7A7A6E;
+}
+
+.review-btn {
+  margin-top: 16px;
+  padding: 14px;
+  text-align: center;
+  background: #E7F0E9;
+  border-radius: 12px;
+
+  &:active { opacity: 0.8; }
+}
+
+.review-btn-text {
+  font-size: 26px;
+  font-weight: 500;
+  color: #3C6E47;
+
+  &.reviewed-text {
+    color: #ABABAB;
+  }
+}
+
+.review-btn.reviewed {
+  background: #F7F6F2;
+}

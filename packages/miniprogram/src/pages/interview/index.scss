@@ -1,0 +1,78 @@
+.interview-page {
+  min-height: 100vh;
+  padding: 24px 28px;
+  background: #F7F6F2;
+}
+
+.steps-bar {
+  display: flex;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 16px;
+}
+
+.step-dot {
+  width: 48px; height: 48px; border-radius: 50%;
+  background: #E8E6E0; display: flex; align-items: center; justify-content: center;
+  &.active { background: #3C6E47; }
+  &.done { background: #E7F0E9; }
+}
+
+.step-num {
+  font-size: 24px; font-weight: 600; color: #7A7A6E;
+  .active & { color: #fff; }
+  .done & { color: #3C6E47; }
+}
+
+.step-title {
+  display: block; text-align: center;
+  font-size: 36px; font-weight: 600; color: #2C2C2C;
+  margin-bottom: 24px;
+}
+
+.form-card {
+  background: #fff; border-radius: 20px; padding: 32px;
+  box-shadow: 0 2px 12px rgba(44,44,44,0.04); margin-bottom: 24px;
+}
+
+.form-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 24px 0; border-bottom: 1px solid #E8E6E0;
+  &:last-child { border-bottom: none; }
+}
+
+.form-label { font-size: 28px; color: #7A7A6E; flex-shrink: 0; width: 160px; }
+.form-input { flex: 1; font-size: 28px; color: #2C2C2C; text-align: right; }
+.form-picker { font-size: 28px; color: #2C2C2C; &.placeholder { color: #ABABAB; } }
+
+.section-title {
+  display: block; font-size: 28px; font-weight: 500; color: #2C2C2C;
+  margin: 24px 0 16px;
+  &:first-child { margin-top: 0; }
+}
+
+.tag-grid { display: flex; flex-wrap: wrap; gap: 16px; margin-bottom: 8px; }
+
+.tag {
+  padding: 14px 28px; background: #F7F6F2; border-radius: 12px;
+  border: 2px solid #E8E6E0;
+  &.active { background: #E7F0E9; border-color: #3C6E47; }
+}
+
+.tag-text { font-size: 26px; color: #2C2C2C; }
+
+.nav-row { display: flex; gap: 16px; padding-bottom: env(safe-area-inset-bottom); }
+
+.nav-btn {
+  flex: 1; height: 88px; border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  &.primary { background: #3C6E47; }
+  &.secondary { background: #fff; border: 2px solid #3C6E47; }
+  &:active { opacity: 0.8; }
+}
+
+.nav-text {
+  font-size: 32px; font-weight: 500;
+  &.primary-text { color: #fff; }
+  &.secondary-text { color: #3C6E47; }
+}

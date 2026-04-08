@@ -1,0 +1,53 @@
+@use './edit';
+
+.section-desc {
+  display: block;
+  font-size: 24px;
+  color: #7A7A6E;
+  margin-bottom: 24px;
+}
+
+.score-section {
+  margin-bottom: 32px;
+}
+
+.score-label {
+  display: block;
+  font-size: 28px;
+  font-weight: 500;
+  color: #2C2C2C;
+  margin-bottom: 4px;
+}
+
+.score-desc {
+  display: block;
+  font-size: 22px;
+  color: #ABABAB;
+  margin-bottom: 16px;
+}
+
+.score-select {
+  display: flex;
+  gap: 20px;
+}
+
+.score-dot {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: #F7F6F2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid #E8E6E0;
+
+  &.active {
+    background: #E7F0E9;
+    border-color: #3C6E47;
+  }
+}
+
+.score-dot-text {
+  font-size: 28px;
+  color: #2C2C2C;
+}

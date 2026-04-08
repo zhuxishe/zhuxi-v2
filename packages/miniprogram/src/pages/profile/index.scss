@@ -1,0 +1,186 @@
+.profile {
+  padding: 24px 28px;
+  min-height: 100vh;
+  background-color: #F7F6F2;
+}
+
+.loading, .error {
+  display: block;
+  text-align: center;
+  padding: 80px 0;
+  font-size: 30px;
+  color: #7A7A6E;
+}
+
+.error {
+  color: #C25450;
+}
+
+.card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.card-title {
+  font-size: 36px;
+  font-weight: 600;
+  color: #2C2C2C;
+}
+
+.edit-link {
+  font-size: 26px;
+  color: #3C6E47;
+  font-weight: 500;
+}
+
+.hint {
+  font-size: 26px;
+  color: #ABABAB;
+}
+
+// 信息行
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #E8E6E0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.info-label {
+  font-size: 28px;
+  color: #7A7A6E;
+  flex-shrink: 0;
+}
+
+.info-value {
+  font-size: 28px;
+  color: #2C2C2C;
+  text-align: right;
+}
+
+// 性格自评圆点
+.score-dots {
+  display: flex;
+  gap: 10px;
+}
+
+.dot {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background-color: #E8E6E0;
+
+  &.active {
+    background-color: #3C6E47;
+  }
+}
+
+// Big Five 分数条
+.quiz-scores {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.score-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.score-label {
+  font-size: 26px;
+  color: #7A7A6E;
+  width: 130px;
+  flex-shrink: 0;
+}
+
+.bar-bg {
+  flex: 1;
+  height: 12px;
+  background-color: #E8E6E0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.bar-fill {
+  height: 100%;
+  background-color: #3C6E47;
+  border-radius: 6px;
+  transition: width 0.4s ease;
+}
+
+.score-num {
+  font-size: 24px;
+  color: #7A7A6E;
+  width: 60px;
+  text-align: right;
+}
+
+// 性格类型标签
+.type-badge {
+  background: #E7F0E9;
+  border-radius: 16px;
+  padding: 12px 24px;
+  text-align: center;
+  margin-bottom: 20px;
+  width: fit-content;
+}
+
+.type-badge-text {
+  font-size: 30px;
+  font-weight: 600;
+  color: #3C6E47;
+}
+
+// 去测试按钮
+.quiz-cta {
+  background: #E7F0E9;
+  border-radius: 12px;
+  padding: 20px;
+  text-align: center;
+
+  &:active { opacity: 0.8; }
+}
+
+.quiz-cta-text {
+  font-size: 28px;
+  font-weight: 500;
+  color: #3C6E47;
+}
+
+// 登出按钮
+.logout-btn {
+  margin-top: 20px;
+  margin-bottom: 40px;
+  padding: 24px;
+  text-align: center;
+  background: #fff;
+  border-radius: 20px;
+  border: 2px solid #E8E6E0;
+  box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+
+  &:active {
+    background: #FDF2F2;
+  }
+}
+
+.logout-text {
+  font-size: 30px;
+  color: #C25450;
+}

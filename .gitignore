@@ -1,5 +1,5 @@
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 __pnache__
@@ -37,3 +37,8 @@ next-env.d.ts
 
 # supabase
 supabase/.temp/
+
+# miniprogram build artifacts
+packages/miniprogram/dist/
+packages/miniprogram/.swc/
+packages/miniprogram/project.private.config.json

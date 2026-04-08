@@ -1,0 +1,30 @@
+.activities-page {
+  min-height: 100vh; padding: 24px 28px; background: #F7F6F2;
+}
+
+.loading {
+  display: block; text-align: center; padding: 80px 0; font-size: 28px; color: #7A7A6E;
+}
+
+.empty {
+  text-align: center; padding: 120px 0;
+}
+.empty-text { display: block; font-size: 32px; color: #7A7A6E; }
+.empty-hint { display: block; font-size: 24px; color: #ABABAB; margin-top: 12px; }
+
+.activity-card {
+  background: #fff; border-radius: 20px; padding: 28px 32px;
+  margin-bottom: 16px; box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+}
+
+.activity-title { display: block; font-size: 32px; font-weight: 600; color: #2C2C2C; margin-bottom: 12px; }
+
+.activity-meta { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+.meta-item { font-size: 24px; color: #7A7A6E; }
+.meta-tag {
+  font-size: 22px; color: #3C6E47; background: #E7F0E9;
+  padding: 4px 12px; border-radius: 6px;
+}
+
+.activity-stats { display: flex; gap: 20px; }
+.stat { font-size: 24px; color: #ABABAB; }

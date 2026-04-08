@@ -2,77 +2,89 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 100px 40px 0;
+  padding: 60px 28px 0;
+  min-height: 100vh;
+  background-color: #F7F6F2;
 }
 
 .header {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-bottom: 80px;
+  display: flex; flex-direction: column; align-items: center;
+  margin-bottom: 40px;
 }
+.title { font-size: 48px; font-weight: 600; color: #2C2C2C; letter-spacing: 4px; }
+.subtitle { font-size: 26px; color: #7A7A6E; margin-top: 8px; }
 
-.title {
-  font-size: 56px;
-  font-weight: 700;
-  color: #1a1a1a;
-  letter-spacing: 4px;
-}
-
-.subtitle {
-  font-size: 28px;
-  color: #888;
-  margin-top: 16px;
-}
-
-.content {
-  width: 100%;
-}
-
+.content { width: 100%; }
 .login-btn {
-  width: 100%;
-  height: 88px;
-  line-height: 88px;
-  background-color: #07c160;
-  color: #fff;
-  font-size: 32px;
-  border-radius: 12px;
-  border: none;
-
-  &[disabled] {
-    opacity: 0.6;
-  }
+  width: 100%; height: 88px; line-height: 88px;
+  background-color: #3C6E47; color: #fff;
+  font-size: 32px; font-weight: 500; border-radius: 16px; border: none;
+  &[disabled] { opacity: 0.5; }
 }
 
-.logged-in {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
+.dash-loading {
+  display: block; text-align: center; padding: 80px 0;
+  font-size: 28px; color: #7A7A6E;
 }
 
+.dashboard { width: 100%; }
+
+// 欢迎卡片
+.welcome-card {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #fff; border-radius: 20px; padding: 28px 32px;
+  margin-bottom: 16px; box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+}
+.welcome-name { font-size: 34px; font-weight: 600; color: #2C2C2C; }
+.status-badge {
+  padding: 6px 20px; border-radius: 20px;
+  &.success { background: #E7F0E9; }
+  &.warning { background: #FFF8E1; }
+  &.error { background: #FDF2F2; }
+}
 .status-text {
-  font-size: 36px;
-  font-weight: 600;
-  color: #07c160;
+  font-size: 24px; font-weight: 500;
+  .success & { color: #3C6E47; }
+  .warning & { color: #D4A853; }
+  .error & { color: #C25450; }
 }
 
-.status-detail {
-  font-size: 28px;
-  color: #666;
+// 通用卡片
+.card {
+  background: #fff; border-radius: 20px; padding: 28px 32px;
+  margin-bottom: 16px; box-shadow: 0 2px 12px rgba(44,44,44,0.04);
 }
+.card-label { display: block; font-size: 24px; color: #7A7A6E; margin-bottom: 8px; }
+.card-value { display: block; font-size: 32px; font-weight: 600; color: #2C2C2C; margin-bottom: 8px; }
+.card-status {
+  display: block; font-size: 26px; font-weight: 500;
+  &.done { color: #3C6E47; }
+  &.todo { color: #D4A853; }
+}
+.card-hint { display: block; font-size: 22px; color: #ABABAB; margin-top: 8px; }
 
-.debug-box {
-  margin-top: 40px;
-  padding: 20px;
-  background-color: #f0f0f0;
-  border-radius: 8px;
-  width: 100%;
+// 档案完成度
+.progress-items { display: flex; gap: 24px; margin-top: 12px; }
+.progress-item { display: flex; align-items: center; gap: 8px; }
+.progress-dot {
+  font-size: 24px; color: #ABABAB;
+  &.done { color: #3C6E47; }
 }
+.progress-label { font-size: 26px; color: #2C2C2C; }
 
-.debug-text {
-  font-size: 24px;
-  color: #333;
-  white-space: pre-wrap;
-  word-break: break-all;
+// 菜单
+.menu-list {
+  width: 100%; background: #fff; border-radius: 20px;
+  overflow: hidden; box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+  margin-top: 8px;
 }
+.menu-item {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 28px 32px; border-bottom: 1px solid #E8E6E0;
+  &:last-child { border-bottom: none; }
+  &:active { background-color: #F7F6F2; }
+}
+.menu-text { display: flex; flex-direction: column; gap: 6px; }
+.menu-title { font-size: 32px; font-weight: 500; color: #2C2C2C; }
+.menu-desc { font-size: 24px; color: #7A7A6E; }
+.menu-arrow { font-size: 36px; color: #ABABAB; }

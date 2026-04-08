@@ -1,0 +1,144 @@
+.review-page {
+  min-height: 100vh;
+  padding: 24px 28px;
+  background: #F7F6F2;
+}
+
+.form-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+}
+
+.section-title {
+  display: block;
+  font-size: 28px;
+  font-weight: 500;
+  color: #2C2C2C;
+  margin-bottom: 20px;
+}
+
+.slider-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.slider-label {
+  font-size: 26px;
+  color: #7A7A6E;
+  width: 120px;
+  flex-shrink: 0;
+}
+
+.slider {
+  flex: 1;
+}
+
+.slider-value {
+  font-size: 32px;
+  font-weight: 600;
+  color: #3C6E47;
+  width: 40px;
+  text-align: center;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 0 0;
+  border-top: 1px solid #E8E6E0;
+  margin-top: 8px;
+}
+
+.toggle-label {
+  font-size: 28px;
+  color: #2C2C2C;
+}
+
+.toggle-group {
+  display: flex;
+  gap: 12px;
+}
+
+.toggle-btn {
+  padding: 12px 32px;
+  border-radius: 12px;
+  background: #F7F6F2;
+  border: 2px solid #E8E6E0;
+
+  &.active {
+    background: #E7F0E9;
+    border-color: #3C6E47;
+  }
+
+  &.neg {
+    background: #FDF2F2;
+    border-color: #C25450;
+  }
+}
+
+.toggle-text {
+  font-size: 28px;
+  color: #2C2C2C;
+}
+
+.tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.tag {
+  padding: 14px 28px;
+  background: #F7F6F2;
+  border-radius: 12px;
+  border: 2px solid #E8E6E0;
+
+  &.active {
+    background: #E7F0E9;
+    border-color: #3C6E47;
+  }
+
+  &.neg {
+    background: #FDF2F2;
+    border-color: #C25450;
+  }
+}
+
+.tag-text {
+  font-size: 26px;
+  color: #2C2C2C;
+}
+
+.comment-input {
+  width: 100%;
+  min-height: 160px;
+  font-size: 28px;
+  color: #2C2C2C;
+  background: #F7F6F2;
+  border-radius: 12px;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.submit-btn {
+  background: #3C6E47;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+  margin-bottom: env(safe-area-inset-bottom);
+
+  &:active { background: #2A4F33; }
+}
+
+.submit-text {
+  color: #fff;
+  font-size: 32px;
+  font-weight: 500;
+}

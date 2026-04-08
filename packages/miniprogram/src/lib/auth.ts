@@ -1,5 +1,6 @@
 import Taro from '@tarojs/taro'
 import { callEdgeFunction, saveSession, clearSession, isLoggedIn } from './supabase'
+import { clearMemberCache } from './member'
 
 interface AuthResponse {
   session: {
@@ -35,6 +36,7 @@ export async function wechatLogin(): Promise<AuthResponse> {
 /** 登出 */
 export function logout() {
   clearSession()
+  clearMemberCache()
   Taro.reLaunch({ url: '/pages/index/index' })
 }
 

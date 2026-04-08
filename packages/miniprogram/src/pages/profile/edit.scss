@@ -1,0 +1,110 @@
+.edit-page {
+  padding: 24px 28px;
+  min-height: 100vh;
+  background-color: #F7F6F2;
+}
+
+.form-card {
+  background: #fff;
+  border-radius: 20px;
+  padding: 32px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 12px rgba(44,44,44,0.04);
+}
+
+.section-title {
+  display: block;
+  font-size: 28px;
+  font-weight: 500;
+  color: #2C2C2C;
+  margin: 24px 0 16px;
+
+  &:first-child {
+    margin-top: 0;
+  }
+}
+
+.form-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 0;
+  border-bottom: 1px solid #E8E6E0;
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.form-label {
+  font-size: 28px;
+  color: #7A7A6E;
+  flex-shrink: 0;
+  width: 160px;
+}
+
+.form-input {
+  flex: 1;
+  font-size: 28px;
+  color: #2C2C2C;
+  text-align: right;
+}
+
+.form-picker {
+  font-size: 28px;
+  color: #2C2C2C;
+
+  &.placeholder {
+    color: #ABABAB;
+  }
+}
+
+// 标签多选
+.tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.tag {
+  padding: 14px 28px;
+  background: #F7F6F2;
+  border-radius: 12px;
+  border: 2px solid #E8E6E0;
+
+  &.active {
+    background: #E7F0E9;
+    border-color: #3C6E47;
+  }
+}
+
+.tag-text {
+  font-size: 26px;
+  color: #2C2C2C;
+}
+
+// 保存按钮
+.save-btn {
+  background: #3C6E47;
+  border-radius: 16px;
+  padding: 24px;
+  text-align: center;
+
+  &:active {
+    background: #2A4F33;
+  }
+}
+
+.save-text {
+  color: #fff;
+  font-size: 32px;
+  font-weight: 500;
+}
+
+.loading {
+  display: block;
+  text-align: center;
+  padding: 40px 0;
+  font-size: 28px;
+  color: #7A7A6E;
+}

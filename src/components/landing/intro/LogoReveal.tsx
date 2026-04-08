@@ -52,9 +52,10 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
   const fillOp = interpolate(progress, [0.15, 0.30], [0, 1])
   const moveT = interpolate(progress, [0.20, 0.58], [0, 1])
   const bounce = bounceInterp(moveT)
-  const fillX = interpolate(bounce, [0, 1], [-19.86, 0])
-  const fillY = interpolate(bounce, [0, 1], [-10.97, 0])
-  const fillRot = interpolate(bounce, [0, 1], [-8, 0])
+  // Remotion原值(-19.86,-10.97)在1920px画面上合适，浏览器里放大3倍更明显
+  const fillX = interpolate(bounce, [0, 1], [-60, 0])
+  const fillY = interpolate(bounce, [0, 1], [-33, 0])
+  const fillRot = interpolate(bounce, [0, 1], [-15, 0])
   const glowOp = interpolate(progress, [0.75, 0.95], [0, 0.25])
 
   const titleEn = 'ZHUXISHE'

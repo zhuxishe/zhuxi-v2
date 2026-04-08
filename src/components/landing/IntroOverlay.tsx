@@ -1,10 +1,15 @@
 "use client"
 
 /**
- * Intro overlay — pure browser animation ported from Remotion B-Ripple-V2.
- * Canvas for network + particles, DOM for logo reveal. ~9s total.
+ * Intro overlay -- 1:1 port of Remotion B-Ripple-V2.
+ * 420 frames at 30fps = 14 seconds. All timing uses FRAME NUMBERS.
  *
- * Timeline: Network 0-4s | Particles 4-6s | Logo 6-8s | Fade 8-9s
+ * Timeline (frames):
+ *   0-235: Network (fade at 200-225)
+ *   0-235: ScrollPicker
+ *   200-340: ParticleMorph (Sequence from=200, duration=140)
+ *   310-400: LogoReveal (progress = interpolate(frame,[310,400],[0,1]))
+ *   400-420: Fade out whole overlay
  */
 import { useEffect, useRef, useState, useCallback } from "react"
 import { interpolate } from "./intro/animation-utils"
@@ -14,21 +19,21 @@ import { initParticles, drawParticles, generateLogoTargets } from "./intro/parti
 import { LogoReveal } from "./intro/LogoReveal"
 import { ScrollPicker } from "./intro/ScrollPicker"
 
+const FPS = 30
+const TOTAL_FRAMES = 420
 const BG = "#f7f3eb"
-const PAPER_GRAD = `radial-gradient(ellipse at 30% 20%,#ede8dd80 0%,transparent 50%),
-  radial-gradient(ellipse at 70% 60%,#ede8dd60 0%,transparent 40%)`
+const LOGO_SIZE = 400
 
 export function IntroOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const startRef = useRef(0)
   const [hidden, setHidden] = useState(false)
-  const [time, setTime] = useState(0) // for DOM components
+  const [frame, setFrame] = useState(0)
 
   const done = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
-    setTime(99) // trigger fade
-    setTimeout(() => setHidden(true), 700)
+    setHidden(true)
   }, [])
 
   useEffect(() => {
@@ -49,32 +54,44 @@ export function IntroOverlay() {
     window.addEventListener("resize", resize)
 
     const w = window.innerWidth, h = window.innerHeight
-    const screenPos = projectUniversities(w, h)
-    const ns = initNetworkState(w, h, screenPos)
-    const sourceParticles = computeNetworkParticles(screenPos, 12)
-    const logoSize = Math.min(w, h) * 0.28
     const logoCX = w / 2, logoCY = h * 0.38
-    const targets = generateLogoTargets(sourceParticles.length, logoCX, logoCY, logoSize)
+    const screenPos = projectUniversities(w, h)
+    const ns = initNetworkState(screenPos)
+    const sourceParticles = computeNetworkParticles(screenPos, 15)
+    const targets = generateLogoTargets(sourceParticles.length, logoCX, logoCY, LOGO_SIZE)
     const particles = initParticles(sourceParticles, targets)
 
     startRef.current = performance.now()
 
     const tick = () => {
-      const t = (performance.now() - startRef.current) / 1000
-      setTime(t)
-      const netOp = interpolate(t, [4.0, 4.8], [1, 0])
-      drawNetwork(ctx, ns, Math.min(t, 4.5), w, h, netOp)
+      const elapsed = (performance.now() - startRef.current) / 1000
+      const f = Math.min(elapsed * FPS, TOTAL_FRAMES)
+      setFrame(f)
 
-      // Particle phase: 4s-6s
-      if (t >= 3.5 && t < 7) {
-        const localT = (t - 3.5) * 1.3 // speed up slightly
+      ctx.clearRect(0, 0, w, h)
+
+      // Background opacity: frames 0-20
+      const bgOp = interpolate(f, [0, 20], [0, 1])
+      ctx.globalAlpha = bgOp
+
+      // Grid / Network: visible frames 0-235, fade at 200-225
+      if (f < 235) {
+        const netOp = interpolate(f, [200, 225], [1, 0])
+        drawNetwork(ctx, ns, f, w, h, netOp)
+      }
+
+      // Particles: Sequence from=200 duration=140 (frames 200-340)
+      if (f >= 200 && f < 340) {
+        const localFrame = f - 200
         ctx.save()
-        ctx.globalAlpha = interpolate(t, [3.5, 4, 6.5, 7], [0, 1, 1, 0])
-        drawParticles(ctx, particles, localT)
+        ctx.globalAlpha = interpolate(f, [200, 210, 330, 340], [0, 1, 1, 0])
+        drawParticles(ctx, particles, localFrame)
         ctx.restore()
       }
 
-      if (t < 9) {
+      ctx.globalAlpha = 1
+
+      if (f < TOTAL_FRAMES) {
         rafRef.current = requestAnimationFrame(tick)
       } else {
         done()
@@ -90,26 +107,29 @@ export function IntroOverlay() {
 
   if (hidden) return null
 
-  const scrollOrder = typeof window !== "undefined" ? buildScrollOrder(
-    projectUniversities(window.innerWidth, window.innerHeight)
-  ) : []
-  const logoSize = typeof window !== "undefined"
-    ? Math.min(window.innerWidth, window.innerHeight) * 0.28 : 200
-  const logoProgress = interpolate(time, [6, 8], [0, 1])
-  const fadeOp = time >= 8 ? interpolate(time, [8, 9], [1, 0]) : 1
+  const w = typeof window !== "undefined" ? window.innerWidth : 1280
+  const h = typeof window !== "undefined" ? window.innerHeight : 720
+  const logoCX = w / 2
+  const logoCY = h * 0.38
+  const scrollOrder = typeof window !== "undefined" ? buildScrollOrder(projectUniversities(w, h)) : []
+
+  const bgOp = interpolate(frame, [0, 20], [0, 1])
+  const logoProgress = interpolate(frame, [310, 400], [0, 1])
+  const fadeOp = interpolate(frame, [400, 420], [1, 0])
 
   return (
     <div className="fixed inset-0 z-50" style={{
-      backgroundColor: BG, backgroundImage: PAPER_GRAD,
-      opacity: fadeOp, transition: time >= 99 ? "opacity 0.6s ease-out" : undefined,
+      backgroundColor: BG, opacity: fadeOp * bgOp,
     }}>
       <canvas ref={canvasRef} className="absolute inset-0" />
 
-      {/* Scroll picker (desktop) — network phase */}
-      {time < 5 && <ScrollPicker scrollOrder={scrollOrder} t={time} />}
+      {/* ScrollPicker: visible during network phase */}
+      {frame < 225 && <ScrollPicker scrollOrder={scrollOrder} frame={frame} />}
 
-      {/* Logo reveal — DOM layer */}
-      {time >= 5.5 && <LogoReveal progress={logoProgress} logoSize={logoSize} />}
+      {/* LogoReveal: DOM layer, starts at frame 310 */}
+      {frame >= 300 && (
+        <LogoReveal progress={logoProgress} centerX={logoCX} centerY={logoCY} logoSize={LOGO_SIZE} />
+      )}
 
       {/* Skip button */}
       <button onClick={done}

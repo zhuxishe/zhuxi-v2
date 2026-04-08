@@ -1,4 +1,5 @@
-/** University network data — copied exactly from Remotion source */
+/** University network data -- 1:1 from Remotion source.
+ * buildScrollOrder returns frame-based activateFrame (not seconds). */
 
 import type { Point2D } from './animation-utils'
 
@@ -41,7 +42,9 @@ export const CONNECTIONS: Connection[] = [
 ]
 
 const WASEDA_IDX = 2
-const BOUNDS = { minLng:139.32, maxLng:139.80, minLat:35.58, maxLat:35.76 }
+const UNI_START = 10
+const UNI_GAP = 9
+const BOUNDS = { minLng: 139.32, maxLng: 139.80, minLat: 35.58, maxLat: 35.76 }
 
 export function projectUniversities(w: number, h: number, padding = 80): Point2D[] {
   const { minLng, maxLng, minLat, maxLat } = BOUNDS
@@ -55,7 +58,8 @@ export function projectUniversities(w: number, h: number, padding = 80): Point2D
   }))
 }
 
-export function computeNetworkParticles(screenPos: Point2D[], perArc = 12): Point2D[] {
+/** particlesPerArc=15 matches Remotion computeNetworkParticles call */
+export function computeNetworkParticles(screenPos: Point2D[], perArc = 15): Point2D[] {
   const pts: Point2D[] = []
   for (const c of CONNECTIONS) {
     const p1 = screenPos[c.from], p2 = screenPos[c.to]
@@ -65,8 +69,8 @@ export function computeNetworkParticles(screenPos: Point2D[], perArc = 12): Poin
     for (let i = 0; i <= perArc; i++) {
       const t = i / perArc
       pts.push({
-        x: (1-t)**2 * p1.x + 2*(1-t)*t * mx + t**2 * p2.x,
-        y: (1-t)**2 * p1.y + 2*(1-t)*t * cy + t**2 * p2.y,
+        x: (1 - t) ** 2 * p1.x + 2 * (1 - t) * t * mx + t ** 2 * p2.x,
+        y: (1 - t) ** 2 * p1.y + 2 * (1 - t) * t * cy + t ** 2 * p2.y,
       })
     }
   }
@@ -74,17 +78,16 @@ export function computeNetworkParticles(screenPos: Point2D[], perArc = 12): Poin
   return pts
 }
 
-/** Build scroll order: sort by distance from Waseda, assign activate time */
+/** Build scroll order sorted by distance from Waseda.
+ * Returns frame-based activateFrame: UNI_START + i * UNI_GAP */
 export function buildScrollOrder(screenPos: Point2D[]) {
   const origin = screenPos[WASEDA_IDX]
   const items = UNIVERSITIES.map((_, i) => ({
     idx: i,
     dist: Math.hypot(screenPos[i].x - origin.x, screenPos[i].y - origin.y),
-    activateTime: 0,
+    activateFrame: 0,
   }))
   items.sort((a, b) => a.dist - b.dist)
-  // Compressed timeline: 0-4s network, gap ~0.19s per university
-  const gap = 3.5 / (items.length - 1)
-  items.forEach((item, i) => { item.activateTime = 0.3 + i * gap })
+  items.forEach((item, i) => { item.activateFrame = UNI_START + i * UNI_GAP })
   return items
 }

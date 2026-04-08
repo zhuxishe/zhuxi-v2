@@ -1,4 +1,7 @@
-/** Canvas-based particle morph system — ported 1:1 from Remotion ParticleMorph */
+/** Canvas-based particle morph -- 1:1 Remotion ParticleMorph port.
+ * Local frame = main frame - 200 (Sequence from=200, duration=140).
+ * Scatter: frame 0-30. Morph: starts at local frame 50 + random delay (0-40).
+ * Spring config: damping=15, stiffness=80, mass=0.8+random*0.4. */
 
 import type { Point2D } from './animation-utils'
 import { interpolate, spring, seededRandom } from './animation-utils'
@@ -15,13 +18,13 @@ export interface Particle {
   scatterDist: number
   wobbleSeedX: number
   wobbleSeedY: number
-  morphDelay: number
-  mass: number
+  morphDelay: number  // 0-40 random frames
+  mass: number        // 0.8 + random * 0.4
   rotBase: number
   spinAmount: number
 }
 
-/** Sample N points from real logo outline (from bamboo-paths.ts logic) */
+/** Sample N points from real logo outline */
 function sampleLogoPoints(count: number): Point2D[] {
   const src = LOGO_OUTLINE as Point2D[]
   if (src.length === 0) return Array.from({ length: count }, () => ({ x: 50, y: 50 }))
@@ -32,7 +35,6 @@ function sampleLogoPoints(count: number): Point2D[] {
       return { x: src[idx].x, y: src[idx].y }
     })
   }
-  // count > source: cycle with jitter
   return Array.from({ length: count }, (_, i) => {
     const base = src[i % src.length]
     const jitter = i >= src.length ? (i * 0.1) % 1.5 : 0
@@ -40,7 +42,8 @@ function sampleLogoPoints(count: number): Point2D[] {
   })
 }
 
-/** Convert normalized [0,100] coords to screen pixels (from bamboo-paths.ts) */
+/** Convert normalized [0,100] coords to screen pixels.
+ * Matches: positionLogoPoints(sampleLogoPoints(count), logoCenterX, logoCenterY, logoSize) */
 export function generateLogoTargets(
   count: number, cx: number, cy: number, size: number,
 ): Point2D[] {
@@ -52,10 +55,8 @@ export function generateLogoTargets(
 }
 
 /** Pre-compute all particle state (called once) */
-export function initParticles(
-  sources: Point2D[], targets: Point2D[],
-): Particle[] {
-  const count = Math.min(sources.length, targets.length, 300)
+export function initParticles(sources: Point2D[], targets: Point2D[]): Particle[] {
+  const count = Math.min(sources.length, targets.length, 400)
   return Array.from({ length: count }, (_, i) => ({
     source: sources[i],
     target: targets[i],
@@ -70,23 +71,24 @@ export function initParticles(
   }))
 }
 
-/** Draw all particles for the given local time (seconds since particle phase) */
+/** Draw all particles. localFrame = mainFrame - 200 */
 export function drawParticles(
   ctx: CanvasRenderingContext2D,
   particles: Particle[],
-  localT: number,
+  localFrame: number,
 ): void {
-  const frame = localT * 30 // map to Remotion's 30fps frame count
-
   for (const p of particles) {
-    const scatterProg = interpolate(frame, [0, 30], [0, 1])
+    // Scatter: frame 0-30
+    const scatterProg = interpolate(localFrame, [0, 30], [0, 1])
     const sx = p.source.x + Math.cos(p.scatterAngle) * p.scatterDist * scatterProg
     const sy = p.source.y + Math.sin(p.scatterAngle) * p.scatterDist * scatterProg
 
-    const wobX = Math.sin(frame * 0.2 + p.wobbleSeedX) * 4
-    const wobY = Math.cos(frame * 0.15 + p.wobbleSeedY) * 4
+    // Wobble: ongoing
+    const wobX = Math.sin(localFrame * 0.2 + p.wobbleSeedX) * 4
+    const wobY = Math.cos(localFrame * 0.15 + p.wobbleSeedY) * 4
 
-    const morphFrame = Math.max(0, frame - 50 - p.morphDelay)
+    // Morph: starts at local frame 50 + random delay (0-40)
+    const morphFrame = Math.max(0, localFrame - 50 - p.morphDelay)
     const morphSpring = spring(morphFrame, {
       damping: 15, stiffness: 80, mass: p.mass,
     })
@@ -94,7 +96,7 @@ export function drawParticles(
     const x = interpolate(morphSpring, [0, 1], [sx, p.target.x]) + wobX * (1 - morphSpring)
     const y = interpolate(morphSpring, [0, 1], [sy, p.target.y]) + wobY * (1 - morphSpring)
 
-    const fadeIn = interpolate(frame, [0, 8], [0, 1])
+    const fadeIn = interpolate(localFrame, [0, 8], [0, 1])
     const size = interpolate(morphSpring, [0, 1], [5, 3])
     const color = morphSpring < 0.5 ? ZX_GREEN_LIGHT : ZX_GREEN
     const glowColor = morphSpring < 0.5 ? ZX_GREEN_LIGHT : ZX_LEAF

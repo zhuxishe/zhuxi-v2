@@ -111,5 +111,6 @@ export async function hardDeleteMember(memberId: string) {
     .delete()
     .eq("id", memberId)
   if (error) return { error: error.message }
+  revalidatePath("/admin/members")
   return { success: true }
 }

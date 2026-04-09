@@ -93,7 +93,11 @@ export function IntroOverlay() {
     // Cache scrollOrder in ref once
     scrollOrderRef.current = buildScrollOrder(screenPos)
 
-    startRef.current = performance.now()
+    // 手机竖版：跳过网络节点阶段，直接从粒子聚拢（frame 200）开始
+    const MOBILE_START_FRAME = 200
+    const { w: sw, h: sh } = sizeRef.current
+    const mobileOffset = (sw < 640 && sh > sw) ? (MOBILE_START_FRAME / FPS) * 1000 : 0
+    startRef.current = performance.now() - mobileOffset
 
     const tick = () => {
       const elapsed = (performance.now() - startRef.current) / 1000

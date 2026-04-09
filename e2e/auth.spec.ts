@@ -7,11 +7,12 @@ test.describe("认证", () => {
     expect(page.url()).toContain("/login")
   })
 
-  // 已知问题: admin layout 在本地 dev 中 pathname header 不可用导致空白页
-  // Vercel 部署时正常（有 x-next-pathname header）
+  // 本地 dev 无 x-next-pathname header，layout 无法判断路径，依赖各 page.tsx 的 requireAdmin()
+  // Vercel 部署时可用 x-next-pathname，重定向正常；本地跳过此测试
   test.fixme("未登录访问 /admin 重定向到登录页", async ({ page }) => {
     await page.goto("/admin")
     await page.waitForURL(/\/login/, { timeout: 10_000 })
+    expect(page.url()).toContain("/login")
   })
 
   test("管理员登录页面可访问", async ({ page }) => {
@@ -23,8 +24,7 @@ test.describe("认证", () => {
     await expect(page.locator("button[type=submit]")).toBeVisible()
   })
 
-  // 管理员登录功能测试 — 需要先修复 RLS 策略（admin_users 表的 SELECT 权限）
-  test.skip("管理员登录成功", async ({ page }) => {
+  test("管理员登录成功", async ({ page }) => {
     await page.goto("/admin/login")
     await page.locator("input[name=email]").fill("e2e-admin@test.local")
     await page.locator("input[name=password]").fill("E2eTest!Admin2026")

@@ -2,11 +2,12 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import type { PersonalitySelfData } from "@/types"
 import { EMPTY_PERSONALITY } from "@/types"
 import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
 import { submitPersonality } from "@/app/app/profile/personality/actions"
+import { localizePersonalityLabel, localizePersonalityDesc, localizePersonalityOption } from "@/lib/constants/personality-i18n"
 import { Button } from "@/components/ui/button"
 import { PersonalitySlider } from "./PersonalitySlider"
 import { SingleSelect } from "@/components/shared/SingleSelect"
@@ -24,6 +25,7 @@ function buildInitial(existing?: Record<string, unknown> | null): PersonalitySel
 export function PersonalitySelfAssessment({ existing }: Props) {
   const router = useRouter()
   const t = useTranslations("personality")
+  const locale = useLocale()
   const [data, setData] = useState(() => buildInitial(existing))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -46,16 +48,16 @@ export function PersonalitySelfAssessment({ existing }: Props) {
       {PERSONALITY_DIMENSIONS.map((dim) => (
         <div key={dim.key} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 space-y-2">
           <div>
-            <p className="text-sm font-semibold">{dim.label}</p>
-            <p className="text-xs text-muted-foreground">{dim.description}</p>
+            <p className="text-sm font-semibold">{localizePersonalityLabel(dim.label, locale)}</p>
+            <p className="text-xs text-muted-foreground">{localizePersonalityDesc(dim.description, locale)}</p>
           </div>
 
           {dim.type === "slider" && (
             <PersonalitySlider
               value={data[dim.key as keyof PersonalitySelfData] as number}
               onChange={(v) => setField(dim.key as keyof PersonalitySelfData, v)}
-              lowLabel={dim.sliderLabels?.[0] ?? ""}
-              highLabel={dim.sliderLabels?.[1] ?? ""}
+              lowLabel={localizePersonalityOption(dim.sliderLabels?.[0] ?? "", locale)}
+              highLabel={localizePersonalityOption(dim.sliderLabels?.[1] ?? "", locale)}
             />
           )}
 
@@ -64,6 +66,7 @@ export function PersonalitySelfAssessment({ existing }: Props) {
               options={[...dim.options]}
               value={data[dim.key as keyof PersonalitySelfData] as string}
               onChange={(v) => setField(dim.key as keyof PersonalitySelfData, v)}
+              labels={locale !== "zh" ? Object.fromEntries(dim.options.map(o => [o, localizePersonalityOption(o, locale)])) : undefined}
             />
           )}
 
@@ -72,6 +75,7 @@ export function PersonalitySelfAssessment({ existing }: Props) {
               options={[...dim.options]}
               value={data[dim.key as keyof PersonalitySelfData] as string[]}
               onChange={(v) => setField(dim.key as keyof PersonalitySelfData, v)}
+              labels={locale !== "zh" ? Object.fromEntries(dim.options.map(o => [o, localizePersonalityOption(o, locale)])) : undefined}
             />
           )}
         </div>

@@ -21,6 +21,9 @@ interface SeedResult {
 }
 
 export async function generateTestData(count: number): Promise<SeedResult> {
+  if (process.env.NODE_ENV === "production") {
+    return { error: "生产环境禁止生成测试数据" }
+  }
   await requireAdmin()
 
   if (count < 1 || count > 100) return { error: "数量需在 1-100 之间" }
@@ -40,7 +43,10 @@ export async function generateTestData(count: number): Promise<SeedResult> {
         .select("id")
         .single()
 
-      if (error) return { error: `创建成员失败: ${error.message}` }
+      if (error) {
+        console.error("[generateTestData:member]", error)
+        return { error: "创建成员失败" }
+      }
       memberIds.push(member.id)
 
       // 2. Insert associated records in parallel
@@ -70,7 +76,10 @@ export async function generateTestData(count: number): Promise<SeedResult> {
       .select("id")
       .single()
 
-    if (roundErr) return { error: `创建轮次失败: ${roundErr.message}` }
+    if (roundErr) {
+      console.error("[generateTestData:round]", roundErr)
+      return { error: "创建轮次失败" }
+    }
 
     // 4. Create submissions for each member
     const submissions = memberIds.map((mid) => buildSubmission(round.id, mid))
@@ -78,11 +87,15 @@ export async function generateTestData(count: number): Promise<SeedResult> {
       .from("match_round_submissions")
       .insert(submissions)
 
-    if (subErr) return { error: `创建问卷失败: ${subErr.message}` }
+    if (subErr) {
+      console.error("[generateTestData:submission]", subErr)
+      return { error: "创建问卷失败" }
+    }
 
     return { success: true, membersCreated: count, roundId: round.id }
   } catch (e) {
-    return { error: `未知错误: ${e instanceof Error ? e.message : e}` }
+    console.error("[generateTestData]", e)
+    return { error: "操作失败" }
   }
 }
 

@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
 
@@ -68,5 +69,8 @@ export async function submitReview(input: ReviewInput) {
     })
 
   if (error) return { error: error.message }
+
+  revalidatePath("/app/matches")
+  revalidatePath(`/app/matches/${input.match_result_id}`)
   return { success: true }
 }

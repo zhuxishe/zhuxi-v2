@@ -33,6 +33,7 @@ export async function ScriptsSection() {
                     <img
                       src={script.cover_url}
                       alt={script.title}
+                      loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   ) : (

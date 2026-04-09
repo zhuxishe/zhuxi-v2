@@ -29,6 +29,7 @@ export async function submitSupplementary(data: SupplementaryFormData) {
       activity_area: data.activity_area,
       nearest_station: data.nearest_station,
       graduation_year: data.graduation_year,
+      game_type_pref: data.game_type_pref,
       scenario_mode_pref: data.scenario_mode_pref,
       scenario_theme_tags: data.scenario_theme_tags,
       ideal_group_size: data.ideal_group_size,

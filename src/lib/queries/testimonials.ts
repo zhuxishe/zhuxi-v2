@@ -1,3 +1,4 @@
+import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 
 export interface Testimonial {
@@ -18,9 +19,11 @@ export interface TestimonialPublic {
 }
 
 export async function fetchPublishedTestimonials(): Promise<TestimonialPublic[]> {
-  const supabase = createAdminClient()
+  // 公开读取已发布的 testimonials，走 RLS 而非 service role
+  const supabase = await createClient()
 
-  const { data, error } = await supabase
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { data, error } = await (supabase as any)
     .from("testimonials")
     .select("id, name, school, quote")
     .eq("is_published", true)

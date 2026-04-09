@@ -8,6 +8,7 @@ import { submitSurvey } from "@/app/app/matching/survey/actions"
 import { Button } from "@/components/ui/button"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { SCRIPT_GENRE_OPTIONS } from "@/lib/constants/scripts"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 
 /** DB enum values — never change these */
 const GAME_TYPE_VALUES = ["双人", "多人", "都可以"] as const
@@ -34,6 +35,7 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
   const router = useRouter()
   const t = useTranslations("survey")
   const tErr = useTranslations("errors")
+  const genreLabels = useTagLabels(SCRIPT_GENRE_OPTIONS)
   const [gameType, setGameType] = useState(existing?.game_type_pref ?? "都可以")
   const [genderPref, setGenderPref] = useState(existing?.gender_pref ?? "都可以")
   const [availability, setAvailability] = useState<Record<string, string[]>>(existing?.availability ?? {})
@@ -132,6 +134,7 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
           options={[...SCRIPT_GENRE_OPTIONS]}
           value={interestTags}
           onChange={setInterestTags}
+          labels={genreLabels}
         />
       </section>
 

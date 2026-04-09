@@ -1,6 +1,10 @@
+"use client"
+
 import Link from "next/link"
 import { MessageSquare, CheckCircle } from "lucide-react"
+import { useLocale } from "next-intl"
 import { TagBadge } from "@/components/shared/TagBadge"
+import { localizeTag } from "@/lib/constants/tags-i18n"
 
 interface PartnerProfile {
   name: string
@@ -22,7 +26,8 @@ interface MatchCardProps {
 }
 
 export function MatchCard({ matchId, partner, sessionName, date, reviewed, cancellationStatus, t }: MatchCardProps) {
-  const allTags = buildTagList(partner, t)
+  const locale = useLocale()
+  const allTags = buildTagList(partner, t, locale)
 
   return (
     <Link href={`/app/matches/${matchId}`} className="block rounded-xl bg-card p-4 shadow-soft hover:shadow-md transition-shadow">
@@ -67,23 +72,24 @@ interface TagGroup {
   variant: TagVariant
 }
 
-function buildTagList(partner: PartnerProfile, t: (key: string) => string): TagGroup[] {
+function buildTagList(partner: PartnerProfile, t: (key: string) => string, locale: string): TagGroup[] {
   const groups: TagGroup[] = []
+  const l = (tag: string) => localizeTag(tag, locale)
 
   if (partner.hobbyTags.length > 0) {
-    groups.push({ label: t("interests"), tags: partner.hobbyTags.slice(0, 5), variant: "info" })
+    groups.push({ label: t("interests"), tags: partner.hobbyTags.slice(0, 5).map(l), variant: "info" })
   }
 
   const socialTags = [...partner.expressionStyleTags, ...partner.groupRoleTags]
   if (socialTags.length > 0) {
-    groups.push({ label: t("socialStyle"), tags: socialTags.slice(0, 4), variant: "secondary" })
+    groups.push({ label: t("socialStyle"), tags: socialTags.slice(0, 4).map(l), variant: "secondary" })
   }
 
   const gameTags: string[] = []
   if (partner.gameTypePref) gameTags.push(partner.gameTypePref)
   gameTags.push(...partner.scenarioThemeTags.slice(0, 3))
   if (gameTags.length > 0) {
-    groups.push({ label: t("gameType"), tags: gameTags, variant: "outline" })
+    groups.push({ label: t("gameType"), tags: gameTags.map(l), variant: "outline" })
   }
 
   return groups

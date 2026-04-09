@@ -11,7 +11,8 @@ export function useTagLabels(options: readonly string[]): Record<string, string>
   if (locale === "zh") return undefined // no mapping needed
   const map: Record<string, string> = {}
   for (const opt of options) {
-    const localized = localizeTag(opt, locale) ?? localizeSupplementary(opt, locale)
+    const fromTag = localizeTag(opt, locale)
+    const localized = fromTag !== opt ? fromTag : localizeSupplementary(opt, locale)
     if (localized !== opt) map[opt] = localized
   }
   return Object.keys(map).length > 0 ? map : undefined

@@ -16,7 +16,10 @@ export async function signInWithGoogleAdmin() {
     },
   })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[signInWithGoogleAdmin]", error)
+    return { error: "Google 登录失败，请稍后重试" }
+  }
   if (data.url) redirect(data.url)
   return { success: true }
 }

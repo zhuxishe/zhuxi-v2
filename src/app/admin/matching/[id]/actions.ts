@@ -29,7 +29,10 @@ export async function lockPair(resultId: string) {
     })
     .eq("id", resultId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[lockPair]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/matching", "layout")
   return { success: true }
 }
@@ -55,7 +58,10 @@ export async function splitPair(resultId: string) {
     .update({ status: "cancelled" })
     .eq("id", resultId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[splitPair]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/matching", "layout")
   return { success: true }
 }
@@ -81,7 +87,10 @@ export async function restorePair(resultId: string) {
     .update({ status: "draft", locked_by: null, locked_at: null })
     .eq("id", resultId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[restorePair]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/matching", "layout")
   return { success: true }
 }
@@ -107,7 +116,10 @@ export async function confirmSession(sessionId: string) {
     .update({ status: "confirmed" })
     .eq("id", sessionId)
 
-  if (sErr) return { error: sErr.message }
+  if (sErr) {
+    console.error("[confirmSession:session]", sErr)
+    return { error: "操作失败" }
+  }
 
   const { error: rErr } = await supabase
     .from("match_results")
@@ -115,7 +127,10 @@ export async function confirmSession(sessionId: string) {
     .eq("session_id", sessionId)
     .eq("status", "draft")
 
-  if (rErr) return { error: rErr.message }
+  if (rErr) {
+    console.error("[confirmSession:results]", rErr)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true }
 }

@@ -1,5 +1,6 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { ClipboardCheck, Clock } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -12,9 +13,13 @@ interface Props {
 
 export function SurveyStatusCard({ roundName, surveyEnd, hasSubmitted }: Props) {
   const t = useTranslations("survey")
-  const deadline = new Date(surveyEnd)
-  const now = new Date()
-  const daysLeft = Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)))
+  const [daysLeft, setDaysLeft] = useState<number | null>(null)
+
+  useEffect(() => {
+    const deadline = new Date(surveyEnd)
+    const now = new Date()
+    setDaysLeft(Math.max(0, Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))))
+  }, [surveyEnd])
 
   return (
     <Link href="/app/matching/survey">
@@ -33,7 +38,7 @@ export function SurveyStatusCard({ roundName, surveyEnd, hasSubmitted }: Props) 
               {hasSubmitted ? t("status.submitted") : t("status.newRound")}
             </p>
           </div>
-          {!hasSubmitted && daysLeft > 0 && (
+          {!hasSubmitted && daysLeft != null && daysLeft > 0 && (
             <div className="flex items-center gap-1 text-xs font-medium text-sakura shrink-0">
               <Clock className="size-3" />
               <span>{t("status.daysLeft", { days: daysLeft })}</span>

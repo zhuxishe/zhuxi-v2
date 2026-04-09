@@ -21,6 +21,12 @@ export async function POST(req: NextRequest) {
   })
   if (!verifyRes.ok) return NextResponse.json({ error: "LINE verification failed" }, { status: 401 })
 
+  // Verify token subject matches claimed lineUserId
+  const verifyData = await verifyRes.json()
+  if (verifyData.sub !== lineUserId) {
+    return NextResponse.json({ error: "Token subject mismatch" }, { status: 403 })
+  }
+
   const serviceClient = createAdminClient()
 
   // Check conflict

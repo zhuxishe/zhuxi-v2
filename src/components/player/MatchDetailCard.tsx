@@ -1,6 +1,10 @@
+"use client"
+
 import Link from "next/link"
 import { MessageSquare, CheckCircle } from "lucide-react"
+import { useLocale } from "next-intl"
 import { TagBadge } from "@/components/shared/TagBadge"
+import { localizeTag } from "@/lib/constants/tags-i18n"
 
 interface PartnerProfile {
   name: string
@@ -20,7 +24,8 @@ interface Props {
 }
 
 export function MatchDetailCard({ partner, sessionName, reviewed, matchId, t }: Props) {
-  const tagGroups = buildTagList(partner, t)
+  const locale = useLocale()
+  const tagGroups = buildTagList(partner, t, locale)
 
   return (
     <div className="rounded-xl bg-card p-5 shadow-soft space-y-4">
@@ -67,21 +72,22 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, t }: 
 
 type TagVariant = "default" | "secondary" | "outline" | "success" | "warning" | "danger" | "info"
 
-function buildTagList(p: PartnerProfile, t: (k: string) => string) {
+function buildTagList(p: PartnerProfile, t: (k: string) => string, locale: string) {
   const groups: { label: string; tags: string[]; variant: TagVariant }[] = []
+  const l = (tag: string) => localizeTag(tag, locale)
 
   if (p.hobbyTags.length > 0) {
-    groups.push({ label: t("interests"), tags: p.hobbyTags.slice(0, 5), variant: "info" })
+    groups.push({ label: t("interests"), tags: p.hobbyTags.slice(0, 5).map(l), variant: "info" })
   }
   const social = [...p.expressionStyleTags, ...p.groupRoleTags]
   if (social.length > 0) {
-    groups.push({ label: t("socialStyle"), tags: social.slice(0, 4), variant: "secondary" })
+    groups.push({ label: t("socialStyle"), tags: social.slice(0, 4).map(l), variant: "secondary" })
   }
   const game: string[] = []
   if (p.gameTypePref) game.push(p.gameTypePref)
   game.push(...p.scenarioThemeTags.slice(0, 3))
   if (game.length > 0) {
-    groups.push({ label: t("gameType"), tags: game, variant: "outline" })
+    groups.push({ label: t("gameType"), tags: game.map(l), variant: "outline" })
   }
   return groups
 }

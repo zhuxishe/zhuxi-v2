@@ -23,7 +23,8 @@ export async function addAdminWhitelist(email: string, role: "admin" | "super_ad
 
   if (error) {
     if (error.code === "23505") return { error: "该邮箱已在白名单中" }
-    return { error: error.message }
+    console.error("[addAdminWhitelist]", error)
+    return { error: "操作失败" }
   }
 
   revalidatePath("/admin/users")
@@ -42,7 +43,10 @@ export async function removeAdmin(adminId: string) {
     .delete()
     .eq("id", adminId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[removeAdmin]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/users")
   return { success: true }
 }
@@ -57,6 +61,9 @@ export async function fetchAdminList() {
     .select("id, email, name, role, user_id, created_at")
     .order("created_at", { ascending: true })
 
-  if (error) return { error: error.message, data: [] }
+  if (error) {
+    console.error("[fetchAdminList]", error)
+    return { error: "操作失败", data: [] }
+  }
   return { data: data ?? [] }
 }

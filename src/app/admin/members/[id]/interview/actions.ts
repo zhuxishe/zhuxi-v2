@@ -22,7 +22,10 @@ export async function submitInterviewEval(
       { onConflict: "member_id,interviewer_id" },
     )
 
-  if (evalError) return { error: evalError.message }
+  if (evalError) {
+    console.error("[submitInterviewEval]", evalError)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
@@ -37,7 +40,10 @@ export async function updateMemberStatus(memberId: string, status: string) {
 
   const supabase = await createClient()
   const { error } = await supabase.from("members").update({ status }).eq("id", memberId)
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[updateMemberStatus]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }

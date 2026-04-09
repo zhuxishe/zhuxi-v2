@@ -17,7 +17,10 @@ export async function updatePageImages(
     .update({ page_images: urls, page_count: pageCount, pdf_url: null })
     .eq("id", scriptId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[updatePageImages]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }
 }

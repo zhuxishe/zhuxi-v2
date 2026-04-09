@@ -1,19 +1,39 @@
 "use server"
 
+import { createClient } from "@/lib/supabase/server"
+
 interface ContactInput {
   name: string
   email: string
   message: string
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export async function submitContactForm(input: ContactInput) {
-  if (!input.name.trim() || !input.email.trim() || !input.message.trim()) {
-    return { error: "请填写所有必填项" }
+  const name = input.name.trim()
+  const email = input.email.trim()
+  const message = input.message.trim()
+
+  if (!name || !email || !message) {
+    return { error: "required" }
+  }
+  if (!EMAIL_RE.test(email)) {
+    return { error: "invalidEmail" }
+  }
+  if (name.length > 100 || email.length > 200 || message.length > 5000) {
+    return { error: "tooLong" }
   }
 
-  // TODO: 后续可接入邮件通知或 Supabase contact_submissions 表
-  // 目前仅做输入验证，返回成功状态
-  console.log("[Contact]", input.email, input.name)
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from("contact_submissions")
+    .insert({ name, email, message })
+
+  if (error) {
+    console.error("[Contact] insert failed:", error.code)
+    return { error: "serverError" }
+  }
 
   return { success: true }
 }

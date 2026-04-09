@@ -20,7 +20,10 @@ export async function grantScriptAccess(scriptId: string, memberIds: string[]) {
     .from("script_play_records")
     .upsert(rows, { onConflict: "script_id,member_id" })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[grantScriptAccess]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true, count: memberIds.length }
 }
@@ -36,7 +39,10 @@ export async function revokeScriptAccess(scriptId: string, memberId: string) {
     .eq("script_id", scriptId)
     .eq("member_id", memberId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[revokeScriptAccess]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }
 }
@@ -58,6 +64,9 @@ export async function fetchScriptAccessList(scriptId: string) {
     .eq("script_id", scriptId)
     .eq("can_view_full", true)
 
-  if (error) return { error: error.message, data: [] }
+  if (error) {
+    console.error("[fetchScriptAccessList]", error)
+    return { error: "操作失败", data: [] }
+  }
   return { data: data ?? [] }
 }

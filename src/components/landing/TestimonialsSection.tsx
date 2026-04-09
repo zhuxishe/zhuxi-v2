@@ -37,7 +37,7 @@ export async function TestimonialsSection() {
               <div className="flex items-center gap-3">
                 {/* Avatar circle with initial */}
                 <div className="size-9 rounded-full bg-bamboo-muted flex items-center justify-center text-xs font-semibold text-bamboo">
-                  {item.name[0]}
+                  {item.name?.[0] ?? "?"}
                 </div>
                 <div>
                   <p className="font-display font-semibold text-sm">{item.name}</p>

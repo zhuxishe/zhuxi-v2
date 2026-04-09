@@ -17,7 +17,10 @@ export async function updateVerification(memberId: string, data: { student_id_ve
       verified_at: (data.student_id_verified && data.photo_verified) ? new Date().toISOString() : null,
     }, { onConflict: "member_id" })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[updateVerification]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }

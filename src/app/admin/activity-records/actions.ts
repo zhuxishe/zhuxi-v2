@@ -36,7 +36,10 @@ export async function createActivityRecord(input: ActivityInput) {
       created_by: admin.id,
     })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[createActivityRecord]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/activity-records")
   return { success: true }
 }
@@ -61,7 +64,10 @@ export async function updateActivityRecord(id: string, input: ActivityInput) {
     })
     .eq("id", id)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[updateActivityRecord]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/activity-records")
   return { success: true }
 }
@@ -75,7 +81,10 @@ export async function deleteActivityRecord(id: string) {
     .delete()
     .eq("id", id)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[deleteActivityRecord]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/activity-records")
   return { success: true }
 }

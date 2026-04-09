@@ -41,14 +41,29 @@ export async function createScript(input: ScriptInput) {
   const { data, error } = await supabase
     .from("scripts")
     .insert({
-      ...input,
+      title: input.title,
+      title_ja: input.title_ja,
+      description: input.description,
+      author: input.author,
+      player_count_min: input.player_count_min,
+      player_count_max: input.player_count_max,
+      duration_minutes: input.duration_minutes,
+      difficulty: input.difficulty,
+      genre_tags: input.genre_tags,
+      theme_tags: input.theme_tags,
+      content_html: input.content_html,
+      warnings: input.warnings,
       roles: input.roles as unknown as import("@/types/database.types").Json,
+      is_published: input.is_published,
       created_by: admin.id,
     })
     .select("id")
     .single()
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[createScript]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/scripts")
   return { success: true, scriptId: data.id }
 }
@@ -62,6 +77,8 @@ export async function uploadScriptCover(
 
   const file = formData.get("file") as File
   if (!file) return { error: "文件不能为空" }
+  if (!file.type.startsWith("image/")) return { error: "仅支持图片格式" }
+  if (file.size > 5 * 1024 * 1024) return { error: "文件大小不能超过 5MB" }
 
   const path = `covers/${scriptId}.webp`
 
@@ -69,7 +86,10 @@ export async function uploadScriptCover(
     .from("scripts-covers")
     .upload(path, file, { upsert: true })
 
-  if (uploadError) return { error: uploadError.message }
+  if (uploadError) {
+    console.error("[uploadScriptCover]", uploadError)
+    return { error: "操作失败" }
+  }
 
   const { data: urlData } = supabase.storage
     .from("scripts-covers")
@@ -80,7 +100,10 @@ export async function uploadScriptCover(
     .update({ cover_url: urlData.publicUrl })
     .eq("id", scriptId)
 
-  if (dbError) return { error: dbError.message }
+  if (dbError) {
+    console.error("[uploadScriptCover:db]", dbError)
+    return { error: "操作失败" }
+  }
   return { success: true, url: urlData.publicUrl }
 }
 
@@ -93,6 +116,8 @@ export async function uploadScriptPdf(
 
   const file = formData.get("file") as File
   if (!file) return { error: "文件不能为空" }
+  if (file.type !== "application/pdf") return { error: "仅支持 PDF 格式" }
+  if (file.size > 50 * 1024 * 1024) return { error: "文件大小不能超过 50MB" }
 
   const path = `pdfs/${scriptId}/original.pdf`
 
@@ -100,19 +125,28 @@ export async function uploadScriptPdf(
     .from("scripts")
     .upload(path, file, { upsert: true })
 
-  if (uploadError) return { error: uploadError.message }
+  if (uploadError) {
+    console.error("[uploadScriptPdf]", uploadError)
+    return { error: "操作失败" }
+  }
 
   const { data: signedData, error: signError } = await supabase.storage
     .from("scripts")
     .createSignedUrl(path, 3600 * 24 * 365)
 
-  if (signError) return { error: signError.message }
+  if (signError) {
+    console.error("[uploadScriptPdf:sign]", signError)
+    return { error: "操作失败" }
+  }
 
   const { error: dbError } = await supabase
     .from("scripts")
     .update({ pdf_url: signedData.signedUrl })
     .eq("id", scriptId)
 
-  if (dbError) return { error: dbError.message }
+  if (dbError) {
+    console.error("[uploadScriptPdf:db]", dbError)
+    return { error: "操作失败" }
+  }
   return { success: true, url: signedData.signedUrl }
 }

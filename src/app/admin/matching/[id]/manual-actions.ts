@@ -54,13 +54,14 @@ export async function checkPairCompatibility(
   // 黑名单检查（从 pair_relationships 表查）
   const supabase = await createClient()
   const blacklistWarnings: string[] = []
-  const { data: rels } = await supabase
-    .from("pair_relationships")
-    .select("status, notes")
-    .or(
-      `and(member_a_id.eq.${memberAId},member_b_id.eq.${memberBId}),` +
-      `and(member_a_id.eq.${memberBId},member_b_id.eq.${memberAId})`
-    )
+  // 使用两次独立查询代替 .or() 字符串拼接，避免注入风险
+  const [{ data: relsAB }, { data: relsBA }] = await Promise.all([
+    supabase.from("pair_relationships").select("status, notes")
+      .eq("member_a_id", memberAId).eq("member_b_id", memberBId),
+    supabase.from("pair_relationships").select("status, notes")
+      .eq("member_a_id", memberBId).eq("member_b_id", memberAId),
+  ])
+  const rels = [...(relsAB ?? []), ...(relsBA ?? [])]
 
   for (const rel of rels ?? []) {
     if (rel.status === "blacklist") {
@@ -112,7 +113,10 @@ export async function manualPair(
     created_by: admin.id,
   })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[manualPair]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true }
 }

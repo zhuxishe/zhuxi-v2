@@ -1,7 +1,7 @@
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerMatches } from "@/lib/queries/matching"
 import { fetchReviewedMatchIds } from "@/lib/queries/reviews"
-import { getTranslations } from "next-intl/server"
+import { getTranslations, getLocale } from "next-intl/server"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { MatchCard } from "@/components/player/MatchCard"
 import { Users } from "lucide-react"
@@ -9,6 +9,8 @@ import { Users } from "lucide-react"
 export default async function PlayerMatchesPage() {
   const player = await requirePlayer()
   const t = await getTranslations("playerMatches")
+  const locale = await getLocale()
+  const dateFmt = locale === "ja" ? "ja-JP" : "zh-CN"
   const [matches, reviewedIds] = await Promise.all([
     fetchPlayerMatches(player.memberId),
     fetchReviewedMatchIds(player.memberId),
@@ -40,7 +42,7 @@ export default async function PlayerMatchesPage() {
             matchId={m.id}
             partner={partner}
             sessionName={session?.session_name ?? ""}
-            date={new Date(m.created_at).toLocaleDateString("zh-CN")}
+            date={new Date(m.created_at).toLocaleDateString(dateFmt)}
             reviewed={reviewedIds.has(m.id)}
             cancellationStatus={(m as Record<string, unknown>).cancellation_status as string | null}
             t={(key: string) => t(key)}

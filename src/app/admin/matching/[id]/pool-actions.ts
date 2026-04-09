@@ -105,7 +105,10 @@ export async function runPoolRematch(sessionId: string) {
 
   if (rows.length > 0) {
     const { error } = await supabase.from("match_results").insert(rows)
-    if (error) return { error: error.message }
+    if (error) {
+      console.error("[runPoolRematch]", error)
+      return { error: "操作失败" }
+    }
   }
 
   revalidatePath(`/admin/matching/${sessionId}`)

@@ -107,6 +107,30 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_submissions: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          message: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          message: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          message?: string
+          name?: string
+        }
+        Relationships: []
+      }
       interview_evaluations: {
         Row: {
           articulation: number
@@ -277,6 +301,13 @@ export type Database = {
           total_score?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "match_results_cancellation_reviewed_by_fkey"
+            columns: ["cancellation_reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "match_results_locked_by_fkey"
             columns: ["locked_by"]
@@ -929,6 +960,7 @@ export type Database = {
           status: string
           updated_at: string
           user_id: string | null
+          wechat_openid: string | null
         }
         Insert: {
           attractiveness_score?: number | null
@@ -943,6 +975,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string | null
+          wechat_openid?: string | null
         }
         Update: {
           attractiveness_score?: number | null
@@ -957,6 +990,7 @@ export type Database = {
           status?: string
           updated_at?: string
           user_id?: string | null
+          wechat_openid?: string | null
         }
         Relationships: []
       }
@@ -1314,6 +1348,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      testimonials: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_published: boolean | null
+          name: string
+          quote: string
+          school: string | null
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_published?: boolean | null
+          name: string
+          quote: string
+          school?: string | null
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_published?: boolean | null
+          name?: string
+          quote?: string
+          school?: string | null
+          sort_order?: number | null
+        }
+        Relationships: []
       }
       unmatched_diagnostics: {
         Row: {

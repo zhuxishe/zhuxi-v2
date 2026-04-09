@@ -41,7 +41,10 @@ export async function createRound(input: CreateRoundInput) {
     .select("id")
     .single()
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[createRound]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/matching/rounds")
   revalidatePath("/admin/matching")
   return { roundId: data.id }

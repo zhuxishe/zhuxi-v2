@@ -19,7 +19,10 @@ export async function approveCancellation(resultId: string) {
     .eq("id", resultId)
     .eq("cancellation_status", "pending")
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[approveCancellation]", error)
+    return { error: "操作失败" }
+  }
 
   revalidatePath("/admin/matching/cancellations")
   revalidatePath("/admin/matching")
@@ -40,7 +43,10 @@ export async function rejectCancellation(resultId: string) {
     .eq("id", resultId)
     .eq("cancellation_status", "pending")
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[rejectCancellation]", error)
+    return { error: "操作失败" }
+  }
 
   revalidatePath("/admin/matching/cancellations")
   revalidatePath("/admin/matching")

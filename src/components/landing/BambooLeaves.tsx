@@ -67,10 +67,14 @@ export function BambooLeaves() {
   const rafRef = useRef(0)
 
   useEffect(() => {
+    // 尊重用户减少动画偏好
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return
+
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
     if (!ctx) return
+    let paused = false
 
     let w = window.innerWidth, h = window.innerHeight
 
@@ -99,7 +103,19 @@ export function BambooLeaves() {
     window.addEventListener("touchmove", onTouch, { passive: true })
     window.addEventListener("resize", resize)
 
+    const onVisibility = () => {
+      if (document.hidden) {
+        paused = true
+        cancelAnimationFrame(rafRef.current)
+      } else {
+        paused = false
+        rafRef.current = requestAnimationFrame(tick)
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility)
+
     const tick = () => {
+      if (paused) return
       ctx.clearRect(0, 0, w, h)
       const mx = mouseRef.current.x, my = mouseRef.current.y
 
@@ -145,6 +161,7 @@ export function BambooLeaves() {
       window.removeEventListener("mousemove", onMouse)
       window.removeEventListener("touchmove", onTouch)
       window.removeEventListener("resize", resize)
+      document.removeEventListener("visibilitychange", onVisibility)
     }
   }, [])
 

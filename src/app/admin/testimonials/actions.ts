@@ -24,7 +24,10 @@ export async function createTestimonial(input: TestimonialInput) {
     sort_order: input.sort_order ?? 0,
   })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[createTestimonial]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/testimonials")
   revalidatePath("/")
   return { success: true }
@@ -48,7 +51,10 @@ export async function updateTestimonial(id: string, input: Partial<TestimonialIn
     .update(filtered)
     .eq("id", id)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[updateTestimonial]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/testimonials")
   revalidatePath("/")
   return { success: true }
@@ -63,7 +69,10 @@ export async function deleteTestimonial(id: string) {
     .delete()
     .eq("id", id)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[deleteTestimonial]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/testimonials")
   revalidatePath("/")
   return { success: true }
@@ -78,7 +87,10 @@ export async function toggleTestimonialPublished(id: string, is_published: boole
     .update({ is_published })
     .eq("id", id)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[toggleTestimonialPublished]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/testimonials")
   revalidatePath("/")
   return { success: true }

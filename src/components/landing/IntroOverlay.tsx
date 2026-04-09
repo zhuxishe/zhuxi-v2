@@ -16,6 +16,7 @@
  * During morph-only phase (225-310), no DOM updates at all.
  */
 import { useEffect, useRef, useState, useCallback } from "react"
+import { useLocale } from "next-intl"
 import { interpolate } from "./intro/animation-utils"
 import { projectUniversities, computeNetworkParticles, buildScrollOrder } from "./intro/university-data"
 import { initNetworkState, drawNetwork } from "./intro/network-canvas"
@@ -38,6 +39,7 @@ function getPhase(f: number): Phase {
 }
 
 export function IntroOverlay() {
+  const locale = useLocale()
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const rafRef = useRef(0)
   const startRef = useRef(0)
@@ -176,7 +178,7 @@ export function IntroOverlay() {
       <button onClick={done}
         className="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 text-xs sm:text-sm z-20
           text-[#6b7c6b]/40 hover:text-[#2d3a2e] active:text-[#2d3a2e] transition-colors">
-        跳过 &rarr;
+        {locale === "ja" ? "スキップ" : "跳过"} &rarr;
       </button>
     </div>
   )

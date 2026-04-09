@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
 import type { Json } from "@/types/database.types"
 
@@ -58,7 +59,10 @@ export async function updateScript(scriptId: string, data: UpdateData) {
     .update(filtered)
     .eq("id", scriptId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[updateScript]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/scripts")
   revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }
@@ -73,23 +77,66 @@ export async function toggleScriptPublish(scriptId: string, isPublished: boolean
     .update({ is_published: !isPublished })
     .eq("id", scriptId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[toggleScriptPublish]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/scripts")
   revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }
 }
 
-/** 删除剧本（关联记录 CASCADE 清理） */
+/** 删除剧本（关联记录 CASCADE 清理） + Storage 文件清理 */
 export async function deleteScript(scriptId: string) {
   await requireAdmin()
   const supabase = await createClient()
+
+  // 先读取文件路径，删除后无法获取
+  const { data: script } = await supabase
+    .from("scripts")
+    .select("cover_url, pdf_url")
+    .eq("id", scriptId)
+    .single()
 
   const { error } = await supabase
     .from("scripts")
     .delete()
     .eq("id", scriptId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[deleteScript]", error)
+    return { error: "操作失败" }
+  }
+
+  // 尝试清理 Storage 文件（失败不阻止操作）
+  if (script) {
+    const filePaths = [script.cover_url, script.pdf_url]
+      .filter((url): url is string => !!url)
+      .map(extractStoragePath)
+      .filter((p): p is string => !!p)
+
+    if (filePaths.length > 0) {
+      try {
+        const admin = createAdminClient()
+        await admin.storage.from("scripts").remove(filePaths)
+      } catch (e) {
+        console.warn("Storage cleanup failed for script", scriptId, e)
+      }
+    }
+  }
+
   revalidatePath("/admin/scripts")
   return { success: true }
+}
+
+/** 从 Supabase Storage public URL 中提取 bucket 内的相对路径 */
+function extractStoragePath(url: string): string | null {
+  try {
+    const marker = "/storage/v1/object/public/scripts/"
+    const idx = url.indexOf(marker)
+    if (idx !== -1) return url.slice(idx + marker.length)
+    return null
+  } catch {
+    return null
+  }
 }

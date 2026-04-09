@@ -35,9 +35,11 @@ export async function updateMemberIdentity(memberId: string, data: Record<string
   const db = getAdminDb()
   const { error } = await db
     .from("member_identity")
-    .update({ ...clean, updated_at: new Date().toISOString() })
-    .eq("member_id", memberId)
-  if (error) return { error: error.message }
+    .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
+  if (error) {
+    console.error("[adminMemberEdit]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
@@ -50,7 +52,10 @@ export async function updateMemberLanguage(memberId: string, data: Record<string
   const { error } = await db
     .from("member_language")
     .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[adminMemberEdit]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
@@ -63,7 +68,10 @@ export async function updateMemberInterests(memberId: string, data: Record<strin
   const { error } = await db
     .from("member_interests")
     .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[adminMemberEdit]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
@@ -76,7 +84,10 @@ export async function updateMemberPersonality(memberId: string, data: Record<str
   const { error } = await db
     .from("member_personality")
     .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[adminMemberEdit]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
@@ -89,7 +100,10 @@ export async function updateMemberBoundaries(memberId: string, data: Record<stri
   const { error } = await db
     .from("member_boundaries")
     .upsert({ member_id: memberId, ...clean, updated_at: new Date().toISOString() }, { onConflict: "member_id" })
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[adminMemberEdit]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/members/${memberId}`)
   return { success: true }
 }
@@ -105,7 +119,10 @@ export async function hardDeleteMember(memberId: string) {
     .from("members")
     .delete()
     .eq("id", memberId)
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[adminMemberEdit]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath("/admin/members")
   return { success: true }
 }

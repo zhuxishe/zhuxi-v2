@@ -27,7 +27,10 @@ export async function updateRoundStatus(roundId: string, status: string) {
     .update({ status })
     .eq("id", roundId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[updateRoundStatus]", error)
+    return { error: "操作失败" }
+  }
   revalidatePath(`/admin/matching/rounds/${roundId}`)
   revalidatePath("/admin/matching")
   return { success: true }
@@ -108,7 +111,10 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     .select("id")
     .single()
 
-  if (sErr) return { error: sErr.message }
+  if (sErr) {
+    console.error("[runRoundMatching:session]", sErr)
+    return { error: "操作失败" }
+  }
 
   // 7. 保存 match_results
   const rows = result.rows.map((r) => ({
@@ -124,7 +130,10 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
 
   if (rows.length > 0) {
     const { error: rErr } = await supabase.from("match_results").insert(rows)
-    if (rErr) return { error: rErr.message }
+    if (rErr) {
+      console.error("[runRoundMatching:results]", rErr)
+      return { error: "操作失败" }
+    }
   }
 
   // 8. 保存未匹配诊断

@@ -72,7 +72,10 @@ export async function addBlacklist(
       .from("pair_relationships")
       .update({ status: "blacklist", notes: reason })
       .eq("id", existing.id)
-    if (error) return { error: error.message }
+    if (error) {
+      console.error("[addBlacklist:update]", error)
+      return { error: "操作失败" }
+    }
   } else {
     const { error } = await supabase
       .from("pair_relationships")
@@ -82,7 +85,10 @@ export async function addBlacklist(
         status: "blacklist",
         notes: reason,
       })
-    if (error) return { error: error.message }
+    if (error) {
+      console.error("[addBlacklist:insert]", error)
+      return { error: "操作失败" }
+    }
   }
 
   revalidatePath("/admin/matching/blacklist")
@@ -99,7 +105,10 @@ export async function removeBlacklist(relationId: string) {
     .delete()
     .eq("id", relationId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[removeBlacklist]", error)
+    return { error: "操作失败" }
+  }
 
   revalidatePath("/admin/matching/blacklist")
   return { success: true }

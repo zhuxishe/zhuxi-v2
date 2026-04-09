@@ -7,6 +7,7 @@ export async function fetchRounds() {
     .from("match_rounds")
     .select("*")
     .order("created_at", { ascending: false })
+    .limit(100)
 
   if (error) throw error
   return data ?? []
@@ -45,6 +46,7 @@ export async function fetchRoundSubmissions(roundId: string) {
     `)
     .eq("round_id", roundId)
     .order("created_at", { ascending: false })
+    .limit(500)
 
   if (error) throw error
   return data ?? []
@@ -57,6 +59,7 @@ export async function fetchRoundStats(roundId: string) {
     .from("match_round_submissions")
     .select("game_type_pref, availability")
     .eq("round_id", roundId)
+    .limit(500)
 
   if (error) throw error
   const total = (submissions ?? []).length

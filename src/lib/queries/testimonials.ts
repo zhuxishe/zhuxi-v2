@@ -22,8 +22,7 @@ export async function fetchPublishedTestimonials(): Promise<TestimonialPublic[]>
   // 公开读取已发布的 testimonials，走 RLS 而非 service role
   const supabase = await createClient()
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const { data, error } = await (supabase as any)
+  const { data, error } = await supabase
     .from("testimonials")
     .select("id, name, school, quote")
     .eq("is_published", true)

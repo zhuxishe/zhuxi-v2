@@ -4,18 +4,25 @@ import { fetchAdminScripts } from "@/lib/queries/scripts"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { Pagination } from "@/components/shared/Pagination"
 import { BookOpen } from "lucide-react"
 
-export default async function AdminScriptsPage() {
+interface Props {
+  searchParams: Promise<{ page?: string }>
+}
+
+export default async function AdminScriptsPage({ searchParams }: Props) {
   const admin = await requireAdmin()
-  const scripts = await fetchAdminScripts()
+  const params = await searchParams
+  const page = params.page ? Math.max(1, parseInt(params.page)) : 1
+  const { scripts, total } = await fetchAdminScripts({ page })
 
   return (
     <div>
       <AdminTopBar admin={admin} title="剧本管理" />
       <div className="p-6 space-y-4">
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">共 {scripts.length} 个剧本</p>
+          <p className="text-sm text-muted-foreground">共 {total} 个剧本</p>
           <Link href="/admin/scripts/new">
             <Button>添加剧本</Button>
           </Link>
@@ -46,6 +53,8 @@ export default async function AdminScriptsPage() {
             ))}
           </div>
         )}
+
+        <Pagination total={total} page={page} pageSize={24} />
       </div>
     </div>
   )

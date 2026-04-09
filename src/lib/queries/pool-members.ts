@@ -54,9 +54,11 @@ export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]>
   if (mErr) throw mErr
 
   return (members ?? []).map((m) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const identity = (m as any).member_identity
-    const name = identity?.full_name || identity?.nickname || "未知"
+    const raw = m.member_identity
+    const identity = Array.isArray(raw) ? raw[0] : raw
+    const name = (identity as { full_name?: string; nickname?: string } | null)?.full_name
+      || (identity as { full_name?: string; nickname?: string } | null)?.nickname
+      || "未知"
     return { id: m.id, name }
   })
 }

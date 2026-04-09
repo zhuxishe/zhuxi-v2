@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import { FilterBar } from "@/components/shared/FilterBar"
 import { Search } from "lucide-react"
@@ -22,6 +22,10 @@ export function MemberListFilter({ currentStatus, currentSearch }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
   const timerRef = useRef<ReturnType<typeof setTimeout>>(null)
+  const [searchValue, setSearchValue] = useState(currentSearch)
+
+  // 同步外部 URL 变化（如浏览器前进/后退）
+  useEffect(() => { setSearchValue(currentSearch) }, [currentSearch])
 
   function updateParam(key: string, value: string) {
     const params = new URLSearchParams(searchParams?.toString() ?? "")
@@ -44,11 +48,12 @@ export function MemberListFilter({ currentStatus, currentSearch }: Props) {
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
         <input
           type="text"
-          defaultValue={currentSearch}
+          value={searchValue}
           placeholder="搜索姓名/昵称/学校..."
           className="w-full sm:w-60 rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
           onChange={(e) => {
             const value = e.target.value
+            setSearchValue(value)
             if (timerRef.current) clearTimeout(timerRef.current)
             timerRef.current = setTimeout(() => updateParam("search", value), 300)
           }}

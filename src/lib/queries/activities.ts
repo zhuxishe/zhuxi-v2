@@ -6,6 +6,7 @@ export async function fetchActivityRecords() {
     .from("activity_records")
     .select("*")
     .order("activity_date", { ascending: false })
+    .limit(200)
   if (error) throw error
   return data ?? []
 }
@@ -39,6 +40,7 @@ export async function fetchMemberNotes(memberId: string) {
     .select("*")
     .eq("member_id", memberId)
     .order("created_at", { ascending: false })
+    .limit(50)
   if (error) throw error
   return data ?? []
 }
@@ -50,6 +52,7 @@ export async function fetchPlayerActivities(memberId: string) {
     .select("*")
     .contains("participant_ids", [memberId])
     .order("activity_date", { ascending: false })
+    .limit(50)
   if (error) throw error
   return data ?? []
 }

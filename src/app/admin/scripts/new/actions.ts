@@ -31,7 +31,12 @@ interface ScriptInput {
 export async function createScript(input: ScriptInput) {
   const admin = await requireAdmin()
 
-  // 服务端数值校验
+  // 服务端输入校验
+  if (!input.title?.trim()) return { error: "标题不能为空" }
+  if (input.title.length > 200) return { error: "标题不能超过 200 字符" }
+  if (input.title_ja && input.title_ja.length > 200) return { error: "日文标题不能超过 200 字符" }
+  if (input.description && input.description.length > 2000) return { error: "描述不能超过 2000 字符" }
+  if (input.author && input.author.length > 100) return { error: "作者不能超过 100 字符" }
   if (input.player_count_min < 1) return { error: "最少人数不能小于 1" }
   if (input.player_count_max < input.player_count_min) return { error: "最多人数不能小于最少人数" }
   if (input.duration_minutes < 1) return { error: "时长不能小于 1 分钟" }

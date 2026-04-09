@@ -18,6 +18,13 @@ interface ActivityInput {
 
 export async function createActivityRecord(input: ActivityInput) {
   const admin = await requireAdmin()
+
+  if (!input.title?.trim()) return { error: "标题不能为空" }
+  if (input.title.length > 200) return { error: "标题不能超过 200 字符" }
+  if (input.location && input.location.length > 200) return { error: "地点不能超过 200 字符" }
+  if (input.notes && input.notes.length > 2000) return { error: "备注不能超过 2000 字符" }
+  if (input.participant_ids.length > 500) return { error: "参与人数不能超过 500" }
+
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -46,6 +53,13 @@ export async function createActivityRecord(input: ActivityInput) {
 
 export async function updateActivityRecord(id: string, input: ActivityInput) {
   await requireAdmin()
+
+  if (!input.title?.trim()) return { error: "标题不能为空" }
+  if (input.title.length > 200) return { error: "标题不能超过 200 字符" }
+  if (input.location && input.location.length > 200) return { error: "地点不能超过 200 字符" }
+  if (input.notes && input.notes.length > 2000) return { error: "备注不能超过 2000 字符" }
+  if (input.participant_ids.length > 500) return { error: "参与人数不能超过 500" }
+
   const supabase = await createClient()
 
   const { error } = await supabase

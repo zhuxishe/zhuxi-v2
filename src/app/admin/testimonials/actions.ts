@@ -14,6 +14,14 @@ interface TestimonialInput {
 
 export async function createTestimonial(input: TestimonialInput) {
   await requireAdmin()
+
+  if (!input.name?.trim()) return { error: "姓名不能为空" }
+  if (input.name.length > 100) return { error: "姓名不能超过 100 字符" }
+  if (input.school && input.school.length > 200) return { error: "学校不能超过 200 字符" }
+  if (!input.quote?.trim()) return { error: "引言不能为空" }
+  if (input.quote.length > 500) return { error: "引言不能超过 500 字符" }
+  if (input.sort_order !== undefined && (input.sort_order < 0 || input.sort_order > 9999)) return { error: "排序值必须在 0-9999 之间" }
+
   const supabase = createAdminClient()
 
   const { error } = await supabase.from("testimonials").insert({

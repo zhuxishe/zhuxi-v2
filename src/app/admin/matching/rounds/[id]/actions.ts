@@ -131,6 +131,8 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   if (rows.length > 0) {
     const { error: rErr } = await supabase.from("match_results").insert(rows)
     if (rErr) {
+      // 补偿：删除孤立的 session，避免脏数据
+      await supabase.from("match_sessions").delete().eq("id", session.id)
       console.error("[runRoundMatching:results]", rErr)
       return { error: "操作失败" }
     }

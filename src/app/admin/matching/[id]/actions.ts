@@ -99,26 +99,20 @@ export async function confirmSession(sessionId: string) {
   await requireAdmin()
   const supabase = await createClient()
 
-  // 状态校验：只有 draft 状态的 session 才能确认
-  const { data: session } = await supabase
-    .from("match_sessions")
-    .select("status")
-    .eq("id", sessionId)
-    .single()
-
-  if (!session) return { error: "匹配会话不存在" }
-  if (session.status !== "draft") {
-    return { error: `当前会话状态为「${session.status}」，只有「draft」状态才能确认` }
-  }
-
-  const { error: sErr } = await supabase
+  // 原子条件更新：只有 draft 状态才会被更新（防止并发重复确认）
+  const { data: updated, error: sErr } = await supabase
     .from("match_sessions")
     .update({ status: "confirmed" })
     .eq("id", sessionId)
+    .eq("status", "draft")
+    .select("id")
 
   if (sErr) {
     console.error("[confirmSession:session]", sErr)
     return { error: "操作失败" }
+  }
+  if (!updated || updated.length === 0) {
+    return { error: "会话不存在或已不是「draft」状态，请刷新后重试" }
   }
 
   const { error: rErr } = await supabase
@@ -128,8 +122,13 @@ export async function confirmSession(sessionId: string) {
     .eq("status", "draft")
 
   if (rErr) {
+    // 补偿：回滚 session 状态，避免 session=confirmed 但 results 未更新
+    await supabase
+      .from("match_sessions")
+      .update({ status: "draft" })
+      .eq("id", sessionId)
     console.error("[confirmSession:results]", rErr)
-    return { error: "操作失败" }
+    return { error: "操作失败，会话状态已回滚" }
   }
   revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true }

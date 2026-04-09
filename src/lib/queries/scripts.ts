@@ -18,7 +18,7 @@ export async function fetchPublishedScripts(search?: string, genre?: string) {
     query = query.contains("genre_tags", [genre])
   }
 
-  const { data, error } = await query
+  const { data, error } = await query.limit(100)
   if (error) throw error
   return data ?? []
 }
@@ -63,14 +63,21 @@ export async function checkScriptAccess(scriptId: string, memberId: string) {
   return data?.can_view_full ?? false
 }
 
-export async function fetchAdminScripts() {
+const SCRIPT_PAGE_SIZE = 24
+
+export async function fetchAdminScripts(options?: { page?: number }) {
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  const page = options?.page ?? 1
+  const from = (page - 1) * SCRIPT_PAGE_SIZE
+  const to = from + SCRIPT_PAGE_SIZE - 1
+
+  const { data, error, count } = await supabase
     .from("scripts")
-    .select("*")
+    .select("*", { count: "exact" })
     .order("created_at", { ascending: false })
+    .range(from, to)
 
   if (error) throw error
-  return data ?? []
+  return { scripts: data ?? [], total: count ?? 0 }
 }

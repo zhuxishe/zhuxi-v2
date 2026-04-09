@@ -66,7 +66,7 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
   }
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="space-y-6 pb-40">
       <div className="text-center">
         <h1 className="heading-display text-xl">{roundName}</h1>
         <p className="text-xs text-muted-foreground mt-1.5 tracking-wide">{t("heading")}</p>
@@ -173,7 +173,7 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
 
       {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-      <div className="fixed bottom-0 left-0 right-0 bg-background/90 backdrop-blur-md shadow-[0_-2px_12px_oklch(0.18_0.02_45/6%)] p-4 pb-[env(safe-area-inset-bottom)]">
+      <div className="fixed bottom-16 left-0 right-0 z-40 bg-background/90 backdrop-blur-md shadow-[0_-2px_12px_oklch(0.18_0.02_45/6%)] p-4">
         <Button onClick={handleSubmit} disabled={submitting || totalSlots === 0} className="w-full">
           {submitting ? t("submitting") : existing ? t("update") : t("submit")}
         </Button>

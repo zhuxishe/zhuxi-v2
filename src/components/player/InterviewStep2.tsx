@@ -5,6 +5,7 @@ import type { PreInterviewFormData } from "@/types"
 import { SchoolSearchSelect } from "@/components/ui/SchoolSearchSelect"
 import { MajorSearchSelect } from "@/components/ui/MajorSearchSelect"
 import { SingleSelect } from "@/components/shared/SingleSelect"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 import { COURSE_LANGUAGE_OPTIONS } from "@/lib/constants/tags"
 
 interface Props {
@@ -23,6 +24,8 @@ const inputClass =
 
 export function InterviewStep2({ data, onChange }: Props) {
   const t = useTranslations("interview")
+  const degreeLabels = useTagLabels(DEGREE_OPTIONS)
+  const courseLangLabels = useTagLabels(COURSE_LANGUAGE_OPTIONS)
 
   return (
     <div className="space-y-4">
@@ -48,6 +51,7 @@ export function InterviewStep2({ data, onChange }: Props) {
           options={[...DEGREE_OPTIONS]}
           value={data.degree_level}
           onChange={(v) => onChange({ degree_level: v })}
+          labels={degreeLabels}
         />
       </div>
       <div>
@@ -56,6 +60,7 @@ export function InterviewStep2({ data, onChange }: Props) {
           options={[...COURSE_LANGUAGE_OPTIONS]}
           value={data.course_language}
           onChange={(v) => onChange({ course_language: v })}
+          labels={courseLangLabels}
         />
       </div>
       <div>

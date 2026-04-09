@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl"
 import type { PreInterviewFormData } from "@/types"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 import { HOBBY_TAGS, ACTIVITY_TYPE_TAGS } from "@/lib/constants/tags"
 
 interface Props {
@@ -12,6 +13,8 @@ interface Props {
 
 export function InterviewStep3({ data, onChange }: Props) {
   const t = useTranslations("interview")
+  const hobbyLabels = useTagLabels(HOBBY_TAGS)
+  const activityLabels = useTagLabels(ACTIVITY_TYPE_TAGS)
 
   return (
     <div className="space-y-6">
@@ -25,6 +28,7 @@ export function InterviewStep3({ data, onChange }: Props) {
           value={data.hobby_tags}
           onChange={(v) => onChange({ hobby_tags: v })}
           max={8}
+          labels={hobbyLabels}
         />
       </div>
       <div>
@@ -37,6 +41,7 @@ export function InterviewStep3({ data, onChange }: Props) {
           value={data.activity_type_tags}
           onChange={(v) => onChange({ activity_type_tags: v })}
           max={5}
+          labels={activityLabels}
         />
       </div>
     </div>

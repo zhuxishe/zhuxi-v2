@@ -1,8 +1,9 @@
 "use client"
 
-import { useTranslations } from "next-intl"
+import { useTranslations, useLocale } from "next-intl"
 import type { PreInterviewFormData, Gender } from "@/types"
 import { SingleSelect } from "@/components/shared/SingleSelect"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 import {
   AGE_RANGE_OPTIONS,
   NATIONALITY_OPTIONS,
@@ -25,6 +26,10 @@ const inputClass =
 
 export function InterviewStep1({ data, onChange }: Props) {
   const t = useTranslations("interview")
+  const locale = useLocale()
+  const ageLabels = useTagLabels(AGE_RANGE_OPTIONS)
+  const natLabels = useTagLabels(NATIONALITY_OPTIONS)
+  const cityLabels = useTagLabels(CITY_OPTIONS)
 
   return (
     <div className="space-y-4">
@@ -49,12 +54,10 @@ export function InterviewStep1({ data, onChange }: Props) {
       <div>
         <label className="text-sm font-medium text-foreground">{t("gender")} *</label>
         <SingleSelect
-          options={GENDER_OPTIONS.map((g) => g.label_zh)}
-          value={GENDER_OPTIONS.find((g) => g.value === data.gender)?.label_zh ?? ""}
-          onChange={(label) => {
-            const g = GENDER_OPTIONS.find((o) => o.label_zh === label)
-            if (g) onChange({ gender: g.value })
-          }}
+          options={GENDER_OPTIONS.map((g) => g.value)}
+          value={data.gender}
+          onChange={(v) => onChange({ gender: v as Gender })}
+          labels={Object.fromEntries(GENDER_OPTIONS.map((g) => [g.value, locale === "ja" ? g.label_ja : g.label_zh]))}
         />
       </div>
       <div>
@@ -63,6 +66,7 @@ export function InterviewStep1({ data, onChange }: Props) {
           options={[...AGE_RANGE_OPTIONS]}
           value={data.age_range}
           onChange={(v) => onChange({ age_range: v })}
+          labels={ageLabels}
         />
       </div>
       <div>
@@ -71,6 +75,7 @@ export function InterviewStep1({ data, onChange }: Props) {
           options={[...NATIONALITY_OPTIONS]}
           value={data.nationality}
           onChange={(v) => onChange({ nationality: v })}
+          labels={natLabels}
         />
       </div>
       <div>
@@ -79,6 +84,7 @@ export function InterviewStep1({ data, onChange }: Props) {
           options={[...CITY_OPTIONS]}
           value={data.current_city}
           onChange={(v) => onChange({ current_city: v })}
+          labels={cityLabels}
         />
       </div>
     </div>

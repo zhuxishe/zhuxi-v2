@@ -16,6 +16,7 @@ import {
   BUDGET_RANGE_OPTIONS,
   TRAVEL_RADIUS_OPTIONS,
 } from "@/lib/constants/supplementary"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 
 interface Props {
   data: SupplementaryFormData
@@ -24,6 +25,16 @@ interface Props {
 
 export function SupplementaryStep3({ data, setField }: Props) {
   const t = useTranslations("supplementary")
+  const gameTypeLabels = useTagLabels(GAME_TYPE_PREF_OPTIONS)
+  const scenarioModeLabels = useTagLabels(SCENARIO_MODE_OPTIONS)
+  const scenarioThemeLabels = useTagLabels(SCENARIO_THEME_OPTIONS)
+  const groupSizeLabels = useTagLabels(GROUP_SIZE_OPTIONS)
+  const scriptPrefLabels = useTagLabels(SCRIPT_PREFERENCE_OPTIONS)
+  const nonScriptPrefLabels = useTagLabels(NON_SCRIPT_PREFERENCE_OPTIONS)
+  const frequencyLabels = useTagLabels(ACTIVITY_FREQUENCY_OPTIONS)
+  const timeSlotLabels = useTagLabels(TIME_SLOT_OPTIONS)
+  const budgetLabels = useTagLabels(BUDGET_RANGE_OPTIONS)
+  const travelLabels = useTagLabels(TRAVEL_RADIUS_OPTIONS)
 
   return (
     <div className="space-y-5">
@@ -33,6 +44,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...GAME_TYPE_PREF_OPTIONS]}
           value={data.game_type_pref}
           onChange={(v) => setField("game_type_pref", v)}
+          labels={gameTypeLabels}
         />
       </div>
 
@@ -43,6 +55,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...SCENARIO_MODE_OPTIONS]}
           value={data.scenario_mode_pref}
           onChange={(v) => setField("scenario_mode_pref", v)}
+          labels={scenarioModeLabels}
         />
       </div>
 
@@ -53,6 +66,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...SCENARIO_THEME_OPTIONS]}
           value={data.scenario_theme_tags}
           onChange={(v) => setField("scenario_theme_tags", v)}
+          labels={scenarioThemeLabels}
         />
       </div>
 
@@ -62,6 +76,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...GROUP_SIZE_OPTIONS]}
           value={data.ideal_group_size}
           onChange={(v) => setField("ideal_group_size", v)}
+          labels={groupSizeLabels}
         />
       </div>
 
@@ -71,6 +86,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...SCRIPT_PREFERENCE_OPTIONS]}
           value={data.script_preference}
           onChange={(v) => setField("script_preference", v)}
+          labels={scriptPrefLabels}
         />
       </div>
 
@@ -80,6 +96,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...NON_SCRIPT_PREFERENCE_OPTIONS]}
           value={data.non_script_preference}
           onChange={(v) => setField("non_script_preference", v)}
+          labels={nonScriptPrefLabels}
         />
       </div>
 
@@ -89,6 +106,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...ACTIVITY_FREQUENCY_OPTIONS]}
           value={data.activity_frequency}
           onChange={(v) => setField("activity_frequency", v)}
+          labels={frequencyLabels}
         />
       </div>
 
@@ -99,6 +117,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...TIME_SLOT_OPTIONS]}
           value={data.preferred_time_slots}
           onChange={(v) => setField("preferred_time_slots", v)}
+          labels={timeSlotLabels}
         />
       </div>
 
@@ -108,6 +127,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...BUDGET_RANGE_OPTIONS]}
           value={data.budget_range}
           onChange={(v) => setField("budget_range", v)}
+          labels={budgetLabels}
         />
       </div>
 
@@ -117,6 +137,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
           options={[...TRAVEL_RADIUS_OPTIONS]}
           value={data.travel_radius}
           onChange={(v) => setField("travel_radius", v)}
+          labels={travelLabels}
         />
       </div>
     </div>

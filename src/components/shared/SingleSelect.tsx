@@ -7,6 +7,8 @@ interface SingleSelectProps {
   value: string
   onChange: (value: string) => void
   className?: string
+  /** Optional value→display label mapping for i18n */
+  labels?: Record<string, string>
 }
 
 export function SingleSelect({
@@ -14,6 +16,7 @@ export function SingleSelect({
   value,
   onChange,
   className,
+  labels,
 }: SingleSelectProps) {
   return (
     <div className={cn("flex flex-wrap gap-2", className)}>
@@ -29,7 +32,7 @@ export function SingleSelect({
               : "bg-muted text-muted-foreground hover:bg-muted/80"
           )}
         >
-          {opt}
+          {labels?.[opt] ?? opt}
         </button>
       ))}
     </div>

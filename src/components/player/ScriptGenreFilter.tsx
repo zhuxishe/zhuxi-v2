@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { SCRIPT_GENRE_OPTIONS } from "@/lib/constants/scripts"
 import { cn } from "@/lib/utils"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 
 interface Props {
   currentGenre: string
@@ -13,6 +14,7 @@ export function ScriptGenreFilter({ currentGenre }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const t = useTranslations("scripts")
+  const genreLabels = useTagLabels(SCRIPT_GENRE_OPTIONS)
 
   function handleSelect(genre: string) {
     const params = new URLSearchParams()
@@ -20,7 +22,7 @@ export function ScriptGenreFilter({ currentGenre }: Props) {
     router.push(`${pathname}?${params.toString()}`)
   }
 
-  const options = [{ value: "", label: t("allGenres") }, ...SCRIPT_GENRE_OPTIONS.map((g) => ({ value: g, label: g }))]
+  const options = [{ value: "", label: t("allGenres") }, ...SCRIPT_GENRE_OPTIONS.map((g) => ({ value: g, label: genreLabels?.[g] ?? g }))]
 
   return (
     <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">

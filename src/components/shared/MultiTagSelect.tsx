@@ -8,6 +8,8 @@ interface MultiTagSelectProps {
   onChange: (value: string[]) => void
   max?: number
   className?: string
+  /** Optional value→display label mapping for i18n */
+  labels?: Record<string, string>
 }
 
 export function MultiTagSelect({
@@ -16,6 +18,7 @@ export function MultiTagSelect({
   onChange,
   max,
   className,
+  labels,
 }: MultiTagSelectProps) {
   function toggle(tag: string) {
     if (value.includes(tag)) {
@@ -41,7 +44,7 @@ export function MultiTagSelect({
                 : "bg-muted text-muted-foreground hover:bg-muted/80"
             )}
           >
-            {tag}
+            {labels?.[tag] ?? tag}
           </button>
         )
       })}

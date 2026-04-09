@@ -5,6 +5,7 @@ import type { SupplementaryFormData } from "@/types"
 import { SingleSelect } from "@/components/shared/SingleSelect"
 import { SOCIAL_GOAL_OPTIONS } from "@/lib/constants/supplementary"
 import { cn } from "@/lib/utils"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 
 interface Props {
   data: SupplementaryFormData
@@ -30,6 +31,7 @@ function ToggleButton({ label, value, onChange }: { label: string; value: boolea
 
 export function SupplementaryStep4({ data, setField }: Props) {
   const t = useTranslations("supplementary")
+  const socialGoalLabels = useTagLabels(SOCIAL_GOAL_OPTIONS)
 
   return (
     <div className="space-y-5">
@@ -39,6 +41,7 @@ export function SupplementaryStep4({ data, setField }: Props) {
           options={[...SOCIAL_GOAL_OPTIONS]}
           value={data.social_goal_primary}
           onChange={(v) => setField("social_goal_primary", v)}
+          labels={socialGoalLabels}
         />
       </div>
 
@@ -48,6 +51,7 @@ export function SupplementaryStep4({ data, setField }: Props) {
           options={[...SOCIAL_GOAL_OPTIONS]}
           value={data.social_goal_secondary}
           onChange={(v) => setField("social_goal_secondary", v)}
+          labels={socialGoalLabels}
         />
       </div>
 

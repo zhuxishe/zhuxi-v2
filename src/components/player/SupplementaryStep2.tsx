@@ -8,6 +8,7 @@ import {
   COMMUNICATION_LANGUAGE_OPTIONS,
   JAPANESE_LEVEL_OPTIONS,
 } from "@/lib/constants/supplementary"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 
 interface Props {
   data: SupplementaryFormData
@@ -16,6 +17,8 @@ interface Props {
 
 export function SupplementaryStep2({ data, setField }: Props) {
   const t = useTranslations("supplementary")
+  const commLangLabels = useTagLabels(COMMUNICATION_LANGUAGE_OPTIONS)
+  const jpLevelLabels = useTagLabels(JAPANESE_LEVEL_OPTIONS)
 
   return (
     <div className="space-y-5">
@@ -26,6 +29,7 @@ export function SupplementaryStep2({ data, setField }: Props) {
           options={[...COMMUNICATION_LANGUAGE_OPTIONS]}
           value={data.communication_language_pref}
           onChange={(v) => setField("communication_language_pref", v)}
+          labels={commLangLabels}
         />
       </div>
 
@@ -35,6 +39,7 @@ export function SupplementaryStep2({ data, setField }: Props) {
           options={[...JAPANESE_LEVEL_OPTIONS]}
           value={data.japanese_level}
           onChange={(v) => setField("japanese_level", v)}
+          labels={jpLevelLabels}
         />
       </div>
     </div>

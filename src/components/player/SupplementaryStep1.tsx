@@ -8,6 +8,7 @@ import {
   GRADUATION_YEAR_OPTIONS,
 } from "@/lib/constants/supplementary"
 import { StationSearchSelect } from "@/components/ui/StationSearchSelect"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 
 interface Props {
   data: SupplementaryFormData
@@ -16,6 +17,7 @@ interface Props {
 
 export function SupplementaryStep1({ data, setField }: Props) {
   const t = useTranslations("supplementary")
+  const activityAreaLabels = useTagLabels(ACTIVITY_AREA_OPTIONS)
 
   return (
     <div className="space-y-5">
@@ -25,6 +27,7 @@ export function SupplementaryStep1({ data, setField }: Props) {
           options={[...ACTIVITY_AREA_OPTIONS]}
           value={data.activity_area}
           onChange={(v) => setField("activity_area", v)}
+          labels={activityAreaLabels}
         />
       </div>
 

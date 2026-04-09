@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { PersonalitySlider } from "./PersonalitySlider"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { POSITIVE_REVIEW_TAGS, NEGATIVE_REVIEW_TAGS } from "@/lib/constants/reviews"
+import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 
 interface Props {
   reviewerId: string
@@ -18,6 +19,8 @@ interface Props {
 export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchResultId }: Props) {
   const router = useRouter()
   const t = useTranslations("reviews")
+  const positiveLabels = useTagLabels(POSITIVE_REVIEW_TAGS)
+  const negativeLabels = useTagLabels(NEGATIVE_REVIEW_TAGS)
   const [overall, setOverall] = useState(3)
   const [punctuality, setPunctuality] = useState(3)
   const [communication, setCommunication] = useState(3)
@@ -68,11 +71,11 @@ export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchRes
         <h3 className="text-sm font-semibold">{t("tags")}</h3>
         <div>
           <p className="text-xs text-muted-foreground mb-2">{t("positiveTags")}</p>
-          <MultiTagSelect options={[...POSITIVE_REVIEW_TAGS]} value={positiveTags} onChange={setPositiveTags} />
+          <MultiTagSelect options={[...POSITIVE_REVIEW_TAGS]} value={positiveTags} onChange={setPositiveTags} labels={positiveLabels} />
         </div>
         <div>
           <p className="text-xs text-muted-foreground mb-2">{t("negativeTags")}</p>
-          <MultiTagSelect options={[...NEGATIVE_REVIEW_TAGS]} value={negativeTags} onChange={setNegativeTags} />
+          <MultiTagSelect options={[...NEGATIVE_REVIEW_TAGS]} value={negativeTags} onChange={setNegativeTags} labels={negativeLabels} />
         </div>
       </div>
 

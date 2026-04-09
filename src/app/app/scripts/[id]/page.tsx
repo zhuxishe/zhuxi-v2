@@ -1,12 +1,13 @@
 import { notFound } from "next/navigation"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchScript, checkScriptAccess } from "@/lib/queries/scripts"
-import { getTranslations } from "next-intl/server"
+import { getTranslations, getLocale } from "next-intl/server"
 import { TagBadge } from "@/components/shared/TagBadge"
 import { ScriptRoleList } from "@/components/player/ScriptRoleList"
 import { FlipBookViewer } from "@/components/player/FlipBookViewer"
 import { Clock, Users, AlertTriangle, Eye, Lock } from "lucide-react"
 import { SCRIPT_DIFFICULTY_OPTIONS } from "@/lib/constants/scripts"
+import { localizeTag } from "@/lib/constants/tags-i18n"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -27,7 +28,9 @@ export default async function ScriptDetailPage({ params }: Props) {
 
   const canViewFull = await checkScriptAccess(id, player.memberId)
   const t = await getTranslations("scriptDetail")
-  const diffLabel = SCRIPT_DIFFICULTY_OPTIONS.find((d) => d.value === script.difficulty)?.label ?? script.difficulty
+  const locale = await getLocale()
+  const diffRaw = SCRIPT_DIFFICULTY_OPTIONS.find((d) => d.value === script.difficulty)?.label ?? script.difficulty ?? ""
+  const diffLabel = localizeTag(diffRaw, locale)
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-5 pb-24">
@@ -56,7 +59,7 @@ export default async function ScriptDetailPage({ params }: Props) {
       </div>
 
       {/* Genre + Theme tags */}
-      <TagSection genreTags={script.genre_tags} themeTags={script.theme_tags} />
+      <TagSection genreTags={script.genre_tags} themeTags={script.theme_tags} locale={locale} />
 
       {/* Warnings */}
       {script.warnings?.length > 0 && (
@@ -109,15 +112,15 @@ function CoverImage({ url, title }: { url: string | null; title: string }) {
   )
 }
 
-function TagSection({ genreTags, themeTags }: { genreTags?: string[]; themeTags?: string[] }) {
+function TagSection({ genreTags, themeTags, locale }: { genreTags?: string[]; themeTags?: string[]; locale: string }) {
   const hasGenre = genreTags && genreTags.length > 0
   const hasTheme = themeTags && themeTags.length > 0
   if (!hasGenre && !hasTheme) return null
 
   return (
     <div className="flex flex-wrap gap-1.5">
-      {genreTags?.map((g) => <TagBadge key={g} label={g} />)}
-      {themeTags?.map((g) => <TagBadge key={g} label={g} variant="info" />)}
+      {genreTags?.map((g) => <TagBadge key={g} label={localizeTag(g, locale)} />)}
+      {themeTags?.map((g) => <TagBadge key={g} label={localizeTag(g, locale)} variant="info" />)}
     </div>
   )
 }

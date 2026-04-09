@@ -1,8 +1,11 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
-import { ChevronDown, ChevronRight, AlertCircle } from "lucide-react"
+import { ChevronDown, ChevronRight, AlertCircle, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { PlayerInfoPopover } from "./PlayerInfoPopover"
+import type { EnrichedMember } from "./match-detail-types"
 
 const REASON_LABELS: Record<string, string> = {
   no_common_time: "无共同时段",
@@ -18,13 +21,16 @@ export interface DiagnosticItem {
   reason: string
   details: unknown
   member?: { member_identity?: { full_name: string } | null } | null
+  memberData?: EnrichedMember | null
 }
 
 interface Props {
   diagnostics: DiagnosticItem[]
+  sessionId?: string
+  onManualPair?: (memberId: string, name: string) => void
 }
 
-export function UnmatchedDiagnostics({ diagnostics }: Props) {
+export function UnmatchedDiagnostics({ diagnostics, onManualPair }: Props) {
   const [open, setOpen] = useState(false)
 
   if (diagnostics.length === 0) return null
@@ -57,11 +63,37 @@ export function UnmatchedDiagnostics({ diagnostics }: Props) {
             const reason = REASON_LABELS[d.reason] ?? d.reason
 
             return (
-              <div key={d.id} className="flex items-center justify-between px-4 py-2.5">
-                <span className="text-sm">{name}</span>
-                <span className="text-xs text-muted-foreground rounded-full bg-muted px-2 py-0.5">
-                  {reason}
-                </span>
+              <div key={d.id} className="flex items-center justify-between px-4 py-2.5 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="text-sm font-medium">
+                    {d.memberData ? (
+                      <PlayerInfoPopover member={d.memberData}>{name}</PlayerInfoPopover>
+                    ) : (
+                      name
+                    )}
+                  </span>
+                  <Link
+                    href={`/admin/members/${d.member_id}`}
+                    className="text-muted-foreground hover:text-primary"
+                    title="查看成员详情"
+                  >
+                    <ExternalLink className="size-3" />
+                  </Link>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className="text-xs text-muted-foreground rounded-full bg-muted px-2 py-0.5">
+                    {reason}
+                  </span>
+                  {onManualPair && (
+                    <button
+                      type="button"
+                      onClick={() => onManualPair(d.member_id, name)}
+                      className="text-xs text-primary hover:underline"
+                    >
+                      手动配对
+                    </button>
+                  )}
+                </div>
               </div>
             )
           })}

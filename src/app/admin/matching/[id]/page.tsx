@@ -39,17 +39,50 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     createClient(),
   ])
 
-  const { data: diagnostics } = await supabase
+  const memberSelect = `
+    id, member_number,
+    member_identity (full_name, nickname, school_name, gender, hobby_tags, nationality, degree_level, department),
+    member_interests (game_type_pref, scenario_theme_tags, preferred_time_slots, social_goal_primary),
+    member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
+    member_boundaries (preferred_gender_mix)
+  `
+
+  const { data: diagnosticsRaw } = await supabase
     .from("unmatched_diagnostics")
-    .select("*, member:members(member_identity(full_name))")
+    .select(`*, member:members(member_identity(full_name))`)
     .eq("session_id", id)
 
-  // Get time slot data from approved candidates
+  // Fetch enriched member data for unmatched diagnostics (for popovers)
+  const unmatchedMemberIds = (diagnosticsRaw ?? []).map((d) => d.member_id).filter(Boolean)
+  let unmatchedMemberMap = new Map<string, unknown>()
+  if (unmatchedMemberIds.length > 0) {
+    const { data: umData } = await supabase
+      .from("members")
+      .select(memberSelect)
+      .in("id", unmatchedMemberIds)
+    for (const m of umData ?? []) unmatchedMemberMap.set(m.id, m)
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const diagnostics = (diagnosticsRaw ?? []).map((d: any) => ({
+    ...d,
+    memberData: unmatchedMemberMap.get(d.member_id) ?? null,
+  }))
+
+  // Get time slot data from approved candidates + build allMemberOptions for manual pairing
   const candidates = await fetchMatchCandidates()
   const timeSlotData = candidates.map((c) => ({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     preferred_time_slots: ((c as any).member_interests?.preferred_time_slots ?? []) as string[],
   }))
+  const allMemberOptions = candidates.map((c) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const identity = (c as any).member_identity
+    const name = (Array.isArray(identity) ? identity[0] : identity)?.full_name
+      || (Array.isArray(identity) ? identity[0] : identity)?.nickname
+      || "未知"
+    return { id: c.id, name }
+  })
 
   return (
     <div>
@@ -57,10 +90,11 @@ export default async function MatchSessionDetailPage({ params }: Props) {
       <MatchSessionView
         session={session}
         results={results}
-        diagnostics={diagnostics ?? []}
+        diagnostics={diagnostics}
         candidates={timeSlotData}
         pairRelationships={pairRelationships}
         poolMembers={poolMembers}
+        allMemberOptions={allMemberOptions}
       />
     </div>
   )

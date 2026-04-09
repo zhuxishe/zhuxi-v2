@@ -52,7 +52,7 @@ async function fetchMemberProfiles(memberIds: string[]) {
 
 /** 对取消池成员重新运行匹配算法 */
 export async function runPoolRematch(sessionId: string) {
-  const admin = await requireAdmin()
+  await requireAdmin()
 
   // 1. 获取已取消的成员 ID
   const memberIds = await fetchCancelledMemberIds(sessionId)
@@ -98,9 +98,7 @@ export async function runPoolRematch(sessionId: string) {
     score_breakdown: r.score_breakdown as Json,
     rank: r.rank,
     best_slot: r.best_slot,
-    game_type: `再匹配-${r.game_type}`,
     status: "draft",
-    created_by: admin.id,
   }))
 
   if (rows.length > 0) {

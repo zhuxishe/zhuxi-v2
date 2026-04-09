@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button"
 import { RefreshCw, Users, UserPlus } from "lucide-react"
 import { runPoolRematch } from "@/app/admin/matching/[id]/pool-actions"
 import { ManualPairDialog } from "./ManualPairDialog"
+import { PlayerInfoPopover } from "./PlayerInfoPopover"
+import type { PoolMember } from "@/lib/queries/pool-members"
 
-export interface PoolMember {
-  id: string
-  name: string
-}
+export type { PoolMember }
 
 interface Props {
   sessionId: string
@@ -52,6 +51,9 @@ export function RematchPool({ sessionId, poolMembers, onRefresh }: Props) {
     router.refresh()
   }
 
+  // PoolMember → { id, name } for ManualPairDialog
+  const dialogMembers = poolMembers.map((m) => ({ id: m.id, name: m.name }))
+
   return (
     <div className="rounded-lg border bg-orange-50/50 p-4 space-y-3">
       <div className="flex items-center justify-between">
@@ -79,14 +81,16 @@ export function RematchPool({ sessionId, poolMembers, onRefresh }: Props) {
         </div>
       </div>
 
-      {/* 成员列表 */}
+      {/* 成员列表 — 带信息弹窗 */}
       <div className="flex flex-wrap gap-1.5">
         {poolMembers.map((m) => (
           <span
             key={m.id}
             className="rounded-full bg-orange-100 text-orange-800 px-2.5 py-0.5 text-xs font-medium"
           >
-            {m.name}
+            <PlayerInfoPopover member={m.memberData}>
+              {m.name}
+            </PlayerInfoPopover>
           </span>
         ))}
       </div>
@@ -99,7 +103,7 @@ export function RematchPool({ sessionId, poolMembers, onRefresh }: Props) {
         open={showManual}
         onOpenChange={setShowManual}
         sessionId={sessionId}
-        poolMembers={poolMembers}
+        poolMembers={dialogMembers}
         onPaired={handlePaired}
       />
     </div>

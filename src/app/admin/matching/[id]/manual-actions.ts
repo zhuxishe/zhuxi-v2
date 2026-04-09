@@ -107,10 +107,8 @@ export async function manualPair(
     member_a_id: memberAId,
     member_b_id: memberBId,
     total_score: totalScore,
-    game_type: "手动配对",
     status: "draft",
     rank: 999,
-    created_by: admin.id,
   })
 
   if (error) {

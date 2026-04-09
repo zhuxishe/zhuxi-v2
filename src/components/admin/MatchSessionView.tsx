@@ -1,14 +1,15 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useState, useTransition } from "react"
+import { useTransition } from "react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle } from "lucide-react"
+import { CheckCircle, UserPlus } from "lucide-react"
 import { MatchPairCard } from "./MatchPairCard"
 import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { RematchPool } from "./RematchPool"
+import { ManualPairDialog } from "./ManualPairDialog"
 import { lockPair, splitPair, restorePair, confirmSession } from "@/app/admin/matching/[id]/actions"
 import type { EnrichedMatchResult, PairRelationship } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
@@ -21,14 +22,16 @@ interface Props {
   candidates: Array<{ preferred_time_slots: string[] }>
   pairRelationships?: PairRelationship[]
   poolMembers?: PoolMember[]
+  allMemberOptions?: { id: string; name: string }[]
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [] }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [] }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
+  const [showFreeManual, setShowFreeManual] = useState(false)
+  const [preselectedA, setPreselectedA] = useState("")
 
-  // Build pair relationship lookup map
   const relMap = useMemo(() => {
     const map = new Map<string, PairRelationship>()
     for (const rel of pairRelationships) {
@@ -64,6 +67,11 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
     })
   }
 
+  const handleManualPairFromUnmatched = (memberId: string) => {
+    setPreselectedA(memberId)
+    setShowFreeManual(true)
+  }
+
   return (
     <div className="p-6 space-y-6">
       {/* KPI */}
@@ -78,6 +86,11 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           <span className="rounded-full bg-orange-500/10 text-orange-600 px-3 py-1 text-sm font-medium">
             {session.total_unmatched} 人未匹配
           </span>
+        )}
+        {allMemberOptions.length > 0 && (
+          <Button size="sm" variant="outline" onClick={() => { setPreselectedA(""); setShowFreeManual(true) }}>
+            <UserPlus className="size-3.5" /> 手动配对
+          </Button>
         )}
         {session.status === "draft" && (
           <Button size="sm" onClick={handleConfirm} disabled={isPending}>
@@ -114,8 +127,21 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
 
       {/* Unmatched diagnostics */}
       {diagnostics.length > 0 && (
-        <UnmatchedDiagnostics diagnostics={diagnostics} />
+        <UnmatchedDiagnostics
+          diagnostics={diagnostics}
+          onManualPair={handleManualPairFromUnmatched}
+        />
       )}
+
+      {/* Free manual pair dialog — any two approved members */}
+      <ManualPairDialog
+        open={showFreeManual}
+        onOpenChange={setShowFreeManual}
+        sessionId={session.id}
+        poolMembers={allMemberOptions}
+        preselectedA={preselectedA}
+        onPaired={() => { setShowFreeManual(false); router.refresh() }}
+      />
     </div>
   )
 }

@@ -8,22 +8,24 @@ import {
 } from "@/components/ui/dialog"
 import { Loader2 } from "lucide-react"
 import { checkPairCompatibility, manualPair } from "@/app/admin/matching/[id]/manual-actions"
-import type { PoolMember } from "./RematchPool"
 import { MemberSelect, CompatDisplay } from "./ManualPairHelpers"
 import type { CompatResult } from "./ManualPairHelpers"
+
+interface SelectableMember { id: string; name: string }
 
 interface Props {
   open: boolean
   onOpenChange: (v: boolean) => void
   sessionId: string
-  poolMembers: PoolMember[]
+  poolMembers: SelectableMember[]
+  preselectedA?: string
   onPaired: () => void
 }
 
 export function ManualPairDialog({
-  open, onOpenChange, sessionId, poolMembers, onPaired,
+  open, onOpenChange, sessionId, poolMembers, preselectedA = "", onPaired,
 }: Props) {
-  const [memberA, setMemberA] = useState("")
+  const [memberA, setMemberA] = useState(preselectedA)
   const [memberB, setMemberB] = useState("")
   const [compat, setCompat] = useState<CompatResult | null>(null)
   const [error, setError] = useState("")
@@ -31,7 +33,7 @@ export function ManualPairDialog({
   const [isChecking, startCheck] = useTransition()
 
   const reset = () => {
-    setMemberA("")
+    setMemberA(preselectedA)
     setMemberB("")
     setCompat(null)
     setError("")

@@ -1,5 +1,4 @@
 import { AlertTriangle, CheckCircle } from "lucide-react"
-import type { PoolMember } from "./RematchPool"
 
 export interface CompatResult {
   compatible: boolean
@@ -13,7 +12,7 @@ export function MemberSelect({ label, value, onChange, members, exclude }: {
   label: string
   value: string
   onChange: (v: string) => void
-  members: PoolMember[]
+  members: { id: string; name: string }[]
   exclude: string
 }) {
   return (

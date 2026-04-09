@@ -47,6 +47,9 @@
     "contactEmail": "你的 Email",
     "contactMessage": "你想说的话...",
     "contactSend": "送出讯息",
+    "contactRequired": "请填写所有必填项",
+    "contactSentTitle": "讯息已送出！",
+    "contactSentDesc": "感谢你的留言，我们会尽快回复。",
     "footerCopyright": "© 2026 Tokyo University Students Community"
   },
   "common": {

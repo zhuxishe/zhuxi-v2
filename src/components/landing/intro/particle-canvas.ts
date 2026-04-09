@@ -5,7 +5,13 @@
 
 import type { Point2D } from './animation-utils'
 import { interpolate, spring, seededRandom } from './animation-utils'
-import LOGO_OUTLINE from './logo-points.json'
+import LOGO_FLAT from './logo-points.json'
+
+// Flat array [x1,y1,x2,y2,...] → Point2D[]
+const LOGO_OUTLINE: Point2D[] = []
+for (let i = 0; i < (LOGO_FLAT as number[]).length; i += 2) {
+  LOGO_OUTLINE.push({ x: (LOGO_FLAT as number[])[i], y: (LOGO_FLAT as number[])[i + 1] })
+}
 
 const ZX_GREEN_LIGHT = '#a2d1a6'  // 全程统一 = SVG fill 颜色
 const ZX_LOGO_FILL = '#a2d1a6'

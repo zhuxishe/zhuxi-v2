@@ -1,8 +1,10 @@
 "use client"
 
 /**
- * DOM-based logo reveal — fill starts directly BELOW outline,
- * bounces up with real spring physics (3 visible bounces then settles).
+ * DOM-based logo reveal (1:1 from Remotion LogoRevealV2).
+ * Fill starts at outline's visual center (overlapping), then bounces
+ * to its design position with 3 overshoots — creating the signature
+ * rotational misalignment effect.
  *
  * progress maps frame 310-400 to 0-1 (from parent).
  */
@@ -14,16 +16,6 @@ const ZX_TEXT_MUTED = '#6b7c6b'
 const FONT_EN = "'Cormorant Garamond','Georgia',serif"
 const FONT_CN = "'Noto Serif SC','Source Han Serif SC',serif"
 
-/**
- * Smooth spring bounce: converts progress(0-1) to a spring value
- * that overshoots, bounces ~3 times, and settles at 1.0
- * Uses the spring() physics sim with low damping for visible bounces
- */
-function springBounce(progress: number): number {
-  // Map progress 0-1 to ~60 spring frames (gives 3 clear bounces)
-  const f = progress * 60
-  return spring(f, { damping: 8, stiffness: 120, mass: 0.6 })
-}
 
 function AnimatedChar({ ch, i, startP, progress, size, font, color, spacing }: {
   ch: string; i: number; startP: number; progress: number
@@ -49,16 +41,20 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
   logoSize: number
 }) {
   const outlineOp = interpolate(progress, [0.0, 0.20], [0, 1])
-  const fillOp = interpolate(progress, [0.12, 0.25], [0, 1])
+  const fillOp = interpolate(progress, [0.15, 0.30], [0, 1])
 
-  // Fill starts directly below outline (+50px down), spring bounces up to 0
-  const moveProgress = interpolate(progress, [0.18, 0.70], [0, 1])
-  const bounceVal = springBounce(moveProgress)
-  // bounceVal: 0 → overshoot past 1 → bounce back → settle at 1
-  // fillY: starts at +50 (below), ends at 0 (aligned)
-  const fillY = interpolate(bounceVal, [0, 1], [50, 0])
-  // Slight rotation that settles
-  const fillRot = interpolate(bounceVal, [0, 1], [6, 0])
+  // Hand-crafted bounce: 3 overshoots, exact endpoint = 1.0 (from Remotion V2)
+  const moveT = interpolate(progress, [0.20, 0.58], [0, 1])
+  const bounce = interpolate(
+    moveT,
+    [0, 0.35, 0.52, 0.68, 0.82, 0.92, 1.0],
+    [0, 1.35, 0.85, 1.10, 0.96, 1.02, 1.0],
+  )
+
+  // Fill starts at outline's visual center offset, bounces to its design position (0,0)
+  const fillX = interpolate(bounce, [0, 1], [-19.86, 0])
+  const fillY = interpolate(bounce, [0, 1], [-10.97, 0])
+  const fillRot = interpolate(bounce, [0, 1], [-8, 0])
 
   const glowOp = interpolate(progress, [0.75, 0.95], [0, 0.25])
 
@@ -77,11 +73,12 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
         background: `radial-gradient(ellipse,${ZX_GOLD_LIGHT}30 0%,transparent 60%)`,
         opacity: glowOp,
       }} />
-      {/* Green fill — starts below outline, bounces up to align */}
+      {/* Green fill — starts overlapping outline, bounces to its design position */}
       <div className="absolute" style={{
         left: centerX - halfLogo, top: centerY - halfLogo,
         width: logoSize, height: logoSize,
-        transform: `translateY(${fillY}px) rotate(${fillRot}deg)`,
+        transform: `translate(${fillX}px, ${fillY}px) rotate(${fillRot}deg)`,
+        transformOrigin: 'center center',
         opacity: fillOp,
       }}>
         <img src="/logo-fill.svg" alt="" width={logoSize} height={logoSize} />

@@ -6,6 +6,7 @@ import { fetchScript } from "@/lib/queries/scripts"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { ScriptAccessPanel } from "@/components/admin/ScriptAccessPanel"
 import { ScriptPublishToggle } from "@/components/admin/ScriptPublishToggle"
+import { ScriptDeleteButton } from "@/components/admin/ScriptDeleteButton"
 import { TagBadge } from "@/components/shared/TagBadge"
 
 interface Props {
@@ -54,6 +55,7 @@ export default async function AdminScriptDetailPage({ params }: Props) {
                 编辑
               </Link>
               <ScriptPublishToggle scriptId={id} isPublished={script.is_published} />
+              <ScriptDeleteButton scriptId={id} />
             </div>
           </div>
           {script.title_ja && <p className="text-sm text-muted-foreground">{script.title_ja}</p>}

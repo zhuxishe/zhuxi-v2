@@ -30,6 +30,12 @@ interface ScriptInput {
 
 export async function createScript(input: ScriptInput) {
   const admin = await requireAdmin()
+
+  // 服务端数值校验
+  if (input.player_count_min < 1) return { error: "最少人数不能小于 1" }
+  if (input.player_count_max < input.player_count_min) return { error: "最多人数不能小于最少人数" }
+  if (input.duration_minutes < 1) return { error: "时长不能小于 1 分钟" }
+
   const supabase = await createClient()
 
   const { data, error } = await supabase

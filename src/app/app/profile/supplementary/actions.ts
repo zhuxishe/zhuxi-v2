@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
 import type { SupplementaryFormData } from "@/types"
@@ -45,5 +46,6 @@ export async function submitSupplementary(data: SupplementaryFormData) {
 
   if (intError) return { error: intError.message }
 
+  revalidatePath("/app/profile")
   return { success: true }
 }

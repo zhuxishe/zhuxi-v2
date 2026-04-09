@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
 
@@ -25,6 +26,7 @@ export async function addAdminWhitelist(email: string, role: "admin" | "super_ad
     return { error: error.message }
   }
 
+  revalidatePath("/admin/users")
   return { success: true }
 }
 
@@ -41,6 +43,7 @@ export async function removeAdmin(adminId: string) {
     .eq("id", adminId)
 
   if (error) return { error: error.message }
+  revalidatePath("/admin/users")
   return { success: true }
 }
 

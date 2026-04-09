@@ -47,6 +47,9 @@
     "contactEmail": "メールアドレス",
     "contactMessage": "メッセージ...",
     "contactSend": "送信する",
+    "contactRequired": "すべての項目を入力してください",
+    "contactSentTitle": "メッセージを送信しました！",
+    "contactSentDesc": "お問い合わせありがとうございます。できるだけ早くご返信いたします。",
     "footerCopyright": "© 2026 Tokyo University Students Community"
   },
   "common": {

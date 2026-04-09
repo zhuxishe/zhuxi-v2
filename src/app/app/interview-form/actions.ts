@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/player"
 import type { PreInterviewFormData } from "@/types"
@@ -70,5 +71,7 @@ export async function submitPreInterviewForm(
     return { success: false, error: identityError.message }
   }
 
+  revalidatePath("/app/interview-form")
+  revalidatePath("/app")
   return { success: true }
 }

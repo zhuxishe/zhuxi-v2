@@ -50,6 +50,13 @@ export function IntroOverlay() {
   const [domFrame, setDomFrame] = useState(0)
   const lastDomUpdateRef = useRef(0)
 
+  // prefers-reduced-motion: skip animation entirely
+  const [reducedMotion, setReducedMotion] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
+    if (mq.matches) setReducedMotion(true)
+  }, [])
+
   const done = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
     setHidden(true)
@@ -141,7 +148,7 @@ export function IntroOverlay() {
     }
   }, [done])
 
-  if (hidden) return null
+  if (hidden || reducedMotion) return null
 
   const { w, h } = sizeRef.current
   const logoCX = w / 2

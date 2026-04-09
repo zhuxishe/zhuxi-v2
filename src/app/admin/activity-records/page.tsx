@@ -3,6 +3,7 @@ import { fetchActivityRecords } from "@/lib/queries/activities"
 import { fetchMemberBriefList } from "@/lib/queries/members"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { ActivityRecordForm } from "@/components/admin/ActivityRecordForm"
+import { ActivityRecordCard } from "@/components/admin/ActivityRecordCard"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Calendar } from "lucide-react"
 
@@ -24,17 +25,7 @@ export default async function ActivityRecordsPage() {
         ) : (
           <div className="space-y-2">
             {records.map((r) => (
-              <div key={r.id} className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-semibold">{r.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {r.activity_date} · {r.location ?? ""} · {r.participant_count}人
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{r.activity_type}</span>
-                </div>
-              </div>
+              <ActivityRecordCard key={r.id} record={r} members={members} />
             ))}
           </div>
         )}

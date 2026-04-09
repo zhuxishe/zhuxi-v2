@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
 import {
@@ -42,6 +43,7 @@ export async function submitQuiz(
       return { scores, personalityType, error: error.message }
     }
 
+    revalidatePath("/app/profile")
     return { scores, personalityType }
   } catch {
     return {

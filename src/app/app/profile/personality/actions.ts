@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
 import type { PersonalitySelfData } from "@/types"
@@ -25,5 +26,6 @@ export async function submitPersonality(data: PersonalitySelfData) {
     }, { onConflict: "member_id" })
 
   if (error) return { error: error.message }
+  revalidatePath("/app/profile")
   return { success: true }
 }

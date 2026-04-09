@@ -56,6 +56,9 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
 
   async function handleSubmit() {
     if (!title.trim()) { setError("请输入剧本标题"); return }
+    if (playerMin < 1) { setError("最少人数不能小于 1"); return }
+    if (playerMax < playerMin) { setError("最多人数不能小于最少人数"); return }
+    if (duration < 1) { setError("时长不能小于 1 分钟"); return }
     setSubmitting(true)
     setError(null)
 

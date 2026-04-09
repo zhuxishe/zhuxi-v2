@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 
 interface MemberOption {
   id: string
@@ -17,6 +17,18 @@ interface Props {
 export function MemberMultiSelect({ members, selected, onChange, label }: Props) {
   const [search, setSearch] = useState("")
   const [open, setOpen] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!open) return
+    function handleClick(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handleClick)
+    return () => document.removeEventListener("mousedown", handleClick)
+  }, [open])
 
   const filtered = search
     ? members.filter((m) => m.name.toLowerCase().includes(search.toLowerCase()))
@@ -35,7 +47,7 @@ export function MemberMultiSelect({ members, selected, onChange, label }: Props)
     .map((m) => m.name)
 
   return (
-    <div>
+    <div ref={containerRef}>
       <label className="text-xs font-medium mb-1 block">{label}</label>
       <button
         type="button"

@@ -141,5 +141,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   // 9. 更新轮次状态为 matched
   await supabase.from("match_rounds").update({ status: "matched" }).eq("id", roundId)
 
+  revalidatePath(`/admin/matching/rounds/${roundId}`)
+  revalidatePath("/admin/matching")
   return { success: true, sessionId: session.id }
 }

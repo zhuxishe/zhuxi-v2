@@ -30,9 +30,15 @@ export function AdminSidebar() {
 
       <nav className="flex-1 px-1.5 md:px-2 py-3 space-y-1">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = href === "/admin"
-            ? pathname === "/admin"
-            : pathname?.startsWith(href)
+          // 取最长前缀匹配，避免父路由和子路由同时高亮
+          const isActive = (() => {
+            if (href === "/admin") return pathname === "/admin"
+            if (!pathname?.startsWith(href)) return false
+            // 有更长的 nav 项匹配时，当前项不高亮
+            return !NAV_ITEMS.some(
+              (other) => other.href !== href && other.href.length > href.length && pathname.startsWith(other.href)
+            )
+          })()
           return (
             <Link
               key={href}
@@ -40,7 +46,7 @@ export function AdminSidebar() {
               title={label}
               className={cn(
                 "flex items-center justify-center md:justify-start gap-2 rounded-lg px-2 md:px-3 py-2 text-sm font-medium transition-colors",
-                active
+                isActive
                   ? "bg-primary/10 text-primary"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}

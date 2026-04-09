@@ -1,5 +1,6 @@
 "use server"
 
+import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMatchCandidates, fetchMatchHistory } from "@/lib/queries/matching"
@@ -59,7 +60,10 @@ export async function runMatching(input: RunMatchInput) {
     .select("id")
     .single()
 
-  if (sErr) return { error: sErr.message }
+  if (sErr) {
+    console.error("[runMatching:session]", sErr)
+    return { error: "操作失败" }
+  }
 
   // 7. Save match results
   const resultRows = result.rows.map((r) => ({
@@ -75,8 +79,12 @@ export async function runMatching(input: RunMatchInput) {
 
   if (resultRows.length > 0) {
     const { error: rErr } = await supabase.from("match_results").insert(resultRows)
-    if (rErr) return { error: rErr.message }
+    if (rErr) {
+      console.error("[runMatching:results]", rErr)
+      return { error: "操作失败" }
+    }
   }
 
+  revalidatePath("/admin/matching")
   return { success: true, sessionId: session.id }
 }

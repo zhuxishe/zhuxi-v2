@@ -11,7 +11,7 @@ interface EmptyStateProps {
 
 export function EmptyState({
   icon: Icon = Inbox,
-  title = "暂无内容",
+  title = "",
   description,
   action,
   className,
@@ -26,7 +26,7 @@ export function EmptyState({
       <div className="mb-4 rounded-full bg-muted p-4">
         <Icon className="size-8 text-muted-foreground" />
       </div>
-      <p className="text-base font-medium text-foreground mb-1">{title}</p>
+      {title && <p className="text-base font-medium text-foreground mb-1">{title}</p>}
       {description && (
         <p className="text-sm text-muted-foreground max-w-xs">{description}</p>
       )}

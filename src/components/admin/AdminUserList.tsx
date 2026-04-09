@@ -19,6 +19,7 @@ export function AdminUserList() {
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   useEffect(() => { loadList() }, [])
 
@@ -38,8 +39,7 @@ export function AdminUserList() {
     loadList()
   }
 
-  async function handleRemove(id: string, adminEmail: string) {
-    if (!confirm(`确定删除管理员 ${adminEmail}？`)) return
+  async function handleRemove(id: string) {
     const result = await removeAdmin(id)
     if (result.error) { setError(result.error); return }
     loadList()
@@ -99,13 +99,27 @@ export function AdminUserList() {
                   )}
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button
-                    onClick={() => handleRemove(a.id, a.email)}
-                    className="text-muted-foreground hover:text-destructive transition-colors p-1"
-                    title="删除"
-                  >
-                    <Trash2 className="size-4" />
-                  </button>
+                  {confirmId === a.id ? (
+                    <span className="inline-flex items-center gap-1">
+                      <button
+                        onClick={() => { handleRemove(a.id); setConfirmId(null) }}
+                        className="text-xs text-destructive font-medium hover:underline"
+                      >确认</button>
+                      <span className="text-muted-foreground">/</span>
+                      <button
+                        onClick={() => setConfirmId(null)}
+                        className="text-xs text-muted-foreground hover:underline"
+                      >取消</button>
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => setConfirmId(a.id)}
+                      className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                      title="删除"
+                    >
+                      <Trash2 className="size-4" />
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

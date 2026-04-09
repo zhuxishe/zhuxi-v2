@@ -9,11 +9,29 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get("code")
   const error = searchParams.get("error")
+  const urlState = searchParams.get("state")
   const profileUrl = "/app/profile"
 
   if (error || !code) {
     const msg = error ? "LINE authorization cancelled" : "Missing auth code"
     return NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent(msg)}`, req.url))
+  }
+
+  // CSRF 验证：比对 URL 中的 state 与 cookie 中保存的 state
+  const cookieHeader = req.headers.get("cookie") ?? ""
+  const storedState = cookieHeader
+    .split(";")
+    .map(c => c.trim().split("="))
+    .find(([k]) => k === "line_oauth_state")?.[1]
+
+  const clearStateCookie = (res: NextResponse) => {
+    res.cookies.set("line_oauth_state", "", { path: "/", maxAge: 0 })
+    return res
+  }
+
+  if (!urlState || !storedState || urlState !== storedState) {
+    const res = NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Invalid state")}`, req.url))
+    return clearStateCookie(res)
   }
 
   try {
@@ -28,7 +46,7 @@ export async function GET(req: NextRequest) {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: `${getBaseUrl(req)}/api/auth/line/callback`,
+        redirect_uri: `${getBaseUrl()}/api/auth/line/callback`,
         client_id: LINE_CHANNEL_ID,
         client_secret: LINE_CHANNEL_SECRET,
       }),
@@ -71,18 +89,20 @@ export async function GET(req: NextRequest) {
       .eq("user_id", user.id)
 
     if (updateError) {
-      return NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent(updateError.message)}`, req.url))
+      const res = NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Binding failed")}`, req.url))
+      return clearStateCookie(res)
     }
 
-    return NextResponse.redirect(new URL(`${profileUrl}?line_success=${encodeURIComponent("LINE bound successfully")}`, req.url))
+    const res = NextResponse.redirect(new URL(`${profileUrl}?line_success=${encodeURIComponent("LINE bound successfully")}`, req.url))
+    return clearStateCookie(res)
   } catch (err) {
     console.error("[LINE Callback] Error:", err)
-    return NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Server error")}`, req.url))
+    const res = NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Server error")}`, req.url))
+    return clearStateCookie(res)
   }
 }
 
-function getBaseUrl(req: NextRequest): string {
-  const proto = req.headers.get("x-forwarded-proto") || "https"
-  const host = req.headers.get("host") || "zhuxi-v2.vercel.app"
-  return `${proto}://${host}`
+/** 使用环境变量，避免 Host header injection */
+function getBaseUrl(): string {
+  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.zhuxishe.jp"
 }

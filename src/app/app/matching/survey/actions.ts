@@ -25,7 +25,10 @@ export async function submitSurvey(input: SubmitSurveyInput) {
     .eq("id", input.roundId)
     .single()
 
-  if (roundErr || !round) return { error: roundErr?.message ?? "roundNotFound" }
+  if (roundErr || !round) {
+    if (roundErr) console.error("[submitSurvey] round query", roundErr)
+    return { error: "roundNotFound" }
+  }
   if (round.status !== "open") return { error: "surveyClosed" }
 
   // 检查截止时间
@@ -54,7 +57,10 @@ export async function submitSurvey(input: SubmitSurveyInput) {
       { onConflict: "round_id,member_id" },
     )
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[submitSurvey] upsert", error)
+    return { error: "saveFailed" }
+  }
   revalidatePath("/app/matching")
   return { success: true }
 }

@@ -32,7 +32,6 @@ export function MemberEditForm({ memberId, member }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
 
   const rawEvals = member.interview_evaluations
   const evals = Array.isArray(rawEvals) ? rawEvals : rawEvals ? [rawEvals] : []
@@ -44,7 +43,7 @@ export function MemberEditForm({ memberId, member }: Props) {
   const [boundaries, setBoundaries] = useState(member.member_boundaries ?? {})
 
   async function handleSave() {
-    setSaving(true); setError(null); setSuccess(false)
+    setSaving(true); setError(null)
     const results = await Promise.all([
       updateMemberIdentity(memberId, identity),
       updateMemberLanguage(memberId, language),
@@ -53,11 +52,12 @@ export function MemberEditForm({ memberId, member }: Props) {
       updateMemberBoundaries(memberId, boundaries),
     ])
     const failed = results.find((r) => r.error)
-    if (failed) { setError(failed.error!) } else {
-      setSuccess(true)
-      setTimeout(() => router.push(`/admin/members/${memberId}`), 800)
-    }
     setSaving(false)
+    if (failed) {
+      setError(failed.error ?? "保存失败")
+    } else {
+      router.push(`/admin/members/${memberId}`)
+    }
   }
 
   return (
@@ -114,7 +114,6 @@ export function MemberEditForm({ memberId, member }: Props) {
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
-      {success && <p className="text-sm text-green-600">保存成功，正在跳转...</p>}
 
       <div className="flex gap-3">
         <button onClick={handleSave} disabled={saving}

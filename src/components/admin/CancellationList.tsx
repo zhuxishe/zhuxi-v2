@@ -31,6 +31,7 @@ export function CancellationList({ requests }: Props) {
 
 function CancellationItem({ request }: { request: CancellationRequest }) {
   const [loading, setLoading] = useState("")
+  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   const nameA = getMemberName(request.member_a)
@@ -41,11 +42,11 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
     : ""
 
   async function handleAction(action: "approve" | "reject") {
-    setLoading(action)
+    setLoading(action); setError(null)
     const fn = action === "approve" ? approveCancellation : rejectCancellation
     const result = await fn(request.id)
     setLoading("")
-    if (result.error) alert(result.error)
+    if (result.error) setError(result.error)
     else router.refresh()
   }
 
@@ -63,6 +64,8 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
           {request.cancellation_reason}
         </p>
       )}
+
+      {error && <p className="text-xs text-destructive">{error}</p>}
 
       <div className="flex gap-2 pt-1">
         <button

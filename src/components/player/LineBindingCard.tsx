@@ -25,7 +25,12 @@ export function LineBindingCard({ lineUserId: initial }: Props) {
   }, [searchParams])
 
   function handleBind() {
-    const state = Math.random().toString(36).slice(2)
+    // 用 crypto.getRandomValues 生成不可预测的 state，防 CSRF
+    const arr = new Uint8Array(16)
+    crypto.getRandomValues(arr)
+    const state = Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("")
+    // 存 cookie 供 server-side callback 验证（5 分钟有效）
+    document.cookie = `line_oauth_state=${state}; Path=/; Max-Age=300; SameSite=Lax`
     const redirect = `${window.location.origin}/api/auth/line/callback`
     window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${LINE_CHANNEL_ID}&redirect_uri=${encodeURIComponent(redirect)}&state=${state}&scope=profile%20openid`
   }

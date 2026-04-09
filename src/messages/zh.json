@@ -417,6 +417,10 @@
     "submitting": "提交中...",
     "submitError": "提交失败，请稍后重试",
     "successTitle": "提交成功！",
-    "successDescription": "感谢你的填写，我们会尽快安排面试，请留意通知。"
+    "successDescription": "感谢你的填写，我们会尽快安排面试，请留意通知。",
+    "stepBasic": "基本信息",
+    "stepAcademic": "学业信息",
+    "stepInterests": "兴趣爱好",
+    "stepPersonality": "自我评估"
   }
 }

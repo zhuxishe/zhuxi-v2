@@ -32,7 +32,10 @@ export async function sendMagicLink(email: string) {
     },
   })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[sendMagicLink]", error)
+    return { error: "sendFailed" }
+  }
   return { success: true }
 }
 

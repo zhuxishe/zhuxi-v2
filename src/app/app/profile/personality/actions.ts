@@ -25,7 +25,10 @@ export async function submitPersonality(data: PersonalitySelfData) {
       reply_speed: data.reply_speed,
     }, { onConflict: "member_id" })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[submitPersonality]", error)
+    return { error: "saveFailed" }
+  }
   revalidatePath("/app/profile")
   return { success: true }
 }

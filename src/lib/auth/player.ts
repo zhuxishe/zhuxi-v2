@@ -23,12 +23,13 @@ export async function getPlayerInfo(): Promise<PlayerInfo | null> {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: member } = await supabase
+  const { data: member, error: memberErr } = await supabase
     .from("members")
     .select("id, member_number, status, member_identity(full_name)")
     .eq("user_id", user.id)
     .single()
 
+  if (memberErr && memberErr.code !== "PGRST116") console.error("[getPlayerInfo]", memberErr)
   if (!member) return null
 
   const identity = member.member_identity as { full_name: string } | null
@@ -47,12 +48,13 @@ export async function requirePlayer(): Promise<PlayerInfo> {
   const user = await requireAuth()
   const supabase = await createClient()
 
-  const { data: member } = await supabase
+  const { data: member, error: memberErr } = await supabase
     .from("members")
     .select("id, member_number, status, member_identity(full_name)")
     .eq("user_id", user.id)
     .single()
 
+  if (memberErr && memberErr.code !== "PGRST116") console.error("[requirePlayer]", memberErr)
   if (!member || member.status !== "approved") redirect("/app")
 
   const identity = member.member_identity as { full_name: string } | null

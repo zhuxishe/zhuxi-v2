@@ -417,6 +417,10 @@
     "submitting": "送信中...",
     "submitError": "送信に失敗しました。後ほどお試しください",
     "successTitle": "送信完了！",
+    "stepBasic": "基本情報",
+    "stepAcademic": "学歴情報",
+    "stepInterests": "趣味・興味",
+    "stepPersonality": "自己評価",
     "successDescription": "\u3054\u8A18\u5165\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059\u3002\u9762\u63A5\u306E\u65E5\u7A0B\u304C\u6C7A\u307E\u308A\u6B21\u7B2C\u3054\u9023\u7D61\u3044\u305F\u3057\u307E\u3059\u3002"
   }
 }

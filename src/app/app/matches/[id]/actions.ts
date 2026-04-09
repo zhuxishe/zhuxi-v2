@@ -40,7 +40,10 @@ export async function requestCancellation(formData: FormData) {
     })
     .eq("id", matchId)
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[requestCancellation]", error)
+    return { error: "saveFailed" }
+  }
 
   revalidatePath(`/app/matches/${matchId}`)
   revalidatePath("/app/matches")

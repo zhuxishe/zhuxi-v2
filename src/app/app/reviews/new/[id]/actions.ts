@@ -68,7 +68,10 @@ export async function submitReview(input: ReviewInput) {
       comment: input.comment,
     })
 
-  if (error) return { error: error.message }
+  if (error) {
+    console.error("[submitReview]", error)
+    return { error: "saveFailed" }
+  }
 
   revalidatePath("/app/matches")
   revalidatePath(`/app/matches/${input.match_result_id}`)

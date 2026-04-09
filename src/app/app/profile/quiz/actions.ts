@@ -40,7 +40,8 @@ export async function submitQuiz(
       }, { onConflict: "member_id" })
 
     if (error) {
-      return { scores, personalityType, error: error.message }
+      console.error("[submitQuiz]", error)
+      return { scores, personalityType, error: "saveFailed" }
     }
 
     revalidatePath("/app/profile")

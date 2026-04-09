@@ -10,6 +10,37 @@ export { submissionToCandidate } from "./adapter-submission"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MemberRow = Record<string, any>
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyRecord = Record<string, any>
+
+/** Supabase join 可能返回数组或对象，统一解包 */
+function unwrap(val: unknown): AnyRecord {
+  if (Array.isArray(val)) return (val[0] as AnyRecord) ?? {}
+  return (val as AnyRecord) ?? {}
+}
+
+/**
+ * member_interests.game_type_pref → 算法枚举
+ * DB: "双人本优先"|"多人本优先"|"都可以"|"看活动而定"|null
+ * Algorithm: "双人"|"多人"|"都可以"
+ */
+function normalizeGameTypePref(pref: string | null | undefined): "双人" | "多人" | "都可以" {
+  if (!pref) return "都可以"
+  if (pref.startsWith("双人")) return "双人"
+  if (pref.startsWith("多人")) return "多人"
+  return "都可以"
+}
+
+/**
+ * member_boundaries.preferred_gender_mix → 算法枚举
+ * DB 是自由文本，保守处理：仅识别明确值
+ */
+function normalizeGenderPref(pref: string | null | undefined): "男" | "女" | "都可以" {
+  if (!pref) return "都可以"
+  if (pref === "男" || pref === "男性のみ" || pref === "only_male") return "男"
+  if (pref === "女" || pref === "女性のみ" || pref === "only_female") return "女"
+  return "都可以"
+}
 
 /** 将用户存储的时段偏好映射为 14 天可用时间表 */
 function buildAvailability(timeSlots: string[] | null): Availability {
@@ -34,12 +65,12 @@ export function toMatchCandidate(
   member: MemberRow,
   matchHistory?: { name: string; count: number }[],
 ): MatchCandidate {
-  const identity = member.member_identity ?? {}
-  const interests = member.member_interests ?? {}
-  const personality = member.member_personality ?? {}
-  const language = member.member_language ?? {}
-  const boundaries = member.member_boundaries ?? {}
-  const stats = member.member_dynamic_stats ?? {}
+  const identity = unwrap(member.member_identity)
+  const interests = unwrap(member.member_interests)
+  const personality = unwrap(member.member_personality)
+  const language = unwrap(member.member_language)
+  const boundaries = unwrap(member.member_boundaries)
+  const stats = unwrap(member.member_dynamic_stats)
 
   const mergedInterests = [
     ...(identity.hobby_tags ?? []),
@@ -61,8 +92,8 @@ export function toMatchCandidate(
   return {
     submissionId: member.id,
     name: identity.full_name ?? identity.nickname ?? "未知",
-    gameTypePref: "都可以",
-    genderPref: "都可以",
+    gameTypePref: normalizeGameTypePref(interests.game_type_pref as string | null),
+    genderPref: normalizeGenderPref(boundaries.preferred_gender_mix as string | null),
     availability,
     formInterestTags: interests.scenario_mode_pref ?? [],
     formSocialStyle: personality.warmup_speed ?? null,

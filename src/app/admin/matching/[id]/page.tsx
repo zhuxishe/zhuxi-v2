@@ -75,14 +75,30 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     preferred_time_slots: ((c as any).member_interests?.preferred_time_slots ?? []) as string[],
   }))
-  const allMemberOptions = candidates.map((c) => {
+
+  // 排除已在活跃配对中的成员（防止手动配对时选到已匹配的人）
+  const activeMemberIds = new Set<string>()
+  for (const r of results) {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const identity = (c as any).member_identity
-    const name = (Array.isArray(identity) ? identity[0] : identity)?.full_name
-      || (Array.isArray(identity) ? identity[0] : identity)?.nickname
-      || "未知"
-    return { id: c.id, name }
-  })
+    const row = r as any
+    if (row.status === "cancelled") continue
+    if (row.member_a_id) activeMemberIds.add(row.member_a_id)
+    if (row.member_b_id) activeMemberIds.add(row.member_b_id)
+    if (Array.isArray(row.group_members)) {
+      for (const gm of row.group_members) activeMemberIds.add(gm)
+    }
+  }
+
+  const allMemberOptions = candidates
+    .filter((c) => !activeMemberIds.has(c.id))
+    .map((c) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const identity = (c as any).member_identity
+      const name = (Array.isArray(identity) ? identity[0] : identity)?.full_name
+        || (Array.isArray(identity) ? identity[0] : identity)?.nickname
+        || "未知"
+      return { id: c.id, name }
+    })
 
   return (
     <div>

@@ -31,6 +31,10 @@ export function MatchConfigPanel({ adminId: _adminId, candidateCount }: Props) {
 
   return (
     <div className="max-w-lg space-y-6">
+      <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        此功能仅供测试，不读取问卷偏好。正式匹配请使用「轮次问卷」入口。
+      </div>
+
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
         <h3 className="text-sm font-semibold">匹配设置</h3>
 

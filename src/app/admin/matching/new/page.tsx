@@ -9,7 +9,7 @@ export default async function NewMatchPage() {
 
   return (
     <div>
-      <AdminTopBar admin={admin} title="新建匹配" />
+      <AdminTopBar admin={admin} title="新建匹配（测试用）" />
       <div className="p-6">
         <MatchConfigPanel
           adminId={admin.id}

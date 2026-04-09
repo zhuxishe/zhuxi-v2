@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { ScoreBreakdownChart } from "./ScoreBreakdownChart"
+import { ConstraintChecklist } from "./ConstraintChecklist"
 import { PlayerInfoPopover } from "./PlayerInfoPopover"
 import type { EnrichedMember, PairRelationship } from "./match-detail-types"
 
@@ -93,6 +94,16 @@ export function MatchPairCard({ result, pairRel, onLock, onSplit, onRestore }: P
           )}
           <PairRelBadge rel={pairRel} />
         </div>
+      </div>
+
+      {/* Constraint checklist */}
+      <div className="px-4 py-3">
+        <ConstraintChecklist
+          memberA={result.member_a}
+          memberB={result.member_b}
+          pairRel={pairRel}
+          bestSlot={best_slot}
+        />
       </div>
 
       {/* Score + breakdown */}

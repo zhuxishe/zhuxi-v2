@@ -4,7 +4,8 @@ export interface CompatResult {
   compatible: boolean
   warnings: string[]
   score: number
-  breakdown: { label: string; weighted: number }[]
+  breakdown: { factor: string; label: string; weight: number; rawScore: number; weightedScore: number; detail: string }[]
+  bestSlot: string | null
 }
 
 /** 成员选择下拉 */
@@ -64,7 +65,7 @@ export function CompatDisplay({ compat, nameA, nameB }: {
       {compat.breakdown.length > 0 && (
         <div className="grid grid-cols-2 gap-x-4 gap-y-0.5 text-xs text-muted-foreground">
           {compat.breakdown.map((b) => (
-            <span key={b.label}>{b.label}: {b.weighted.toFixed(1)}</span>
+            <span key={b.label}>{b.label}: {b.weightedScore.toFixed(1)}</span>
           ))}
         </div>
       )}

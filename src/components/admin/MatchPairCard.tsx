@@ -25,6 +25,8 @@ interface Props {
     score_breakdown: unknown
     member_a: EnrichedMember | null
     member_b: EnrichedMember | null
+    group_members: string[] | null
+    group_member_details: EnrichedMember[] | null
   }
   pairRel?: PairRelationship | null
   onLock?: (id: string) => void
@@ -67,12 +69,23 @@ export function MatchPairCard({ result, pairRel, onLock, onSplit, onRestore }: P
         </div>
       </div>
 
-      {/* Member pair with popover */}
+      {/* Member pair/group with popover */}
       <div className="px-4 py-3 space-y-1.5">
         <p className="text-sm font-medium">
-          <PlayerInfoPopover member={result.member_a}>{memberLabel(result.member_a)}</PlayerInfoPopover>
-          <span className="mx-2 text-muted-foreground">--</span>
-          <PlayerInfoPopover member={result.member_b}>{memberLabel(result.member_b)}</PlayerInfoPopover>
+          {result.group_member_details && result.group_member_details.length > 0 ? (
+            result.group_member_details.map((m, i) => (
+              <span key={(m as EnrichedMember).id}>
+                {i > 0 && <span className="mx-2 text-muted-foreground">+</span>}
+                <PlayerInfoPopover member={m as EnrichedMember}>{memberLabel(m as EnrichedMember)}</PlayerInfoPopover>
+              </span>
+            ))
+          ) : (
+            <>
+              <PlayerInfoPopover member={result.member_a}>{memberLabel(result.member_a)}</PlayerInfoPopover>
+              <span className="mx-2 text-muted-foreground">--</span>
+              <PlayerInfoPopover member={result.member_b}>{memberLabel(result.member_b)}</PlayerInfoPopover>
+            </>
+          )}
         </p>
         <div className="flex flex-wrap gap-1.5">
           {best_slot && (

@@ -72,7 +72,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           {session.total_candidates} 人参与
         </span>
         <span className="rounded-full bg-green-500/10 text-green-600 px-3 py-1 text-sm font-medium">
-          {session.total_matched} 对匹配
+          {session.total_matched} 人已匹配
         </span>
         {session.total_unmatched > 0 && (
           <span className="rounded-full bg-orange-500/10 text-orange-600 px-3 py-1 text-sm font-medium">

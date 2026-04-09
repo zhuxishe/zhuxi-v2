@@ -2,6 +2,13 @@
  * 从 match_round_submissions 构建候选人
  */
 
+/** DB stores gender as 'male'/'female'/'other'; algorithm expects '男'/'女' */
+function normalizeGender(g: string | null): string | null {
+  if (g === "male") return "男"
+  if (g === "female") return "女"
+  return g
+}
+
 import type { MatchCandidate } from "./types"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -53,7 +60,7 @@ export function submissionToCandidate(
     availability,
     formInterestTags: formTags,
     formSocialStyle: sub.social_style ?? personality.warmup_speed ?? null,
-    gender: identity.gender ?? null,
+    gender: normalizeGender(identity.gender ?? null),
     school: identity.school_name ?? null,
     interestTags: mergedInterests,
     socialTags: mergedSocial,

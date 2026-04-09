@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
 import type { EnrichedMember } from "./match-detail-types"
@@ -79,6 +80,13 @@ export function PlayerInfoPopover({ member, children }: Props) {
             </div>
           </div>
         )}
+
+        <Link
+          href={`/admin/members/${member.id}`}
+          className="block text-xs text-primary hover:underline text-right mt-1"
+        >
+          查看详情 →
+        </Link>
       </PopoverContent>
     </Popover>
   )

@@ -44,7 +44,40 @@ export async function fetchMatchSession(id: string) {
 
   if (rErr) throw rErr
 
-  return { session, results: results ?? [] }
+  // Resolve group_members UUIDs to member details for group match display
+  const groupMemberIds = new Set<string>()
+  for (const r of results ?? []) {
+    if (Array.isArray(r.group_members)) {
+      for (const id of r.group_members) groupMemberIds.add(id)
+    }
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const groupMemberMap = new Map<string, any>()
+  if (groupMemberIds.size > 0) {
+    const { data: gmData } = await supabase
+      .from("members")
+      .select(`
+        id, member_number,
+        member_identity (full_name, nickname, school_name, gender, hobby_tags, nationality, degree_level, department),
+        member_interests (game_type_pref, scenario_theme_tags, preferred_time_slots, social_goal_primary),
+        member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
+        member_boundaries (preferred_gender_mix)
+      `)
+      .in("id", [...groupMemberIds])
+    for (const m of gmData ?? []) groupMemberMap.set(m.id, m)
+  }
+
+  const enrichedResults = (results ?? []).map((r) => ({
+    ...r,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    group_member_details: Array.isArray(r.group_members) && r.group_members.length > 0
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ? (r.group_members as string[]).map((id) => groupMemberMap.get(id)).filter(Boolean) as any[]
+      : null,
+  }))
+
+  return { session, results: enrichedResults }
 }
 
 export async function fetchMatchCandidates() {

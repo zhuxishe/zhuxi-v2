@@ -47,6 +47,8 @@ export interface EnrichedMatchResult {
   score_breakdown: unknown
   member_a: EnrichedMember | null
   member_b: EnrichedMember | null
+  group_members: string[] | null
+  group_member_details: EnrichedMember[] | null
 }
 
 export interface PairRelationship {

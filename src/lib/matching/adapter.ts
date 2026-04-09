@@ -66,7 +66,7 @@ export function toMatchCandidate(
     availability,
     formInterestTags: interests.scenario_mode_pref ?? [],
     formSocialStyle: personality.warmup_speed ?? null,
-    gender: identity.gender ?? null,
+    gender: (() => { const g = identity.gender ?? null; return g === "male" ? "男" : g === "female" ? "女" : g })(),
     school: identity.school_name ?? null,
     interestTags: mergedInterests,
     socialTags: mergedSocial,

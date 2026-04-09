@@ -5,6 +5,19 @@ import type { PairRelation } from "./pair-history"
 import { getCommonSlots } from "./time-filter"
 import { checkGroupConstraints, groupHasAvoidPairs } from "./constraints"
 import { findGroupBestSlot } from "./match-utils"
+import { scorePair } from "./scorer"
+
+function computeGroupAvgScore(members: MatchCandidate[], config: MatchingConfig): number {
+  if (members.length < 2) return 0
+  let total = 0, count = 0
+  for (let i = 0; i < members.length; i++) {
+    for (let j = i + 1; j < members.length; j++) {
+      const score = scorePair(members[i], members[j], config)
+      if (!score.hardVeto) { total += score.totalScore; count++ }
+    }
+  }
+  return count > 0 ? Math.round((total / count) * 10) / 10 : 0
+}
 
 export interface MultiGroupResult {
   groups: { members: MatchCandidate[]; bestSlot: string; avgScore: number; hasRepeat: boolean }[]
@@ -63,10 +76,11 @@ function runMultiRound(
     const group = tryBuildGroup(candidates, seed, n, assigned, config, groupSize, pairRelations, strictAvoid)
     if (group) {
       for (const gi of group) assigned.add(gi)
+      const groupMembers = group.map((i) => candidates[i])
       groups.push({
-        members: group.map((i) => candidates[i]),
-        bestSlot: findGroupBestSlot(group.map((i) => candidates[i])),
-        avgScore: 0,
+        members: groupMembers,
+        bestSlot: findGroupBestSlot(groupMembers),
+        avgScore: computeGroupAvgScore(groupMembers, config),
       })
     }
   }

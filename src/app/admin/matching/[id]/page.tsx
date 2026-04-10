@@ -69,12 +69,33 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     memberData: unmatchedMemberMap.get(d.member_id) ?? null,
   }))
 
-  // Get time slot data from approved candidates + build allMemberOptions for manual pairing
+  // Get time slot data: 优先从轮次问卷的 availability 读取，无轮次时从成员档案读
   const candidates = await fetchMatchCandidates()
-  const timeSlotData = candidates.map((c) => ({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    preferred_time_slots: ((c as any).member_interests?.preferred_time_slots ?? []) as string[],
-  }))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const roundId = (session as any).round_id as string | null
+  let timeSlotData: Array<{ preferred_time_slots: string[] }> = []
+
+  if (roundId) {
+    // 轮次匹配：从 match_round_submissions.availability 读取
+    const { data: subs } = await supabase
+      .from("match_round_submissions")
+      .select("availability")
+      .eq("round_id", roundId)
+    timeSlotData = (subs ?? []).map((sub) => {
+      const avail = (sub.availability ?? {}) as Record<string, string[]>
+      const slots: string[] = []
+      for (const [date, times] of Object.entries(avail)) {
+        for (const t of times) slots.push(`${date}_${t}`)
+      }
+      return { preferred_time_slots: slots }
+    })
+  } else {
+    // 直接匹配（测试）：从成员档案读
+    timeSlotData = candidates.map((c) => ({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      preferred_time_slots: ((c as any).member_interests?.preferred_time_slots ?? []) as string[],
+    }))
+  }
 
   // 排除已在活跃配对中的成员（防止手动配对时选到已匹配的人）
   const activeMemberIds = new Set<string>()

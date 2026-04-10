@@ -64,15 +64,25 @@ export function SubmissionTable({ submissions }: Props) {
                   <p className="text-xs font-medium mb-2">可用时段</p>
                   <AvailabilityMiniGrid availability={avail} />
                 </div>
-                {/* 兴趣标签 */}
-                {sub.interest_tags?.length > 0 && (
-                  <div>
-                    <p className="text-xs font-medium mb-1">兴趣标签</p>
-                    <div className="flex flex-wrap gap-1">
-                      {sub.interest_tags.map((t: string) => (
-                        <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-muted">{t}</span>
-                      ))}
-                    </div>
+                {/* 兴趣标签 + 社交风格 */}
+                {(sub.interest_tags?.length > 0 || sub.social_style) && (
+                  <div className="flex flex-wrap gap-3">
+                    {sub.interest_tags?.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium mb-1">题材偏好</p>
+                        <div className="flex flex-wrap gap-1">
+                          {sub.interest_tags.map((t: string) => (
+                            <span key={t} className="text-[10px] px-1.5 py-0.5 rounded bg-muted">{t}</span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {sub.social_style && (
+                      <div>
+                        <p className="text-xs font-medium mb-1">社交风格</p>
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-sakura/10 text-sakura">{sub.social_style}</span>
+                      </div>
+                    )}
                   </div>
                 )}
                 {/* 留言 */}

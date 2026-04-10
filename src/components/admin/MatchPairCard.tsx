@@ -30,6 +30,7 @@ interface Props {
     group_member_details: EnrichedMember[] | null
   }
   pairRel?: PairRelationship | null
+  gameTypeOverride?: string
   onLock?: (id: string) => void
   onSplit?: (id: string) => void
   onRestore?: (id: string) => void
@@ -52,10 +53,10 @@ function scoreBgClass(score: number): string {
   return "bg-red-500/10"
 }
 
-export function MatchPairCard({ result, pairRel, onLock, onSplit, onRestore }: Props) {
+export function MatchPairCard({ result, pairRel, gameTypeOverride, onLock, onSplit, onRestore }: Props) {
   const { id, total_score, rank, status, best_slot, score_breakdown } = result
   const badge = STATUS_STYLES[status] ?? STATUS_STYLES.draft
-  const gameType = result.member_a?.member_interests?.game_type_pref
+  const gameType = gameTypeOverride || result.member_a?.member_interests?.game_type_pref
 
   return (
     <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">

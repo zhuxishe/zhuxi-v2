@@ -112,6 +112,14 @@ export async function deleteSession(sessionId: string) {
     return { error: `当前状态为「${session.status}」，只有「draft」状态才能删除` }
   }
 
+  // 获取关联的轮次 ID（用于重置轮次状态）
+  const { data: sessionData } = await supabase
+    .from("match_sessions")
+    .select("round_id")
+    .eq("id", sessionId)
+    .single()
+  const roundId = sessionData?.round_id
+
   // 按外键依赖顺序删除（CASCADE 应该处理，但显式更安全）
   await supabase.from("unmatched_diagnostics").delete().eq("session_id", sessionId)
   await supabase.from("match_results").delete().eq("session_id", sessionId)
@@ -120,6 +128,16 @@ export async function deleteSession(sessionId: string) {
   if (error) {
     console.error("[deleteSession]", error)
     return { error: "删除失败" }
+  }
+
+  // 重置轮次状态为 closed（允许重新执行匹配）
+  if (roundId) {
+    await supabase
+      .from("match_rounds")
+      .update({ status: "closed" })
+      .eq("id", roundId)
+      .eq("status", "matched")
+    revalidatePath(`/admin/matching/rounds/${roundId}`)
   }
 
   revalidatePath("/admin/matching")

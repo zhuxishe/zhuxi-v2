@@ -97,6 +97,18 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     }))
   }
 
+  // 构建问卷提交映射（memberId → game_type_pref），供配对卡片展示
+  let submissionGameTypes = new Map<string, string>()
+  if (roundId) {
+    const { data: subs } = await supabase
+      .from("match_round_submissions")
+      .select("member_id, game_type_pref")
+      .eq("round_id", roundId)
+    for (const s of subs ?? []) {
+      submissionGameTypes.set(s.member_id, s.game_type_pref)
+    }
+  }
+
   // 排除已在活跃配对中的成员（防止手动配对时选到已匹配的人）
   const activeMemberIds = new Set<string>()
   for (const r of results) {
@@ -132,6 +144,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         pairRelationships={pairRelationships}
         poolMembers={poolMembers}
         allMemberOptions={allMemberOptions}
+        submissionGameTypes={Object.fromEntries(submissionGameTypes)}
       />
     </div>
   )

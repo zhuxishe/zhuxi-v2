@@ -16,16 +16,17 @@ import type { PoolMember } from "@/lib/queries/pool-members"
 import type { DiagnosticItem } from "./UnmatchedDiagnostics"
 
 interface Props {
-  session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number }
+  session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number; round_id?: string | null }
   results: EnrichedMatchResult[]
   diagnostics: DiagnosticItem[]
   candidates: Array<{ preferred_time_slots: string[] }>
   pairRelationships?: PairRelationship[]
   poolMembers?: PoolMember[]
   allMemberOptions?: { id: string; name: string }[]
+  submissionGameTypes?: Record<string, string>
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [] }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionGameTypes = {} }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -100,7 +101,13 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
                 setError("")
                 const res = await deleteSession(session.id)
                 if (res.error) setError(res.error)
-                else router.push("/admin/matching/new")
+                else {
+                  // 有轮次 → 回轮次详情页重新执行匹配；无轮次 → 回匹配管理
+                  const target = session.round_id
+                    ? `/admin/matching/rounds/${session.round_id}`
+                    : "/admin/matching"
+                  router.push(target)
+                }
               })
             }} disabled={isPending}>
               <RefreshCw className="size-3.5" /> 重新匹配
@@ -124,6 +131,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             key={r.id}
             result={r}
             pairRel={findRel(r.member_a?.id, r.member_b?.id)}
+            gameTypeOverride={r.member_a?.id ? submissionGameTypes[r.member_a.id] : undefined}
             onLock={(id) => handleAction(r.status === "locked" ? restorePair : lockPair, id)}
             onSplit={(id) => handleAction(splitPair, id)}
             onRestore={(id) => handleAction(restorePair, id)}

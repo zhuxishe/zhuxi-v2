@@ -53,7 +53,7 @@ export function submissionToCandidate(
   const name = identity.full_name ?? identity.nickname ?? "未知"
 
   return {
-    submissionId: sub.id,
+    submissionId: sub.member_id,
     name,
     gameTypePref,
     genderPref,

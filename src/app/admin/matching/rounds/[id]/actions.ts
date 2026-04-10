@@ -63,19 +63,11 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   const memberIds = submissions.map((s) => s.member_id)
   const historyMap = await fetchMatchHistory(memberIds)
 
-  // 建立 memberId → submissionId 映射（用于历史中的 partnerId 转换）
-  const memberToSubId = new Map<string, string>()
-  for (const sub of submissions) memberToSubId.set(sub.member_id, sub.id)
-
   // 3. 转换为 MatchCandidate（从 submission 读取本轮偏好）
+  // submissionId = member_id，history 中的 partner name 也是 member_id，无需转换
   const candidates = submissions.map((sub) => {
     const member = Array.isArray(sub.member) ? sub.member[0] : sub.member
-    const rawHistory = historyMap.get(sub.member_id) ?? []
-    // 将 partnerId 转为 submissionId，使 scorer 能正确查找
-    const history = rawHistory.map((h) => ({
-      name: memberToSubId.get(h.name) ?? h.name,
-      count: h.count,
-    }))
+    const history = historyMap.get(sub.member_id) ?? []
     return submissionToCandidate(sub, member, history)
   })
 
@@ -83,11 +75,12 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   const pairRelations = await fetchPairRelations(memberIds)
 
   // 5. 三阶段分流匹配（双人池 → 多人池 → 回流兜底）
+  // idMap: submissionId(=member_id) → member_id，用于结果写入
   const config: MatchingConfig = { ...DEFAULT_CONFIG }
-  const subIdToMemberId = new Map<string, string>()
-  for (const sub of submissions) subIdToMemberId.set(sub.id, sub.member_id)
+  const idMap = new Map<string, string>()
+  for (const sub of submissions) idMap.set(sub.member_id, sub.member_id)
 
-  const result = runFullMatching(candidates, config, subIdToMemberId, pairRelations)
+  const result = runFullMatching(candidates, config, idMap, pairRelations)
 
   // 6. 保存 match_session
   const { data: session, error: sErr } = await supabase
@@ -136,7 +129,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   if (result.unmatchedIds.length > 0) {
     const diagRows = result.unmatchedIds.map((subId) => ({
       session_id: session.id,
-      member_id: subIdToMemberId.get(subId) ?? subId,
+      member_id: idMap.get(subId) ?? subId,
       reason: "unmatched_after_all_stages",
       details: { stage: "overflow" } as import("@/types/database.types").Json,
     }))

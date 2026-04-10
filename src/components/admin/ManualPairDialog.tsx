@@ -7,9 +7,9 @@ import {
   DialogDescription, DialogFooter,
 } from "@/components/ui/dialog"
 import { Loader2 } from "lucide-react"
-import { checkPairCompatibility, manualPair } from "@/app/admin/matching/[id]/manual-actions"
-import { MemberSelect, CompatDisplay } from "./ManualPairHelpers"
-import type { CompatResult } from "./ManualPairHelpers"
+import { checkPairCompatibility, checkGroupCompatibility, manualPair } from "@/app/admin/matching/[id]/manual-actions"
+import { MemberSelect, MemberChips, CompatDisplay, GroupCompatDisplay } from "./ManualPairHelpers"
+import type { CompatResult, GroupCompatResult } from "./ManualPairHelpers"
 
 interface SelectableMember { id: string; name: string }
 
@@ -25,38 +25,67 @@ interface Props {
 export function ManualPairDialog({
   open, onOpenChange, sessionId, poolMembers, preselectedA = "", onPaired,
 }: Props) {
-  const [memberA, setMemberA] = useState(preselectedA)
-  const [memberB, setMemberB] = useState("")
-  const [compat, setCompat] = useState<CompatResult | null>(null)
+  const [selectedIds, setSelectedIds] = useState<string[]>(preselectedA ? [preselectedA] : [])
+  const [addValue, setAddValue] = useState("")
+  const [pairCompat, setPairCompat] = useState<CompatResult | null>(null)
+  const [groupCompat, setGroupCompat] = useState<GroupCompatResult | null>(null)
   const [error, setError] = useState("")
   const [isPending, startTransition] = useTransition()
   const [isChecking, startCheck] = useTransition()
 
   const reset = () => {
-    setMemberA(preselectedA)
-    setMemberB("")
-    setCompat(null)
+    setSelectedIds(preselectedA ? [preselectedA] : [])
+    setAddValue("")
+    setPairCompat(null)
+    setGroupCompat(null)
     setError("")
   }
 
+  const handleAdd = (id: string) => {
+    if (!id || selectedIds.includes(id)) return
+    if (selectedIds.length >= 6) return
+    setSelectedIds([...selectedIds, id])
+    setAddValue("")
+    setPairCompat(null)
+    setGroupCompat(null)
+  }
+
+  const handleRemove = (id: string) => {
+    setSelectedIds(selectedIds.filter((x) => x !== id))
+    setPairCompat(null)
+    setGroupCompat(null)
+  }
+
+  const canCheck = selectedIds.length >= 2
+  const isGroup = selectedIds.length > 2
+
   const handleCheck = () => {
-    if (!memberA || !memberB || memberA === memberB) return
+    if (!canCheck) return
     startCheck(async () => {
       setError("")
-      setCompat(null)
+      setPairCompat(null)
+      setGroupCompat(null)
       try {
-        const res = await checkPairCompatibility(sessionId, memberA, memberB)
-        setCompat(res)
+        if (isGroup) {
+          const res = await checkGroupCompatibility(sessionId, selectedIds)
+          setGroupCompat(res)
+        } else {
+          const res = await checkPairCompatibility(sessionId, selectedIds[0], selectedIds[1])
+          setPairCompat(res)
+        }
       } catch {
         setError("兼容性检查失败")
       }
     })
   }
 
+  const checked = pairCompat || groupCompat
+  const compatible = pairCompat?.compatible ?? groupCompat?.compatible ?? false
+
   const handleConfirm = () => {
     startTransition(async () => {
       setError("")
-      const res = await manualPair(sessionId, memberA, memberB)
+      const res = await manualPair(sessionId, selectedIds)
       if (res.error) {
         setError(res.error)
       } else {
@@ -66,36 +95,41 @@ export function ManualPairDialog({
     })
   }
 
-  const canCheck = memberA && memberB && memberA !== memberB
-  const nameA = poolMembers.find((m) => m.id === memberA)?.name
-  const nameB = poolMembers.find((m) => m.id === memberB)?.name
-
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset() }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>手动配对</DialogTitle>
           <DialogDescription>
-            从取消池中选择两人进行手动配对
+            选择 2-6 人进行手动配对（2人=双人对，3+人=多人组）
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
-          <MemberSelect
-            label="成员 A"
-            value={memberA}
-            onChange={(v) => { setMemberA(v); setCompat(null) }}
-            members={poolMembers}
-            exclude={memberB}
-          />
-          <MemberSelect
-            label="成员 B"
-            value={memberB}
-            onChange={(v) => { setMemberB(v); setCompat(null) }}
-            members={poolMembers}
-            exclude={memberA}
-          />
+          {/* 已选成员 chips */}
+          {selectedIds.length > 0 && (
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">
+                已选成员 ({selectedIds.length}/6)
+              </label>
+              <div className="mt-1">
+                <MemberChips ids={selectedIds} members={poolMembers} onRemove={handleRemove} />
+              </div>
+            </div>
+          )}
 
+          {/* 添加成员下拉 */}
+          {selectedIds.length < 6 && (
+            <MemberSelect
+              label="添加成员"
+              value={addValue}
+              onChange={handleAdd}
+              members={poolMembers}
+              exclude={selectedIds}
+            />
+          )}
+
+          {/* 检查兼容性按钮 */}
           {canCheck && (
             <Button
               size="sm"
@@ -109,9 +143,9 @@ export function ManualPairDialog({
             </Button>
           )}
 
-          {compat && (
-            <CompatDisplay compat={compat} nameA={nameA} nameB={nameB} />
-          )}
+          {/* 兼容性结果 */}
+          {pairCompat && <CompatDisplay compat={pairCompat} />}
+          {groupCompat && <GroupCompatDisplay compat={groupCompat} />}
 
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
@@ -119,10 +153,10 @@ export function ManualPairDialog({
         <DialogFooter>
           <Button
             onClick={handleConfirm}
-            disabled={!canCheck || isPending}
+            disabled={!checked || isPending}
           >
             {isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            确认配对
+            {isGroup ? `确认组建 (${selectedIds.length}人组)` : "确认配对"}
           </Button>
         </DialogFooter>
       </DialogContent>

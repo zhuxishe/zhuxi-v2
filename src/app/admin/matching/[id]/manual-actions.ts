@@ -4,14 +4,15 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { submissionToCandidate } from "@/lib/matching/adapter-submission"
-import { checkHardConstraints } from "@/lib/matching/constraints"
+import { checkHardConstraints, checkGroupConstraints } from "@/lib/matching/constraints"
 import { scorePair } from "@/lib/matching/scorer"
 import { getCommonSlots } from "@/lib/matching/time-filter"
+import { findGroupBestSlot } from "@/lib/matching/match-utils"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { fetchMatchHistory } from "@/lib/queries/match-history"
 import { validateUuids } from "@/lib/sanitize"
-import type { ScoreComponent } from "@/lib/matching/types"
+import type { MatchCandidate, ScoreComponent } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
 
 /** 获取单个成员完整资料 */
@@ -72,6 +73,93 @@ async function buildCandidate(memberId: string, roundId: string) {
   return submissionToCandidate(sub, member, history)
 }
 
+/** 批量构建候选人 */
+async function buildCandidates(memberIds: string[], roundId: string) {
+  return Promise.all(memberIds.map((id) => buildCandidate(id, roundId)))
+}
+
+// ── 硬约束条目（供前端展示） ──
+
+export interface ConstraintItem {
+  label: string
+  status: "pass" | "fail" | "warn"
+  details: string[]
+}
+
+function displayGender(g: string | null): string {
+  if (g === "male") return "男"
+  if (g === "female") return "女"
+  return g || "未知"
+}
+
+/** 构建双人硬约束条目列表 */
+function buildPairConstraints(
+  a: MatchCandidate, b: MatchCandidate,
+  bestSlot: string | null,
+): ConstraintItem[] {
+  const items: ConstraintItem[] = []
+
+  // 性别兼容
+  const aGender = displayGender(a.gender)
+  const bGender = displayGender(b.gender)
+  const aOk = b.genderPref === "都可以" || !b.genderPref || b.genderPref === aGender
+  const bOk = a.genderPref === "都可以" || !a.genderPref || a.genderPref === bGender
+  items.push({
+    label: "性别兼容",
+    status: aOk && bOk ? "pass" : "fail",
+    details: [
+      `${a.name}(${aGender}) → ${b.name}偏好: ${b.genderPref} ${aOk ? "✓" : "✗"}`,
+      `${b.name}(${bGender}) → ${a.name}偏好: ${a.genderPref} ${bOk ? "✓" : "✗"}`,
+    ],
+  })
+
+  // 游戏类型
+  const gtOk = a.gameTypePref === "都可以" || b.gameTypePref === "都可以" || a.gameTypePref === b.gameTypePref
+  items.push({
+    label: "游戏类型",
+    status: gtOk ? "pass" : "fail",
+    details: [`${a.name}: ${a.gameTypePref} ↔ ${b.name}: ${b.gameTypePref}`],
+  })
+
+  // 共同时段
+  items.push({
+    label: "共同时段",
+    status: bestSlot ? "pass" : "fail",
+    details: [bestSlot ? bestSlot.replace("_", " ") : "无共同可用时段"],
+  })
+
+  return items
+}
+
+/** 构建多人组硬约束条目列表 */
+function buildGroupConstraints(
+  candidates: MatchCandidate[], bestSlot: string | null,
+): ConstraintItem[] {
+  const items: ConstraintItem[] = []
+
+  // 性别分布
+  const genders = candidates.map((c) => `${c.name}(${displayGender(c.gender)})`).join("、")
+  items.push({ label: "性别分布", status: "pass", details: [genders] })
+
+  // 游戏类型（多人组只接受"多人"或"都可以"）
+  const allOk = candidates.every((c) => c.gameTypePref === "多人" || c.gameTypePref === "都可以" || !c.gameTypePref)
+  const prefs = candidates.map((c) => `${c.name}: ${c.gameTypePref}`).join("、")
+  items.push({
+    label: "游戏类型",
+    status: allOk ? "pass" : "fail",
+    details: [prefs],
+  })
+
+  // 共同时段
+  items.push({
+    label: "共同时段",
+    status: bestSlot ? "pass" : "fail",
+    details: [bestSlot ? bestSlot.replace("_", " ") : "无共同可用时段"],
+  })
+
+  return items
+}
+
 /** 检查两人兼容性（硬约束 + 评分） */
 export async function checkPairCompatibility(
   sessionId: string,
@@ -90,13 +178,10 @@ export async function checkPairCompatibility(
   ])
   const config = { ...DEFAULT_CONFIG }
 
-  // 构建 pairRelations（使用 member UUID 作为 key）
   const pairRelations = await fetchPairRelations([memberAId, memberBId])
-
-  // 硬约束检查（含黑名单 + 冷却期）
   const constraint = checkHardConstraints(candidateA, candidateB, config, pairRelations)
 
-  // 额外黑名单 DB 检查（UUID 级安全网）
+  // 额外黑名单 DB 检查
   const supabase = await createClient()
   const blacklistWarnings: string[] = []
   const [{ data: relsAB }, { data: relsBA }] = await Promise.all([
@@ -111,34 +196,87 @@ export async function checkPairCompatibility(
     }
   }
 
-  // 评分
   const score = scorePair(candidateA, candidateB, config, pairRelations)
-
-  // 计算最佳时段
   const commonSlots = getCommonSlots(candidateA.availability, candidateB.availability)
   const bestSlot = commonSlots.length > 0 ? `${commonSlots[0].date}_${commonSlots[0].slot}` : null
+
+  // 构建硬约束条目（供前端展示）
+  const constraints = buildPairConstraints(candidateA, candidateB, bestSlot)
 
   return {
     compatible: constraint.passed && blacklistWarnings.length === 0,
     warnings: [...constraint.reasons, ...blacklistWarnings],
+    constraints,
     score: score.totalScore,
     breakdown: score.breakdown as ScoreComponent[],
     bestSlot,
   }
 }
 
-/** 手动配对：插入一条 match_result */
+/** 检查多人组兼容性（硬约束，无评分） */
+export async function checkGroupCompatibility(
+  sessionId: string,
+  memberIds: string[],
+) {
+  validateUuids([sessionId, ...memberIds])
+  await requireAdmin()
+
+  const roundId = await getSessionRoundId(sessionId)
+  if (!roundId) throw new Error("该匹配会话无关联轮次，无法获取问卷数据")
+
+  const candidates = await buildCandidates(memberIds, roundId)
+  const config = { ...DEFAULT_CONFIG }
+  const pairRelations = await fetchPairRelations(memberIds)
+
+  // 检查每个成员能否加入组
+  const warnings: string[] = []
+  for (let i = 1; i < candidates.length; i++) {
+    const existing = candidates.slice(0, i)
+    const ok = checkGroupConstraints(candidates[i], existing, config, pairRelations)
+    if (!ok) {
+      warnings.push(`${candidates[i].name} 与组内成员存在约束冲突`)
+    }
+  }
+
+  // 找最佳公共时段
+  const bestSlot = findGroupBestSlot(candidates)
+  const hasSlot = bestSlot !== "未知时段"
+
+  if (!hasSlot) warnings.push("无共同可用时段")
+
+  // 构建约束条目
+  const constraints = buildGroupConstraints(candidates, hasSlot ? bestSlot : null)
+
+  // 追加黑名单约束条目
+  if (warnings.some((w) => w.includes("约束冲突"))) {
+    constraints.push({ label: "黑名单/冷却期", status: "fail", details: warnings.filter((w) => w.includes("约束冲突")) })
+  } else {
+    constraints.push({ label: "黑名单/冷却期", status: "pass", details: ["无冲突"] })
+  }
+
+  return {
+    compatible: warnings.length === 0,
+    warnings,
+    constraints,
+    bestSlot: hasSlot ? bestSlot : null,
+  }
+}
+
+/** 手动配对：支持 2-6 人 */
 export async function manualPair(
   sessionId: string,
-  memberAId: string,
-  memberBId: string,
+  memberIds: string[],
 ) {
-  validateUuids([sessionId, memberAId, memberBId])
+  validateUuids([sessionId, ...memberIds])
   await requireAdmin()
+
+  if (memberIds.length < 2) return { error: "至少需要 2 人" }
+  if (memberIds.length > 6) return { error: "最多 6 人" }
+
   const supabase = await createClient()
 
-  // ── 防重复校验：确保两人在此 session 中没有活跃配对 ──
-  for (const mId of [memberAId, memberBId]) {
+  // ── 防重复校验 ──
+  for (const mId of memberIds) {
     const { data: existing } = await supabase
       .from("match_results")
       .select("id")
@@ -148,11 +286,9 @@ export async function manualPair(
       .limit(1)
 
     if (existing && existing.length > 0) {
-      const label = mId === memberAId ? "A" : "B"
-      return { error: `成员 ${label} 已在此次匹配中有活跃配对，请先拆分旧配对` }
+      return { error: `成员已在此次匹配中有活跃配对，请先拆分旧配对` }
     }
 
-    // 同时检查 group_members 数组
     const { data: existingGroup } = await supabase
       .from("match_results")
       .select("id")
@@ -162,29 +298,38 @@ export async function manualPair(
       .limit(1)
 
     if (existingGroup && existingGroup.length > 0) {
-      const label = mId === memberAId ? "A" : "B"
-      return { error: `成员 ${label} 已在多人组中，请先拆分旧配对` }
+      return { error: `成员已在多人组中，请先拆分旧配对` }
     }
   }
 
-  // ── 计算评分（使用问卷偏好） ──
+  // ── 计算评分/时段 ──
   let totalScore = 0
   let scoreBreakdown: Json = null
   let bestSlot: string | null = null
-  try {
-    const result = await checkPairCompatibility(sessionId, memberAId, memberBId)
-    totalScore = result.score
-    scoreBreakdown = result.breakdown as unknown as Json
-    bestSlot = result.bestSlot
-  } catch {
-    // 评分失败不阻止配对
+
+  if (memberIds.length === 2) {
+    // 双人：完整评分
+    try {
+      const result = await checkPairCompatibility(sessionId, memberIds[0], memberIds[1])
+      totalScore = result.score
+      scoreBreakdown = result.breakdown as unknown as Json
+      bestSlot = result.bestSlot
+    } catch { /* 评分失败不阻止 */ }
+  } else {
+    // 多人组：只取时段
+    try {
+      const result = await checkGroupCompatibility(sessionId, memberIds)
+      bestSlot = result.bestSlot
+    } catch { /* 失败不阻止 */ }
   }
 
   // ── 插入配对 ──
+  const isDuo = memberIds.length === 2
   const { error } = await supabase.from("match_results").insert({
     session_id: sessionId,
-    member_a_id: memberAId,
-    member_b_id: memberBId,
+    member_a_id: memberIds[0],
+    member_b_id: isDuo ? memberIds[1] : null,
+    group_members: isDuo ? null : memberIds,
     total_score: totalScore,
     score_breakdown: scoreBreakdown,
     best_slot: bestSlot,
@@ -197,12 +342,12 @@ export async function manualPair(
     return { error: "操作失败" }
   }
 
-  // ── 清理未匹配诊断记录 ──
+  // ── 清理未匹配诊断 ──
   await supabase
     .from("unmatched_diagnostics")
     .delete()
     .eq("session_id", sessionId)
-    .in("member_id", [memberAId, memberBId])
+    .in("member_id", memberIds)
 
   revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true }

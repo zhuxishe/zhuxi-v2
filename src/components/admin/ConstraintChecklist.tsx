@@ -46,9 +46,9 @@ function checkGender(
   const bGenderRaw = b?.member_identity?.gender || "未知"
   const aGender = displayGender(aGenderRaw)
   const bGender = displayGender(bGenderRaw)
-  // 优先从问卷读取性别偏好，回退到成员档案
-  const aPref = (a?.id && prefs?.[a.id]?.gender_pref) || a?.member_boundaries?.preferred_gender_mix || "都可以"
-  const bPref = (b?.id && prefs?.[b.id]?.gender_pref) || b?.member_boundaries?.preferred_gender_mix || "都可以"
+  // 只从问卷读取性别偏好（只有填了问卷的人才参与匹配）
+  const aPref = (a?.id && prefs?.[a.id]?.gender_pref) ?? "未填写"
+  const bPref = (b?.id && prefs?.[b.id]?.gender_pref) ?? "未填写"
 
   const aOk = isGenderOk(bPref, aGenderRaw)
   const bOk = isGenderOk(aPref, bGenderRaw)
@@ -67,9 +67,9 @@ function checkGameType(
   a: EnrichedMember | null, b: EnrichedMember | null,
   prefs?: Record<string, { game_type_pref: string; gender_pref: string }>,
 ): ConstraintItem {
-  // 优先从问卷读取游戏类型偏好
-  const aPref = (a?.id && prefs?.[a.id]?.game_type_pref) || a?.member_interests?.game_type_pref || "都可以"
-  const bPref = (b?.id && prefs?.[b.id]?.game_type_pref) || b?.member_interests?.game_type_pref || "都可以"
+  // 只从问卷读取游戏类型偏好
+  const aPref = (a?.id && prefs?.[a.id]?.game_type_pref) ?? "未填写"
+  const bPref = (b?.id && prefs?.[b.id]?.game_type_pref) ?? "未填写"
 
   const compatible =
     aPref === "都可以" || bPref === "都可以" ||

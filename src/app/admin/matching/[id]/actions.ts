@@ -164,11 +164,12 @@ export async function confirmSession(sessionId: string) {
     return { error: "会话不存在或已不是「draft」状态，请刷新后重试" }
   }
 
+  // draft 和 locked 的配对都应确认（locked = 管理员已审核保留）
   const { error: rErr } = await supabase
     .from("match_results")
     .update({ status: "confirmed" })
     .eq("session_id", sessionId)
-    .eq("status", "draft")
+    .in("status", ["draft", "locked"])
 
   if (rErr) {
     // 补偿：回滚 session 状态，避免 session=confirmed 但 results 未更新

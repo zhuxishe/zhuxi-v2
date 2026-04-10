@@ -21,14 +21,32 @@ function nameOf(m: EnrichedMember | null): string {
   return m?.member_identity?.full_name || m?.member_identity?.nickname || "未知"
 }
 
+/** DB 存 male/female，统一转为 男/女 显示和比较 */
+function displayGender(g: string | null | undefined): string {
+  if (g === "male") return "男"
+  if (g === "female") return "女"
+  return g || "未知"
+}
+
+/** 单向性别兼容检查：pref 是否接受 targetGender */
+function isGenderOk(pref: string, targetGender: string): boolean {
+  if (pref === "都可以") return true
+  if (!targetGender || targetGender === "未知") return true
+  // 统一到中文再比较
+  const normTarget = displayGender(targetGender)
+  return pref === normTarget
+}
+
 function checkGender(a: EnrichedMember | null, b: EnrichedMember | null): ConstraintItem {
-  const aGender = a?.member_identity?.gender || "未知"
-  const bGender = b?.member_identity?.gender || "未知"
+  const aGenderRaw = a?.member_identity?.gender || "未知"
+  const bGenderRaw = b?.member_identity?.gender || "未知"
+  const aGender = displayGender(aGenderRaw)
+  const bGender = displayGender(bGenderRaw)
   const aPref = a?.member_boundaries?.preferred_gender_mix || "都可以"
   const bPref = b?.member_boundaries?.preferred_gender_mix || "都可以"
 
-  const aOk = bPref === "都可以" || !bGender || bPref === aGender
-  const bOk = aPref === "都可以" || !aGender || aPref === bGender
+  const aOk = isGenderOk(bPref, aGenderRaw)
+  const bOk = isGenderOk(aPref, bGenderRaw)
 
   return {
     label: "性别兼容",

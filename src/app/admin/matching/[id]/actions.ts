@@ -95,6 +95,37 @@ export async function restorePair(resultId: string) {
   return { success: true }
 }
 
+/** 删除整个匹配会话（含所有配对结果和未匹配诊断） */
+export async function deleteSession(sessionId: string) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  // 状态校验：只有 draft 状态才能删除
+  const { data: session } = await supabase
+    .from("match_sessions")
+    .select("status")
+    .eq("id", sessionId)
+    .single()
+
+  if (!session) return { error: "会话不存在" }
+  if (session.status !== "draft") {
+    return { error: `当前状态为「${session.status}」，只有「draft」状态才能删除` }
+  }
+
+  // 按外键依赖顺序删除（CASCADE 应该处理，但显式更安全）
+  await supabase.from("unmatched_diagnostics").delete().eq("session_id", sessionId)
+  await supabase.from("match_results").delete().eq("session_id", sessionId)
+  const { error } = await supabase.from("match_sessions").delete().eq("id", sessionId)
+
+  if (error) {
+    console.error("[deleteSession]", error)
+    return { error: "删除失败" }
+  }
+
+  revalidatePath("/admin/matching")
+  return { success: true }
+}
+
 export async function confirmSession(sessionId: string) {
   await requireAdmin()
   const supabase = await createClient()

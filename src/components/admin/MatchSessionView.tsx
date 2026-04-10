@@ -4,13 +4,13 @@ import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, UserPlus } from "lucide-react"
+import { CheckCircle, UserPlus, RefreshCw } from "lucide-react"
 import { MatchPairCard } from "./MatchPairCard"
 import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { RematchPool } from "./RematchPool"
 import { ManualPairDialog } from "./ManualPairDialog"
-import { lockPair, splitPair, restorePair, confirmSession } from "@/app/admin/matching/[id]/actions"
+import { lockPair, splitPair, restorePair, confirmSession, deleteSession } from "@/app/admin/matching/[id]/actions"
 import type { EnrichedMatchResult, PairRelationship } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
 import type { DiagnosticItem } from "./UnmatchedDiagnostics"
@@ -93,9 +93,22 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           </Button>
         )}
         {session.status === "draft" && (
-          <Button size="sm" onClick={handleConfirm} disabled={isPending}>
-            <CheckCircle className="size-3.5" /> 确认发布
-          </Button>
+          <>
+            <Button size="sm" variant="outline" onClick={() => {
+              if (!confirm("确定要删除当前结果并重新匹配？")) return
+              startTransition(async () => {
+                setError("")
+                const res = await deleteSession(session.id)
+                if (res.error) setError(res.error)
+                else router.push("/admin/matching/new")
+              })
+            }} disabled={isPending}>
+              <RefreshCw className="size-3.5" /> 重新匹配
+            </Button>
+            <Button size="sm" onClick={handleConfirm} disabled={isPending}>
+              <CheckCircle className="size-3.5" /> 确认发布
+            </Button>
+          </>
         )}
       </div>
 

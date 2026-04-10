@@ -150,10 +150,13 @@ export function ManualPairDialog({
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-col">
+          {checked && !compatible && (
+            <p className="text-xs text-red-600 text-center">硬约束未通过，无法配对</p>
+          )}
           <Button
             onClick={handleConfirm}
-            disabled={!checked || isPending}
+            disabled={!checked || !compatible || isPending}
           >
             {isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
             {isGroup ? `确认组建 (${selectedIds.length}人组)` : "确认配对"}

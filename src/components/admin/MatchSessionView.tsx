@@ -4,7 +4,8 @@ import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, UserPlus, RefreshCw, Search } from "lucide-react"
+import { CheckCircle, UserPlus, RefreshCw, Search, ChevronDown, ChevronRight, XCircle } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { MatchPairCard } from "./MatchPairCard"
 import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
@@ -26,18 +27,15 @@ interface Props {
   submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
 }
 
-/** 从 EnrichedMember 提取名字 */
 function memberName(m: EnrichedMember | null): string {
   return m?.member_identity?.full_name ?? m?.member_identity?.nickname ?? ""
 }
 
-/** 检查配对是否匹配搜索词 */
 function matchesSearch(r: EnrichedMatchResult, query: string): boolean {
   if (!query) return true
   const q = query.toLowerCase()
   if (memberName(r.member_a).toLowerCase().includes(q)) return true
   if (memberName(r.member_b).toLowerCase().includes(q)) return true
-  // 多人组
   if (r.group_member_details) {
     for (const m of r.group_member_details) {
       if (memberName(m as EnrichedMember).toLowerCase().includes(q)) return true
@@ -53,6 +51,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
   const [showFreeManual, setShowFreeManual] = useState(false)
   const [preselectedA, setPreselectedA] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
+  const [showCancelled, setShowCancelled] = useState(false)
 
   const relMap = useMemo(() => {
     const map = new Map<string, PairRelationship>()
@@ -71,17 +70,14 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
     return relMap.get(key)
   }
 
-  // 排序：活跃配对在前，已取消的放最后
-  const sortedResults = useMemo(() => {
-    const active = results.filter((r) => r.status !== "cancelled")
-    const cancelled = results.filter((r) => r.status === "cancelled")
-    return [...active, ...cancelled]
-  }, [results])
+  // 分离活跃配对和已取消配对
+  const activeResults = useMemo(() => results.filter((r) => r.status !== "cancelled"), [results])
+  const cancelledResults = useMemo(() => results.filter((r) => r.status === "cancelled"), [results])
 
-  // 搜索过滤
-  const filteredResults = useMemo(() => {
-    return sortedResults.filter((r) => matchesSearch(r, searchQuery))
-  }, [sortedResults, searchQuery])
+  // 搜索过滤（只过滤活跃配对）
+  const filteredActive = useMemo(() => {
+    return activeResults.filter((r) => matchesSearch(r, searchQuery))
+  }, [activeResults, searchQuery])
 
   const handleAction = (action: (id: string) => Promise<{ error?: string; success?: boolean }>, id: string) => {
     startTransition(async () => {
@@ -106,6 +102,18 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
     setShowFreeManual(true)
   }
 
+  const renderCard = (r: EnrichedMatchResult) => (
+    <MatchPairCard
+      key={r.id}
+      result={r}
+      pairRel={findRel(r.member_a?.id, r.member_b?.id)}
+      submissionPrefs={submissionPrefs}
+      onLock={(id) => handleAction(r.status === "locked" ? restorePair : lockPair, id)}
+      onSplit={(id) => handleAction(splitPair, id)}
+      onRestore={(id) => handleAction(restorePair, id)}
+    />
+  )
+
   return (
     <div className="p-6 space-y-6">
       {/* KPI */}
@@ -114,8 +122,13 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           {session.total_candidates} 人参与
         </span>
         <span className="rounded-full bg-green-500/10 text-green-600 px-3 py-1 text-sm font-medium">
-          {session.total_matched} 人已匹配
+          {activeResults.length} 组活跃配对
         </span>
+        {cancelledResults.length > 0 && (
+          <span className="rounded-full bg-red-500/10 text-red-600 px-3 py-1 text-sm font-medium">
+            {cancelledResults.length} 组已取消
+          </span>
+        )}
         {session.total_unmatched > 0 && (
           <span className="rounded-full bg-orange-500/10 text-orange-600 px-3 py-1 text-sm font-medium">
             {session.total_unmatched} 人未匹配
@@ -157,7 +170,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       {candidates.length > 0 && <TimeSlotHeatmap candidates={candidates} />}
 
       {/* Search bar */}
-      {results.length > 6 && (
+      {activeResults.length > 6 && (
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <input
@@ -169,28 +182,18 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           />
           {searchQuery && (
             <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
-              {filteredResults.length}/{results.length}
+              {filteredActive.length}/{activeResults.length}
             </span>
           )}
         </div>
       )}
 
-      {/* Pair cards — active first, cancelled at bottom */}
+      {/* 活跃配对卡片 */}
       <div className="space-y-4">
-        {filteredResults.map((r) => (
-          <MatchPairCard
-            key={r.id}
-            result={r}
-            pairRel={findRel(r.member_a?.id, r.member_b?.id)}
-            submissionPrefs={submissionPrefs}
-            onLock={(id) => handleAction(r.status === "locked" ? restorePair : lockPair, id)}
-            onSplit={(id) => handleAction(splitPair, id)}
-            onRestore={(id) => handleAction(restorePair, id)}
-          />
-        ))}
+        {filteredActive.map(renderCard)}
       </div>
 
-      {/* Rematch pool */}
+      {/* 再匹配池 */}
       <RematchPool
         sessionId={session.id}
         poolMembers={poolMembers}
@@ -198,7 +201,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
         onRefresh={() => router.refresh()}
       />
 
-      {/* Unmatched diagnostics */}
+      {/* 未匹配诊断 */}
       {diagnostics.length > 0 && (
         <UnmatchedDiagnostics
           diagnostics={diagnostics}
@@ -207,7 +210,30 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
         />
       )}
 
-      {/* Manual pair dialog — supports 2-6 members */}
+      {/* 已取消配对（折叠区域） */}
+      {cancelledResults.length > 0 && (
+        <div className="rounded-xl bg-card ring-1 ring-foreground/10 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowCancelled(!showCancelled)}
+            className="flex w-full items-center gap-2 px-4 py-3 text-left hover:bg-muted/50 transition-colors"
+          >
+            {showCancelled
+              ? <ChevronDown className="size-4 text-muted-foreground" />
+              : <ChevronRight className="size-4 text-muted-foreground" />
+            }
+            <XCircle className="size-4 text-red-400" />
+            <span className="text-sm font-medium">已取消配对 ({cancelledResults.length}组)</span>
+          </button>
+          {showCancelled && (
+            <div className={cn("border-t border-border p-4 space-y-4 bg-muted/20")}>
+              {cancelledResults.map(renderCard)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Manual pair dialog */}
       <ManualPairDialog
         open={showFreeManual}
         onOpenChange={setShowFreeManual}

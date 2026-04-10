@@ -20,7 +20,9 @@ export { buildPairRelations } from "./pair-history-build"
 export type PairStatus = "blacklist" | "cooldown" | "reunion" | "avoid" | "normal"
 
 export interface PairRelation {
+  /** member UUID (sorted, smaller id first) */
   playerA: string
+  /** member UUID (sorted, larger id first) */
   playerB: string
   status: PairStatus
   totalPairCount: number
@@ -29,14 +31,18 @@ export interface PairRelation {
 }
 
 export interface FeedbackRecord {
+  /** member UUID of the reviewer */
   player_name: string
+  /** member UUID of the reviewee */
   partner_name: string
   partner_rating: number | null
   session_number: number
 }
 
 export interface BlacklistRecord {
+  /** member UUID */
   player_a: string
+  /** member UUID */
   player_b: string
   reason: string | null
   source: string

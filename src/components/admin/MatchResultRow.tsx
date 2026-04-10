@@ -8,6 +8,7 @@ interface Props {
   result: EnrichedMatchResult
   index: number
   pairRel?: PairRelationship | null
+  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
 }
 
 function getMemberName(m: EnrichedMember | null): string {
@@ -32,8 +33,9 @@ const REL_STATUS_MAP: Record<string, { label: string; className: string }> = {
   normal: { label: "正常", className: "bg-gray-50 text-gray-600" },
 }
 
-export function MatchResultRow({ result: r, index, pairRel }: Props) {
-  const gameType = r.member_a?.member_interests?.game_type_pref
+export function MatchResultRow({ result: r, index, pairRel, submissionPrefs }: Props) {
+  const aId = r.member_a?.id
+  const gameType = (aId && submissionPrefs?.[aId]?.game_type_pref) || undefined
 
   return (
     <tr className="border-b border-border last:border-0 hover:bg-muted/20">
@@ -42,14 +44,14 @@ export function MatchResultRow({ result: r, index, pairRel }: Props) {
 
       {/* Player A */}
       <td className="px-4 py-3">
-        <PlayerInfoPopover member={r.member_a}>
+        <PlayerInfoPopover member={r.member_a} submissionPrefs={submissionPrefs}>
           {getMemberName(r.member_a)}
         </PlayerInfoPopover>
       </td>
 
       {/* Player B */}
       <td className="px-4 py-3">
-        <PlayerInfoPopover member={r.member_b}>
+        <PlayerInfoPopover member={r.member_b} submissionPrefs={submissionPrefs}>
           {getMemberName(r.member_b)}
         </PlayerInfoPopover>
       </td>

@@ -74,7 +74,7 @@ export function tryPair(
 
   const tempA = { ...a, availability: { [common[0].date]: [common[0].slot] } }
   const tempB = { ...b, availability: { [common[0].date]: [common[0].slot] } }
-  const score = scorePair(tempA, tempB, config)
+  const score = scorePair(tempA, tempB, config, pairRelations)
   if (score.hardVeto) return null
 
   const bonus = getReunionBonus(a, b, pairRelations)

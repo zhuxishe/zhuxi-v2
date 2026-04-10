@@ -143,6 +143,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       <RematchPool
         sessionId={session.id}
         poolMembers={poolMembers}
+        submissionPrefs={submissionPrefs}
         onRefresh={() => router.refresh()}
       />
 
@@ -150,6 +151,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       {diagnostics.length > 0 && (
         <UnmatchedDiagnostics
           diagnostics={diagnostics}
+          submissionPrefs={submissionPrefs}
           onManualPair={handleManualPairFromUnmatched}
         />
       )}

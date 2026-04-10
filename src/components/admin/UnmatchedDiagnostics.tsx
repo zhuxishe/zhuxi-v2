@@ -27,10 +27,11 @@ export interface DiagnosticItem {
 interface Props {
   diagnostics: DiagnosticItem[]
   sessionId?: string
+  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
   onManualPair?: (memberId: string, name: string) => void
 }
 
-export function UnmatchedDiagnostics({ diagnostics, onManualPair }: Props) {
+export function UnmatchedDiagnostics({ diagnostics, submissionPrefs, onManualPair }: Props) {
   const [open, setOpen] = useState(false)
 
   if (diagnostics.length === 0) return null
@@ -67,7 +68,7 @@ export function UnmatchedDiagnostics({ diagnostics, onManualPair }: Props) {
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="text-sm font-medium">
                     {d.memberData ? (
-                      <PlayerInfoPopover member={d.memberData}>{name}</PlayerInfoPopover>
+                      <PlayerInfoPopover member={d.memberData} submissionPrefs={submissionPrefs}>{name}</PlayerInfoPopover>
                     ) : (
                       name
                     )}

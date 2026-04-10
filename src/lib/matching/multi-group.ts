@@ -7,12 +7,16 @@ import { checkGroupConstraints, groupHasAvoidPairs } from "./constraints"
 import { findGroupBestSlot } from "./match-utils"
 import { scorePair } from "./scorer"
 
-function computeGroupAvgScore(members: MatchCandidate[], config: MatchingConfig): number {
+function computeGroupAvgScore(
+  members: MatchCandidate[],
+  config: MatchingConfig,
+  pairRelations?: Map<string, PairRelation>,
+): number {
   if (members.length < 2) return 0
   let total = 0, count = 0
   for (let i = 0; i < members.length; i++) {
     for (let j = i + 1; j < members.length; j++) {
-      const score = scorePair(members[i], members[j], config)
+      const score = scorePair(members[i], members[j], config, pairRelations)
       if (!score.hardVeto) { total += score.totalScore; count++ }
     }
   }
@@ -80,7 +84,7 @@ function runMultiRound(
       groups.push({
         members: groupMembers,
         bestSlot: findGroupBestSlot(groupMembers),
-        avgScore: computeGroupAvgScore(groupMembers, config),
+        avgScore: computeGroupAvgScore(groupMembers, config, pairRelations),
       })
     }
   }

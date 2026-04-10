@@ -3,12 +3,13 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
-import { toMatchCandidate } from "@/lib/matching/adapter"
+import { submissionToCandidate } from "@/lib/matching/adapter-submission"
 import { checkHardConstraints } from "@/lib/matching/constraints"
 import { scorePair } from "@/lib/matching/scorer"
 import { getCommonSlots } from "@/lib/matching/time-filter"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
+import { fetchMatchHistory } from "@/lib/queries/match-history"
 import { validateUuids } from "@/lib/sanitize"
 import type { ScoreComponent } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
@@ -35,33 +36,67 @@ async function fetchMemberFull(memberId: string) {
   return data
 }
 
+/** 获取 session 对应的 round_id */
+async function getSessionRoundId(sessionId: string): Promise<string | null> {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("match_sessions")
+    .select("round_id")
+    .eq("id", sessionId)
+    .single()
+  return data?.round_id ?? null
+}
+
+/** 获取成员在某轮次的问卷提交 */
+async function fetchSubmission(roundId: string, memberId: string) {
+  const supabase = await createClient()
+  const { data } = await supabase
+    .from("match_round_submissions")
+    .select("*")
+    .eq("round_id", roundId)
+    .eq("member_id", memberId)
+    .single()
+  return data
+}
+
+/** 构建 MatchCandidate：必须有问卷数据 */
+async function buildCandidate(memberId: string, roundId: string) {
+  const member = await fetchMemberFull(memberId)
+  const historyMap = await fetchMatchHistory([memberId])
+  const history = historyMap.get(memberId) ?? []
+
+  const sub = await fetchSubmission(roundId, memberId)
+  if (!sub) {
+    throw new Error(`成员 ${memberId} 未提交本轮问卷，无法参与匹配`)
+  }
+  return submissionToCandidate(sub, member, history)
+}
+
 /** 检查两人兼容性（硬约束 + 评分） */
 export async function checkPairCompatibility(
+  sessionId: string,
   memberAId: string,
   memberBId: string,
 ) {
-  validateUuids([memberAId, memberBId])
+  validateUuids([sessionId, memberAId, memberBId])
   await requireAdmin()
 
-  const [memberA, memberB] = await Promise.all([
-    fetchMemberFull(memberAId),
-    fetchMemberFull(memberBId),
-  ])
+  const roundId = await getSessionRoundId(sessionId)
+  if (!roundId) throw new Error("该匹配会话无关联轮次，无法获取问卷数据")
 
-  const candidateA = toMatchCandidate(memberA)
-  const candidateB = toMatchCandidate(memberB)
+  const [candidateA, candidateB] = await Promise.all([
+    buildCandidate(memberAId, roundId),
+    buildCandidate(memberBId, roundId),
+  ])
   const config = { ...DEFAULT_CONFIG }
 
-  // 构建 pairRelations（支持 cooldown/reunion 检查）
-  const idToName = new Map<string, string>()
-  idToName.set(memberAId, candidateA.name)
-  idToName.set(memberBId, candidateB.name)
-  const pairRelations = await fetchPairRelations([memberAId, memberBId], idToName)
+  // 构建 pairRelations（使用 member UUID 作为 key）
+  const pairRelations = await fetchPairRelations([memberAId, memberBId])
 
   // 硬约束检查（含黑名单 + 冷却期）
   const constraint = checkHardConstraints(candidateA, candidateB, config, pairRelations)
 
-  // 额外黑名单 DB 检查（UUID 级安全网，防止名字映射遗漏）
+  // 额外黑名单 DB 检查（UUID 级安全网）
   const supabase = await createClient()
   const blacklistWarnings: string[] = []
   const [{ data: relsAB }, { data: relsBA }] = await Promise.all([
@@ -77,7 +112,7 @@ export async function checkPairCompatibility(
   }
 
   // 评分
-  const score = scorePair(candidateA, candidateB, config)
+  const score = scorePair(candidateA, candidateB, config, pairRelations)
 
   // 计算最佳时段
   const commonSlots = getCommonSlots(candidateA.availability, candidateB.availability)
@@ -132,12 +167,12 @@ export async function manualPair(
     }
   }
 
-  // ── 计算评分 ──
+  // ── 计算评分（使用问卷偏好） ──
   let totalScore = 0
   let scoreBreakdown: Json = null
   let bestSlot: string | null = null
   try {
-    const result = await checkPairCompatibility(memberAId, memberBId)
+    const result = await checkPairCompatibility(sessionId, memberAId, memberBId)
     totalScore = result.score
     scoreBreakdown = result.breakdown as unknown as Json
     bestSlot = result.bestSlot

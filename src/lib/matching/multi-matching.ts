@@ -3,6 +3,7 @@
  */
 
 import type { MatchCandidate, MatchingConfig } from "./types"
+import type { PairRelation } from "./pair-history"
 import { scorePair } from "./scorer"
 
 /**
@@ -12,6 +13,7 @@ export function runMultiMatching(
   candidates: MatchCandidate[],
   config: MatchingConfig,
   groupSize: number = 6,
+  pairRelations?: Map<string, PairRelation>,
 ): { groups: { members: MatchCandidate[]; avgScore: number }[]; unmatched: MatchCandidate[] } {
   if (candidates.length < 3) {
     return { groups: [], unmatched: [...candidates] }
@@ -25,7 +27,7 @@ export function runMultiMatching(
       if (i === j) {
         scores[i][j] = 0
       } else if (j > i) {
-        const ps = scorePair(candidates[i], candidates[j], config)
+        const ps = scorePair(candidates[i], candidates[j], config, pairRelations)
         scores[i][j] = ps.hardVeto ? -1 : ps.totalScore
       } else {
         scores[i][j] = scores[j][i]

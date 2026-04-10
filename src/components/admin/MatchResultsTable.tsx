@@ -7,6 +7,7 @@ import type { EnrichedMatchResult, PairRelationship } from "./match-detail-types
 interface Props {
   results: EnrichedMatchResult[]
   pairRelationships?: PairRelationship[]
+  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
 }
 
 /** Build a lookup key for pair relationship (order-independent) */
@@ -14,7 +15,7 @@ function pairKey(aId: string, bId: string): string {
   return aId < bId ? `${aId}||${bId}` : `${bId}||${aId}`
 }
 
-export function MatchResultsTable({ results, pairRelationships = [] }: Props) {
+export function MatchResultsTable({ results, pairRelationships = [], submissionPrefs = {} }: Props) {
   // Build pair relationship map for O(1) lookup
   const relMap = useMemo(() => {
     const map = new Map<string, PairRelationship>()
@@ -54,6 +55,7 @@ export function MatchResultsTable({ results, pairRelationships = [] }: Props) {
                 result={r}
                 index={i}
                 pairRel={rel ?? null}
+                submissionPrefs={submissionPrefs}
               />
             )
           })}

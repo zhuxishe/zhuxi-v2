@@ -8,6 +8,7 @@ import type {
   PairScore,
   MatchAssignment,
 } from "./types"
+import type { PairRelation } from "./pair-history"
 import { scorePair } from "./scorer"
 import {
   selfScore,
@@ -24,6 +25,7 @@ export function runDuoMatching(
   candidates: MatchCandidate[],
   config: MatchingConfig,
   algorithm: "optimized" | "greedy" = "optimized",
+  pairRelations?: Map<string, PairRelation>,
 ): MatchAssignment {
   const n = candidates.length
 
@@ -39,7 +41,7 @@ export function runDuoMatching(
       if (i === j) {
         scores[i][j] = selfScore(candidates[i])
       } else if (j > i) {
-        scores[i][j] = scorePair(candidates[i], candidates[j], config)
+        scores[i][j] = scorePair(candidates[i], candidates[j], config, pairRelations)
       } else {
         scores[i][j] = scores[j][i]
       }

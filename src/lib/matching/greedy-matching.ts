@@ -45,7 +45,7 @@ export function buildFeasiblePairs(
 
       const tempA = { ...a, availability: { [commonSlots[0].date]: [commonSlots[0].slot] } }
       const tempB = { ...b, availability: { [commonSlots[0].date]: [commonSlots[0].slot] } }
-      const score = scorePair(tempA, tempB, config)
+      const score = scorePair(tempA, tempB, config, pairRelations)
       if (score.hardVeto) continue
 
       const bonus = getReunionBonus(a, b, pairRelations)

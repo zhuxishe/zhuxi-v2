@@ -4,47 +4,38 @@
  * 从 pair_relationships（黑名单）+ mutual_reviews（互评）+ match_results（配对历史）
  * 构建 buildPairRelations 所需的三个参数，返回 Map<string, PairRelation>
  *
- * 注意：buildPairRelations / getPairStatus 使用 MatchCandidate.name（full_name）
- * 作为 key，所以这里需要 idToName 映射来将 UUID 转为名字
+ * 全链路使用 member UUID 作为 key（不再转名字，避免同名冲突）
  */
 
 import { createClient } from "@/lib/supabase/server"
 import { buildPairRelations } from "@/lib/matching/pair-history"
 import type { PairRelation, FeedbackRecord, BlacklistRecord } from "@/lib/matching/pair-history"
 import { validateUuids } from "@/lib/sanitize"
-import { fetchMatchHistory } from "./matching"
+import { fetchMatchHistory } from "./match-history"
 
 /**
  * 为一组候选成员构建配对关系 Map
  * @param memberIds 参与匹配的成员 ID 列表
- * @param idToName memberId → MatchCandidate.name 的映射
  * @returns Map<string, PairRelation> 供匹配算法使用
  */
 export async function fetchPairRelations(
   memberIds: string[],
-  idToName: Map<string, string>,
 ): Promise<Map<string, PairRelation>> {
   if (memberIds.length === 0) return new Map()
 
   validateUuids(memberIds)
 
-  const [blacklist, feedbacks, rawHistory] = await Promise.all([
-    fetchBlacklist(memberIds, idToName),
-    fetchFeedbacks(memberIds, idToName),
+  const [blacklist, feedbacks, matchHistories] = await Promise.all([
+    fetchBlacklist(memberIds),
+    fetchFeedbacks(memberIds),
     fetchMatchHistory(memberIds),
   ])
-
-  // 将 matchHistory 的 key/name 从 memberId 转为 name
-  const matchHistories = remapHistory(rawHistory, idToName)
 
   return buildPairRelations(feedbacks, blacklist, matchHistories)
 }
 
 /** 从 pair_relationships 表查 status='blacklist' 的记录 */
-async function fetchBlacklist(
-  memberIds: string[],
-  idToName: Map<string, string>,
-): Promise<BlacklistRecord[]> {
+async function fetchBlacklist(memberIds: string[]): Promise<BlacklistRecord[]> {
   const supabase = await createClient()
   const batchSize = 50
   const results: BlacklistRecord[] = []
@@ -60,12 +51,9 @@ async function fetchBlacklist(
     if (error) throw error
     if (data) {
       for (const row of data) {
-        const nameA = idToName.get(row.member_a_id)
-        const nameB = idToName.get(row.member_b_id)
-        if (!nameA || !nameB) continue // 未知成员跳过
         results.push({
-          player_a: nameA,
-          player_b: nameB,
+          player_a: row.member_a_id,
+          player_b: row.member_b_id,
           reason: row.notes,
           source: "pair_relationships",
         })
@@ -76,11 +64,8 @@ async function fetchBlacklist(
   return deduplicateBlacklist(results)
 }
 
-/** 从 mutual_reviews 表查互评 → 转为 FeedbackRecord */
-async function fetchFeedbacks(
-  memberIds: string[],
-  idToName: Map<string, string>,
-): Promise<FeedbackRecord[]> {
+/** 从 mutual_reviews 表查互评 → 转为 FeedbackRecord（用 member UUID） */
+async function fetchFeedbacks(memberIds: string[]): Promise<FeedbackRecord[]> {
   const supabase = await createClient()
   const batchSize = 50
   const results: FeedbackRecord[] = []
@@ -100,13 +85,9 @@ async function fetchFeedbacks(
         if (seen.has(key)) continue
         seen.add(key)
 
-        const reviewerName = idToName.get(row.reviewer_id)
-        const revieweeName = idToName.get(row.reviewee_id)
-        if (!reviewerName || !revieweeName) continue
-
         results.push({
-          player_name: reviewerName,
-          partner_name: revieweeName,
+          player_name: row.reviewer_id,
+          partner_name: row.reviewee_id,
           partner_rating: row.overall_score,
           session_number: 1,
         })
@@ -115,25 +96,6 @@ async function fetchFeedbacks(
   }
 
   return results
-}
-
-/** 将 matchHistory 的 memberId key/name 转为 full_name */
-function remapHistory(
-  raw: Map<string, { name: string; count: number }[]>,
-  idToName: Map<string, string>,
-): Map<string, { name: string; count: number }[]> {
-  const result = new Map<string, { name: string; count: number }[]>()
-  for (const [memberId, partners] of raw) {
-    const playerName = idToName.get(memberId)
-    if (!playerName) continue
-    const mapped: { name: string; count: number }[] = []
-    for (const p of partners) {
-      const partnerName = idToName.get(p.name)
-      if (partnerName) mapped.push({ name: partnerName, count: p.count })
-    }
-    result.set(playerName, mapped)
-  }
-  return result
 }
 
 /** 去重黑名单（同对 A-B 可能被不同 batch 查出） */

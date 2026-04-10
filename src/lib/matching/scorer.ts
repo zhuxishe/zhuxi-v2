@@ -3,6 +3,7 @@
  */
 
 import type { MatchCandidate, MatchingConfig, PairScore, ScoreComponent } from "./types"
+import type { PairRelation } from "./pair-history"
 import { checkHardConstraints } from "./constraints"
 import { hasCommonSlot } from "./time-filter"
 import {
@@ -25,14 +26,15 @@ export function scorePair(
   a: MatchCandidate,
   b: MatchCandidate,
   config: MatchingConfig,
+  pairRelations?: Map<string, PairRelation>,
 ): PairScore {
   const base = {
     userA: a.submissionId,
     userB: b.submissionId,
   }
 
-  // 检查硬约束
-  const constraint = checkHardConstraints(a, b, config)
+  // 检查硬约束（含黑名单/冷却期）
+  const constraint = checkHardConstraints(a, b, config, pairRelations)
   if (!constraint.passed) {
     return {
       ...base,

@@ -65,7 +65,7 @@ export function checkHardConstraints(
 
   // 硬约束4+5: 黑名单 + 冷却期（需要配对关系数据）
   if (pairRelations) {
-    const rel = getPairStatus(pairRelations, a.name, b.name)
+    const rel = getPairStatus(pairRelations, a.submissionId, b.submissionId)
 
     if (rel.status === "blacklist") {
       reasons.push(`黑名单: ${rel.reason}`)
@@ -92,7 +92,7 @@ export function shouldAvoidPair(
   pairRelations?: Map<string, PairRelation>,
 ): boolean {
   if (!pairRelations) return false
-  const rel = getPairStatus(pairRelations, a.name, b.name)
+  const rel = getPairStatus(pairRelations, a.submissionId, b.submissionId)
   return rel.status === "avoid"
 }
 
@@ -106,7 +106,7 @@ export function getReunionBonus(
   pairRelations?: Map<string, PairRelation>,
 ): number {
   if (!pairRelations) return 0
-  const rel = getPairStatus(pairRelations, a.name, b.name)
+  const rel = getPairStatus(pairRelations, a.submissionId, b.submissionId)
   return rel.status === "reunion" ? 30 : 0
 }
 
@@ -119,14 +119,16 @@ function isGenderCompatible(a: MatchCandidate, b: MatchCandidate): boolean {
   )
 }
 
-/** 游戏类型兼容：双人和多人互斥，都可以兼容任何 */
+/** 游戏类型兼容：双人和多人互斥，都可以兼容任何，空值视为都可以 */
 function isGameTypeCompatible(prefA: string, prefB: string): boolean {
-  if (prefA === "都可以" || prefB === "都可以") return true
-  return prefA === prefB // 双人=双人, 多人=多人
+  const a = prefA || "都可以"
+  const b = prefB || "都可以"
+  if (a === "都可以" || b === "都可以") return true
+  return a === b // 双人=双人, 多人=多人
 }
 
 function isOneWayGenderOk(pref: string, targetGender: string | null): boolean {
-  if (pref === "都可以") return true
+  if (!pref || pref === "都可以") return true
   if (!targetGender) return true
   if (pref === "男" && targetGender === "男") return true
   if (pref === "女" && targetGender === "女") return true
@@ -137,7 +139,7 @@ function isOneWayGenderOk(pref: string, targetGender: string | null): boolean {
 
 /**
  * 检查一个候选人能否加入一个多人组
- * 检查：性别 + 黑名单 + 冷却期
+ * 检查：游戏类型 + 性别 + 黑名单 + 冷却期
  */
 export function checkGroupConstraints(
   candidate: MatchCandidate,
@@ -145,6 +147,14 @@ export function checkGroupConstraints(
   config: MatchingConfig,
   pairRelations?: Map<string, PairRelation>,
 ): boolean {
+  // 游戏类型检查：多人组只接受"多人"或"都可以"（含空值）偏好的候选人
+  const candPref = candidate.gameTypePref || "都可以"
+  if (candPref === "双人") return false
+  for (const member of groupMembers) {
+    const mPref = member.gameTypePref || "都可以"
+    if (mPref === "双人") return false
+  }
+
   // 性别检查
   if (config.hardConstraints.enforceGender) {
     const allMembers = [...groupMembers, candidate]
@@ -160,7 +170,7 @@ export function checkGroupConstraints(
   // 黑名单 + 冷却期检查：候选人不能和组内任何人有黑名单/冷却关系
   if (pairRelations) {
     for (const member of groupMembers) {
-      const rel = getPairStatus(pairRelations, candidate.name, member.name)
+      const rel = getPairStatus(pairRelations, candidate.submissionId, member.submissionId)
       if (rel.status === "blacklist" || rel.status === "cooldown") return false
     }
   }

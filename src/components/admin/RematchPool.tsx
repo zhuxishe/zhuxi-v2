@@ -14,10 +14,11 @@ export type { PoolMember }
 interface Props {
   sessionId: string
   poolMembers: PoolMember[]
+  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
   onRefresh: () => void
 }
 
-export function RematchPool({ sessionId, poolMembers, onRefresh }: Props) {
+export function RematchPool({ sessionId, poolMembers, submissionPrefs, onRefresh }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -88,7 +89,7 @@ export function RematchPool({ sessionId, poolMembers, onRefresh }: Props) {
             key={m.id}
             className="rounded-full bg-orange-100 text-orange-800 px-2.5 py-0.5 text-xs font-medium"
           >
-            <PlayerInfoPopover member={m.memberData}>
+            <PlayerInfoPopover member={m.memberData} submissionPrefs={submissionPrefs}>
               {m.name}
             </PlayerInfoPopover>
           </span>

@@ -79,14 +79,8 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     return submissionToCandidate(sub, member, history)
   })
 
-  // 4. 构建配对历史关系（黑名单、互评、配对次数）
-  // buildPairRelations 用 MatchCandidate.name 作为 key
-  const idToName = new Map<string, string>()
-  for (const c of candidates) {
-    const memberId = submissions.find((s) => s.id === c.submissionId)?.member_id
-    if (memberId) idToName.set(memberId, c.name)
-  }
-  const pairRelations = await fetchPairRelations(memberIds, idToName)
+  // 4. 构建配对历史关系（黑名单、互评、配对次数，使用 member UUID 作为 key）
+  const pairRelations = await fetchPairRelations(memberIds)
 
   // 5. 三阶段分流匹配（双人池 → 多人池 → 回流兜底）
   const config: MatchingConfig = { ...DEFAULT_CONFIG }

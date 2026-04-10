@@ -45,7 +45,7 @@ export function ManualPairDialog({
       setError("")
       setCompat(null)
       try {
-        const res = await checkPairCompatibility(memberA, memberB)
+        const res = await checkPairCompatibility(sessionId, memberA, memberB)
         setCompat(res)
       } catch {
         setError("兼容性检查失败")

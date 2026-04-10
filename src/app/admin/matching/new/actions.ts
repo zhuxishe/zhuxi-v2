@@ -30,10 +30,8 @@ export async function runMatching(input: RunMatchInput) {
   const historyMap = await fetchMatchHistory(memberIds)
   const candidates = toMatchCandidates(rawCandidates, historyMap)
 
-  // 3. 构建配对历史关系（黑名单、互评、配对次数）
-  const idToName = new Map<string, string>()
-  for (const c of candidates) idToName.set(c.submissionId, c.name)
-  const pairRelations = await fetchPairRelations(memberIds, idToName)
+  // 3. 构建配对历史关系（黑名单、互评、配对次数，使用 member UUID 作为 key）
+  const pairRelations = await fetchPairRelations(memberIds)
 
   // 4. Merge config
   const config: MatchingConfig = { ...DEFAULT_CONFIG, ...input.config }

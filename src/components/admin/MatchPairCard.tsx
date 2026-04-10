@@ -57,7 +57,7 @@ export function MatchPairCard({ result, pairRel, submissionPrefs = {}, onLock, o
   const { id, total_score, rank, status, best_slot, score_breakdown } = result
   const badge = STATUS_STYLES[status] ?? STATUS_STYLES.draft
   const aId = result.member_a?.id
-  const gameType = (aId && submissionPrefs[aId]?.game_type_pref) || result.member_a?.member_interests?.game_type_pref
+  const gameType = (aId && submissionPrefs[aId]?.game_type_pref) || undefined
 
   return (
     <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">

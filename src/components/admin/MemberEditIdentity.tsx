@@ -24,8 +24,8 @@ function InputRow({ label, name, data, onChange, type = "text" }: {
   )
 }
 
-function SelectRow({ label, name, options, data, onChange }: {
-  label: string; name: string; options: readonly string[]; data: IdentityData; onChange: (d: IdentityData) => void
+function SelectRow({ label, name, options, labels, data, onChange }: {
+  label: string; name: string; options: readonly string[]; labels?: readonly string[]; data: IdentityData; onChange: (d: IdentityData) => void
 }) {
   return (
     <tr className="border-b border-border/50">
@@ -35,7 +35,7 @@ function SelectRow({ label, name, options, data, onChange }: {
           onChange={(e) => onChange({ ...data, [name]: e.target.value })}
           className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary">
           <option value="">-</option>
-          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+          {options.map((o, i) => <option key={o} value={o}>{labels?.[i] ?? o}</option>)}
         </select>
       </td>
     </tr>
@@ -74,7 +74,7 @@ export function MemberEditIdentity({ data, onChange }: Props) {
     <table className="w-full"><tbody>
       <InputRow label="姓名" name="full_name" data={data} onChange={onChange} />
       <InputRow label="昵称" name="nickname" data={data} onChange={onChange} />
-      <SelectRow label="性别" name="gender" options={["male", "female", "other"]} data={data} onChange={onChange} />
+      <SelectRow label="性别" name="gender" options={["male", "female", "other"]} labels={["男", "女", "其他"]} data={data} onChange={onChange} />
       <SelectRow label="年龄段" name="age_range" options={["18-20", "21-23", "24-26", "27-29", "30+"]} data={data} onChange={onChange} />
       <InputRow label="国籍" name="nationality" data={data} onChange={onChange} />
       <InputRow label="所在地" name="current_city" data={data} onChange={onChange} />

@@ -55,7 +55,7 @@ export function MemberDetailCard({ member, identity }: Props) {
         <table className="w-full"><tbody>
           <Row label="姓名" value={identity.full_name} />
           <Row label="昵称" value={identity.nickname} />
-          <Row label="性别" value={identity.gender} />
+          <Row label="性别" value={identity.gender === "male" ? "男" : identity.gender === "female" ? "女" : identity.gender} />
           <Row label="年龄段" value={identity.age_range} />
           <Row label="国籍" value={identity.nationality} />
           <Row label="所在地" value={identity.current_city} />

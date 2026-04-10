@@ -79,14 +79,14 @@ export function MatchPairCard({ result, pairRel, submissionPrefs = {}, onLock, o
             result.group_member_details.map((m, i) => (
               <span key={(m as EnrichedMember).id}>
                 {i > 0 && <span className="mx-2 text-muted-foreground">+</span>}
-                <PlayerInfoPopover member={m as EnrichedMember}>{memberLabel(m as EnrichedMember)}</PlayerInfoPopover>
+                <PlayerInfoPopover member={m as EnrichedMember} submissionPrefs={submissionPrefs}>{memberLabel(m as EnrichedMember)}</PlayerInfoPopover>
               </span>
             ))
           ) : (
             <>
-              <PlayerInfoPopover member={result.member_a}>{memberLabel(result.member_a)}</PlayerInfoPopover>
+              <PlayerInfoPopover member={result.member_a} submissionPrefs={submissionPrefs}>{memberLabel(result.member_a)}</PlayerInfoPopover>
               <span className="mx-2 text-muted-foreground">--</span>
-              <PlayerInfoPopover member={result.member_b}>{memberLabel(result.member_b)}</PlayerInfoPopover>
+              <PlayerInfoPopover member={result.member_b} submissionPrefs={submissionPrefs}>{memberLabel(result.member_b)}</PlayerInfoPopover>
             </>
           )}
         </p>
@@ -103,6 +103,7 @@ export function MatchPairCard({ result, pairRel, submissionPrefs = {}, onLock, o
         <ConstraintChecklist
           memberA={result.member_a}
           memberB={result.member_b}
+          groupMembers={result.group_member_details as import("./match-detail-types").EnrichedMember[] | null}
           pairRel={pairRel}
           bestSlot={best_slot}
           submissionPrefs={submissionPrefs}

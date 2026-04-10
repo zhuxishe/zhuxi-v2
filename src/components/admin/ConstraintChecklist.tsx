@@ -13,6 +13,8 @@ interface ConstraintItem {
 interface Props {
   memberA: EnrichedMember | null
   memberB: EnrichedMember | null
+  /** 多人组成员（有值时使用组模式而非 A vs B） */
+  groupMembers?: EnrichedMember[] | null
   pairRel?: PairRelationship | null
   bestSlot: string | null
   submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
@@ -122,13 +124,50 @@ const STATUS_ICON = {
   warn: <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />,
 }
 
-export function ConstraintChecklist({ memberA, memberB, pairRel, bestSlot, submissionPrefs }: Props) {
-  const items: ConstraintItem[] = [
-    checkGender(memberA, memberB, submissionPrefs),
-    checkGameType(memberA, memberB, submissionPrefs),
-    checkTimeSlot(bestSlot),
-    checkPairRelation(pairRel),
-  ]
+/** 多人组：汇总所有成员偏好 */
+function checkGroupPrefs(
+  members: EnrichedMember[],
+  prefs?: Record<string, { game_type_pref: string; gender_pref: string }>,
+): ConstraintItem[] {
+  const items: ConstraintItem[] = []
+
+  // 性别分布
+  const genders = members.map((m) => `${nameOf(m)}(${displayGender(m.member_identity?.gender)})`)
+  const genderPrefs = members.map((m) => {
+    const pref = (m.id && prefs?.[m.id]?.gender_pref) ?? "未填写"
+    return `${nameOf(m)}: ${pref}`
+  })
+  items.push({ label: "性别分布", status: "pass", details: [genders.join("、"), "偏好: " + genderPrefs.join("、")] })
+
+  // 游戏类型
+  const gamePrefs = members.map((m) => {
+    const pref = (m.id && prefs?.[m.id]?.game_type_pref) ?? "未填写"
+    return `${nameOf(m)}: ${pref}`
+  })
+  const allMulti = members.every((m) => {
+    const p = m.id && prefs?.[m.id]?.game_type_pref
+    return p === "多人" || p === "都可以"
+  })
+  items.push({ label: "游戏类型", status: allMulti ? "pass" : "warn", details: gamePrefs })
+
+  return items
+}
+
+export function ConstraintChecklist({ memberA, memberB, groupMembers, pairRel, bestSlot, submissionPrefs }: Props) {
+  const isGroup = groupMembers && groupMembers.length > 0
+
+  const items: ConstraintItem[] = isGroup
+    ? [
+        ...checkGroupPrefs(groupMembers, submissionPrefs),
+        checkTimeSlot(bestSlot),
+        checkPairRelation(pairRel),
+      ]
+    : [
+        checkGender(memberA, memberB, submissionPrefs),
+        checkGameType(memberA, memberB, submissionPrefs),
+        checkTimeSlot(bestSlot),
+        checkPairRelation(pairRel),
+      ]
 
   const allPassed = items.every((i) => i.status === "pass")
 

@@ -10,22 +10,44 @@ import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import type { Json } from "@/types/database.types"
 
-/** 获取被拆散的成员 ID 列表 */
+/** 获取被拆散且未重新配对的成员 ID 列表 */
 async function fetchCancelledMemberIds(sessionId: string) {
   const supabase = await createClient()
-  const { data, error } = await supabase
+
+  // 1. 获取所有被取消的成员（含多人组 group_members）
+  const { data: cancelled, error } = await supabase
     .from("match_results")
-    .select("member_a_id, member_b_id")
+    .select("member_a_id, member_b_id, group_members")
     .eq("session_id", sessionId)
     .eq("status", "cancelled")
 
   if (error) throw error
   const ids = new Set<string>()
-  for (const row of data ?? []) {
+  for (const row of cancelled ?? []) {
     if (row.member_a_id) ids.add(row.member_a_id)
     if (row.member_b_id) ids.add(row.member_b_id)
+    if (Array.isArray(row.group_members)) {
+      for (const gm of row.group_members) ids.add(gm as string)
+    }
   }
-  return [...ids]
+
+  // 2. 排除已通过手动配对或其他方式重新配上的成员
+  const { data: active } = await supabase
+    .from("match_results")
+    .select("member_a_id, member_b_id, group_members")
+    .eq("session_id", sessionId)
+    .neq("status", "cancelled")
+
+  const matched = new Set<string>()
+  for (const row of active ?? []) {
+    if (row.member_a_id) matched.add(row.member_a_id)
+    if (row.member_b_id) matched.add(row.member_b_id)
+    if (Array.isArray(row.group_members)) {
+      for (const gm of row.group_members) matched.add(gm as string)
+    }
+  }
+
+  return [...ids].filter((id) => !matched.has(id))
 }
 
 /** 获取成员完整资料（含子表） */

@@ -94,9 +94,33 @@ export function runFullMatching(
   }
 
   // ── 阶段3: 回流兜底 ──
+  // 先对剩余的"多人"偏好者尝试组队，再将剩余者配双人
   const overflow = candidates.filter((c) => !matched.has(c.submissionId))
-  if (overflow.length >= 2) {
-    const result = runMaxCoverageDuoMatching(overflow, config, pairRelations)
+
+  // 3a: 回流多人组（仅多人偏好 + 都可以）
+  const overflowMulti = overflow.filter((c) => c.gameTypePref === "多人" || c.gameTypePref === "都可以")
+  if (overflowMulti.length >= 3) {
+    const multiResult = runMaxCoverageMultiMatching(overflowMulti, config, 6, pairRelations)
+    for (const g of multiResult.groups) {
+      for (const m of g.members) matched.add(m.submissionId)
+      const ids = g.members.map((m) => resolve(m.submissionId))
+      rows.push({
+        member_a_id: ids[0],
+        member_b_id: null,
+        group_members: ids,
+        total_score: g.avgScore,
+        score_breakdown: null,
+        rank: ++rank,
+        best_slot: g.bestSlot || null,
+        game_type: "多人(回流)",
+      })
+    }
+  }
+
+  // 3b: 回流双人配（所有仍未匹配者）
+  const overflowDuo = candidates.filter((c) => !matched.has(c.submissionId))
+  if (overflowDuo.length >= 2) {
+    const result = runMaxCoverageDuoMatching(overflowDuo, config, pairRelations)
     for (const pair of result.pairs) {
       matched.add(pair.a.submissionId)
       matched.add(pair.b.submissionId)

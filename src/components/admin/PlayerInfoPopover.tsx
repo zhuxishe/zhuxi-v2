@@ -64,15 +64,13 @@ export function PlayerInfoPopover({ member, submissionPrefs, children }: Props) 
             <div>类型偏好: <span className="font-medium">{subPref?.game_type_pref ?? "未填问卷"}</span></div>
             {identity.school_name && <div>学校: <span className="font-medium">{identity.school_name}</span></div>}
           </div>
-          {/* 可用时段（始终显示） */}
-          {subPref && (
-            <div className="text-xs pt-1 border-t border-amber-200/60">
-              <span className="text-amber-600">可用时段: </span>
-              <span className={availText ? "font-medium" : "text-amber-500"}>
-                {availText ?? "未填写"}
-              </span>
-            </div>
-          )}
+          {/* 可用时段（始终在 grid 外独立行显示） */}
+          <div className="text-xs pt-1 border-t border-amber-200/60">
+            <span className="text-amber-600">可用时段: </span>
+            <span className={availText ? "font-medium" : "text-amber-500"}>
+              {availText ?? "未填写"}
+            </span>
+          </div>
         </div>
 
         {/* 本轮问卷偏好 */}

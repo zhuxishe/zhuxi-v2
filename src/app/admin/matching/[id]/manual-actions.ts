@@ -7,13 +7,26 @@ import { submissionToCandidate } from "@/lib/matching/adapter-submission"
 import { checkHardConstraints, checkGroupConstraints } from "@/lib/matching/constraints"
 import { scorePair } from "@/lib/matching/scorer"
 import { getCommonSlots } from "@/lib/matching/time-filter"
-import { findGroupBestSlot } from "@/lib/matching/match-utils"
+import type { MatchCandidate as MC } from "@/lib/matching/types"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { fetchMatchHistory } from "@/lib/queries/match-history"
 import { validateUuids } from "@/lib/sanitize"
 import type { MatchCandidate, ScoreComponent } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
+
+/** 严格查找所有人都有的公共时段（无 fallback） */
+function findStrictCommonSlot(members: MC[]): string | null {
+  if (members.length === 0) return null
+  for (const [date, slots] of Object.entries(members[0].availability)) {
+    for (const slot of slots) {
+      if (members.every((m) => m.availability[date]?.includes(slot))) {
+        return `${date}_${slot}`
+      }
+    }
+  }
+  return null
+}
 
 /** 获取单个成员完整资料 */
 async function fetchMemberFull(memberId: string) {
@@ -137,9 +150,25 @@ function buildGroupConstraints(
 ): ConstraintItem[] {
   const items: ConstraintItem[] = []
 
-  // 性别分布
-  const genders = candidates.map((c) => `${c.name}(${displayGender(c.gender)})`).join("、")
-  items.push({ label: "性别分布", status: "pass", details: [genders] })
+  // 性别兼容：每个有偏好的人，组内其他人必须满足其偏好
+  const genderDetails: string[] = []
+  let genderOk = true
+  for (const member of candidates) {
+    if (!member.genderPref || member.genderPref === "都可以") continue
+    for (const other of candidates) {
+      if (other === member) continue
+      const otherGender = displayGender(other.gender)
+      const ok = member.genderPref === otherGender || !other.gender
+      if (!ok) {
+        genderOk = false
+        genderDetails.push(`${member.name}偏好${member.genderPref}，但${other.name}是${otherGender} ✗`)
+      }
+    }
+  }
+  if (genderDetails.length === 0) {
+    genderDetails.push(candidates.map((c) => `${c.name}(${displayGender(c.gender)})`).join("、"))
+  }
+  items.push({ label: "性别兼容", status: genderOk ? "pass" : "fail", details: genderDetails })
 
   // 游戏类型（多人组只接受"多人"或"都可以"）
   const allOk = candidates.every((c) => c.gameTypePref === "多人" || c.gameTypePref === "都可以" || !c.gameTypePref)
@@ -238,9 +267,9 @@ export async function checkGroupCompatibility(
     }
   }
 
-  // 找最佳公共时段
-  const bestSlot = findGroupBestSlot(candidates)
-  const hasSlot = bestSlot !== "未知时段"
+  // 找严格公共时段（所有人都有的时段，不用 fallback）
+  const bestSlot = findStrictCommonSlot(candidates)
+  const hasSlot = bestSlot !== null
 
   if (!hasSlot) warnings.push("无共同可用时段")
 

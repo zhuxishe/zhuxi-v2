@@ -155,15 +155,16 @@ export function checkGroupConstraints(
     if (mPref === "双人") return false
   }
 
-  // 性别检查
+  // 性别检查：每个有偏好的成员，组内其他人都必须满足其偏好
   if (config.hardConstraints.enforceGender) {
     const allMembers = [...groupMembers, candidate]
-    const hasMale = allMembers.some((m) => m.gender === "男")
-    const hasFemale = allMembers.some((m) => m.gender === "女")
-
     for (const member of allMembers) {
-      if (member.genderPref === "男" && !hasMale) return false
-      if (member.genderPref === "女" && !hasFemale) return false
+      if (!member.genderPref || member.genderPref === "都可以") continue
+      // 检查组内其他每个人的性别是否满足此成员的偏好
+      for (const other of allMembers) {
+        if (other === member) continue
+        if (!isOneWayGenderOk(member.genderPref, other.gender)) return false
+      }
     }
   }
 

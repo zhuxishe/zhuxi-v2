@@ -23,10 +23,10 @@ interface Props {
   pairRelationships?: PairRelationship[]
   poolMembers?: PoolMember[]
   allMemberOptions?: { id: string; name: string }[]
-  submissionGameTypes?: Record<string, string>
+  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionGameTypes = {} }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {} }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -131,7 +131,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             key={r.id}
             result={r}
             pairRel={findRel(r.member_a?.id, r.member_b?.id)}
-            gameTypeOverride={r.member_a?.id ? submissionGameTypes[r.member_a.id] : undefined}
+            submissionPrefs={submissionPrefs}
             onLock={(id) => handleAction(r.status === "locked" ? restorePair : lockPair, id)}
             onSplit={(id) => handleAction(splitPair, id)}
             onRestore={(id) => handleAction(restorePair, id)}

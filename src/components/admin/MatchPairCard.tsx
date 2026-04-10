@@ -30,7 +30,7 @@ interface Props {
     group_member_details: EnrichedMember[] | null
   }
   pairRel?: PairRelationship | null
-  gameTypeOverride?: string
+  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
   onLock?: (id: string) => void
   onSplit?: (id: string) => void
   onRestore?: (id: string) => void
@@ -53,10 +53,11 @@ function scoreBgClass(score: number): string {
   return "bg-red-500/10"
 }
 
-export function MatchPairCard({ result, pairRel, gameTypeOverride, onLock, onSplit, onRestore }: Props) {
+export function MatchPairCard({ result, pairRel, submissionPrefs = {}, onLock, onSplit, onRestore }: Props) {
   const { id, total_score, rank, status, best_slot, score_breakdown } = result
   const badge = STATUS_STYLES[status] ?? STATUS_STYLES.draft
-  const gameType = gameTypeOverride || result.member_a?.member_interests?.game_type_pref
+  const aId = result.member_a?.id
+  const gameType = (aId && submissionPrefs[aId]?.game_type_pref) || result.member_a?.member_interests?.game_type_pref
 
   return (
     <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">
@@ -104,6 +105,7 @@ export function MatchPairCard({ result, pairRel, gameTypeOverride, onLock, onSpl
           memberB={result.member_b}
           pairRel={pairRel}
           bestSlot={best_slot}
+          submissionPrefs={submissionPrefs}
         />
       </div>
 

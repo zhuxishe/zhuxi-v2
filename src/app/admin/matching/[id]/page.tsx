@@ -97,15 +97,15 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     }))
   }
 
-  // 构建问卷提交映射（memberId → game_type_pref），供配对卡片展示
-  let submissionGameTypes = new Map<string, string>()
+  // 构建问卷提交映射（memberId → 偏好），供配对卡片和约束检查展示
+  let submissionPrefs = new Map<string, { game_type_pref: string; gender_pref: string }>()
   if (roundId) {
     const { data: subs } = await supabase
       .from("match_round_submissions")
-      .select("member_id, game_type_pref")
+      .select("member_id, game_type_pref, gender_pref")
       .eq("round_id", roundId)
     for (const s of subs ?? []) {
-      submissionGameTypes.set(s.member_id, s.game_type_pref)
+      submissionPrefs.set(s.member_id, { game_type_pref: s.game_type_pref, gender_pref: s.gender_pref })
     }
   }
 
@@ -144,7 +144,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         pairRelationships={pairRelationships}
         poolMembers={poolMembers}
         allMemberOptions={allMemberOptions}
-        submissionGameTypes={Object.fromEntries(submissionGameTypes)}
+        submissionPrefs={Object.fromEntries(submissionPrefs)}
       />
     </div>
   )

@@ -15,6 +15,7 @@ interface Props {
   memberB: EnrichedMember | null
   pairRel?: PairRelationship | null
   bestSlot: string | null
+  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
 }
 
 function nameOf(m: EnrichedMember | null): string {
@@ -37,13 +38,17 @@ function isGenderOk(pref: string, targetGender: string): boolean {
   return pref === normTarget
 }
 
-function checkGender(a: EnrichedMember | null, b: EnrichedMember | null): ConstraintItem {
+function checkGender(
+  a: EnrichedMember | null, b: EnrichedMember | null,
+  prefs?: Record<string, { game_type_pref: string; gender_pref: string }>,
+): ConstraintItem {
   const aGenderRaw = a?.member_identity?.gender || "未知"
   const bGenderRaw = b?.member_identity?.gender || "未知"
   const aGender = displayGender(aGenderRaw)
   const bGender = displayGender(bGenderRaw)
-  const aPref = a?.member_boundaries?.preferred_gender_mix || "都可以"
-  const bPref = b?.member_boundaries?.preferred_gender_mix || "都可以"
+  // 优先从问卷读取性别偏好，回退到成员档案
+  const aPref = (a?.id && prefs?.[a.id]?.gender_pref) || a?.member_boundaries?.preferred_gender_mix || "都可以"
+  const bPref = (b?.id && prefs?.[b.id]?.gender_pref) || b?.member_boundaries?.preferred_gender_mix || "都可以"
 
   const aOk = isGenderOk(bPref, aGenderRaw)
   const bOk = isGenderOk(aPref, bGenderRaw)
@@ -58,9 +63,13 @@ function checkGender(a: EnrichedMember | null, b: EnrichedMember | null): Constr
   }
 }
 
-function checkGameType(a: EnrichedMember | null, b: EnrichedMember | null): ConstraintItem {
-  const aPref = a?.member_interests?.game_type_pref || "都可以"
-  const bPref = b?.member_interests?.game_type_pref || "都可以"
+function checkGameType(
+  a: EnrichedMember | null, b: EnrichedMember | null,
+  prefs?: Record<string, { game_type_pref: string; gender_pref: string }>,
+): ConstraintItem {
+  // 优先从问卷读取游戏类型偏好
+  const aPref = (a?.id && prefs?.[a.id]?.game_type_pref) || a?.member_interests?.game_type_pref || "都可以"
+  const bPref = (b?.id && prefs?.[b.id]?.game_type_pref) || b?.member_interests?.game_type_pref || "都可以"
 
   const compatible =
     aPref === "都可以" || bPref === "都可以" ||
@@ -113,10 +122,10 @@ const STATUS_ICON = {
   warn: <AlertTriangle className="size-3.5 text-amber-500 shrink-0" />,
 }
 
-export function ConstraintChecklist({ memberA, memberB, pairRel, bestSlot }: Props) {
+export function ConstraintChecklist({ memberA, memberB, pairRel, bestSlot, submissionPrefs }: Props) {
   const items: ConstraintItem[] = [
-    checkGender(memberA, memberB),
-    checkGameType(memberA, memberB),
+    checkGender(memberA, memberB, submissionPrefs),
+    checkGameType(memberA, memberB, submissionPrefs),
     checkTimeSlot(bestSlot),
     checkPairRelation(pairRel),
   ]

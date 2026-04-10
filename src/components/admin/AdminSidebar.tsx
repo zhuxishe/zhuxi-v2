@@ -3,13 +3,14 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle } from "lucide-react"
+import { LayoutDashboard, Users, Shuffle, Zap, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle } from "lucide-react"
 import { logoutAdmin } from "@/app/admin/login/actions"
 
 const NAV_ITEMS = [
   { href: "/admin", label: "仪表板", icon: LayoutDashboard },
   { href: "/admin/members", label: "成员管理", icon: Users },
   { href: "/admin/matching", label: "匹配管理", icon: Shuffle },
+  { href: "/admin/matching/new", label: "算法测试", icon: Zap },
   { href: "/admin/matching/cancellations", label: "取消申请", icon: XCircle },
   { href: "/admin/scripts", label: "剧本管理", icon: BookOpen },
   { href: "/admin/testimonials", label: "评论管理", icon: MessageCircle },

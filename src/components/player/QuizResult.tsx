@@ -85,10 +85,12 @@ export function QuizResult({ scores, personalityType, dimensions: dimConfig, typ
         <div className="text-center space-y-3">
           {typeDesc?.imageUrl && (
             <div className="flex justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={typeDesc.imageUrl}
                 alt={personalityType}
                 className="size-40 object-contain drop-shadow-md"
+                onError={(e) => { e.currentTarget.style.display = "none" }}
               />
             </div>
           )}

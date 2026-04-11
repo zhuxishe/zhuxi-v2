@@ -79,12 +79,18 @@
   --color-bamboo-muted: oklch(0.96 0.02 150);
   --color-ink: oklch(0.22 0.01 50);
   --color-ink-light: oklch(0.46 0.015 55);
+  --color-coral: oklch(0.70 0.14 25);
+  --color-coral-light: oklch(0.93 0.04 25);
   --color-sakura: oklch(0.76 0.09 350);
   --color-sakura-light: oklch(0.94 0.035 350);
   --color-sakura-muted: oklch(0.96 0.02 350);
+  --color-sky: oklch(0.72 0.10 230);
+  --color-sky-light: oklch(0.93 0.035 230);
   --color-gold: oklch(0.72 0.12 70);
   --color-gold-light: oklch(0.92 0.05 70);
   --color-gold-muted: oklch(0.96 0.025 70);
+  --color-lavender: oklch(0.70 0.10 290);
+  --color-lavender-light: oklch(0.93 0.035 290);
   --color-washi: oklch(0.975 0.007 60);
   --color-washi-dark: oklch(0.95 0.01 58);
 }

@@ -24,16 +24,16 @@ function buildInitial(interests?: Record<string, unknown> | null, language?: Rec
   const lang = Array.isArray(language) ? language[0] : language
   if (!raw && !lang) return EMPTY_SUPPLEMENTARY
 
-  // Merge DB values over defaults, then restore null arrays to []
+  // Merge DB values over defaults, then restore any null back to default
   const merged = {
     ...EMPTY_SUPPLEMENTARY,
     ...(lang ?? {}),
     ...(raw ?? {}),
   }
-  // Ensure array fields are never null (DB nulls override default [])
+  // DB nulls override EMPTY defaults — restore them
   for (const key of Object.keys(EMPTY_SUPPLEMENTARY) as (keyof SupplementaryFormData)[]) {
-    if (Array.isArray(EMPTY_SUPPLEMENTARY[key]) && merged[key] == null) {
-      (merged as Record<string, unknown>)[key] = []
+    if (merged[key] == null) {
+      (merged as Record<string, unknown>)[key] = EMPTY_SUPPLEMENTARY[key]
     }
   }
   return merged as SupplementaryFormData

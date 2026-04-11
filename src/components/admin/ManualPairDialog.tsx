@@ -82,6 +82,10 @@ export function ManualPairDialog({
   const checked = pairCompat || groupCompat
   const compatible = pairCompat?.compatible ?? groupCompat?.compatible ?? false
 
+  // 时段是唯一不可覆盖的约束——没有公共时段就物理上无法见面
+  const hasTimeSlot = pairCompat?.bestSlot != null || groupCompat?.bestSlot != null
+  const canForce = checked && !compatible && hasTimeSlot
+
   const handleConfirm = () => {
     startTransition(async () => {
       setError("")
@@ -151,15 +155,22 @@ export function ManualPairDialog({
         </div>
 
         <DialogFooter className="flex-col gap-2 sm:flex-col">
-          {checked && !compatible && (
-            <p className="text-xs text-red-600 text-center">硬约束未通过，无法配对</p>
+          {checked && !compatible && !hasTimeSlot && (
+            <p className="text-xs text-red-600 text-center">无共同时段，无法配对</p>
+          )}
+          {canForce && (
+            <p className="text-xs text-amber-600 text-center">硬约束未完全通过，但有共同时段 — 可强制配对</p>
           )}
           <Button
             onClick={handleConfirm}
-            disabled={!checked || !compatible || isPending}
+            disabled={!checked || (!compatible && !canForce) || isPending}
+            variant={canForce ? "outline" : "default"}
           >
             {isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}
-            {isGroup ? `确认组建 (${selectedIds.length}人组)` : "确认配对"}
+            {canForce
+              ? (isGroup ? `强制组建 (${selectedIds.length}人组)` : "强制配对")
+              : (isGroup ? `确认组建 (${selectedIds.length}人组)` : "确认配对")
+            }
           </Button>
         </DialogFooter>
       </DialogContent>

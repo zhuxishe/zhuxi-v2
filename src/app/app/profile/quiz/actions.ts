@@ -8,6 +8,7 @@ import {
   generatePersonalityType,
   type DimensionScores,
 } from "@/lib/constants/personality-quiz"
+import { getQuizConfig } from "@/lib/queries/quiz-config"
 
 interface QuizResult {
   scores: DimensionScores
@@ -20,7 +21,8 @@ export async function submitQuiz(
 ): Promise<QuizResult> {
   try {
     const player = await requirePlayer()
-    const scores = calculateScores(answers)
+    const config = await getQuizConfig()
+    const scores = calculateScores(answers, config.scoring)
     const personalityType = generatePersonalityType(scores)
     const supabase = await createClient()
 

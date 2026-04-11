@@ -122,22 +122,35 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     ] },
 ]
 
-/** 计算各维度标准分 (0-100)。公式: (原始分 - 4.5) / 13.5 * 100 */
-export function calculateScores(answers: { questionId: number; score: number }[]): DimensionScores {
+/** 计算各维度标准分 (0-100) */
+export function calculateScores(
+  answers: { questionId: number; score: number }[],
+  scoring?: { minRaw: number; maxRaw: number },
+): DimensionScores {
   const raw: Record<string, number[]> = { E: [], A: [], O: [], C: [], N: [] }
   for (const a of answers) {
     const q = QUIZ_QUESTIONS.find((q) => q.id === a.questionId)
     if (q) raw[q.dimension].push(a.score)
   }
-  const n = (arr: number[]) => Math.round(((arr.reduce((a, b) => a + b, 0) - 4.5) / 13.5) * 100)
-  return { E: n(raw.E), A: n(raw.A), O: n(raw.O), C: n(raw.C), N: n(raw.N) }
+  const min = scoring?.minRaw ?? 4.5
+  const range = (scoring?.maxRaw ?? 18) - min
+  const calc = (arr: number[]) => {
+    if (arr.length === 0) return 0
+    return Math.round(Math.min(100, Math.max(0, ((arr.reduce((a, b) => a + b, 0) - min) / range) * 100)))
+  }
+  return { E: calc(raw.E), A: calc(raw.A), O: calc(raw.O), C: calc(raw.C), N: calc(raw.N) }
 }
+
+// 稳定排序优先级：同分时按此顺序取胜
+const DIM_PRIORITY = ["E", "A", "O", "C", "ES"] as const
 
 /** 生成性格类型标签（最高维度前缀 + 次高维度后缀） */
 export function generatePersonalityType(scores: DimensionScores): string {
   // N 维度转换为情绪稳定性 ES
   const mapped = { E: scores.E, A: scores.A, O: scores.O, C: scores.C, ES: 100 - scores.N }
-  const sorted = Object.entries(mapped).sort(([, a], [, b]) => b - a)
+  const sorted = Object.entries(mapped).sort(([ka, a], [kb, b]) =>
+    b - a || DIM_PRIORITY.indexOf(ka as typeof DIM_PRIORITY[number]) - DIM_PRIORITY.indexOf(kb as typeof DIM_PRIORITY[number])
+  )
   const [first] = sorted[0]
   const [second] = sorted[1]
 

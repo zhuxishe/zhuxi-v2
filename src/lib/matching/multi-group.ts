@@ -68,10 +68,17 @@ function runMultiRound(
   const assigned = new Set<number>()
   const groups: { members: MatchCandidate[]; bestSlot: string; avgScore: number }[] = []
 
+  // 最受约束优先：约束多的人先处理（灵活度低的先组队）
   const order = Array.from({ length: n }, (_, i) => i)
     .sort((a, b) => {
-      const sA = Object.values(candidates[a].availability).reduce((s, v) => s + v.length, 0)
-      const sB = Object.values(candidates[b].availability).reduce((s, v) => s + v.length, 0)
+      const ca = candidates[a], cb = candidates[b]
+      // 1. 有性别偏好的人更受约束（非"都可以"优先）
+      const gA = (ca.genderPref && ca.genderPref !== "都可以") ? 0 : 1
+      const gB = (cb.genderPref && cb.genderPref !== "都可以") ? 0 : 1
+      if (gA !== gB) return gA - gB
+      // 2. 可用时段少的人更受约束
+      const sA = Object.values(ca.availability).reduce((s, v) => s + v.length, 0)
+      const sB = Object.values(cb.availability).reduce((s, v) => s + v.length, 0)
       return sA - sB
     })
 

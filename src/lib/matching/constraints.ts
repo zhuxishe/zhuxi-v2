@@ -165,16 +165,16 @@ export function checkGroupConstraints(
     }
   }
 
-  // 性别检查
+  // 性别检查：多人组中，有偏好的成员只需组内至少一人满足即可
   if (config.hardConstraints.enforceGender) {
     const allMembers = [...groupMembers, candidate]
     for (const member of allMembers) {
       if (!member.genderPref || member.genderPref === "都可以") continue
-      for (const other of allMembers) {
-        if (other === member) continue
-        if (!isOneWayGenderOk(member.genderPref, other.gender)) {
-          reasons.push(`${member.name}偏好${member.genderPref}，但${other.name}是${other.gender || "未知"}`)
-        }
+      const others = allMembers.filter((o) => o !== member)
+      const hasMatch = others.some((o) => isOneWayGenderOk(member.genderPref, o.gender))
+      if (!hasMatch) {
+        const otherGenders = others.map((o) => `${o.name}(${o.gender || "未知"})`).join("、")
+        reasons.push(`${member.name}偏好${member.genderPref}，但组内无人满足: ${otherGenders}`)
       }
     }
   }

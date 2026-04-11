@@ -156,19 +156,22 @@ function buildGroupConstraints(
 ): ConstraintItem[] {
   const items: ConstraintItem[] = []
 
-  // 性别兼容：每个有偏好的人，组内其他人必须满足其偏好
+  // 性别兼容：有偏好的成员，组内至少一人满足即可
   const genderDetails: string[] = []
   let genderOk = true
   for (const member of candidates) {
     if (!member.genderPref || member.genderPref === "都可以") continue
-    for (const other of candidates) {
-      if (other === member) continue
-      const otherGender = displayGender(other.gender)
-      const ok = member.genderPref === otherGender || !other.gender
-      if (!ok) {
-        genderOk = false
-        genderDetails.push(`${member.name}偏好${member.genderPref}，但${other.name}是${otherGender} ✗`)
-      }
+    const others = candidates.filter((o) => o !== member)
+    const hasMatch = others.some((o) => {
+      const g = displayGender(o.gender)
+      return member.genderPref === g || !o.gender
+    })
+    if (hasMatch) {
+      genderDetails.push(`${member.name}偏好${member.genderPref} → 组内有满足 ✓`)
+    } else {
+      genderOk = false
+      const otherGenders = others.map((o) => `${o.name}(${displayGender(o.gender)})`).join("、")
+      genderDetails.push(`${member.name}偏好${member.genderPref}，但组内无人满足: ${otherGenders} ✗`)
     }
   }
   if (genderDetails.length === 0) {

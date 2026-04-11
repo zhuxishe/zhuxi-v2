@@ -82,7 +82,9 @@ export async function generateTestData(count: number): Promise<SeedResult> {
     }
 
     // 4. Create submissions for each member
-    const submissions = memberIds.map((mid) => buildSubmission(round.id, mid))
+    const actStart = surveyEnd.toISOString().slice(0, 10)
+    const actEndStr = actEnd.toISOString().slice(0, 10)
+    const submissions = memberIds.map((mid) => buildSubmission(round.id, mid, actStart, actEndStr))
     const { error: subErr } = await db
       .from("match_round_submissions")
       .insert(submissions)
@@ -152,12 +154,28 @@ function insertBoundaries(db: any, memberId: string) {
   })
 }
 
-function buildSubmission(roundId: string, memberId: string) {
-  // Generate random availability: some days with time slots
-  const days = ["2026-04-15", "2026-04-16", "2026-04-19", "2026-04-20"]
+const REAL_SLOTS = ["上午", "下午", "晚上"] as const
+const SOCIAL_STYLE_VALUES = ["慢热", "活跃", "善于倾听", "话题广", "温和", "喜欢竞技"] as const
+
+function buildSubmission(
+  roundId: string,
+  memberId: string,
+  activityStart: string,
+  activityEnd: string,
+) {
+  // 从活动日期范围生成可用时段（和真实问卷格式一致）
+  const allDates: string[] = []
+  const cur = new Date(activityStart)
+  const last = new Date(activityEnd)
+  while (cur <= last) {
+    allDates.push(cur.toISOString().slice(0, 10))
+    cur.setDate(cur.getDate() + 1)
+  }
+
   const avail: Record<string, string[]> = {}
-  for (const d of pickN(days, randInt(1, 3))) {
-    avail[d] = pickN(TIME_SLOT_OPTIONS, randInt(1, 3))
+  const selectedDays = pickN(allDates, randInt(3, Math.min(8, allDates.length)))
+  for (const d of selectedDays) {
+    avail[d] = pickN([...REAL_SLOTS], randInt(1, 3))
   }
 
   return {
@@ -167,5 +185,6 @@ function buildSubmission(roundId: string, memberId: string) {
     gender_pref: pick(GENDER_PREF_OPTIONS),
     availability: avail,
     interest_tags: pickN(INTEREST_TAGS, randInt(2, 4)),
+    social_style: pick([...SOCIAL_STYLE_VALUES]),
   }
 }

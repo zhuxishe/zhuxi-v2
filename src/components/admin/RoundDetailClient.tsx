@@ -130,9 +130,10 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
         />
       </div>
 
-      {/* 编辑 Dialog */}
+      {/* 编辑 Dialog — key 保证切换问卷时状态重置 */}
       {editSub && (
         <SubmissionEditDialog
+          key={editSub.id}
           open={editOpen}
           onOpenChange={setEditOpen}
           roundId={round.id}

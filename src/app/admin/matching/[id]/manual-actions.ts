@@ -126,12 +126,18 @@ function buildPairConstraints(
     ],
   })
 
-  // 游戏类型
-  const gtOk = a.gameTypePref === "都可以" || b.gameTypePref === "都可以" || a.gameTypePref === b.gameTypePref
+  // 游戏类型（双人配对中双方都选"多人"→ 不兼容）
+  const bothMulti = a.gameTypePref === "多人" && b.gameTypePref === "多人"
+  const gtOk = !bothMulti && (
+    a.gameTypePref === "都可以" || b.gameTypePref === "都可以" || a.gameTypePref === b.gameTypePref
+  )
   items.push({
     label: "游戏类型",
     status: gtOk ? "pass" : "fail",
-    details: [`${a.name}: ${a.gameTypePref} ↔ ${b.name}: ${b.gameTypePref}`],
+    details: [
+      `${a.name}: ${a.gameTypePref} ↔ ${b.name}: ${b.gameTypePref}`,
+      ...(bothMulti ? ["双方都选多人，请添加更多成员组建多人组"] : []),
+    ],
   })
 
   // 共同时段

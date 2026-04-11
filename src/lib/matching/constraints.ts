@@ -119,12 +119,15 @@ function isGenderCompatible(a: MatchCandidate, b: MatchCandidate): boolean {
   )
 }
 
-/** 游戏类型兼容：双人和多人互斥，都可以兼容任何，空值视为都可以 */
+/** 游戏类型兼容（双人配对场景）：双方都选多人→不兼容，都可以兼容任何，空值视为都可以 */
 function isGameTypeCompatible(prefA: string, prefB: string): boolean {
   const a = prefA || "都可以"
   const b = prefB || "都可以"
   if (a === "都可以" || b === "都可以") return true
-  return a === b // 双人=双人, 多人=多人
+  if (a === "双人" && b === "双人") return true
+  // 双方都选"多人" → 不兼容（应该组多人组，不应双人配）
+  // 一方"双人"一方"多人" → 不兼容
+  return false
 }
 
 function isOneWayGenderOk(pref: string, targetGender: string | null): boolean {

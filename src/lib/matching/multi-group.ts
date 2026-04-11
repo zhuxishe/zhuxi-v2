@@ -105,7 +105,7 @@ function tryBuildGroup(
     if (j === seed || assigned.has(j)) continue
     const common = getCommonSlots(candidates[seed].availability, candidates[j].availability)
     if (common.length === 0) continue
-    if (!checkGroupConstraints(candidates[j], [candidates[seed]], config, pairRelations)) continue
+    if (!checkGroupConstraints(candidates[j], [candidates[seed]], config, pairRelations).passed) continue
     if (strictAvoid && groupHasAvoidPairs(candidates[j], [candidates[seed]], pairRelations)) continue
     compatible.push(j)
   }
@@ -146,7 +146,7 @@ function findBestCandidate(
     if (assigned.has(cand)) continue
 
     const groupMembers = group.map((gi) => candidates[gi])
-    if (!checkGroupConstraints(candidates[cand], groupMembers, config, pairRelations)) continue
+    if (!checkGroupConstraints(candidates[cand], groupMembers, config, pairRelations).passed) continue
     if (strictAvoid && groupHasAvoidPairs(candidates[cand], groupMembers, pairRelations)) continue
 
     let commonCount = 0

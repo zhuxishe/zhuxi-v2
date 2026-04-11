@@ -143,43 +143,56 @@ function isOneWayGenderOk(pref: string, targetGender: string | null): boolean {
 /**
  * 检查一个候选人能否加入一个多人组
  * 检查：游戏类型 + 性别 + 黑名单 + 冷却期
+ * 返回详细约束结果（passed + reasons）
  */
 export function checkGroupConstraints(
   candidate: MatchCandidate,
   groupMembers: MatchCandidate[],
   config: MatchingConfig,
   pairRelations?: Map<string, PairRelation>,
-): boolean {
-  // 游戏类型检查：多人组只接受"多人"或"都可以"（含空值）偏好的候选人
+): ConstraintResult {
+  const reasons: string[] = []
+
+  // 游戏类型检查
   const candPref = candidate.gameTypePref || "都可以"
-  if (candPref === "双人") return false
+  if (candPref === "双人") {
+    reasons.push(`${candidate.name}选择了双人，不适合多人组`)
+  }
   for (const member of groupMembers) {
     const mPref = member.gameTypePref || "都可以"
-    if (mPref === "双人") return false
+    if (mPref === "双人") {
+      reasons.push(`${member.name}选择了双人，不适合多人组`)
+    }
   }
 
-  // 性别检查：每个有偏好的成员，组内其他人都必须满足其偏好
+  // 性别检查
   if (config.hardConstraints.enforceGender) {
     const allMembers = [...groupMembers, candidate]
     for (const member of allMembers) {
       if (!member.genderPref || member.genderPref === "都可以") continue
-      // 检查组内其他每个人的性别是否满足此成员的偏好
       for (const other of allMembers) {
         if (other === member) continue
-        if (!isOneWayGenderOk(member.genderPref, other.gender)) return false
+        if (!isOneWayGenderOk(member.genderPref, other.gender)) {
+          reasons.push(`${member.name}偏好${member.genderPref}，但${other.name}是${other.gender || "未知"}`)
+        }
       }
     }
   }
 
-  // 黑名单 + 冷却期检查：候选人不能和组内任何人有黑名单/冷却关系
+  // 黑名单 + 冷却期检查
   if (pairRelations) {
     for (const member of groupMembers) {
       const rel = getPairStatus(pairRelations, candidate.submissionId, member.submissionId)
-      if (rel.status === "blacklist" || rel.status === "cooldown") return false
+      if (rel.status === "blacklist") {
+        reasons.push(`${candidate.name}与${member.name}: 黑名单 — ${rel.reason}`)
+      }
+      if (rel.status === "cooldown") {
+        reasons.push(`${candidate.name}与${member.name}: 冷却期 — ${rel.reason}`)
+      }
     }
   }
 
-  return true
+  return { passed: reasons.length === 0, reasons }
 }
 
 /**

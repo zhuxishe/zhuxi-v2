@@ -263,13 +263,20 @@ export async function checkGroupCompatibility(
   const config = { ...DEFAULT_CONFIG }
   const pairRelations = await fetchPairRelations(memberIds)
 
-  // 检查每个成员能否加入组
+  // 检查每个成员能否加入组（获取详细原因）
   const warnings: string[] = []
+  const blacklistReasons: string[] = []
   for (let i = 1; i < candidates.length; i++) {
     const existing = candidates.slice(0, i)
-    const ok = checkGroupConstraints(candidates[i], existing, config, pairRelations)
-    if (!ok) {
-      warnings.push(`${candidates[i].name} 与组内成员存在约束冲突`)
+    const result = checkGroupConstraints(candidates[i], existing, config, pairRelations)
+    if (!result.passed) {
+      for (const r of result.reasons) {
+        warnings.push(r)
+        // 分类：黑名单/冷却期 vs 其他
+        if (r.includes("黑名单") || r.includes("冷却期")) {
+          blacklistReasons.push(r)
+        }
+      }
     }
   }
 
@@ -282,9 +289,9 @@ export async function checkGroupCompatibility(
   // 构建约束条目
   const constraints = buildGroupConstraints(candidates, hasSlot ? bestSlot : null)
 
-  // 追加黑名单约束条目
-  if (warnings.some((w) => w.includes("约束冲突"))) {
-    constraints.push({ label: "黑名单/冷却期", status: "fail", details: warnings.filter((w) => w.includes("约束冲突")) })
+  // 追加黑名单/冷却期约束条目（显示具体原因）
+  if (blacklistReasons.length > 0) {
+    constraints.push({ label: "黑名单/冷却期", status: "fail", details: blacklistReasons })
   } else {
     constraints.push({ label: "黑名单/冷却期", status: "pass", details: ["无冲突"] })
   }

@@ -217,6 +217,7 @@
   "reviews": {
     "title": "互评",
     "subtitle": "给你的搭档打个分吧",
+    "selectReviewee": "选择要评价的组员",
     "scores": "评分",
     "overall": "总体评价",
     "punctuality": "准时度",

@@ -217,6 +217,7 @@
   "reviews": {
     "title": "相互評価",
     "subtitle": "パートナーを評価しましょう",
+    "selectReviewee": "評価するメンバーを選んでください",
     "scores": "スコア",
     "overall": "総合評価",
     "punctuality": "時間厳守",

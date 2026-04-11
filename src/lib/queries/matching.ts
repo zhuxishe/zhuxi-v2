@@ -107,17 +107,17 @@ export { fetchMatchHistory } from "./match-history"
 
 export async function fetchPlayerMatches(memberId: string) {
   validateUuids([memberId])
-  const supabase = await createClient()
+  // 用 admin client 绕过 RLS：玩家需要看到搭档的资料
+  // 安全性由 memberId 过滤保证（只查自己参与的匹配）
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+  const supabase = createAdminClient()
 
-  // 双人配对：member_a_id 或 member_b_id
-  // 多人组：group_members 包含该成员
-  // 注意：不用 !inner join，避免 RLS 拦截 session 导致整个查询崩溃
   const { data, error } = await supabase
     .from("match_results")
     .select(`
       id, best_slot, rank, created_at, status, cancellation_status,
       group_members,
-      session:match_sessions (id, session_name, created_at, status),
+      session:match_sessions!inner (id, session_name, created_at, status),
       member_a:members!match_results_member_a_id_fkey (
         id,
         member_identity (full_name, nickname, hobby_tags),
@@ -132,15 +132,12 @@ export async function fetchPlayerMatches(memberId: string) {
       )
     `)
     .eq("status", "confirmed")
+    .eq("session.status", "confirmed")
     .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId},group_members.cs.{${memberId}}`)
     .order("created_at", { ascending: false })
 
   if (error) throw error
-  // 应用层过滤：只返回有有效 session 的结果
-  return (data ?? []).filter((m) => {
-    const s = Array.isArray(m.session) ? m.session[0] : m.session
-    return s && (s as Record<string, unknown>).status === "confirmed"
-  })
+  return data ?? []
 }
 
 export async function fetchMatchDetail(matchId: string, memberId: string) {

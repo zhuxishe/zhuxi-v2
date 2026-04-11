@@ -7,14 +7,20 @@ import { MatchCard } from "@/components/player/MatchCard"
 import { Users } from "lucide-react"
 
 export default async function PlayerMatchesPage() {
-  const player = await requirePlayer()
-  const t = await getTranslations("playerMatches")
-  const locale = await getLocale()
-  const dateFmt = locale === "ja" ? "ja-JP" : "zh-CN"
-  const [matches, reviewedIds] = await Promise.all([
-    fetchPlayerMatches(player.memberId),
-    fetchReviewedMatchIds(player.memberId),
-  ])
+  let player, t, locale, dateFmt, matches, reviewedIds
+  try {
+    player = await requirePlayer()
+    t = await getTranslations("playerMatches")
+    locale = await getLocale()
+    dateFmt = locale === "ja" ? "ja-JP" : "zh-CN"
+    ;[matches, reviewedIds] = await Promise.all([
+      fetchPlayerMatches(player.memberId),
+      fetchReviewedMatchIds(player.memberId),
+    ])
+  } catch (err) {
+    console.error("[PlayerMatchesPage]", err)
+    return <pre className="p-4 text-xs text-red-600 whitespace-pre-wrap">{String(err)}</pre>
+  }
 
   if (matches.length === 0) {
     return (

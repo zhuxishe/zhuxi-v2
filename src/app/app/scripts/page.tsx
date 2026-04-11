@@ -11,10 +11,16 @@ interface Props {
 }
 
 export default async function PlayerScriptsPage({ searchParams }: Props) {
-  await requirePlayer()
-  const t = await getTranslations("scripts")
-  const { q, genre } = await searchParams
-  const scripts = await fetchPublishedScripts(q, genre)
+  let t, scripts, q, genre
+  try {
+    await requirePlayer()
+    t = await getTranslations("scripts")
+    ;({ q, genre } = await searchParams)
+    scripts = await fetchPublishedScripts(q, genre)
+  } catch (err) {
+    console.error("[PlayerScriptsPage]", err)
+    return <pre className="p-4 text-xs text-red-600 whitespace-pre-wrap">{String(err)}</pre>
+  }
 
   return (
     <div className="p-4 space-y-4">

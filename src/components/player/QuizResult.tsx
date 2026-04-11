@@ -89,7 +89,7 @@ export function QuizResult({ scores, personalityType, dimensions: dimConfig, typ
               <img
                 src={typeDesc.imageUrl}
                 alt={personalityType}
-                className="w-56 h-auto object-contain drop-shadow-md"
+                className="w-96 h-auto object-contain drop-shadow-md"
                 onError={(e) => { e.currentTarget.style.display = "none" }}
               />
             </div>

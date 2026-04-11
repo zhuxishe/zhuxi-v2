@@ -212,7 +212,10 @@
     "cancelRejectedHint": "ご不明な点はスタッフにお問い合わせください",
     "cancelBadgePending": "審査中",
     "cancelBadgeApproved": "キャンセル済",
-    "cancelBadgeRejected": "却下"
+    "cancelBadgeRejected": "却下",
+    "groupMembers": "グループメンバー",
+    "historyTitle": "履歴",
+    "matchEnded": "終了"
   },
   "reviews": {
     "title": "相互評価",

@@ -16,15 +16,17 @@ export async function requestCancellation(formData: FormData) {
   // Verify the player is a participant
   const { data: match } = await supabase
     .from("match_results")
-    .select("id, member_a_id, member_b_id, status, cancellation_status")
+    .select("id, member_a_id, member_b_id, group_members, status, cancellation_status")
     .eq("id", matchId)
     .single()
 
   if (!match) return { error: "匹配记录不存在" }
 
+  const gm = match.group_members as string[] | null
   const isParticipant =
     match.member_a_id === player.memberId ||
-    match.member_b_id === player.memberId
+    match.member_b_id === player.memberId ||
+    (Array.isArray(gm) && gm.includes(player.memberId))
 
   if (!isParticipant) return { error: "你不是该匹配的参与者" }
   if (match.status === "cancelled") return { error: "该匹配已取消" }

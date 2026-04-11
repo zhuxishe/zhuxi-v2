@@ -11,7 +11,7 @@ import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { RematchPool } from "./RematchPool"
 import { ManualPairDialog } from "./ManualPairDialog"
-import { lockPair, splitPair, restorePair, confirmSession, deleteSession } from "@/app/admin/matching/[id]/actions"
+import { lockPair, splitPair, restorePair, confirmSession, deleteSession, unpublishSession } from "@/app/admin/matching/[id]/actions"
 import type { EnrichedMatchResult, PairRelationship, EnrichedMember } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
 import type { DiagnosticItem } from "./UnmatchedDiagnostics"
@@ -161,6 +161,19 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
               <CheckCircle className="size-3.5" /> 确认发布
             </Button>
           </>
+        )}
+        {session.status === "confirmed" && (
+          <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => {
+            if (!confirm("撤回后玩家将无法看到匹配结果，确定吗？")) return
+            startTransition(async () => {
+              setError("")
+              const res = await unpublishSession(session.id)
+              if (res.error) setError(res.error)
+              else router.refresh()
+            })
+          }} disabled={isPending}>
+            <XCircle className="size-3.5" /> 撤回发布
+          </Button>
         )}
       </div>
 

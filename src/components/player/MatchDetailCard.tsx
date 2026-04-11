@@ -23,6 +23,7 @@ interface Labels {
   gameType: string
   review: string
   reviewed: string
+  groupMembers?: string
 }
 
 interface Props {
@@ -31,10 +32,11 @@ interface Props {
   reviewed: boolean
   matchId: string
   isGroup?: boolean
+  groupMemberNames?: string[]
   labels: Labels
 }
 
-export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGroup, labels }: Props) {
+export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGroup, groupMemberNames, labels }: Props) {
   const locale = useLocale()
   const tagGroups = buildTagList(partner, labels, locale)
 
@@ -47,6 +49,11 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGro
           </p>
           {sessionName && (
             <p className="text-xs text-muted-foreground mt-0.5">{sessionName}</p>
+          )}
+          {isGroup && groupMemberNames && groupMemberNames.length > 0 && (
+            <p className="text-xs text-muted-foreground mt-1">
+              {labels.groupMembers ?? "组员"}：{groupMemberNames.join("、")}
+            </p>
           )}
         </div>
         {reviewed ? (

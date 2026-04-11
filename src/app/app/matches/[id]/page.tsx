@@ -1,6 +1,7 @@
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchMatchDetail } from "@/lib/queries/matching"
 import { fetchReviewedMatchIds } from "@/lib/queries/reviews"
+import { fetchGroupMemberNames } from "@/lib/queries/group-members"
 import { getTranslations } from "next-intl/server"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
@@ -24,6 +25,11 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
 
   const groupMembers = match.group_members as string[] | null
   const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0
+
+  // 组匹配：解析组员名字（排除自己）
+  const otherIds = isGroup ? groupMembers.filter((id) => id !== player.memberId) : []
+  const groupNames = isGroup ? await fetchGroupMemberNames(otherIds) : []
+
   const partner = isGroup
     ? { name: `${groupMembers.length}人组`, hobbyTags: [] as string[], gameTypePref: null, scenarioThemeTags: [] as string[], expressionStyleTags: [] as string[], groupRoleTags: [] as string[] }
     : extractPartner(match, player.memberId)
@@ -40,6 +46,7 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
     gameType: t("gameType"),
     review: t("review"),
     reviewed: t("reviewed"),
+    groupMembers: t("groupMembers"),
     requestCancel: t("requestCancel"),
     cancelFormTitle: t("cancelFormTitle"),
     cancelReasonPlaceholder: t("cancelReasonPlaceholder"),
@@ -66,6 +73,7 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
         reviewed={reviewedIds.has(match.id)}
         matchId={match.id}
         isGroup={isGroup}
+        groupMemberNames={groupNames.map((g) => g.name)}
         labels={labels}
       />
 

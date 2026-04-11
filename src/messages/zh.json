@@ -212,7 +212,10 @@
     "cancelRejectedHint": "如有疑问请联系工作人员",
     "cancelBadgePending": "待审核",
     "cancelBadgeApproved": "已取消",
-    "cancelBadgeRejected": "已驳回"
+    "cancelBadgeRejected": "已驳回",
+    "groupMembers": "组员",
+    "historyTitle": "历史记录",
+    "matchEnded": "已结束"
   },
   "reviews": {
     "title": "互评",

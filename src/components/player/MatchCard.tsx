@@ -26,6 +26,7 @@ interface Labels {
   cancelBadgePending: string
   cancelBadgeApproved: string
   cancelBadgeRejected: string
+  matchEnded?: string
 }
 
 interface MatchCardProps {
@@ -36,15 +37,22 @@ interface MatchCardProps {
   reviewed: boolean
   cancellationStatus?: string | null
   isGroup?: boolean
+  groupMemberNames?: string[]
+  variant?: "current" | "history"
   labels: Labels
 }
 
-export function MatchCard({ matchId, partner, sessionName, date, reviewed, cancellationStatus, isGroup, labels }: MatchCardProps) {
+export function MatchCard({ matchId, partner, sessionName, date, reviewed, cancellationStatus, isGroup, groupMemberNames, variant, labels }: MatchCardProps) {
   const locale = useLocale()
   const allTags = buildTagList(partner, labels, locale)
+  const isHistory = variant === "history"
 
   return (
-    <Link href={`/app/matches/${matchId}`} className="block rounded-xl bg-card p-4 shadow-soft hover:shadow-md transition-shadow">
+    <Link
+      href={isHistory ? "#" : `/app/matches/${matchId}`}
+      className={`block rounded-xl bg-card p-4 shadow-soft transition-shadow ${isHistory ? "opacity-60 cursor-default" : "hover:shadow-md"}`}
+      onClick={isHistory ? (e) => e.preventDefault() : undefined}
+    >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold">
@@ -53,10 +61,19 @@ export function MatchCard({ matchId, partner, sessionName, date, reviewed, cance
           <p className="text-xs text-muted-foreground mt-0.5">
             {sessionName} · {date}
           </p>
+          {isGroup && groupMemberNames && groupMemberNames.length > 0 && (
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-[220px]">
+              {groupMemberNames.join("、")}
+            </p>
+          )}
         </div>
         <div className="flex items-center gap-2">
           {cancellationStatus && <CancelBadge status={cancellationStatus} labels={labels} />}
-          <ReviewButton matchId={matchId} reviewed={reviewed} labels={labels} />
+          {isHistory ? (
+            <span className="text-xs text-muted-foreground">{labels.matchEnded ?? "已结束"}</span>
+          ) : (
+            <ReviewButton matchId={matchId} reviewed={reviewed} labels={labels} />
+          )}
         </div>
       </div>
 

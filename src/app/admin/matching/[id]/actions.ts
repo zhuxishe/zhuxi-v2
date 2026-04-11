@@ -181,5 +181,48 @@ export async function confirmSession(sessionId: string) {
     return { error: "操作失败，会话状态已回滚" }
   }
   revalidatePath(`/admin/matching/${sessionId}`)
+  revalidatePath("/app/matches")
+  return { success: true }
+}
+
+/** 撤回已发布的匹配 → session 和 results 回到 draft */
+export async function unpublishSession(sessionId: string) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  const { data: updated, error: sErr } = await supabase
+    .from("match_sessions")
+    .update({ status: "draft" })
+    .eq("id", sessionId)
+    .eq("status", "confirmed")
+    .select("id")
+
+  if (sErr) {
+    console.error("[unpublishSession:session]", sErr)
+    return { error: "操作失败" }
+  }
+  if (!updated || updated.length === 0) {
+    return { error: "会话不存在或不是「confirmed」状态" }
+  }
+
+  // confirmed → draft（排除已取消的）
+  const { error: rErr } = await supabase
+    .from("match_results")
+    .update({ status: "draft" })
+    .eq("session_id", sessionId)
+    .eq("status", "confirmed")
+
+  if (rErr) {
+    // 补偿：回滚 session
+    await supabase
+      .from("match_sessions")
+      .update({ status: "confirmed" })
+      .eq("id", sessionId)
+    console.error("[unpublishSession:results]", rErr)
+    return { error: "操作失败，会话状态已回滚" }
+  }
+
+  revalidatePath(`/admin/matching/${sessionId}`)
+  revalidatePath("/app/matches")
   return { success: true }
 }

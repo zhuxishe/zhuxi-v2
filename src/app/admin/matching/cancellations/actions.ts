@@ -26,6 +26,7 @@ export async function approveCancellation(resultId: string) {
 
   revalidatePath("/admin/matching/cancellations")
   revalidatePath("/admin/matching")
+  revalidatePath("/app/matches")
   return { success: true }
 }
 

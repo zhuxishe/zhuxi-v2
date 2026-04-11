@@ -141,12 +141,15 @@ export async function fetchPlayerMatches(memberId: string) {
 }
 
 export async function fetchMatchDetail(matchId: string, memberId: string) {
-  const supabase = await createClient()
+  // 用 admin client 绕过 RLS：玩家需要看到搭档的资料
+  const { createAdminClient } = await import("@/lib/supabase/admin")
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from("match_results")
     .select(`
-      id, member_a_id, member_b_id, best_slot, rank, status,
+      id, member_a_id, member_b_id, group_members, best_slot, rank, status,
+      created_at,
       cancellation_status, cancellation_reason, cancellation_requested_by,
       cancellation_requested_at,
       session:match_sessions (id, session_name, created_at),
@@ -167,10 +170,12 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
     .single()
 
   if (error) return null
-  // Verify player is a participant
-  if (data.member_a_id !== memberId && data.member_b_id !== memberId) {
-    return null
-  }
+  // Verify player is a participant（支持多人组）
+  const isParticipant =
+    data.member_a_id === memberId ||
+    data.member_b_id === memberId ||
+    (Array.isArray(data.group_members) && data.group_members.includes(memberId))
+  if (!isParticipant) return null
   return data
 }
 

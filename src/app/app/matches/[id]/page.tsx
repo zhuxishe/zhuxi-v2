@@ -22,9 +22,31 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
 
   if (!match) notFound()
 
-  const partner = extractPartner(match, player.memberId)
+  const groupMembers = match.group_members as string[] | null
+  const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0
+  const partner = isGroup
+    ? { name: `${groupMembers.length}人组`, hobbyTags: [] as string[], gameTypePref: null, scenarioThemeTags: [] as string[], expressionStyleTags: [] as string[], groupRoleTags: [] as string[] }
+    : extractPartner(match, player.memberId)
+
   const session = unwrap(match.session) as { session_name?: string } | undefined
   const canCancel = match.status !== "cancelled" && !match.cancellation_status
+
+  // 预解析翻译字符串（不能把函数传给 client 组件）
+  const labels = {
+    partner: t("partner"),
+    unknown: t("unknown"),
+    interests: t("interests"),
+    socialStyle: t("socialStyle"),
+    gameType: t("gameType"),
+    review: t("review"),
+    reviewed: t("reviewed"),
+    requestCancel: t("requestCancel"),
+    cancelFormTitle: t("cancelFormTitle"),
+    cancelReasonPlaceholder: t("cancelReasonPlaceholder"),
+    cancelBack: t("cancelBack"),
+    confirmCancel: t("confirmCancel"),
+    submitting: t("submitting"),
+  }
 
   return (
     <div className="p-6 space-y-4">
@@ -43,15 +65,23 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
         sessionName={session?.session_name ?? ""}
         reviewed={reviewedIds.has(match.id)}
         matchId={match.id}
-        t={(key: string) => t(key)}
+        isGroup={isGroup}
+        labels={labels}
       />
 
       {match.cancellation_status && (
-        <CancellationStatus status={match.cancellation_status} t={(key: string) => t(key)} />
+        <CancellationStatus
+          status={match.cancellation_status}
+          cancelPending={t("cancelPending")}
+          cancelPendingHint={t("cancelPendingHint")}
+          cancelApproved={t("cancelApproved")}
+          cancelRejected={t("cancelRejected")}
+          cancelRejectedHint={t("cancelRejectedHint")}
+        />
       )}
 
       {canCancel && (
-        <CancelRequestForm matchId={match.id} t={(key: string) => t(key)} />
+        <CancelRequestForm matchId={match.id} labels={labels} />
       )}
     </div>
   )

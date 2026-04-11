@@ -15,24 +15,35 @@ interface PartnerProfile {
   groupRoleTags: string[]
 }
 
+interface Labels {
+  partner: string
+  unknown: string
+  interests: string
+  socialStyle: string
+  gameType: string
+  review: string
+  reviewed: string
+}
+
 interface Props {
   partner: PartnerProfile
   sessionName: string
   reviewed: boolean
   matchId: string
-  t: (key: string) => string
+  isGroup?: boolean
+  labels: Labels
 }
 
-export function MatchDetailCard({ partner, sessionName, reviewed, matchId, t }: Props) {
+export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGroup, labels }: Props) {
   const locale = useLocale()
-  const tagGroups = buildTagList(partner, t, locale)
+  const tagGroups = buildTagList(partner, labels, locale)
 
   return (
     <div className="rounded-xl bg-card p-5 shadow-soft space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-base font-semibold">
-            {t("partner")}: {partner.name || t("unknown")}
+            {isGroup ? `🎲 ${partner.name}` : `${labels.partner}: ${partner.name || labels.unknown}`}
           </p>
           {sessionName && (
             <p className="text-xs text-muted-foreground mt-0.5">{sessionName}</p>
@@ -40,14 +51,14 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, t }: 
         </div>
         {reviewed ? (
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-            <CheckCircle className="size-3.5" /> {t("reviewed")}
+            <CheckCircle className="size-3.5" /> {labels.reviewed}
           </span>
         ) : (
           <Link
             href={`/app/reviews/new/${matchId}`}
             className="inline-flex items-center gap-1 rounded-full bg-sakura/10 px-3 py-1 text-xs font-medium text-sakura hover:bg-sakura/20 transition-colors"
           >
-            <MessageSquare className="size-3.5" /> {t("review")}
+            <MessageSquare className="size-3.5" /> {labels.review}
           </Link>
         )}
       </div>
@@ -72,22 +83,22 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, t }: 
 
 type TagVariant = "default" | "secondary" | "outline" | "success" | "warning" | "danger" | "info"
 
-function buildTagList(p: PartnerProfile, t: (k: string) => string, locale: string) {
+function buildTagList(p: PartnerProfile, labels: Labels, locale: string) {
   const groups: { label: string; tags: string[]; variant: TagVariant }[] = []
   const l = (tag: string) => localizeTag(tag, locale)
 
   if (p.hobbyTags.length > 0) {
-    groups.push({ label: t("interests"), tags: p.hobbyTags.slice(0, 5).map(l), variant: "info" })
+    groups.push({ label: labels.interests, tags: p.hobbyTags.slice(0, 5).map(l), variant: "info" })
   }
   const social = [...p.expressionStyleTags, ...p.groupRoleTags]
   if (social.length > 0) {
-    groups.push({ label: t("socialStyle"), tags: social.slice(0, 4).map(l), variant: "secondary" })
+    groups.push({ label: labels.socialStyle, tags: social.slice(0, 4).map(l), variant: "secondary" })
   }
   const game: string[] = []
   if (p.gameTypePref) game.push(p.gameTypePref)
   game.push(...p.scenarioThemeTags.slice(0, 3))
   if (game.length > 0) {
-    groups.push({ label: t("gameType"), tags: game.map(l), variant: "outline" })
+    groups.push({ label: labels.gameType, tags: game.map(l), variant: "outline" })
   }
   return groups
 }

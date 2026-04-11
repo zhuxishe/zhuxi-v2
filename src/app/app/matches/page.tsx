@@ -7,20 +7,14 @@ import { MatchCard } from "@/components/player/MatchCard"
 import { Users } from "lucide-react"
 
 export default async function PlayerMatchesPage() {
-  let player, t, locale, dateFmt, matches, reviewedIds
-  try {
-    player = await requirePlayer()
-    t = await getTranslations("playerMatches")
-    locale = await getLocale()
-    dateFmt = locale === "ja" ? "ja-JP" : "zh-CN"
-    ;[matches, reviewedIds] = await Promise.all([
-      fetchPlayerMatches(player.memberId),
-      fetchReviewedMatchIds(player.memberId),
-    ])
-  } catch (err) {
-    console.error("[PlayerMatchesPage]", err)
-    return <pre className="p-4 text-xs text-red-600 whitespace-pre-wrap">{String(err)}</pre>
-  }
+  const player = await requirePlayer()
+  const t = await getTranslations("playerMatches")
+  const locale = await getLocale()
+  const dateFmt = locale === "ja" ? "ja-JP" : "zh-CN"
+  const [matches, reviewedIds] = await Promise.all([
+    fetchPlayerMatches(player.memberId),
+    fetchReviewedMatchIds(player.memberId),
+  ])
 
   if (matches.length === 0) {
     return (
@@ -39,8 +33,14 @@ export default async function PlayerMatchesPage() {
     <div className="p-6 space-y-4">
       <h1 className="heading-display text-2xl">{t("title")}</h1>
       {matches.map((m) => {
-        const partner = extractPartner(m, player.memberId)
         const session = unwrap(m.session) as { session_name?: string } | undefined
+        const groupMembers = m.group_members as string[] | null
+        const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0
+
+        // 多人组：显示组信息；双人：显示搭档信息
+        const partner = isGroup
+          ? { name: `${groupMembers.length}人组`, hobbyTags: [], gameTypePref: null, scenarioThemeTags: [], expressionStyleTags: [], groupRoleTags: [] }
+          : extractPartner(m, player.memberId)
 
         return (
           <MatchCard
@@ -52,6 +52,7 @@ export default async function PlayerMatchesPage() {
             reviewed={reviewedIds.has(m.id)}
             cancellationStatus={(m as Record<string, unknown>).cancellation_status as string | null}
             t={(key: string) => t(key)}
+            isGroup={isGroup}
           />
         )
       })}

@@ -22,10 +22,11 @@ interface MatchCardProps {
   date: string
   reviewed: boolean
   cancellationStatus?: string | null
+  isGroup?: boolean
   t: (key: string) => string
 }
 
-export function MatchCard({ matchId, partner, sessionName, date, reviewed, cancellationStatus, t }: MatchCardProps) {
+export function MatchCard({ matchId, partner, sessionName, date, reviewed, cancellationStatus, isGroup, t }: MatchCardProps) {
   const locale = useLocale()
   const allTags = buildTagList(partner, t, locale)
 
@@ -34,7 +35,7 @@ export function MatchCard({ matchId, partner, sessionName, date, reviewed, cance
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold">
-            {t("partner")}: {partner.name}
+            {isGroup ? `🎲 ${partner.name}` : `${t("partner")}: ${partner.name}`}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {sessionName} · {date}

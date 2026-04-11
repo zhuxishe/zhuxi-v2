@@ -132,7 +132,7 @@ export function QuizResult({ scores, personalityType, dimensions: dimConfig, typ
                 />
               </div>
               {(() => {
-                const desc = getDimDescription(dim.key, dim.value, dimConfig)
+                const desc = getDimDescription(dim.key, dim.key === "N" ? scores.N : dim.value, dimConfig)
                 return desc ? <p className="text-xs text-muted-foreground">{desc}</p> : null
               })()}
             </div>

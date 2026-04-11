@@ -44,10 +44,13 @@ export function scoreLevelProximity(
   }
 }
 
+interface DimWeights { E: number; A: number; O: number; C: number; N: number }
+
 export function scorePersonalityCompatibility(
   a: MatchCandidate,
   b: MatchCandidate,
   weight: number,
+  dimWeights?: DimWeights,
 ): ScoreComponent {
   if (!a.quizScores || !b.quizScores) {
     return {
@@ -79,8 +82,9 @@ export function scorePersonalityCompatibility(
   const esB = 100 - qb.N
   const esSim = 1 - Math.abs(esA - esB) / 100
 
-  // Weighted average (E:30% A:30% O:15% C:10% ES:15%)
-  const rawScore = eSim * 0.3 + aSim * 0.3 + oScore * 0.15 + cSim * 0.1 + esSim * 0.15
+  // Weighted average — use DB config weights if provided, else default
+  const w = dimWeights ?? { E: 0.3, A: 0.3, O: 0.15, C: 0.1, N: 0.15 }
+  const rawScore = eSim * w.E + aSim * w.A + oScore * w.O + cSim * w.C + esSim * w.N
 
   return {
     factor: "personality_compatibility",

@@ -1,5 +1,7 @@
 // ZSP-15 竹溪社社交人格量表 — 15题情景选择，覆盖5个维度（Big Five）
 
+import type { QuizConfig } from "@/types/quiz-config"
+
 export interface QuizOption { text: string; score: number }
 export interface QuizQuestion {
   id: number; dimension: "E" | "A" | "O" | "C" | "N"
@@ -143,4 +145,55 @@ export function generatePersonalityType(scores: DimensionScores): string {
   const suffix: Record<string, string> = { E: "行动派", A: "守护者", O: "探索者", C: "规划者", ES: "安定者" }
 
   return `${prefix[first]}${suffix[second]}`
+}
+
+/** 从硬编码常量构建默认配置（DB 无数据时使用） */
+export function buildDefaultQuizConfig(): QuizConfig {
+  return {
+    questions: QUIZ_QUESTIONS,
+    dimensions: {
+      E: { name: "社交能量", matchWeight: 0.3, descriptions: { low: "你的电量靠独处回血，人多的地方是你的耗电模式。", mid: "社交和独处都行，看当天心情和在场的人。", high: "人越多你越来劲，安静反而让你浑身不自在。" } },
+      A: { name: "社交温度", matchWeight: 0.3, descriptions: { low: "你重效率和逻辑，不太会因为「不好意思」而改变决定。", mid: "该暖的时候暖，该硬的时候也不含糊，温度随场景调节。", high: "你天然在意别人的感受，聚会里那个默默照顾所有人的往往是你。" } },
+      O: { name: "探索倾向", matchWeight: 0.15, descriptions: { low: "你喜欢确定性，熟悉的东西让你安心，冒险请找别人。", mid: "新事物要先看看评价，确认安全了再下手。", high: "「没试过」三个字对你来说不是警告，是邀请函。" } },
+      C: { name: "行动节奏", matchWeight: 0.1, descriptions: { low: "计划是什么？能吃吗？你和deadline有一种微妙的默契——总在最后一刻相遇。", mid: "大方向有，细节随缘，不至于翻车但也不追求满分。", high: "出门前查路线、列清单、算时间，你的日程表比瑞士钟表还准。" } },
+      N: { name: "情绪锚点", matchWeight: 0.15, descriptions: { low: "你的内心像装了减震器，外面风浪再大，里面波澜不惊。", mid: "大部分时候稳得住，偶尔也会被突发状况晃一下。", high: "你的情绪雷达灵敏度拉满，别人一个眼神你就能脑补出一部电影。" } },
+    },
+    typeLabels: {
+      formal: {
+        prefix: { E: "热情", A: "温暖", O: "好奇", C: "稳健", ES: "从容" },
+        suffix: { E: "行动派", A: "守护者", O: "探索者", C: "规划者", ES: "安定者" },
+      },
+      fun: {
+        prefix: { E: "话唠", A: "暖宝宝", O: "野生", C: "靠谱", ES: "佛系" },
+        suffix: { E: "冲锋鸡", A: "奶妈", O: "冒险王", C: "表格侠", ES: "定海神针" },
+      },
+    },
+    typeDescriptions: DEFAULT_TYPE_DESCRIPTIONS,
+    scoring: { minRaw: 4.5, maxRaw: 18, invertN: true },
+  }
+}
+
+const IMG = "/images/personality"
+
+const DEFAULT_TYPE_DESCRIPTIONS: QuizConfig["typeDescriptions"] = {
+  "热情守护者": { description: "恭喜你获得了聚会的灵魂+保姆双重认证！你天生自带麦克风光环，能让陌生人三分钟内变成老朋友，还会悄悄记住每个人的过敏原和忌口。你的存在让社群像一个24小时营业的暖气团。", imageUrl: `${IMG}/enthusiastic-guardian.png` },
+  "热情探索者": { description: "你是那种在聚餐时能把「我最近在研究量子力学」说得比菜单更令人期待的人。社交对你来说是田野调查，每一个新朋友都是一扇通往平行宇宙的门。", imageUrl: `${IMG}/enthusiastic-explorer.png` },
+  "热情规划者": { description: "派对有你在，时间表比地铁班次还精准，但氛围却比自由市场还热烈——这是只有你能做到的魔法。活动还没结束，下一场的群已经建好了。", imageUrl: `${IMG}/enthusiastic-planner.png` },
+  "热情安定者": { description: "你是社群的天然稳压器——人多的地方你能带动气氛，场面失控时你又能轻描淡写地接住一切。别人社交完需要充电，你充的就是社交本身。", imageUrl: `${IMG}/enthusiastic-stabilizer.png` },
+  "温暖行动派": { description: "你是那种「说走就走」后面还会加一句「我来定酒店」的人。你用行动诠释关心，用速度证明温度——在你这里，爱是动词，而且是现在进行时。", imageUrl: `${IMG}/warm-activist.png` },
+  "温暖探索者": { description: "你问问题的方式像温水，让人不知不觉就说了很多真心话。你收集故事，但不消费故事；你了解别人，但不定义别人——这是很稀有的能力。", imageUrl: `${IMG}/warm-explorer.png` },
+  "温暖规划者": { description: "你是那种会在朋友生日前三周就悄悄备好惊喜方案的人，还能确保对乳糖不耐受的那位也有蛋糕吃。你把细心变成了系统工程，把在乎变成了可执行的清单。", imageUrl: `${IMG}/warm-planner.png` },
+  "温暖安定者": { description: "你是社群里那把永远坐着的椅子——不会主动冲到最前面，但每个需要坐下来的人都会本能地找到你。有你在的群，撕不起来，因为大家都不好意思。", imageUrl: `${IMG}/warm-stabilizer.png` },
+  "好奇行动派": { description: "你的人生信条大概是：与其想明白，不如先试试。你把「有趣」当作第一行动准则，在别人还在做可行性分析的时候，你已经拿到了结论并开始想下一个问题了。", imageUrl: `${IMG}/curious-activist.png` },
+  "好奇守护者": { description: "你的好奇心不只指向知识，更指向人——你真心想知道每一个人背后的故事，而且会在他们说完之后，替他们好好保管这段故事。", imageUrl: `${IMG}/curious-guardian.png` },
+  "好奇规划者": { description: "你是那种会做出十页调研报告然后说「我们下周去试试」的人。在你眼里，任何有趣的事都值得认真对待，任何认真的事也都可以变得有趣。", imageUrl: `${IMG}/curious-planner.png` },
+  "好奇安定者": { description: "你很少着急，但你几乎什么都感兴趣——这让你成为最好的聊天对象。你的平静里藏着一个安静运转的宇宙。", imageUrl: `${IMG}/curious-stabilizer.png` },
+  "稳健行动派": { description: "你不是最先举手的那个，但你是真的把事情做完的那个。有你参与的活动，细节不会漏，突发不会乱——你是那种让团队集体睡个好觉的人。", imageUrl: `${IMG}/steady-activist.png` },
+  "稳健守护者": { description: "你不会说很多话，但你说的每一句都会被记住。你用一致性建立信任，用耐心建立关系。朋友们心里都清楚：在所有人里，你是那个最不会让人失望的。", imageUrl: `${IMG}/steady-guardian.png` },
+  "稳健探索者": { description: "你探索新事物的方式像地质勘测——不冲动，但很深入。你的知识体系不是百科词条式的，而是有脉络的，是你真正走过、想过、验证过的版图。", imageUrl: `${IMG}/steady-explorer.png` },
+  "稳健安定者": { description: "你是社群里那座不显眼但谁都靠得住的山。不抢风头，不制造张力，但在关键时刻总是稳稳地在那里。你不需要被夸，但每个人心里都知道你有多重要。", imageUrl: `${IMG}/steady-stabilizer.png` },
+  "从容行动派": { description: "你是「说走就走」但从不慌乱的那种人——行李永远只有一个包，但你始终是最先到达又最早适应的那个。你的淡定不是冷漠，是一种对自己的深度信任。", imageUrl: `${IMG}/serene-activist.png` },
+  "从容守护者": { description: "你不会大声说「我关心你」，但你会在对方还没意识到自己需要帮助的时候，就已经轻轻递过去了。你的关怀不黏腻，你的陪伴不消耗人。", imageUrl: `${IMG}/serene-guardian.png` },
+  "从容探索者": { description: "你对新事物充满兴趣，但不执着于结论——「有意思」对你来说本身就是目的地。你探索世界的姿态很松弛，像是在散步，不像在赶路。", imageUrl: `${IMG}/serene-explorer.png` },
+  "从容规划者": { description: "你的计划不是为了控制，而是为了让自己可以更放松地享受过程。有条理给了你自由，而不是束缚——这个逻辑大多数人搞反了，但你天生就懂。", imageUrl: `${IMG}/serene-planner.png` },
 }

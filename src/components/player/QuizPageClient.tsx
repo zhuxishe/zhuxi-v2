@@ -6,6 +6,7 @@ import { PersonalityQuiz } from "./PersonalityQuiz"
 import { QuizResult } from "./QuizResult"
 import { submitQuiz } from "@/app/app/profile/quiz/actions"
 import type { DimensionScores } from "@/lib/constants/personality-quiz"
+import type { QuizConfig } from "@/types/quiz-config"
 
 interface ExistingResult {
   scores: DimensionScores
@@ -14,9 +15,10 @@ interface ExistingResult {
 
 interface Props {
   existing: ExistingResult | null
+  quizConfig: QuizConfig
 }
 
-export function QuizPageClient({ existing }: Props) {
+export function QuizPageClient({ existing, quizConfig }: Props) {
   const t = useTranslations("quiz")
   const tErr = useTranslations("errors")
   const [result, setResult] = useState<ExistingResult | null>(existing)
@@ -75,10 +77,13 @@ export function QuizPageClient({ existing }: Props) {
       <QuizResult
         scores={result.scores}
         personalityType={result.personalityType}
+        dimensions={quizConfig.dimensions}
+        typeLabels={quizConfig.typeLabels}
+        typeDescriptions={quizConfig.typeDescriptions}
         onRetake={handleRetake}
       />
     )
   }
 
-  return <PersonalityQuiz onComplete={handleComplete} />
+  return <PersonalityQuiz questions={quizConfig.questions} onComplete={handleComplete} />
 }

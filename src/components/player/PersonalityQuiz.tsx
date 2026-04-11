@@ -2,11 +2,12 @@
 
 import { useState, useMemo, useCallback } from "react"
 import { ChevronLeft, ChevronRight, Check } from "lucide-react"
-import { useTranslations, useLocale } from "next-intl"
+import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import { getQuizQuestions } from "@/lib/constants/personality-quiz-loader"
+import type { QuizQuestionConfig } from "@/types/quiz-config"
 
 interface Props {
+  questions: QuizQuestionConfig[]
   onComplete: (answers: { questionId: number; score: number }[]) => void
 }
 
@@ -22,14 +23,14 @@ function shuffleWithSeed<T>(arr: T[], seed: number): T[] {
   return a
 }
 
-export function PersonalityQuiz({ onComplete }: Props) {
+export function PersonalityQuiz({ questions, onComplete }: Props) {
   const t = useTranslations("quiz")
-  const locale = useLocale()
-  const questions = useMemo(() => getQuizQuestions(locale), [locale])
+  // 打乱题序（用固定种子，同一用户每次顺序一致）
+  const shuffledQuestions = useMemo(() => shuffleWithSeed(questions, 42), [questions])
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<number, number>>({})
-  const total = questions.length
-  const question = questions[current]
+  const total = shuffledQuestions.length
+  const question = shuffledQuestions[current]
   const progress = Math.round(((current + 1) / total) * 100)
 
   // Shuffle options per question (stable across re-renders)
@@ -51,7 +52,7 @@ export function PersonalityQuiz({ onComplete }: Props) {
   }
 
   function handleFinish() {
-    const result = questions.map((q) => ({
+    const result = shuffledQuestions.map((q) => ({
       questionId: q.id,
       score: answers[q.id] ?? 3,
     }))
@@ -60,7 +61,7 @@ export function PersonalityQuiz({ onComplete }: Props) {
 
   const isLast = current === total - 1
   const hasAnswer = answers[question.id] !== undefined
-  const allAnswered = questions.every((q) => answers[q.id] !== undefined)
+  const allAnswered = shuffledQuestions.every((q) => answers[q.id] !== undefined)
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

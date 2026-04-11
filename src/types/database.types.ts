@@ -1137,6 +1137,39 @@ export type Database = {
           },
         ]
       }
+      personality_quiz_config: {
+        Row: {
+          id: string
+          questions: Json
+          dimensions: Json
+          type_labels: Json
+          type_descriptions: Json
+          scoring: Json
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          questions: Json
+          dimensions: Json
+          type_labels: Json
+          type_descriptions?: Json
+          scoring?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          questions?: Json
+          dimensions?: Json
+          type_labels?: Json
+          type_descriptions?: Json
+          scoring?: Json
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       personality_quiz_results: {
         Row: {
           answers: Json

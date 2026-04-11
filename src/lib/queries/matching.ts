@@ -131,7 +131,7 @@ export async function fetchPlayerMatches(memberId: string) {
       )
     `)
     .eq("session.status", "confirmed")
-    .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId},group_members.cs.["${memberId}"]`)
+    .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId},group_members.cs.{${memberId}}`)
     .order("created_at", { ascending: false })
 
   if (error) throw error

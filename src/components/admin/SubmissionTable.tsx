@@ -1,13 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { ChevronDown, ChevronRight } from "lucide-react"
+import { ChevronDown, ChevronRight, Pencil } from "lucide-react"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Sub = Record<string, any>
 
 interface Props {
   submissions: Sub[]
+  onEdit?: (sub: Sub) => void
+  editable?: boolean
 }
 
 const GAME_TYPE_COLORS: Record<string, string> = {
@@ -16,7 +18,7 @@ const GAME_TYPE_COLORS: Record<string, string> = {
   "都可以": "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 }
 
-export function SubmissionTable({ submissions }: Props) {
+export function SubmissionTable({ submissions, onEdit, editable = true }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   if (submissions.length === 0) {
@@ -53,6 +55,16 @@ export function SubmissionTable({ submissions }: Props) {
               </div>
               <div className="flex items-center gap-3">
                 <span className="text-xs text-muted-foreground">{dayCount}天 {slotCount}时段</span>
+                {editable && onEdit && (
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onEdit(sub) }}
+                    className="p-1 rounded hover:bg-muted transition-colors"
+                    title="编辑问卷"
+                  >
+                    <Pencil className="size-3.5 text-muted-foreground" />
+                  </button>
+                )}
                 {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
               </div>
             </button>

@@ -10,6 +10,7 @@ import { submissionToCandidate } from "@/lib/matching/adapter"
 import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import type { MatchingConfig } from "@/lib/matching/types"
+import type { Json } from "@/types/database.types"
 
 /** 更新轮次状态 */
 export async function updateRoundStatus(roundId: string, status: string) {
@@ -142,4 +143,103 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   revalidatePath(`/admin/matching/rounds/${roundId}`)
   revalidatePath("/admin/matching")
   return { success: true, sessionId: session.id }
+}
+
+// ── 问卷编辑 ──
+
+interface SubmissionData {
+  game_type_pref: string
+  gender_pref: string
+  availability: Record<string, string[]>
+  interest_tags: string[]
+  social_style: string | null
+  message: string | null
+}
+
+/** 更新已有问卷 */
+export async function updateSubmission(submissionId: string, data: SubmissionData) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  // 检查关联轮次状态
+  const { data: sub } = await supabase
+    .from("match_round_submissions")
+    .select("round_id")
+    .eq("id", submissionId)
+    .single()
+  if (!sub) return { error: "问卷不存在" }
+
+  const { data: round } = await supabase
+    .from("match_rounds")
+    .select("status")
+    .eq("id", sub.round_id)
+    .single()
+  if (round?.status === "matched") return { error: "该轮次已完成匹配，无法编辑" }
+
+  const { error } = await supabase
+    .from("match_round_submissions")
+    .update({
+      game_type_pref: data.game_type_pref,
+      gender_pref: data.gender_pref,
+      availability: data.availability as unknown as Json,
+      interest_tags: data.interest_tags,
+      social_style: data.social_style,
+      message: data.message,
+    })
+    .eq("id", submissionId)
+
+  if (error) {
+    console.error("[updateSubmission]", error)
+    return { error: "更新失败" }
+  }
+
+  revalidatePath(`/admin/matching/rounds/${sub.round_id}`)
+  return { success: true }
+}
+
+/** 新增问卷 */
+export async function createSubmission(
+  roundId: string, memberId: string, data: SubmissionData,
+) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  // 检查轮次状态
+  const { data: round } = await supabase
+    .from("match_rounds")
+    .select("status")
+    .eq("id", roundId)
+    .single()
+  if (!round) return { error: "轮次不存在" }
+  if (round.status === "matched") return { error: "该轮次已完成匹配，无法新增" }
+
+  // 检查是否已提交
+  const { data: existing } = await supabase
+    .from("match_round_submissions")
+    .select("id")
+    .eq("round_id", roundId)
+    .eq("member_id", memberId)
+    .maybeSingle()
+  if (existing) return { error: "该成员已提交过问卷" }
+
+  const { error } = await supabase
+    .from("match_round_submissions")
+    .insert({
+      round_id: roundId,
+      member_id: memberId,
+      game_type_pref: data.game_type_pref,
+      gender_pref: data.gender_pref,
+      availability: data.availability as unknown as Json,
+      interest_tags: data.interest_tags,
+      social_style: data.social_style,
+      message: data.message,
+    })
+
+  if (error) {
+    console.error("[createSubmission]", error)
+    return { error: "新增失败" }
+  }
+
+  revalidatePath(`/admin/matching/rounds/${roundId}`)
+  return { success: true }
 }

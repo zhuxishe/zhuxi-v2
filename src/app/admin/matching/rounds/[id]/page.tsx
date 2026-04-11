@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchRound, fetchRoundSubmissions, fetchRoundStats } from "@/lib/queries/rounds"
+import { fetchMemberBriefList } from "@/lib/queries/members"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { RoundDetailClient } from "@/components/admin/RoundDetailClient"
 import { notFound } from "next/navigation"
@@ -21,9 +22,10 @@ export default async function RoundDetailPage({ params }: Props) {
     notFound()
   }
 
-  const [submissions, stats] = await Promise.all([
+  const [submissions, stats, allMembers] = await Promise.all([
     fetchRoundSubmissions(id),
     fetchRoundStats(id),
+    fetchMemberBriefList(),
   ])
 
   return (
@@ -36,7 +38,7 @@ export default async function RoundDetailPage({ params }: Props) {
         >
           <ArrowLeft className="size-4" /> 返回轮次列表
         </Link>
-        <RoundDetailClient round={round} submissions={submissions} stats={stats} />
+        <RoundDetailClient round={round} submissions={submissions} stats={stats} allMembers={allMembers} />
       </div>
     </div>
   )

@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { SubmissionTable } from "./SubmissionTable"
 import { RoundStatsPanel } from "./RoundStatsPanel"
+import { SubmissionEditDialog } from "./SubmissionEditDialog"
 import { updateRoundStatus, runRoundMatching } from "@/app/admin/matching/rounds/[id]/actions"
-import { Play, Eye, EyeOff } from "lucide-react"
+import { Play, Eye, EyeOff, Plus } from "lucide-react"
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Round = Record<string, any>
@@ -23,12 +24,26 @@ interface Props {
   round: Round
   submissions: Sub[]
   stats: Stats
+  allMembers: { id: string; name: string }[]
 }
 
-export function RoundDetailClient({ round, submissions, stats }: Props) {
+export function RoundDetailClient({ round, submissions, stats, allMembers }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // 编辑/新增 Dialog 状态
+  const [editOpen, setEditOpen] = useState(false)
+  const [editSub, setEditSub] = useState<Sub | null>(null)
+  const [createOpen, setCreateOpen] = useState(false)
+
+  const editable = round.status !== "matched"
+
+  // 新增时排除已提交的成员
+  const availableMembers = useMemo(() => {
+    const submitted = new Set(submissions.map((s) => s.member_id))
+    return allMembers.filter((m) => !submitted.has(m.id))
+  }, [allMembers, submissions])
 
   async function handleStatusChange(status: string) {
     setLoading(true)
@@ -47,6 +62,15 @@ export function RoundDetailClient({ round, submissions, stats }: Props) {
     setLoading(false)
     if (res.error) { setError(res.error); return }
     router.push(`/admin/matching/${res.sessionId}`)
+  }
+
+  function handleEdit(sub: Sub) {
+    setEditSub(sub)
+    setEditOpen(true)
+  }
+
+  function handleSaved() {
+    router.refresh()
   }
 
   return (
@@ -91,9 +115,46 @@ export function RoundDetailClient({ round, submissions, stats }: Props) {
 
       {/* 问卷列表 */}
       <div>
-        <h3 className="text-sm font-semibold mb-3">问卷提交 ({submissions.length})</h3>
-        <SubmissionTable submissions={submissions} />
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-semibold">问卷提交 ({submissions.length})</h3>
+          {editable && (
+            <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
+              <Plus className="size-4 mr-1" />新增问卷
+            </Button>
+          )}
+        </div>
+        <SubmissionTable
+          submissions={submissions}
+          onEdit={handleEdit}
+          editable={editable}
+        />
       </div>
+
+      {/* 编辑 Dialog */}
+      {editSub && (
+        <SubmissionEditDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          roundId={round.id}
+          mode="edit"
+          submission={editSub}
+          activityStart={round.activity_start}
+          activityEnd={round.activity_end}
+          onSaved={handleSaved}
+        />
+      )}
+
+      {/* 新增 Dialog */}
+      <SubmissionEditDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+        roundId={round.id}
+        mode="create"
+        availableMembers={availableMembers}
+        activityStart={round.activity_start}
+        activityEnd={round.activity_end}
+        onSaved={handleSaved}
+      />
     </div>
   )
 }

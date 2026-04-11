@@ -7,5 +7,5 @@ CREATE POLICY "player_read_sessions" ON public.match_sessions
   FOR SELECT TO authenticated
   USING (
     is_admin()
-    OR status IN ('published', 'closed')
+    OR status IN ('confirmed', 'published', 'closed')
   );

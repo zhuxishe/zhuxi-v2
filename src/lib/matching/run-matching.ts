@@ -117,8 +117,8 @@ export function runFullMatching(
     }
   }
 
-  // 3b: 回流双人配（所有仍未匹配者）
-  const overflowDuo = candidates.filter((c) => !matched.has(c.submissionId))
+  // 3b: 回流双人配（仅"双人"和"都可以"偏好者，"多人"偏好者不强塞双人）
+  const overflowDuo = candidates.filter((c) => !matched.has(c.submissionId) && c.gameTypePref !== "多人")
   if (overflowDuo.length >= 2) {
     const result = runMaxCoverageDuoMatching(overflowDuo, config, pairRelations)
     for (const pair of result.pairs) {

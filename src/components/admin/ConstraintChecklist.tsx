@@ -73,16 +73,21 @@ function checkGameType(
   const aPref = (a?.id && prefs?.[a.id]?.game_type_pref) ?? "未填写"
   const bPref = (b?.id && prefs?.[b.id]?.game_type_pref) ?? "未填写"
 
-  const compatible =
+  // 双人配对中：双方都选"多人"应标记不兼容（他们想要多人组）
+  const bothMulti = aPref === "多人" && bPref === "多人"
+  const compatible = !bothMulti && (
     aPref === "都可以" || bPref === "都可以" ||
     aPref === bPref ||
-    (aPref.startsWith("双人") && bPref.startsWith("双人")) ||
-    (aPref.startsWith("多人") && bPref.startsWith("多人"))
+    (aPref.startsWith("双人") && bPref.startsWith("双人"))
+  )
 
   return {
     label: "游戏类型",
-    status: compatible ? "pass" : "fail",
-    details: [`${nameOf(a)}: ${aPref} ↔ ${nameOf(b)}: ${bPref}`],
+    status: compatible ? "pass" : bothMulti ? "warn" : "fail",
+    details: [
+      `${nameOf(a)}: ${aPref} ↔ ${nameOf(b)}: ${bPref}`,
+      ...(bothMulti ? ["双方都选多人，不应配成双人对"] : []),
+    ],
   }
 }
 

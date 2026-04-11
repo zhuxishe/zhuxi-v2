@@ -243,3 +243,37 @@ export async function createSubmission(
   revalidatePath(`/admin/matching/rounds/${roundId}`)
   return { success: true }
 }
+
+/** 删除问卷 */
+export async function deleteSubmission(submissionId: string) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  // 查询关联轮次
+  const { data: sub } = await supabase
+    .from("match_round_submissions")
+    .select("round_id")
+    .eq("id", submissionId)
+    .single()
+  if (!sub) return { error: "问卷不存在" }
+
+  const { data: round } = await supabase
+    .from("match_rounds")
+    .select("status")
+    .eq("id", sub.round_id)
+    .single()
+  if (round?.status === "matched") return { error: "该轮次已完成匹配，无法删除" }
+
+  const { error } = await supabase
+    .from("match_round_submissions")
+    .delete()
+    .eq("id", submissionId)
+
+  if (error) {
+    console.error("[deleteSubmission]", error)
+    return { error: "删除失败" }
+  }
+
+  revalidatePath(`/admin/matching/rounds/${sub.round_id}`)
+  return { success: true }
+}

@@ -5,8 +5,8 @@ import { Button } from "@/components/ui/button"
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/components/ui/dialog"
-import { Loader2 } from "lucide-react"
-import { updateSubmission, createSubmission } from "@/app/admin/matching/rounds/[id]/actions"
+import { Loader2, Trash2 } from "lucide-react"
+import { updateSubmission, createSubmission, deleteSubmission } from "@/app/admin/matching/rounds/[id]/actions"
 import { SCENARIO_THEME_OPTIONS } from "@/lib/constants/supplementary"
 
 const GAME_TYPES = ["双人", "多人", "都可以"] as const
@@ -61,6 +61,7 @@ export function SubmissionEditDialog({
   const [message, setMessage] = useState(submission?.message ?? "")
   const [error, setError] = useState("")
   const [isPending, startTransition] = useTransition()
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   const toggleSlot = (date: string, slot: string) => {
     setAvailability((prev) => {
@@ -257,12 +258,48 @@ export function SubmissionEditDialog({
           {error && <p className="text-sm text-red-600">{error}</p>}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-          <Button onClick={handleSave} disabled={isPending}>
-            {isPending && <Loader2 className="size-3.5 animate-spin mr-1" />}
-            保存
-          </Button>
+        <DialogFooter className="flex justify-between sm:justify-between">
+          {/* 删除按钮（仅编辑模式） */}
+          {mode === "edit" ? (
+            confirmDelete ? (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-red-600">确认删除？</span>
+                <Button
+                  size="sm" variant="destructive"
+                  disabled={isPending}
+                  onClick={() => {
+                    startTransition(async () => {
+                      setError("")
+                      const res = await deleteSubmission(submission!.id)
+                      if (res.error) { setError(res.error); setConfirmDelete(false); return }
+                      onSaved()
+                      onOpenChange(false)
+                    })
+                  }}
+                >
+                  {isPending && <Loader2 className="size-3.5 animate-spin mr-1" />}
+                  确认
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setConfirmDelete(false)}>取消</Button>
+              </div>
+            ) : (
+              <Button
+                size="sm" variant="ghost"
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                onClick={() => setConfirmDelete(true)}
+              >
+                <Trash2 className="size-3.5 mr-1" />删除
+              </Button>
+            )
+          ) : <div />}
+
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
+            <Button onClick={handleSave} disabled={isPending}>
+              {isPending && <Loader2 className="size-3.5 animate-spin mr-1" />}
+              保存
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>

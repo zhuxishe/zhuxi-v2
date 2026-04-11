@@ -6,6 +6,23 @@ import { useTranslations } from "next-intl"
 import { signIn, signUp, signInWithGoogle } from "./actions"
 import { Button } from "@/components/ui/button"
 
+function isWebView() {
+  if (typeof navigator === "undefined") return false
+  const ua = navigator.userAgent.toLowerCase()
+  // WeChat, Weibo, 小红书, TikTok/Douyin, QQ, LINE, Instagram, Facebook
+  return /micromessenger|weibo|redbook|discover\/|aweme|douyin|qq\/|line\/|instagram|fbav|fban/.test(ua)
+}
+
+const ERROR_KEYS: Record<string, string> = {
+  already_registered: "alreadyRegistered",
+  password_invalid: "passwordInvalid",
+  signup_failed: "signupFailed",
+  email_exists_with_oauth: "emailExistsWithGoogle",
+  login_failed: "loginFailed",
+  email_not_confirmed: "emailNotConfirmed",
+  login_error: "loginError",
+}
+
 export default function LoginPage() {
   const t = useTranslations("login")
   const router = useRouter()
@@ -15,6 +32,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
+  const [inWebView, setInWebView] = useState(false)
+  const [linkCopied, setLinkCopied] = useState(false)
+
+  useEffect(() => {
+    setInWebView(isWebView())
+  }, [])
 
   // Detect LIFF callback and auto-complete LINE auth
   useEffect(() => {
@@ -35,6 +58,11 @@ export default function LoginPage() {
     else if (result.error && result.error !== "Redirecting to LINE login") setError(result.error)
   }
 
+  function translateError(errorCode: string): string {
+    const key = ERROR_KEYS[errorCode]
+    return key ? t(key) : errorCode
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -43,14 +71,20 @@ export default function LoginPage() {
     if (mode === "register") {
       const result = await signUp(email, password)
       setLoading(false)
-      if (result.error) setError(result.error)
+      if (result.error) setError(translateError(result.error))
       else setRegistered(true)
     } else {
       const result = await signIn(email, password)
       setLoading(false)
-      if (result.error) setError(result.error)
+      if (result.error) setError(translateError(result.error))
       else router.push("/app")
     }
+  }
+
+  async function handleCopyLink() {
+    await navigator.clipboard.writeText(window.location.href)
+    setLinkCopied(true)
+    setTimeout(() => setLinkCopied(false), 2000)
   }
 
   if (registered) {
@@ -75,10 +109,23 @@ export default function LoginPage() {
 
         {/* Social Login */}
         <div className="space-y-2">
-          <Button variant="outline" className="w-full gap-2" onClick={() => signInWithGoogle()}>
-            <GoogleIcon />
-            {t("googleLogin")}
-          </Button>
+          {inWebView ? (
+            <div className="space-y-2">
+              <Button variant="outline" className="w-full gap-2 opacity-50" disabled>
+                <GoogleIcon />
+                {t("googleLogin")}
+              </Button>
+              <p className="text-xs text-amber-600 text-center">{t("webviewWarning")}</p>
+              <Button variant="ghost" size="sm" className="w-full text-xs" onClick={handleCopyLink}>
+                {linkCopied ? t("linkCopied") : t("copyLink")}
+              </Button>
+            </div>
+          ) : (
+            <Button variant="outline" className="w-full gap-2" onClick={() => signInWithGoogle()}>
+              <GoogleIcon />
+              {t("googleLogin")}
+            </Button>
+          )}
           <Button variant="outline" className="w-full gap-2" onClick={handleLineLogin} disabled={loading}>
             <LineIcon />
             {t("lineLogin")}

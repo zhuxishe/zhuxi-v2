@@ -80,50 +80,60 @@
     "scripts": "剧本库"
   },
   "login": {
-    "title": "\u7AF9\u6EAA\u793E",
-    "subtitle": "\u767B\u5F55\u6216\u6CE8\u518C\u5F00\u59CB",
-    "loginTab": "\u767B\u5F55",
-    "registerTab": "\u6CE8\u518C",
-    "emailPlaceholder": "\u8BF7\u8F93\u5165\u90AE\u7BB1",
-    "passwordPlaceholder": "\u8BF7\u8F93\u5165\u5BC6\u7801",
-    "loginButton": "\u767B\u5F55",
-    "registerButton": "\u6CE8\u518C",
-    "loading": "\u8BF7\u7A0D\u5019...",
-    "googleLogin": "\u4F7F\u7528 Google \u767B\u5F55",
-    "lineLogin": "\u4F7F\u7528 LINE \u767B\u5F55",
-    "orEmail": "\u6216\u4F7F\u7528\u90AE\u7BB1",
-    "checkEmail": "\u8BF7\u67E5\u6536\u90AE\u4EF6",
-    "confirmSent": "\u786E\u8BA4\u94FE\u63A5\u5DF2\u53D1\u9001\u5230 {email}\uFF0C\u8BF7\u70B9\u51FB\u90AE\u4EF6\u4E2D\u7684\u94FE\u63A5\u5B8C\u6210\u6CE8\u518C\u3002"
+    "title": "竹溪社",
+    "subtitle": "登录或注册开始",
+    "loginTab": "登录",
+    "registerTab": "注册",
+    "emailPlaceholder": "请输入邮箱",
+    "passwordPlaceholder": "请输入密码",
+    "loginButton": "登录",
+    "registerButton": "注册",
+    "loading": "请稍候...",
+    "googleLogin": "使用 Google 登录",
+    "lineLogin": "使用 LINE 登录",
+    "orEmail": "或使用邮箱",
+    "checkEmail": "请查收邮件",
+    "confirmSent": "确认链接已发送到 {email}，请点击邮件中的链接完成注册。",
+    "webviewWarning": "请在系统浏览器中打开以使用 Google 登录",
+    "copyLink": "复制链接到浏览器",
+    "linkCopied": "链接已复制",
+    "emailExistsWithGoogle": "该邮箱已通过 Google 注册，请使用 Google 登录",
+    "alreadyRegistered": "该邮箱已注册",
+    "passwordInvalid": "密码不符合要求（至少6位）",
+    "signupFailed": "注册失败，请稍后重试",
+    "loginFailed": "邮箱或密码错误",
+    "emailNotConfirmed": "请先验证邮箱",
+    "loginError": "登录失败，请稍后重试"
   },
   "pending": {
-    "title": "\u7B49\u5F85\u5BA1\u6838\u4E2D",
-    "description": "\u4F60\u7684\u4FE1\u606F\u5DF2\u63D0\u4EA4\uFF0C\u8BF7\u7B49\u5F85\u7BA1\u7406\u5458\u5BA1\u6838\u3002\u6211\u4EEC\u4F1A\u5C3D\u5FEB\u5B89\u6392\u9762\u8BD5\u3002",
-    "editInfo": "\u7F16\u8F91\u6CE8\u518C\u4FE1\u606F",
-    "rejectedTitle": "\u672A\u901A\u8FC7\u5BA1\u6838",
-    "rejectedDescription": "\u5F88\u62B1\u6B49\uFF0C\u4F60\u7684\u7533\u8BF7\u672A\u901A\u8FC7\u3002\u5982\u6709\u7591\u95EE\u8BF7\u8054\u7CFB\u7BA1\u7406\u5458\u3002"
+    "title": "等待审核中",
+    "description": "你的信息已提交，请等待管理员审核。我们会尽快安排面试。",
+    "editInfo": "编辑注册信息",
+    "rejectedTitle": "未通过审核",
+    "rejectedDescription": "很抱歉，你的申请未通过。如有疑问请联系管理员。"
   },
   "line": {
-    "accountTitle": "LINE \u8D26\u53F7",
-    "bound": "\u5DF2\u7ED1\u5B9A",
-    "unbound": "\u672A\u7ED1\u5B9A",
-    "bindLine": "\u7ED1\u5B9A LINE",
-    "unbind": "\u89E3\u7ED1",
-    "confirmUnbind": "\u786E\u5B9A\u89E3\u7ED1 LINE \u8D26\u53F7\u5417\uFF1F",
-    "unbindSuccess": "LINE \u5DF2\u89E3\u7ED1",
-    "processing": "\u5904\u7406\u4E2D...",
-    "operationFailed": "\u64CD\u4F5C\u5931\u8D25"
+    "accountTitle": "LINE 账号",
+    "bound": "已绑定",
+    "unbound": "未绑定",
+    "bindLine": "绑定 LINE",
+    "unbind": "解绑",
+    "confirmUnbind": "确定解绑 LINE 账号吗？",
+    "unbindSuccess": "LINE 已解绑",
+    "processing": "处理中...",
+    "operationFailed": "操作失败"
   },
   "profile": {
-    "title": "\u4E2A\u4EBA\u8D44\u6599",
-    "name": "\u59D3\u540D",
-    "email": "\u90AE\u7BB1",
-    "number": "\u4F1A\u5458\u7F16\u53F7",
-    "editSupplementary": "\u7F16\u8F91\u8865\u5145\u8D44\u6599",
-    "editSupplementaryHint": "\u4F4D\u7F6E\u3001\u8BED\u8A00\u3001\u6D3B\u52A8\u504F\u597D\u3001\u793E\u4EA4\u76EE\u6807",
-    "editPersonality": "\u7F16\u8F91\u6027\u683C\u81EA\u8BC4",
-    "editPersonalityHint": "10 \u4E2A\u7EF4\u5EA6\u7684\u6027\u683C\u8BC4\u4F30",
-    "logout": "\u9000\u51FA\u767B\u5F55",
-    "language": "\u8BED\u8A00"
+    "title": "个人资料",
+    "name": "姓名",
+    "email": "邮箱",
+    "number": "会员编号",
+    "editSupplementary": "编辑补充资料",
+    "editSupplementaryHint": "位置、语言、活动偏好、社交目标",
+    "editPersonality": "编辑性格自评",
+    "editPersonalityHint": "10 个维度的性格评估",
+    "logout": "退出登录",
+    "language": "语言"
   },
   "playerLogin": {
     "title": "竹溪社",
@@ -227,11 +237,16 @@
     "communication": "沟通",
     "teamwork": "配合",
     "fun": "趣味",
-    "bad": "不好", "great": "很好",
-    "late": "经常迟到", "onTime": "非常准时",
-    "quiet": "沉默", "active": "积极",
-    "solo": "单打独斗", "teamPlayer": "团队合作",
-    "boring": "无聊", "funLabel": "有趣",
+    "bad": "不好",
+    "great": "很好",
+    "late": "经常迟到",
+    "onTime": "非常准时",
+    "quiet": "沉默",
+    "active": "积极",
+    "solo": "单打独斗",
+    "teamPlayer": "团队合作",
+    "boring": "无聊",
+    "funLabel": "有趣",
     "tags": "标签评价",
     "positiveTags": "优点",
     "negativeTags": "不足",
@@ -265,9 +280,18 @@
     "heading": "填写你的匹配偏好",
     "gameType": {
       "title": "想玩什么类型？",
-      "duo": { "label": "双人本", "desc": "1对1 深度交流" },
-      "multi": { "label": "多人本", "desc": "3-6人 热闹社交" },
-      "either": { "label": "都可以", "desc": "交给我们安排" }
+      "duo": {
+        "label": "双人本",
+        "desc": "1对1 深度交流"
+      },
+      "multi": {
+        "label": "多人本",
+        "desc": "3-6人 热闹社交"
+      },
+      "either": {
+        "label": "都可以",
+        "desc": "交给我们安排"
+      }
     },
     "gender": {
       "title": "搭档性别偏好？",
@@ -275,14 +299,24 @@
       "female": "女生搭档",
       "either": "都可以"
     },
-    "timeSlots": { "title": "你的可用时段", "hint": "选择你方便参加活动的时间段（可多选）" },
+    "timeSlots": {
+      "title": "你的可用时段",
+      "hint": "选择你方便参加活动的时间段（可多选）"
+    },
     "interestTags": "感兴趣的题材（可选）",
     "socialStyle": {
       "title": "你的社交风格（可选）",
-      "slowWarm": "慢热", "active": "活跃", "listener": "善于倾听",
-      "wideTopics": "话题广", "gentle": "温和", "competitive": "喜欢竞技"
+      "slowWarm": "慢热",
+      "active": "活跃",
+      "listener": "善于倾听",
+      "wideTopics": "话题广",
+      "gentle": "温和",
+      "competitive": "喜欢竞技"
     },
-    "message": { "title": "想对工作人员说的话（可选）", "placeholder": "比如：想和上次的搭档再玩一次..." },
+    "message": {
+      "title": "想对工作人员说的话（可选）",
+      "placeholder": "比如：想和上次的搭档再玩一次..."
+    },
     "submitting": "提交中...",
     "update": "更新问卷",
     "submit": "提交问卷",
@@ -313,7 +347,15 @@
     "afternoon": "下午",
     "evening": "晚上",
     "allDay": "全天",
-    "weekdays": { "sun": "日", "mon": "月", "tue": "火", "wed": "水", "thu": "木", "fri": "金", "sat": "土" },
+    "weekdays": {
+      "sun": "日",
+      "mon": "月",
+      "tue": "火",
+      "wed": "水",
+      "thu": "木",
+      "fri": "金",
+      "sat": "土"
+    },
     "stats": "已选 <b>{slots}</b> 个时段，覆盖 <b>{days}</b> 天"
   },
   "quiz": {
@@ -336,7 +378,11 @@
     "viewFun": "查看趣味版",
     "saveShare": "保存/分享",
     "dimensionLabels": {
-      "E": "社交能量", "A": "社交温度", "O": "探索倾向", "C": "行动节奏", "N": "情绪敏感"
+      "E": "社交能量",
+      "A": "社交温度",
+      "O": "探索倾向",
+      "C": "行动节奏",
+      "N": "情绪敏感"
     },
     "typeDescriptions": {
       "热情守护者": "你总能让身边的人感到被关注和被欢迎",

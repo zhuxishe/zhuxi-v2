@@ -80,50 +80,60 @@
     "scripts": "シナリオ"
   },
   "login": {
-    "title": "\u7AF9\u6E13\u793E",
-    "subtitle": "\u30ED\u30B0\u30A4\u30F3\u307E\u305F\u306F\u65B0\u898F\u767B\u9332",
-    "loginTab": "\u30ED\u30B0\u30A4\u30F3",
-    "registerTab": "\u65B0\u898F\u767B\u9332",
-    "emailPlaceholder": "\u30E1\u30FC\u30EB\u30A2\u30C9\u30EC\u30B9",
-    "passwordPlaceholder": "\u30D1\u30B9\u30EF\u30FC\u30C9",
-    "loginButton": "\u30ED\u30B0\u30A4\u30F3",
-    "registerButton": "\u767B\u9332",
-    "loading": "\u8AAD\u307F\u8FBC\u307F\u4E2D...",
-    "googleLogin": "Google\u3067\u30ED\u30B0\u30A4\u30F3",
-    "lineLogin": "LINE\u3067\u30ED\u30B0\u30A4\u30F3",
-    "orEmail": "\u307E\u305F\u306F\u30E1\u30FC\u30EB\u3067",
-    "checkEmail": "\u30E1\u30FC\u30EB\u3092\u3054\u78BA\u8A8D\u304F\u3060\u3055\u3044",
-    "confirmSent": "\u78BA\u8A8D\u30EA\u30F3\u30AF\u3092{email}\u306B\u9001\u4FE1\u3057\u307E\u3057\u305F\u3002\u30E1\u30FC\u30EB\u5185\u306E\u30EA\u30F3\u30AF\u3092\u30AF\u30EA\u30C3\u30AF\u3057\u3066\u767B\u9332\u3092\u5B8C\u4E86\u3057\u3066\u304F\u3060\u3055\u3044\u3002"
+    "title": "竹渓社",
+    "subtitle": "ログインまたは新規登録",
+    "loginTab": "ログイン",
+    "registerTab": "新規登録",
+    "emailPlaceholder": "メールアドレス",
+    "passwordPlaceholder": "パスワード",
+    "loginButton": "ログイン",
+    "registerButton": "登録",
+    "loading": "読み込み中...",
+    "googleLogin": "Googleでログイン",
+    "lineLogin": "LINEでログイン",
+    "orEmail": "またはメールで",
+    "checkEmail": "メールをご確認ください",
+    "confirmSent": "確認リンクを{email}に送信しました。メール内のリンクをクリックして登録を完了してください。",
+    "webviewWarning": "Google ログインにはシステムブラウザで開いてください",
+    "copyLink": "リンクをコピー",
+    "linkCopied": "コピーしました",
+    "emailExistsWithGoogle": "このメールアドレスはGoogleで登録済みです。Googleでログインしてください",
+    "alreadyRegistered": "このメールアドレスは登録済みです",
+    "passwordInvalid": "パスワードは6文字以上必要です",
+    "signupFailed": "登録に失敗しました。後でお試しください",
+    "loginFailed": "メールアドレスまたはパスワードが正しくありません",
+    "emailNotConfirmed": "メールアドレスを先に確認してください",
+    "loginError": "ログインに失敗しました。後でお試しください"
   },
   "pending": {
-    "title": "\u5BE9\u67FB\u4E2D",
-    "description": "\u60C5\u5831\u304C\u9001\u4FE1\u3055\u308C\u307E\u3057\u305F\u3002\u7BA1\u7406\u8005\u306E\u5BE9\u67FB\u3092\u304A\u5F85\u3061\u304F\u3060\u3055\u3044\u3002",
-    "editInfo": "\u767B\u9332\u60C5\u5831\u3092\u7DE8\u96C6",
-    "rejectedTitle": "\u5BE9\u67FB\u4E0D\u5408\u683C",
-    "rejectedDescription": "\u7533\u3057\u8A33\u3054\u3056\u3044\u307E\u305B\u3093\u304C\u3001\u5BE9\u67FB\u3092\u901A\u904E\u3067\u304D\u307E\u305B\u3093\u3067\u3057\u305F\u3002"
+    "title": "審査中",
+    "description": "情報が送信されました。管理者の審査をお待ちください。",
+    "editInfo": "登録情報を編集",
+    "rejectedTitle": "審査不合格",
+    "rejectedDescription": "申し訳ございませんが、審査を通過できませんでした。"
   },
   "line": {
-    "accountTitle": "LINE \u30A2\u30AB\u30A6\u30F3\u30C8",
-    "bound": "\u9023\u643A\u6E08\u307F",
-    "unbound": "\u672A\u9023\u643A",
-    "bindLine": "LINE\u3092\u9023\u643A",
-    "unbind": "\u89E3\u9664",
-    "confirmUnbind": "LINE\u30A2\u30AB\u30A6\u30F3\u30C8\u306E\u9023\u643A\u3092\u89E3\u9664\u3057\u307E\u3059\u304B\uFF1F",
-    "unbindSuccess": "LINE\u9023\u643A\u3092\u89E3\u9664\u3057\u307E\u3057\u305F",
-    "processing": "\u51E6\u7406\u4E2D...",
-    "operationFailed": "\u64CD\u4F5C\u306B\u5931\u6557\u3057\u307E\u3057\u305F"
+    "accountTitle": "LINE アカウント",
+    "bound": "連携済み",
+    "unbound": "未連携",
+    "bindLine": "LINEを連携",
+    "unbind": "解除",
+    "confirmUnbind": "LINEアカウントの連携を解除しますか？",
+    "unbindSuccess": "LINE連携を解除しました",
+    "processing": "処理中...",
+    "operationFailed": "操作に失敗しました"
   },
   "profile": {
-    "title": "\u30D7\u30ED\u30D5\u30A3\u30FC\u30EB",
-    "name": "\u6C0F\u540D",
-    "email": "\u30E1\u30FC\u30EB",
-    "number": "\u4F1A\u54E1\u756A\u53F7",
-    "editSupplementary": "\u8FFD\u52A0\u60C5\u5831\u3092\u7DE8\u96C6",
-    "editSupplementaryHint": "\u5834\u6240\u3001\u8A00\u8A9E\u3001\u6D3B\u52D5\u306E\u597D\u307F\u3001\u4EA4\u6D41\u76EE\u7684",
-    "editPersonality": "\u6027\u683C\u8A55\u4FA1\u3092\u7DE8\u96C6",
-    "editPersonalityHint": "10\u6B21\u5143\u306E\u6027\u683C\u8A55\u4FA1",
-    "logout": "\u30ED\u30B0\u30A2\u30A6\u30C8",
-    "language": "\u8A00\u8A9E"
+    "title": "プロフィール",
+    "name": "氏名",
+    "email": "メール",
+    "number": "会員番号",
+    "editSupplementary": "追加情報を編集",
+    "editSupplementaryHint": "場所、言語、活動の好み、交流目的",
+    "editPersonality": "性格評価を編集",
+    "editPersonalityHint": "10次元の性格評価",
+    "logout": "ログアウト",
+    "language": "言語"
   },
   "playerLogin": {
     "title": "竹渓社",
@@ -138,10 +148,10 @@
     "welcome": "こんにちは、{name}さん",
     "subtitle": "プロフィールを充実させて、より良いマッチング体験を",
     "profileTitle": "プロフィール完成度",
-    "identity": "\u57FA\u672C\u60C5\u5831",
-    "supplementary": "\u8FFD\u52A0\u60C5\u5831",
-    "personality": "\u6027\u683C\u8A55\u4FA1",
-    "quiz": "\u30BD\u30FC\u30B7\u30E3\u30EB\u30D1\u30FC\u30BD\u30CA\u30EA\u30C6\u30A3\u30C6\u30B9\u30C8"
+    "identity": "基本情報",
+    "supplementary": "追加情報",
+    "personality": "性格評価",
+    "quiz": "ソーシャルパーソナリティテスト"
   },
   "supplementary": {
     "title": "追加情報",
@@ -227,11 +237,16 @@
     "communication": "コミュニケーション",
     "teamwork": "チームワーク",
     "fun": "楽しさ",
-    "bad": "悪い", "great": "素晴らしい",
-    "late": "遅刻が多い", "onTime": "とても時間厳守",
-    "quiet": "静か", "active": "積極的",
-    "solo": "個人プレー", "teamPlayer": "チームプレーヤー",
-    "boring": "退屈", "funLabel": "楽しい",
+    "bad": "悪い",
+    "great": "素晴らしい",
+    "late": "遅刻が多い",
+    "onTime": "とても時間厳守",
+    "quiet": "静か",
+    "active": "積極的",
+    "solo": "個人プレー",
+    "teamPlayer": "チームプレーヤー",
+    "boring": "退屈",
+    "funLabel": "楽しい",
     "tags": "タグ評価",
     "positiveTags": "良い点",
     "negativeTags": "改善点",
@@ -265,9 +280,18 @@
     "heading": "マッチング希望を入力",
     "gameType": {
       "title": "どのタイプで遊びたい？",
-      "duo": { "label": "2人用", "desc": "1対1 じっくり交流" },
-      "multi": { "label": "多人数用", "desc": "3-6人 ワイワイ交流" },
-      "either": { "label": "どちらでも", "desc": "おまかせ" }
+      "duo": {
+        "label": "2人用",
+        "desc": "1対1 じっくり交流"
+      },
+      "multi": {
+        "label": "多人数用",
+        "desc": "3-6人 ワイワイ交流"
+      },
+      "either": {
+        "label": "どちらでも",
+        "desc": "おまかせ"
+      }
     },
     "gender": {
       "title": "パートナーの性別希望は？",
@@ -275,14 +299,24 @@
       "female": "女性パートナー",
       "either": "どちらでも"
     },
-    "timeSlots": { "title": "参加可能な時間帯", "hint": "参加できる時間帯を選んでください（複数選択可）" },
+    "timeSlots": {
+      "title": "参加可能な時間帯",
+      "hint": "参加できる時間帯を選んでください（複数選択可）"
+    },
     "interestTags": "興味のあるジャンル（任意）",
     "socialStyle": {
       "title": "あなたの交流スタイル（任意）",
-      "slowWarm": "人見知り", "active": "積極的", "listener": "聞き上手",
-      "wideTopics": "話題豊富", "gentle": "穏やか", "competitive": "競争好き"
+      "slowWarm": "人見知り",
+      "active": "積極的",
+      "listener": "聞き上手",
+      "wideTopics": "話題豊富",
+      "gentle": "穏やか",
+      "competitive": "競争好き"
     },
-    "message": { "title": "スタッフへのメッセージ（任意）", "placeholder": "例：前回のパートナーともう一度遊びたい..." },
+    "message": {
+      "title": "スタッフへのメッセージ（任意）",
+      "placeholder": "例：前回のパートナーともう一度遊びたい..."
+    },
     "submitting": "送信中...",
     "update": "アンケート更新",
     "submit": "アンケート送信",
@@ -313,7 +347,15 @@
     "afternoon": "午後",
     "evening": "夜",
     "allDay": "終日",
-    "weekdays": { "sun": "日", "mon": "月", "tue": "火", "wed": "水", "thu": "木", "fri": "金", "sat": "土" },
+    "weekdays": {
+      "sun": "日",
+      "mon": "月",
+      "tue": "火",
+      "wed": "水",
+      "thu": "木",
+      "fri": "金",
+      "sat": "土"
+    },
     "stats": "<b>{slots}</b>コマ選択済み、<b>{days}</b>日分"
   },
   "quiz": {
@@ -336,7 +378,11 @@
     "viewFun": "おもしろ版を見る",
     "saveShare": "保存/シェア",
     "dimensionLabels": {
-      "E": "社交エネルギー", "A": "社交の温かさ", "O": "探求傾向", "C": "行動リズム", "N": "感情感度"
+      "E": "社交エネルギー",
+      "A": "社交の温かさ",
+      "O": "探求傾向",
+      "C": "行動リズム",
+      "N": "感情感度"
     },
     "typeDescriptions": {
       "热情守护者": "あなたはいつも周りの人に注目され歓迎されていると感じさせます",
@@ -428,6 +474,6 @@
     "stepAcademic": "学歴情報",
     "stepInterests": "趣味・興味",
     "stepPersonality": "自己評価",
-    "successDescription": "\u3054\u8A18\u5165\u3042\u308A\u304C\u3068\u3046\u3054\u3056\u3044\u307E\u3059\u3002\u9762\u63A5\u306E\u65E5\u7A0B\u304C\u6C7A\u307E\u308A\u6B21\u7B2C\u3054\u9023\u7D61\u3044\u305F\u3057\u307E\u3059\u3002"
+    "successDescription": "ご記入ありがとうございます。面接の日程が決まり次第ご連絡いたします。"
   }
 }

@@ -20,12 +20,23 @@ interface Props {
 }
 
 function buildInitial(interests?: Record<string, unknown> | null, language?: Record<string, unknown> | null): SupplementaryFormData {
-  if (!interests && !language) return EMPTY_SUPPLEMENTARY
-  return {
+  const raw = Array.isArray(interests) ? interests[0] : interests
+  const lang = Array.isArray(language) ? language[0] : language
+  if (!raw && !lang) return EMPTY_SUPPLEMENTARY
+
+  // Merge DB values over defaults, then restore null arrays to []
+  const merged = {
     ...EMPTY_SUPPLEMENTARY,
-    ...(language ?? {}),
-    ...(interests ?? {}),
-  } as SupplementaryFormData
+    ...(lang ?? {}),
+    ...(raw ?? {}),
+  }
+  // Ensure array fields are never null (DB nulls override default [])
+  for (const key of Object.keys(EMPTY_SUPPLEMENTARY) as (keyof SupplementaryFormData)[]) {
+    if (Array.isArray(EMPTY_SUPPLEMENTARY[key]) && merged[key] == null) {
+      (merged as Record<string, unknown>)[key] = []
+    }
+  }
+  return merged as SupplementaryFormData
 }
 
 export function SupplementaryForm({ memberId: _memberId, existingInterests, existingLanguage }: Props) {

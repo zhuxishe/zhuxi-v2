@@ -43,7 +43,7 @@ export function ProfileCompleteness({ completeness }: Props) {
             <div className={cn(
               "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm transition-colors",
               done ? "text-muted-foreground" : "text-foreground",
-              !done && href && "hover:bg-muted/50 cursor-pointer"
+              href && "hover:bg-muted/50 cursor-pointer"
             )}>
               {done
                 ? <CheckCircle className="size-4 text-primary shrink-0" />
@@ -53,7 +53,7 @@ export function ProfileCompleteness({ completeness }: Props) {
             </div>
           )
 
-          if (!done && href) {
+          if (href) {
             return <Link key={key} href={href}>{content}</Link>
           }
           return <div key={key}>{content}</div>

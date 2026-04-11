@@ -33,7 +33,19 @@ export function calcCompleteness(profile: {
   member_identity: unknown
   member_language: { communication_language_pref?: string[] | null } | { communication_language_pref?: string[] | null }[] | null
   member_interests: { activity_frequency?: string | null } | { activity_frequency?: string | null }[] | null
-  member_personality: { expression_style_tags?: string[] | null } | { expression_style_tags?: string[] | null }[] | null
+  member_personality: {
+    expression_style_tags?: string[] | null
+    extroversion?: number | null
+    initiative?: number | null
+    emotional_stability?: number | null
+    warmup_speed?: string | null
+  } | {
+    expression_style_tags?: string[] | null
+    extroversion?: number | null
+    initiative?: number | null
+    emotional_stability?: number | null
+    warmup_speed?: string | null
+  }[] | null
   member_boundaries: unknown
   personality_quiz_results: { score_e?: number | null } | { score_e?: number | null }[] | null
 }): ProfileCompleteness {
@@ -54,7 +66,12 @@ export function calcCompleteness(profile: {
   const hasInterests = !!interests && !!interests.activity_frequency
   const supplementary = hasLanguage && hasInterests
 
+  // Personality is complete when key dimensions are all filled
   const hasPersonality = !!personality &&
+    personality.extroversion != null &&
+    personality.initiative != null &&
+    personality.emotional_stability != null &&
+    personality.warmup_speed != null &&
     Array.isArray(personality.expression_style_tags) &&
     personality.expression_style_tags.length > 0
 

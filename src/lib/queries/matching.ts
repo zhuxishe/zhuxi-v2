@@ -109,11 +109,14 @@ export async function fetchPlayerMatches(memberId: string) {
   validateUuids([memberId])
   const supabase = await createClient()
 
+  // 双人配对：member_a_id 或 member_b_id
+  // 多人组：group_members 包含该成员
   const { data, error } = await supabase
     .from("match_results")
     .select(`
       id, best_slot, rank, created_at, status, cancellation_status,
-      session:match_sessions (id, session_name, created_at),
+      group_members,
+      session:match_sessions!inner (id, session_name, created_at, status),
       member_a:members!match_results_member_a_id_fkey (
         id,
         member_identity (full_name, nickname, hobby_tags),
@@ -127,7 +130,8 @@ export async function fetchPlayerMatches(memberId: string) {
         member_personality (expression_style_tags, group_role_tags)
       )
     `)
-    .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId}`)
+    .eq("session.status", "confirmed")
+    .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId},group_members.cs.["${memberId}"]`)
     .order("created_at", { ascending: false })
 
   if (error) throw error

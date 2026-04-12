@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
+import { createServerClient } from "@supabase/ssr"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
 import { getSingleRelation } from "@/lib/supabase/relations"
-import { createClient } from "@/lib/supabase/server"
+import type { Database } from "@/types/database.types"
 
 /**
  * GET /login/callback
@@ -23,15 +24,49 @@ function buildRedirectUrl(req: NextRequest, path: string) {
   return new URL(path, currentUrl.origin)
 }
 
+function copyCookies(from: NextResponse, to: NextResponse) {
+  from.cookies.getAll().forEach(({ name, value, ...rest }) => {
+    to.cookies.set(name, value, rest)
+  })
+  return to
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get("code")
+  const supabaseKey =
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!code) {
     return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
   }
 
-  const supabase = await createClient()
+  if (!supabaseKey) {
+    console.error("[login/callback] missing Supabase public key")
+    return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
+  }
+
+  let authResponse = NextResponse.next({ request: req })
+  const supabase = createServerClient<Database>(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseKey,
+    {
+      cookies: {
+        getAll() {
+          return req.cookies.getAll()
+        },
+        setAll(cookiesToSet) {
+          cookiesToSet.forEach(({ name, value }) => req.cookies.set(name, value))
+
+          authResponse = NextResponse.next({ request: req })
+          cookiesToSet.forEach(({ name, value, options }) =>
+            authResponse.cookies.set(name, value, options)
+          )
+        },
+      },
+    }
+  )
 
   // Exchange the OAuth code for a session
   const { error } = await supabase.auth.exchangeCodeForSession(code)
@@ -69,8 +104,14 @@ export async function GET(req: NextRequest) {
   )
 
   if (route.action === "redirect") {
-    return NextResponse.redirect(buildRedirectUrl(req, route.to))
+    return copyCookies(
+      authResponse,
+      NextResponse.redirect(buildRedirectUrl(req, route.to))
+    )
   }
 
-  return NextResponse.redirect(buildRedirectUrl(req, "/app"))
+  return copyCookies(
+    authResponse,
+    NextResponse.redirect(buildRedirectUrl(req, "/app"))
+  )
 }

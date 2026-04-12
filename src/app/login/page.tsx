@@ -37,6 +37,12 @@ export default function LoginPage() {
 
   useEffect(() => {
     setInWebView(isWebView())
+    // Show OAuth error from callback redirect
+    const params = new URLSearchParams(window.location.search)
+    if (params.get("error") === "oauth_failed") {
+      setError(t("loginError"))
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Detect LIFF callback and auto-complete LINE auth

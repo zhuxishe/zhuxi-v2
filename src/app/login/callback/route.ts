@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
+import { resolvePlayerRoute } from "@/lib/auth/routing"
+import { getSingleRelation } from "@/lib/supabase/relations"
 import { createClient } from "@/lib/supabase/server"
 
 /**
@@ -6,14 +8,27 @@ import { createClient } from "@/lib/supabase/server"
  * Handles OAuth callback (Google) and email confirmation.
  * - Exchanges auth code for session
  * - Verifies the session is actually usable
- * - Routes new users directly to interview-form (skips /app redirect)
+ * - Uses the same route resolver as /app to avoid first-login drift
  */
+
+function buildRedirectUrl(req: NextRequest, path: string) {
+  const currentUrl = new URL(req.url)
+  const forwardedHost = req.headers.get("x-forwarded-host")
+  const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https"
+
+  if (process.env.NODE_ENV !== "development" && forwardedHost) {
+    return new URL(path, `${forwardedProto}://${forwardedHost}`)
+  }
+
+  return new URL(path, currentUrl.origin)
+}
+
 export async function GET(req: NextRequest) {
-  const { searchParams, origin } = new URL(req.url)
+  const { searchParams } = new URL(req.url)
   const code = searchParams.get("code")
 
   if (!code) {
-    return NextResponse.redirect(new URL("/login?error=oauth_failed", origin))
+    return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
   }
 
   const supabase = await createClient()
@@ -22,28 +37,40 @@ export async function GET(req: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     console.error("[login/callback] exchangeCodeForSession failed:", error.message)
-    return NextResponse.redirect(new URL("/login?error=oauth_failed", origin))
+    return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
   }
 
   // Verify the session is usable
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) {
     console.error("[login/callback] getUser failed after exchange:", userError?.message)
-    return NextResponse.redirect(new URL("/login?error=oauth_failed", origin))
+    return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
   }
 
-  // Check if this user already has a member record
-  const { data: member } = await supabase
+  const { data: member, error: memberError } = await supabase
     .from("members")
-    .select("id, status")
+    .select("id, status, member_identity(full_name)")
     .eq("user_id", user.id)
-    .single()
+    .maybeSingle()
 
-  // New user → go directly to interview form (skip /app redirect)
-  if (!member) {
-    return NextResponse.redirect(new URL("/app/interview-form", origin))
+  if (memberError) {
+    console.error("[login/callback] member lookup failed:", memberError.message)
+    return NextResponse.redirect(buildRedirectUrl(req, "/app"))
   }
 
-  // Existing user → go to app home
-  return NextResponse.redirect(new URL("/app", origin))
+  const identity = member
+    ? getSingleRelation(
+        member.member_identity as { full_name: string | null } | { full_name: string | null }[] | null
+      )
+    : null
+
+  const route = resolvePlayerRoute(
+    member ? { status: member.status, hasIdentity: !!identity } : null
+  )
+
+  if (route.action === "redirect") {
+    return NextResponse.redirect(buildRedirectUrl(req, route.to))
+  }
+
+  return NextResponse.redirect(buildRedirectUrl(req, "/app"))
 }

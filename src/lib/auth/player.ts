@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { getSingleRelation } from "@/lib/supabase/relations"
 import { redirect } from "next/navigation"
 
 export interface PlayerInfo {
@@ -8,6 +9,8 @@ export interface PlayerInfo {
   status: string
   hasIdentity: boolean
 }
+
+type MemberIdentityRow = { full_name: string | null }
 
 /** Require auth. Redirects to /login if not logged in. */
 export async function requireAuth() {
@@ -27,12 +30,14 @@ export async function getPlayerInfo(): Promise<PlayerInfo | null> {
     .from("members")
     .select("id, member_number, status, member_identity(full_name)")
     .eq("user_id", user.id)
-    .single()
+    .maybeSingle()
 
-  if (memberErr && memberErr.code !== "PGRST116") console.error("[getPlayerInfo]", memberErr)
+  if (memberErr) console.error("[getPlayerInfo]", memberErr)
   if (!member) return null
 
-  const identity = member.member_identity as { full_name: string } | null
+  const identity = getSingleRelation(
+    member.member_identity as MemberIdentityRow | MemberIdentityRow[] | null
+  )
 
   return {
     memberId: member.id,
@@ -52,12 +57,14 @@ export async function requirePlayer(): Promise<PlayerInfo> {
     .from("members")
     .select("id, member_number, status, member_identity(full_name)")
     .eq("user_id", user.id)
-    .single()
+    .maybeSingle()
 
-  if (memberErr && memberErr.code !== "PGRST116") console.error("[requirePlayer]", memberErr)
+  if (memberErr) console.error("[requirePlayer]", memberErr)
   if (!member || member.status !== "approved") redirect("/app")
 
-  const identity = member.member_identity as { full_name: string } | null
+  const identity = getSingleRelation(
+    member.member_identity as MemberIdentityRow | MemberIdentityRow[] | null
+  )
 
   return {
     memberId: member.id,

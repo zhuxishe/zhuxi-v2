@@ -430,15 +430,16 @@
     "retry": "重试"
   },
   "errors": {
-    "emailRequired": "请输入邮箱地址",
-    "emailNotRegistered": "此邮箱未注册，请联系管理员",
-    "accountNotApproved": "账号尚未通过审核，请联系管理员",
-    "roundNotFound": "轮次不存在",
-    "surveyClosed": "问卷已截止",
-    "surveyExpired": "问卷已过截止时间",
-    "noTimeSlot": "请至少选择一个可用时段",
-    "quizSubmitFailed": "提交失败，请重试",
-    "alreadyReviewed": "你已经评价过这次匹配了"
+    "saveFailed": "保存失败，请稍后重试",
+    "submitFailed": "提交失败，请稍后重试",
+    "networkError": "网络错误，请检查连接",
+    "matchNotFound": "匹配记录不存在",
+    "unauthorized": "你没有权限执行此操作",
+    "alreadyReviewed": "你已经评价过了",
+    "roundNotFound": "匹配轮次不存在",
+    "surveyClosed": "问卷已关闭",
+    "surveyExpired": "问卷已过期",
+    "noTimeSlot": "请至少选择一个时间段"
   },
   "interview": {
     "title": "竹溪社 — 面试前信息表",

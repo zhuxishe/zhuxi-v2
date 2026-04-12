@@ -430,15 +430,16 @@
     "retry": "再試行"
   },
   "errors": {
-    "emailRequired": "メールアドレスを入力してください",
-    "emailNotRegistered": "このメールアドレスは登録されていません。管理者にお問い合わせください",
-    "accountNotApproved": "アカウントはまだ承認されていません。管理者にお問い合わせください",
-    "roundNotFound": "ラウンドが見つかりません",
-    "surveyClosed": "アンケートは締め切られました",
-    "surveyExpired": "アンケートの締め切りを過ぎています",
-    "noTimeSlot": "少なくとも1つの時間帯を選んでください",
-    "quizSubmitFailed": "送信に失敗しました。もう一度お試しください",
-    "alreadyReviewed": "このマッチングは既に評価済みです"
+    "saveFailed": "保存に失敗しました。後でお試しください",
+    "submitFailed": "送信に失敗しました。後でお試しください",
+    "networkError": "ネットワークエラー。接続を確認してください",
+    "matchNotFound": "マッチング記録が見つかりません",
+    "unauthorized": "この操作の権限がありません",
+    "alreadyReviewed": "すでに評価済みです",
+    "roundNotFound": "マッチングラウンドが見つかりません",
+    "surveyClosed": "アンケートは終了しました",
+    "surveyExpired": "アンケートの期限が過ぎました",
+    "noTimeSlot": "少なくとも1つの時間帯を選択してください"
   },
   "interview": {
     "title": "竹渓社 — 面接前アンケート",

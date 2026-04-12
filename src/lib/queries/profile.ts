@@ -49,9 +49,10 @@ export function calcCompleteness(profile: {
   member_boundaries: unknown
   personality_quiz_results: { score_e?: number | null } | { score_e?: number | null }[] | null
 }): ProfileCompleteness {
-  const identity = !!profile.member_identity
-
   // Unwrap: Supabase may return array or object for 1:1 joins
+  const identityRaw = Array.isArray(profile.member_identity) ? profile.member_identity[0] : profile.member_identity
+  const identity = !!identityRaw
+
   const lang = Array.isArray(profile.member_language) ? profile.member_language[0] : profile.member_language
   const interests = Array.isArray(profile.member_interests) ? profile.member_interests[0] : profile.member_interests
   const personality = Array.isArray(profile.member_personality) ? profile.member_personality[0] : profile.member_personality

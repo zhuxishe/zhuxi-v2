@@ -19,6 +19,7 @@ interface Props {
 export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchResultId }: Props) {
   const router = useRouter()
   const t = useTranslations("reviews")
+  const tErr = useTranslations("errors")
   const positiveLabels = useTagLabels(POSITIVE_REVIEW_TAGS)
   const negativeLabels = useTagLabels(NEGATIVE_REVIEW_TAGS)
   const [overall, setOverall] = useState(3)
@@ -45,7 +46,7 @@ export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchRes
       negative_tags: negativeTags, comment,
     })
     setSubmitting(false)
-    if (result.error) setError(result.error)
+    if (result.error) setError(tErr.has(result.error) ? tErr(result.error) : result.error)
     else router.push("/app")
   }
 

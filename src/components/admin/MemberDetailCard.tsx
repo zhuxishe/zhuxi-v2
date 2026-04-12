@@ -41,11 +41,12 @@ export function MemberDetailCard({ member, identity }: Props) {
 
   const rawEvals = member.interview_evaluations
   const evals = Array.isArray(rawEvals) ? rawEvals : rawEvals ? [rawEvals] : []
-  const lang = member.member_language
-  const interests = member.member_interests
-  const personality = member.member_personality
-  const bounds = member.member_boundaries
-  const verification = member.member_verification
+  // Unwrap: Supabase 1:1 joins may return array or object
+  const lang = Array.isArray(member.member_language) ? member.member_language[0] : member.member_language
+  const interests = Array.isArray(member.member_interests) ? member.member_interests[0] : member.member_interests
+  const personality = Array.isArray(member.member_personality) ? member.member_personality[0] : member.member_personality
+  const bounds = Array.isArray(member.member_boundaries) ? member.member_boundaries[0] : member.member_boundaries
+  const verification = Array.isArray(member.member_verification) ? member.member_verification[0] : member.member_verification
 
   return (
     <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">

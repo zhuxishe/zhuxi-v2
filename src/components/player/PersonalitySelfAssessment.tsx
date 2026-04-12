@@ -18,13 +18,22 @@ interface Props {
 }
 
 function buildInitial(existing?: Record<string, unknown> | null): PersonalitySelfData {
-  if (!existing) return EMPTY_PERSONALITY
-  return { ...EMPTY_PERSONALITY, ...existing } as PersonalitySelfData
+  const raw = Array.isArray(existing) ? existing[0] : existing
+  if (!raw) return EMPTY_PERSONALITY
+  const merged = { ...EMPTY_PERSONALITY, ...raw }
+  // DB nulls override defaults — restore them
+  for (const key of Object.keys(EMPTY_PERSONALITY) as (keyof PersonalitySelfData)[]) {
+    if (merged[key] == null) {
+      (merged as Record<string, unknown>)[key] = EMPTY_PERSONALITY[key]
+    }
+  }
+  return merged as PersonalitySelfData
 }
 
 export function PersonalitySelfAssessment({ existing }: Props) {
   const router = useRouter()
   const t = useTranslations("personality")
+  const tErr = useTranslations("errors")
   const locale = useLocale()
   const [data, setData] = useState(() => buildInitial(existing))
   const [submitting, setSubmitting] = useState(false)
@@ -39,7 +48,7 @@ export function PersonalitySelfAssessment({ existing }: Props) {
     setError(null)
     const result = await submitPersonality(data)
     setSubmitting(false)
-    if (result.error) setError(result.error)
+    if (result.error) setError(tErr.has(result.error) ? tErr(result.error) : result.error)
     else router.push("/app")
   }
 

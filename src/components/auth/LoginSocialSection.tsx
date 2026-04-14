@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
+import { buildPublicUrl } from "@/lib/site-url"
 
 interface LoginSocialSectionProps {
   onError: (message: string | null) => void
@@ -44,7 +45,7 @@ export function LoginSocialSection({ onError }: LoginSocialSectionProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/login/callback`,
+          redirectTo: buildPublicUrl("/login/callback"),
           queryParams: { prompt: "consent select_account" },
         },
       })

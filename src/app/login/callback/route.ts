@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
 import { getSingleRelation } from "@/lib/supabase/relations"
+import { buildPublicUrl } from "@/lib/site-url"
 import type { Database } from "@/types/database.types"
 
 /**
@@ -13,15 +14,11 @@ import type { Database } from "@/types/database.types"
  */
 
 function buildRedirectUrl(req: NextRequest, path: string) {
-  const currentUrl = new URL(req.url)
-  const forwardedHost = req.headers.get("x-forwarded-host")
-  const forwardedProto = req.headers.get("x-forwarded-proto") ?? "https"
-
-  if (process.env.NODE_ENV !== "development" && forwardedHost) {
-    return new URL(path, `${forwardedProto}://${forwardedHost}`)
+  if (process.env.NODE_ENV !== "development") {
+    return new URL(buildPublicUrl(path))
   }
 
-  return new URL(path, currentUrl.origin)
+  return new URL(path, new URL(req.url).origin)
 }
 
 function copyCookies(from: NextResponse, to: NextResponse) {

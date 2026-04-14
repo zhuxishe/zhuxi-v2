@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { buildPublicUrl } from "@/lib/site-url"
 
 const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID!
 const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!
@@ -46,7 +47,7 @@ export async function GET(req: NextRequest) {
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: `${getBaseUrl()}/api/auth/line/callback`,
+        redirect_uri: buildPublicUrl("/api/auth/line/callback"),
         client_id: LINE_CHANNEL_ID,
         client_secret: LINE_CHANNEL_SECRET,
       }),
@@ -100,9 +101,4 @@ export async function GET(req: NextRequest) {
     const res = NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Server error")}`, req.url))
     return clearStateCookie(res)
   }
-}
-
-/** 使用环境变量，避免 Host header injection */
-function getBaseUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.zhuxishe.jp"
 }

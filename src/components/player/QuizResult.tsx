@@ -1,7 +1,8 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { RotateCcw, Share2, Sparkles } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { Download, RotateCcw, Sparkles } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import type { DimensionScores } from "@/lib/constants/personality-quiz"
@@ -37,6 +38,7 @@ function generateFunType(scores: DimensionScores, labels: TypeLabelsConfig): str
 }
 
 export function QuizResult({ scores, personalityType, dimensions: dimConfig, typeLabels, typeDescriptions, onRetake }: Props) {
+  const router = useRouter()
   const t = useTranslations("quiz")
   const cardRef = useRef<HTMLDivElement>(null)
   const [showFun, setShowFun] = useState(false)
@@ -55,24 +57,19 @@ export function QuizResult({ scores, personalityType, dimensions: dimConfig, typ
     bg: DIM_BG[key],
   }))
 
-  async function handleShare() {
+  async function handleSaveImage() {
     if (!cardRef.current) return
     try {
       const { default: html2canvas } = await import("html2canvas-pro")
       const canvas = await html2canvas(cardRef.current, { backgroundColor: null, scale: 2 })
       canvas.toBlob((blob) => {
         if (!blob) return
-        if (navigator.share) {
-          const file = new File([blob], "personality.png", { type: "image/png" })
-          navigator.share({ files: [file] }).catch(() => {})
-        } else {
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement("a")
-          a.href = url
-          a.download = "personality.png"
-          a.click()
-          URL.revokeObjectURL(url)
-        }
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement("a")
+        a.href = url
+        a.download = "personality.png"
+        a.click()
+        URL.revokeObjectURL(url)
       }, "image/png")
     } catch { /* html2canvas not available */ }
   }
@@ -144,10 +141,13 @@ export function QuizResult({ scores, personalityType, dimensions: dimConfig, typ
       </div>
 
       {/* Action buttons */}
-      <div className="flex justify-center gap-3">
-        <Button variant="outline" onClick={handleShare}>
-          <Share2 className="size-4" />
-          {t("saveShare")}
+      <div className="flex flex-wrap justify-center gap-3">
+        <Button variant="outline" onClick={handleSaveImage}>
+          <Download className="size-4" />
+          {t("saveImage")}
+        </Button>
+        <Button variant="outline" onClick={() => router.push("/app/profile")}>
+          {t("backToProfile")}
         </Button>
         {onRetake && (
           <Button variant="outline" onClick={onRetake}>

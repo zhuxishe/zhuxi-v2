@@ -1,9 +1,8 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { buildPublicUrl } from "@/lib/site-url"
 import { redirect } from "next/navigation"
-
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"
 
 export async function signUp(email: string, password: string) {
   const supabase = await createClient()
@@ -12,7 +11,7 @@ export async function signUp(email: string, password: string) {
     email: email.trim().toLowerCase(),
     password,
     options: {
-      emailRedirectTo: `${SITE_URL}/login/callback`,
+      emailRedirectTo: buildPublicUrl("/login/callback"),
     },
   })
 

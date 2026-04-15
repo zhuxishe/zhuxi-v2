@@ -32,7 +32,12 @@ export async function getPlayerInfo(): Promise<PlayerInfo | null> {
     .eq("user_id", user.id)
     .maybeSingle()
 
-  if (memberErr) console.error("[getPlayerInfo]", memberErr)
+  // PGRST116 = no rows found (normal for new users)
+  // Any other error is a DB issue — throw to trigger error boundary
+  if (memberErr && memberErr.code !== "PGRST116") {
+    console.error("[getPlayerInfo] DB error:", memberErr)
+    throw new Error("データベースエラーが発生しました")
+  }
   if (!member) return null
 
   const identity = getSingleRelation(
@@ -59,7 +64,10 @@ export async function requirePlayer(): Promise<PlayerInfo> {
     .eq("user_id", user.id)
     .maybeSingle()
 
-  if (memberErr) console.error("[requirePlayer]", memberErr)
+  if (memberErr && memberErr.code !== "PGRST116") {
+    console.error("[requirePlayer] DB error:", memberErr)
+    throw new Error("データベースエラーが発生しました")
+  }
   if (!member || member.status !== "approved") redirect("/app")
 
   const identity = getSingleRelation(

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getSingleRelation } from "@/lib/supabase/relations"
 
 /**
  * 批量获取成员名字（adminClient 绕过 RLS）
@@ -16,10 +17,7 @@ export async function fetchGroupMemberNames(
     .in("id", memberIds)
 
   return (data ?? []).map((m) => {
-    const identity = Array.isArray(m.member_identity)
-      ? m.member_identity[0]
-      : m.member_identity
-    const info = identity as Record<string, string> | null
+    const info = getSingleRelation(m.member_identity as Record<string, string> | Record<string, string>[] | null)
     return {
       id: m.id,
       name: info?.full_name ?? info?.nickname ?? "未知",

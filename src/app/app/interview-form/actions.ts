@@ -16,33 +16,30 @@ export async function submitPreInterviewForm(
   const user = await requireAuth()
   const supabase = await createClient()
 
-  // Check if member already exists for this user
-  const { data: existing } = await supabase
+  // Upsert member record — ON CONFLICT(user_id) prevents race condition
+  const { data: member, error: memberError } = await supabase
     .from("members")
+    .upsert(
+      { status: "pending", user_id: user.id, email: user.email },
+      { onConflict: "user_id", ignoreDuplicates: true }
+    )
     .select("id")
-    .eq("user_id", user.id)
     .single()
 
+  // If upsert returned nothing (ignoreDuplicates), fetch existing
   let memberId: string
-
-  if (existing) {
+  if (member) {
+    memberId = member.id
+  } else if (!memberError) {
+    const { data: existing } = await supabase
+      .from("members")
+      .select("id")
+      .eq("user_id", user.id)
+      .single()
+    if (!existing) return { success: false, error: "saveFailed" }
     memberId = existing.id
   } else {
-    // Create member record linked to auth user
-    const { data: member, error: memberError } = await supabase
-      .from("members")
-      .insert({
-        status: "pending",
-        user_id: user.id,
-        email: user.email,
-      })
-      .select("id")
-      .single()
-
-    if (memberError || !member) {
-      return { success: false, error: memberError?.message ?? "Failed" }
-    }
-    memberId = member.id
+    return { success: false, error: memberError.message }
   }
 
   // Upsert identity record

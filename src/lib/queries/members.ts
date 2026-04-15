@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { getSingleRelation } from "@/lib/supabase/relations"
 import type { MemberWithIdentity, MemberDetail } from "@/types"
 
 const MEMBER_PAGE_SIZE = 50
@@ -64,12 +65,10 @@ export async function fetchMemberBriefList() {
     .eq("status", "approved")
     .order("created_at", { ascending: false })
   return (data ?? []).map((m) => {
-    const identity = Array.isArray(m.member_identity)
-      ? m.member_identity[0]
-      : m.member_identity
+    const identity = getSingleRelation(m.member_identity as Record<string, unknown> | Record<string, unknown>[] | null)
     return {
       id: m.id,
-      name: (identity as { full_name?: string })?.full_name ?? m.id,
+      name: (identity as { full_name?: string } | null)?.full_name ?? m.id,
     }
   })
 }

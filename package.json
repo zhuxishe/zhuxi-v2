@@ -44,6 +44,9 @@
     "vitest": "^4.1.4"
   },
   "pnpm": {
+    "overrides": {
+      "axios": ">=1.15.0"
+    },
     "onlyBuiltDependencies": [
       "@swc/core",
       "@tarojs/binding",

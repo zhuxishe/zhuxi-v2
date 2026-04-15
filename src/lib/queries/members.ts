@@ -65,10 +65,12 @@ export async function fetchMemberBriefList() {
     .eq("status", "approved")
     .order("created_at", { ascending: false })
   return (data ?? []).map((m) => {
-    const identity = getSingleRelation(m.member_identity as Record<string, unknown> | Record<string, unknown>[] | null)
+    const identity = getSingleRelation(
+      m.member_identity as { full_name?: string } | { full_name?: string }[] | null
+    )
     return {
       id: m.id,
-      name: (identity as { full_name?: string } | null)?.full_name ?? m.id,
+      name: identity?.full_name ?? m.id,
     }
   })
 }

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { getSingleRelation } from "@/lib/supabase/relations"
 import type { EnrichedMember } from "@/components/admin/match-detail-types"
 
 export interface PoolMember {
@@ -68,11 +69,10 @@ export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]>
   if (mErr) throw mErr
 
   return (members ?? []).map((m) => {
-    const raw = m.member_identity
-    const identity = Array.isArray(raw) ? raw[0] : raw
-    const name = (identity as { full_name?: string; nickname?: string } | null)?.full_name
-      || (identity as { full_name?: string; nickname?: string } | null)?.nickname
-      || "未知"
+    const identity = getSingleRelation(
+      m.member_identity as { full_name?: string; nickname?: string } | { full_name?: string; nickname?: string }[] | null
+    )
+    const name = identity?.full_name || identity?.nickname || "未知"
     return {
       id: m.id,
       name,

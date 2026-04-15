@@ -17,7 +17,9 @@ export async function fetchGroupMemberNames(
     .in("id", memberIds)
 
   return (data ?? []).map((m) => {
-    const info = getSingleRelation(m.member_identity as Record<string, string> | Record<string, string>[] | null)
+    const info = getSingleRelation(
+      m.member_identity as { full_name?: string; nickname?: string } | { full_name?: string; nickname?: string }[] | null
+    )
     return {
       id: m.id,
       name: info?.full_name ?? info?.nickname ?? "未知",

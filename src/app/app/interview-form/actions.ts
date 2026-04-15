@@ -17,6 +17,8 @@ export async function submitPreInterviewForm(
   const supabase = await createClient()
 
   // Upsert member record — ON CONFLICT(user_id) prevents race condition
+  // ignoreDuplicates=true means conflicting rows are silently skipped (no update),
+  // so .single() returns PGRST116 when the row already exists.
   const { data: member, error: memberError } = await supabase
     .from("members")
     .upsert(
@@ -26,11 +28,12 @@ export async function submitPreInterviewForm(
     .select("id")
     .single()
 
-  // If upsert returned nothing (ignoreDuplicates), fetch existing
   let memberId: string
   if (member) {
+    // New user — upsert inserted successfully
     memberId = member.id
-  } else if (!memberError) {
+  } else if (memberError?.code === "PGRST116" || !memberError) {
+    // Existing user — row was skipped, fetch the existing record
     const { data: existing } = await supabase
       .from("members")
       .select("id")
@@ -39,6 +42,7 @@ export async function submitPreInterviewForm(
     if (!existing) return { success: false, error: "saveFailed" }
     memberId = existing.id
   } else {
+    // Real DB error
     return { success: false, error: memberError.message }
   }
 

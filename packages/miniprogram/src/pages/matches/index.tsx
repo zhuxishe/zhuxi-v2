@@ -1,29 +1,14 @@
 import { View, Text } from '@tarojs/components'
-import Taro, { useDidShow } from '@tarojs/taro'
+import { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { supabaseQuery, getUserIdFromToken } from '../../lib/supabase'
 import { requireAuth } from '../../lib/auth'
+import MatchCard from './MatchCard'
+import { buildMiniMatchList, type MiniMatchListItem, type MiniMatchResult } from './match-list'
 import './index.scss'
 
-interface MatchResult {
-  id: string
-  best_slot: string | null
-  rank: number | null
-  created_at: string
-  status: string | null
-  member_a_id: string
-  member_b_id: string
-}
-
-interface MatchWithPartner {
-  match: MatchResult
-  partnerName: string
-  reviewed: boolean
-}
-
 export default function Matches() {
-  const [matches, setMatches] = useState<MatchWithPartner[]>([])
-  const [myMemberId, setMyMemberId] = useState('')
+  const [matches, setMatches] = useState<MiniMatchListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
@@ -45,42 +30,36 @@ export default function Matches() {
       })
       if (!members?.length) throw new Error('未找到会员记录')
       const memberId = members[0].id
-      setMyMemberId(memberId)
 
-      // 查询作为 member_a 的匹配
-      const matchesA = await supabaseQuery<MatchResult[]>('match_results', {
-        select: 'id,best_slot,rank,created_at,status,member_a_id,member_b_id',
-        member_a_id: `eq.${memberId}`,
+      const allMatches = await supabaseQuery<MiniMatchResult[]>('match_results', {
+        select: 'id,best_slot,rank,created_at,status,member_a_id,member_b_id,group_members',
+        or: `member_a_id.eq.${memberId},member_b_id.eq.${memberId},group_members.cs.{${memberId}}`,
         order: 'created_at.desc',
       })
 
-      // 查询作为 member_b 的匹配
-      const matchesB = await supabaseQuery<MatchResult[]>('match_results', {
-        select: 'id,best_slot,rank,created_at,status,member_a_id,member_b_id',
-        member_b_id: `eq.${memberId}`,
-        order: 'created_at.desc',
-      })
+      const partnerIds = new Set<string>()
+      for (const match of allMatches || []) {
+        if (match.member_a_id !== memberId) partnerIds.add(match.member_a_id)
+        if (match.member_b_id !== memberId) partnerIds.add(match.member_b_id)
+        for (const groupMemberId of match.group_members || []) {
+          if (groupMemberId !== memberId) partnerIds.add(groupMemberId)
+        }
+      }
 
-      const allMatches = [...(matchesA || []), ...(matchesB || [])]
-
-      // 收集搭档 ID，批量查询姓名
-      const partnerIds = allMatches.map(m =>
-        m.member_a_id === memberId ? m.member_b_id : m.member_a_id
-      )
-
-      if (partnerIds.length === 0) {
+      if (allMatches.length === 0) {
         setMatches([])
         return
       }
 
-      // 批量查搭档姓名
-      const identities = await supabaseQuery<{ member_id: string; full_name: string | null; nickname: string | null }[]>(
-        'member_identity',
-        {
-          select: 'member_id,full_name,nickname',
-          member_id: `in.(${partnerIds.join(',')})`,
-        }
-      )
+      const identities = partnerIds.size > 0
+        ? await supabaseQuery<{ member_id: string; full_name: string | null; nickname: string | null }[]>(
+          'member_identity',
+          {
+            select: 'member_id,full_name,nickname',
+            member_id: `in.(${[...partnerIds].join(',')})`,
+          }
+        )
+        : []
 
       const nameMap = new Map<string, string>()
       identities?.forEach(i => {
@@ -99,16 +78,7 @@ export default function Matches() {
         reviews?.forEach(r => reviewedSet.add(r.match_result_id))
       }
 
-      const result: MatchWithPartner[] = allMatches.map(m => {
-        const partnerId = m.member_a_id === memberId ? m.member_b_id : m.member_a_id
-        return {
-          match: m,
-          partnerName: nameMap.get(partnerId) || '未知成员',
-          reviewed: reviewedSet.has(m.id),
-        }
-      })
-
-      setMatches(result)
+      setMatches(buildMiniMatchList(memberId, allMatches, nameMap, reviewedSet))
     } catch (err: any) {
       console.error('加载匹配失败:', err)
       setError(err.message || '加载失败')
@@ -141,37 +111,7 @@ export default function Matches() {
           <Text className="empty-hint">管理员发起匹配后，结果会显示在这里</Text>
         </View>
       ) : (
-        matches.map(({ match, partnerName, reviewed }) => (
-          <View key={match.id} className="match-card"
-            onClick={() => Taro.navigateTo({ url: `/pages/matches/detail?id=${match.id}` })}>
-            <View className="match-header">
-              <Text className="partner-name">{partnerName}</Text>
-              {match.best_slot && (
-                <Text className="slot-tag">{match.best_slot}</Text>
-              )}
-            </View>
-            <View className="match-meta">
-              <Text className="match-date">
-                {new Date(match.created_at).toLocaleDateString('zh-CN')}
-              </Text>
-              {match.rank != null && (
-                <Text className="match-rank">排名 #{match.rank}</Text>
-              )}
-            </View>
-            {reviewed ? (
-              <View className="review-btn reviewed">
-                <Text className="review-btn-text reviewed-text">已评价</Text>
-              </View>
-            ) : (
-              <View className="review-btn" onClick={() => {
-                const revieweeId = match.member_a_id === myMemberId ? match.member_b_id : match.member_a_id
-                Taro.navigateTo({ url: `/pages/review/index?matchId=${match.id}&revieweeId=${revieweeId}` })
-              }}>
-                <Text className="review-btn-text">评价</Text>
-              </View>
-            )}
-          </View>
-        ))
+        matches.map((item) => <MatchCard key={item.match.id} item={item} />)
       )}
     </View>
   )

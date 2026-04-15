@@ -1,5 +1,5 @@
 import { View, Text } from '@tarojs/components'
-import Taro from '@tarojs/taro'
+import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { requireAuth } from '../../lib/auth'
 import { getMemberId } from '../../lib/member'
@@ -11,6 +11,12 @@ export default function Quiz() {
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<{ questionId: number; score: number }[]>([])
   const [submitting, setSubmitting] = useState(false)
+
+  // 每次进入页面时重置状态（支持"重新测试"）
+  useDidShow(() => {
+    setCurrent(0)
+    setAnswers([])
+  })
 
   const total = QUIZ_QUESTIONS.length
   const question = QUIZ_QUESTIONS[current]

@@ -3,6 +3,7 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { supabaseQuery } from '../../lib/supabase'
 import { requireAuth } from '../../lib/auth'
+import { rewriteStorageUrl } from '../../lib/storage-url'
 import './index.scss'
 
 interface Script {
@@ -76,7 +77,7 @@ export default function Scripts() {
           {filtered.map(s => (
             <View key={s.id} className="script-card"
               onClick={() => Taro.navigateTo({ url: `/pages/scripts/detail?id=${s.id}` })}>
-              {s.cover_url && <Image className="script-cover" src={s.cover_url} mode="aspectFill" />}
+              {s.cover_url && <Image className="script-cover" src={rewriteStorageUrl(s.cover_url)!} mode="aspectFill" />}
               <View className="script-info">
                 <Text className="script-title">{s.title}</Text>
                 <View className="script-meta">

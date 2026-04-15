@@ -8,6 +8,7 @@ import { ScriptAccessPanel } from "@/components/admin/ScriptAccessPanel"
 import { ScriptPublishToggle } from "@/components/admin/ScriptPublishToggle"
 import { ScriptDeleteButton } from "@/components/admin/ScriptDeleteButton"
 import { TagBadge } from "@/components/shared/TagBadge"
+import { rewriteStorageUrl } from "@/lib/storage-url"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -41,7 +42,7 @@ export default async function AdminScriptDetailPage({ params }: Props) {
       <AdminTopBar admin={admin} title={script.title} />
       <div className="p-6 max-w-2xl space-y-4">
         {script.cover_url && (
-          <img src={script.cover_url} alt={script.title} className="w-full max-h-48 object-cover rounded-xl" />
+          <img src={rewriteStorageUrl(script.cover_url)} alt={script.title} className="w-full max-h-48 object-cover rounded-xl" />
         )}
 
         <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-3">
@@ -79,7 +80,7 @@ export default async function AdminScriptDetailPage({ params }: Props) {
             <p className="text-sm font-semibold mb-3">剧本预览</p>
             <div className="flex items-center gap-3">
               <img
-                src={script.page_images[0]}
+                src={rewriteStorageUrl(script.page_images[0])}
                 alt="第一页"
                 className="w-24 h-32 object-cover rounded border border-border"
               />

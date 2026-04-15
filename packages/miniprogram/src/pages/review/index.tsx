@@ -57,19 +57,29 @@ export default function Review() {
         return
       }
 
-      await supabaseQuery('mutual_reviews', {}, {
-        method: 'POST',
-        body: {
-          match_result_id: matchId,
-          reviewer_id: memberId,
-          reviewee_id: revieweeId,
-          ...scores,
-          would_play_again: wouldPlayAgain,
-          positive_tags: posTags,
-          negative_tags: negTags,
-          comment: comment.trim() || null,
-        },
-      })
+      try {
+        await supabaseQuery('mutual_reviews', {}, {
+          method: 'POST',
+          body: {
+            match_result_id: matchId,
+            reviewer_id: memberId,
+            reviewee_id: revieweeId,
+            ...scores,
+            would_play_again: wouldPlayAgain,
+            positive_tags: posTags,
+            negative_tags: negTags,
+            comment: comment.trim() || null,
+          },
+        })
+      } catch (insertErr: any) {
+        // 数据库唯一约束冲突 → 已评价
+        if (insertErr.message?.includes('409') || insertErr.message?.includes('23505') || insertErr.message?.includes('duplicate')) {
+          Taro.showToast({ title: '你已经评价过了', icon: 'none' })
+          setSubmitting(false)
+          return
+        }
+        throw insertErr
+      }
 
       Taro.showToast({ title: '评价提交成功', icon: 'success' })
       setTimeout(() => Taro.navigateBack(), 800)

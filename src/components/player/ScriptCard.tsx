@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Users, MapPin, Banknote } from "lucide-react"
 import { TagBadge } from "@/components/shared/TagBadge"
+import { rewriteStorageUrl } from "@/lib/storage-url"
 
 interface Script {
   id: string
@@ -19,14 +20,15 @@ interface Script {
 
 export function ScriptCard({ script }: { script: Script }) {
   const t = useTranslations("scripts")
+  const coverUrl = rewriteStorageUrl(script.cover_url)
 
   return (
     <Link
       href={`/app/scripts/${script.id}`}
       className="group rounded-xl bg-card shadow-soft hover:shadow-soft-lg transition-all overflow-hidden"
     >
-      {script.cover_url ? (
-        <img src={script.cover_url} alt={script.title}
+      {coverUrl ? (
+        <img src={coverUrl} alt={script.title}
           className="aspect-[3/4] w-full object-cover group-hover:scale-[1.02] transition-transform" />
       ) : (
         <div className="aspect-[3/4] w-full bg-gradient-to-br from-sakura-light via-gold-muted to-card flex items-center justify-center p-4">

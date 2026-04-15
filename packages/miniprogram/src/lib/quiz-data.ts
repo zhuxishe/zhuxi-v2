@@ -1,4 +1,4 @@
-// ZSP-15 竹溪社社交人格量表 — 15题情景选择，覆盖5个维度（Big Five）
+// ZSP-15 zhuxishe 社交人格量表 — 15题情景选择，覆盖5个维度（Big Five）
 
 export interface QuizOption { text: string; score: number }
 export interface QuizQuestion {
@@ -9,7 +9,7 @@ export type DimensionScores = { E: number; A: number; O: number; C: number; N: n
 
 export const QUIZ_QUESTIONS: QuizQuestion[] = [
   // E: 社交能量
-  { id: 1, dimension: 'E', text: '竹溪社的周末活动，你到了现场发现大部分人你都不认识。你会——',
+  { id: 1, dimension: 'E', text: 'zhuxishe 的周末活动，你到了现场发现大部分人你都不认识。你会——',
     options: [
       { text: '主动找看起来也是一个人的同学搭话', score: 6 },
       { text: '先观察一会儿，如果有人看过来就微笑回应', score: 4.5 },
@@ -23,7 +23,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       { text: '今天有点累，但室友很想去的话就陪一下', score: 3 },
       { text: '谢了，今晚就想一个人待着充充电', score: 1.5 },
     ] },
-  { id: 3, dimension: 'E', text: '竹溪社线上发表会，主持人问「有没有人想分享最近的经历？」你——',
+  { id: 3, dimension: 'E', text: 'zhuxishe 线上发表会，主持人问「有没有人想分享最近的经历？」你——',
     options: [
       { text: '第一个开麦，正好有个有趣的故事', score: 6 },
       { text: '等别人先讲，如果氛围不错也会分享', score: 4.5 },
@@ -31,7 +31,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       { text: '安静听别人讲就好，这种场合不太想说', score: 1.5 },
     ] },
   // A: 社交温度
-  { id: 4, dimension: 'A', text: '竹溪社多人活动中，小组需要决定策划方案，大家意见不一样。你倾向于——',
+  { id: 4, dimension: 'A', text: 'zhuxishe 多人活动中，小组需要决定策划方案，大家意见不一样。你倾向于——',
     options: [
       { text: '汇总大家的想法，尝试找到一个大家都接受的方案', score: 6 },
       { text: '说出自己的想法，但如果多数人不同意就配合大家', score: 4.5 },
@@ -53,7 +53,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       { text: '找个理由委婉拒绝，借钱的事容易伤感情', score: 1.5 },
     ] },
   // O: 探索倾向
-  { id: 7, dimension: 'O', text: '竹溪社推出了一个你从没尝试过的活动类型。你——',
+  { id: 7, dimension: 'O', text: 'zhuxishe 推出了一个你从没尝试过的活动类型。你——',
     options: [
       { text: '第一时间报名，没试过的东西才有意思', score: 6 },
       { text: '先了解一下规则和流程，觉得有趣就报', score: 4.5 },
@@ -75,7 +75,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       { text: '还是点自己吃过的，不想冒险踩雷', score: 1.5 },
     ] },
   // C: 行动节奏
-  { id: 10, dimension: 'C', text: '竹溪社活动通知说「请提前10分钟到达集合点」。你通常——',
+  { id: 10, dimension: 'C', text: 'zhuxishe 活动通知说「请提前10分钟到达集合点」。你通常——',
     options: [
       { text: '提前15-20分钟到，先熟悉一下环境', score: 6 },
       { text: '提前10分钟准时到达', score: 4.5 },
@@ -97,7 +97,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
       { text: '完全不想，走到哪算哪', score: 1.5 },
     ] },
   // N: 情绪锚点
-  { id: 13, dimension: 'N', text: '竹溪社给你匹配了一个完全不认识的搭档去玩双人本。出发前你——',
+  { id: 13, dimension: 'N', text: 'zhuxishe 给你匹配了一个完全不认识的搭档去玩双人本。出发前你——',
     options: [
       { text: '反复想「万一不合拍怎么办」「会不会冷场」', score: 6 },
       { text: '有点忐忑，但告诉自己试试看', score: 4.5 },

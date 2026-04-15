@@ -1,6 +1,5 @@
 import { defineConfig, type UserConfigExport } from '@tarojs/cli'
-
-export default defineConfig<'webpack5'>(async (merge) => {
+export default defineConfig<'webpack5'>(async () => {
   const baseConfig: UserConfigExport<'webpack5'> = {
     projectName: 'zhuxi-miniprogram',
     date: '2026-4-7',

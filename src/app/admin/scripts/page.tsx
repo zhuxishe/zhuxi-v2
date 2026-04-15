@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Pagination } from "@/components/shared/Pagination"
 import { BookOpen } from "lucide-react"
+import { rewriteStorageUrl } from "@/lib/storage-url"
 
 interface Props {
   searchParams: Promise<{ page?: string }>
@@ -37,7 +38,7 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
                 className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/30 transition-all space-y-2"
               >
                 {s.cover_url && (
-                  <img src={s.cover_url} alt={s.title} className="w-full h-32 object-cover rounded-lg" />
+                  <img src={rewriteStorageUrl(s.cover_url)} alt={s.title} className="w-full h-32 object-cover rounded-lg" />
                 )}
                 <p className="text-sm font-semibold">{s.title}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">

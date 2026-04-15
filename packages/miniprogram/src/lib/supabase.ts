@@ -1,6 +1,6 @@
 import Taro from '@tarojs/taro'
 
-const SUPABASE_URL = 'https://wjjhprflldvclulistcx.supabase.co'
+const SUPABASE_URL = 'https://api.zhuxishe.com'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndqamhwcmZsbGR2Y2x1bGlzdGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzOTM3MzEsImV4cCI6MjA5MDk2OTczMX0.RwGsdyStOl0kh3H-wez0ls84RSkWhPaGXb4YVacug9M'
 
 /** 存储 session tokens */
@@ -42,20 +42,26 @@ export async function refreshSession(): Promise<string | null> {
       const res = await Taro.request({
         url: `${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`,
         method: 'POST',
+        timeout: 10000,
         header: {
           'Content-Type': 'application/json',
           'apikey': SUPABASE_ANON_KEY,
         },
         data: { refresh_token: rt },
       })
-      if (res.statusCode >= 400 || !res.data?.access_token) {
+      if (res.statusCode === 401 || res.statusCode === 403) {
+        // 明确的认证失败 → 清除 session
         clearSession()
+        return null
+      }
+      if (res.statusCode >= 400 || !res.data?.access_token) {
+        // 服务端错误(5xx)或异常响应 → 保留现有 token，不清除
         return null
       }
       saveSession({ access_token: res.data.access_token, refresh_token: res.data.refresh_token })
       return res.data.access_token as string
     } catch {
-      clearSession()
+      // 网络错误 → 保留现有 token，不强制登出
       return null
     } finally {
       _refreshPromise = null
@@ -94,6 +100,7 @@ export async function callEdgeFunction<T = unknown>(
   const res = await Taro.request({
     url: `${SUPABASE_URL}/functions/v1/${fnName}`,
     method: 'POST',
+    timeout: 15000,
     header: {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
@@ -143,14 +150,14 @@ export async function supabaseQuery<T = unknown>(
   const url = `${SUPABASE_URL}/rest/v1/${table}${queryStr ? '?' + queryStr : ''}`
   const method = (options.method || 'GET') as keyof Taro.request.Method
 
-  const res = await Taro.request({ url, method, header, data: options.body })
+  const res = await Taro.request({ url, method, timeout: 10000, header, data: options.body })
 
   // 401 → 尝试刷新 token 并重试一次
   if (res.statusCode === 401) {
     const newToken = await refreshSession()
     if (newToken) {
       header['Authorization'] = `Bearer ${newToken}`
-      const retry = await Taro.request({ url, method, header, data: options.body })
+      const retry = await Taro.request({ url, method, timeout: 10000, header, data: options.body })
       if (retry.statusCode >= 400) {
         throw new Error(retry.data?.message || `Query error: ${retry.statusCode}`)
       }
@@ -187,12 +194,12 @@ function base64UrlDecode(str: string): string {
     if (d !== -1 && base64[i + 3] !== '=') bytes.push(((c & 3) << 6) | d)
   }
 
-  // UTF-8 字节 → 字符串
+  // UTF-8 字节 → 字符串（支持多字节中文字符）
   let result = ''
   for (let i = 0; i < bytes.length; i++) {
-    result += String.fromCharCode(bytes[i])
+    result += '%' + bytes[i].toString(16).padStart(2, '0')
   }
-  return result
+  return decodeURIComponent(result)
 }
 
 export { SUPABASE_URL, SUPABASE_ANON_KEY }

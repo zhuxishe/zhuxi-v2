@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>zhuxishe</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f4ee;
+        --card: #fffdfa;
+        --text: #2f342f;
+        --muted: #6f756f;
+        --line: #dfd8cb;
+        --accent: #556b5d;
+      }
+
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: linear-gradient(180deg, #faf7f2 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      main {
+        width: min(720px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 72px 0 48px;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 32px 28px;
+        box-shadow: 0 12px 30px rgba(79, 87, 74, 0.08);
+      }
+
+      h1 {
+        margin: 0 0 12px;
+        font-size: 32px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+
+      p {
+        margin: 0;
+        line-height: 1.8;
+        color: var(--muted);
+      }
+
+      .section {
+        margin-top: 28px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+      }
+
+      .label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--text);
+        font-size: 14px;
+        font-weight: 600;
+      }
+
+      .links {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 12px;
+      }
+
+      a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      a:hover {
+        text-decoration: underline;
+      }
+
+      footer {
+        margin-top: 20px;
+        font-size: 13px;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <h1>zhuxishe</h1>
+        <p>个人记事本。</p>
+
+        <div class="section">
+          <span class="label">联系邮箱</span>
+          <a href="mailto:yunyoumaomaomao@126.com">yunyoumaomaomao@126.com</a>
+        </div>
+
+        <div class="section">
+          <span class="label">相关说明</span>
+          <div class="links">
+            <a href="/privacy">隐私政策</a>
+            <a href="/terms">用户协议</a>
+          </div>
+        </div>
+
+        <footer>
+          黑ICP备2026003405号-2
+        </footer>
+      </section>
+    </main>
+  </body>
+  </html>

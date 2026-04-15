@@ -8,11 +8,25 @@
 }
 
 .partner-name { display: block; font-size: 40px; font-weight: 600; color: #2C2C2C; margin-bottom: 24px; }
+.session-name { display: block; font-size: 24px; color: #7A7A6E; margin-bottom: 8px; }
+.group-members { display: block; font-size: 22px; color: #ABABAB; margin-bottom: 20px; line-height: 1.6; }
 
 .info-grid { display: flex; flex-wrap: wrap; gap: 16px; }
 .info-item { width: calc(50% - 8px); }
 .info-label { display: block; font-size: 22px; color: #ABABAB; }
 .info-value { display: block; font-size: 28px; color: #2C2C2C; margin-top: 4px; }
+
+.tag-groups { margin-top: 24px; }
+.tag-group { margin-top: 18px; }
+.tag-group-label { display: block; margin-bottom: 10px; font-size: 22px; color: #7A7A6E; }
+.tag-list { display: flex; flex-wrap: wrap; gap: 10px; }
+.tag-chip {
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: #F1EEE5;
+  font-size: 22px;
+  color: #5A5A50;
+}
 
 // 取消状态
 .cancel-card { border-left: 6px solid #D4A853; }
@@ -31,6 +45,13 @@
 }
 .cancel-reason { display: block; font-size: 26px; color: #7A7A6E; margin-bottom: 8px; }
 .cancel-time { display: block; font-size: 22px; color: #ABABAB; }
+.cancel-hint {
+  display: block;
+  margin-top: 10px;
+  font-size: 22px;
+  color: #D4A853;
+  &.rejected { color: #C25450; }
+}
 
 // 取消按钮
 .cancel-btn {
@@ -67,5 +88,9 @@
   background: #E7F0E9; border-radius: 16px; padding: 24px; text-align: center;
   margin-top: 8px;
   &:active { opacity: 0.8; }
+  &.reviewed {
+    background: #F7F6F2;
+  }
 }
 .review-entry-text { font-size: 30px; font-weight: 500; color: #3C6E47; }
+.reviewed-text { color: #ABABAB; }

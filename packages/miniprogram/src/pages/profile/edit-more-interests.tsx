@@ -77,9 +77,10 @@ export default function EditMoreInterests() {
     setSaving(true)
     try {
       const memberId = await getMemberId()
-      await supabaseQuery('member_interests', { member_id: `eq.${memberId}` }, {
-        method: 'PATCH',
+      await supabaseQuery('member_interests', { on_conflict: 'member_id' }, {
+        method: 'POST',
         body: {
+          member_id: memberId,
           ideal_group_size: groupSize || null,
           script_preference: scriptPref,
           non_script_preference: nonScriptPref,

@@ -8,6 +8,7 @@ import { FlipBookViewer } from "@/components/player/FlipBookViewer"
 import { Clock, Users, AlertTriangle, Eye, Lock } from "lucide-react"
 import { SCRIPT_DIFFICULTY_OPTIONS } from "@/lib/constants/scripts"
 import { localizeTag } from "@/lib/constants/tags-i18n"
+import { rewriteStorageUrl } from "@/lib/storage-url"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -31,11 +32,14 @@ export default async function ScriptDetailPage({ params }: Props) {
   const locale = await getLocale()
   const diffRaw = SCRIPT_DIFFICULTY_OPTIONS.find((d) => d.value === script.difficulty)?.label ?? script.difficulty ?? ""
   const diffLabel = localizeTag(diffRaw, locale)
+  const coverUrl = rewriteStorageUrl(script.cover_url)
+  const pdfUrl = rewriteStorageUrl(script.pdf_url)
+  const pageImages = script.page_images?.map((url) => rewriteStorageUrl(url) ?? url) ?? []
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-5 pb-24">
       {/* Cover */}
-      <CoverImage url={script.cover_url} title={script.title} />
+      <CoverImage url={coverUrl} title={script.title} />
 
       {/* Title + Author + Difficulty */}
       <div className="space-y-1.5">
@@ -88,12 +92,12 @@ export default async function ScriptDetailPage({ params }: Props) {
       <ScriptRoleList roles={script.roles as { name: string; gender?: string; description?: string }[] | null} />
 
       {/* 翻页书阅读器 / 权限控制 */}
-      {canViewFull && (script.page_images?.length ?? 0) > 0 ? (
+      {canViewFull && pageImages.length > 0 ? (
         <div className="rounded-xl overflow-hidden ring-1 ring-foreground/10">
-          <FlipBookViewer pages={script.page_images as string[]} title={script.title} />
+          <FlipBookViewer pages={pageImages} title={script.title} />
         </div>
       ) : (
-        <AccessSection canViewFull={canViewFull} pdfUrl={script.pdf_url} viewFullLabel={t("viewFull")} needAccessLabel={t("needAccess")} />
+        <AccessSection canViewFull={canViewFull} pdfUrl={pdfUrl} viewFullLabel={t("viewFull")} needAccessLabel={t("needAccess")} />
       )}
     </div>
   )

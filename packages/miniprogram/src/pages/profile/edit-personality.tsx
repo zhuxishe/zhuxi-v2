@@ -3,18 +3,13 @@ import Taro, { useDidShow } from '@tarojs/taro'
 import { useState } from 'react'
 import { supabaseQuery } from '../../lib/supabase'
 import { getMemberId } from '../../lib/member'
+import { buildMiniPersonalityForm, EMPTY_MINI_PERSONALITY } from '../../lib/personality-form'
+import { MINI_PERSONALITY_DIMENSIONS, MiniPersonalityFormData } from '../../lib/personality'
+import { PersonalityField } from './PersonalityField'
 import './edit-personality.scss'
 
-const DIMENSIONS = [
-  { key: 'extroversion', label: '外向程度', desc: '1=很内向  5=很外向' },
-  { key: 'initiative', label: '主动性', desc: '1=被动等待  5=主动出击' },
-  { key: 'emotional_stability', label: '情绪稳定', desc: '1=容易波动  5=非常稳定' },
-] as const
-
-type Scores = { extroversion: number; initiative: number; emotional_stability: number }
-
 export default function EditPersonality() {
-  const [scores, setScores] = useState<Scores>({ extroversion: 0, initiative: 0, emotional_stability: 0 })
+  const [form, setForm] = useState<MiniPersonalityFormData>(EMPTY_MINI_PERSONALITY)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
 
@@ -24,17 +19,10 @@ export default function EditPersonality() {
     try {
       const memberId = await getMemberId()
       const rows = await supabaseQuery<any[]>('member_personality', {
-        select: 'extroversion,initiative,emotional_stability',
+        select: 'extroversion,initiative,expression_style_tags,group_role_tags,warmup_speed,planning_style,coop_compete_tendency,emotional_stability,boundary_strength,reply_speed',
         member_id: `eq.${memberId}`,
       })
-      if (rows?.length) {
-        const d = rows[0]
-        setScores({
-          extroversion: d.extroversion || 0,
-          initiative: d.initiative || 0,
-          emotional_stability: d.emotional_stability || 0,
-        })
-      }
+      setForm(buildMiniPersonalityForm(rows?.[0]))
     } catch (err) {
       console.error('加载数据失败:', err)
     } finally {
@@ -42,21 +30,26 @@ export default function EditPersonality() {
     }
   }
 
-  const setScore = (key: keyof Scores, val: number) => {
-    setScores(prev => ({ ...prev, [key]: val }))
+  const setField = <K extends keyof MiniPersonalityFormData>(key: K, value: MiniPersonalityFormData[K]) => {
+    setForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  const toggleMulti = (key: 'expression_style_tags' | 'group_role_tags', option: string) => {
+    setForm((prev) => ({
+      ...prev,
+      [key]: prev[key].includes(option)
+        ? prev[key].filter((item) => item !== option)
+        : [...prev[key], option],
+    }))
   }
 
   const handleSave = async () => {
-    if (!scores.extroversion || !scores.initiative || !scores.emotional_stability) {
-      Taro.showToast({ title: '请完成所有评分', icon: 'none' })
-      return
-    }
     setSaving(true)
     try {
       const memberId = await getMemberId()
       await supabaseQuery('member_personality', { on_conflict: 'member_id' }, {
         method: 'POST',
-        body: { member_id: memberId, ...scores },
+        body: { member_id: memberId, ...form },
       })
       Taro.showToast({ title: '保存成功', icon: 'success' })
       setTimeout(() => Taro.navigateBack(), 800)
@@ -75,22 +68,16 @@ export default function EditPersonality() {
     <View className="edit-page">
       <View className="form-card">
         <Text className="section-title">性格自评</Text>
-        <Text className="section-desc">请根据自我感觉，为以下维度打分（1-5）</Text>
-
-        {DIMENSIONS.map(dim => (
-          <View key={dim.key} className="score-section">
-            <Text className="score-label">{dim.label}</Text>
-            <Text className="score-desc">{dim.desc}</Text>
-            <View className="score-select">
-              {[1, 2, 3, 4, 5].map(n => (
-                <View key={n}
-                  className={`score-dot ${scores[dim.key] === n ? 'active' : ''}`}
-                  onClick={() => setScore(dim.key, n)}>
-                  <Text className="score-dot-text">{n}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
+        <Text className="section-desc">可先保存当前填写内容，后续再补全 10 个维度</Text>
+        {MINI_PERSONALITY_DIMENSIONS.map((dimension) => (
+          <PersonalityField
+            key={dimension.key}
+            dimension={dimension}
+            value={form[dimension.key]}
+            onSliderChange={(value) => setField(dimension.key as 'extroversion' | 'initiative' | 'emotional_stability', value)}
+            onSingleChange={(value) => setField(dimension.key as 'warmup_speed' | 'planning_style' | 'coop_compete_tendency' | 'boundary_strength' | 'reply_speed', value)}
+            onMultiToggle={(value) => toggleMulti(dimension.key as 'expression_style_tags' | 'group_role_tags', value)}
+          />
         ))}
       </View>
 

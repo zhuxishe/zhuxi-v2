@@ -16,6 +16,7 @@ export default defineAppConfig({
     'pages/scripts/detail',
     'pages/interview/index',
     'pages/survey/index',
+    'pages/survey/success',
     'pages/activities/index',
     'pages/matches/detail',
   ],
@@ -42,7 +43,7 @@ export default defineAppConfig({
   window: {
     backgroundTextStyle: 'light',
     navigationBarBackgroundColor: '#3C6E47',
-    navigationBarTitleText: '竹溪社',
+    navigationBarTitleText: 'zhuxishe',
     navigationBarTextStyle: 'white',
   },
 })

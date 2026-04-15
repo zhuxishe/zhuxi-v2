@@ -103,7 +103,7 @@ export default function Interview() {
   return (
     <View className="interview-page">
       <View className="steps-bar">
-        {STEPS.map((s, i) => (
+        {STEPS.map((_, i) => (
           <View key={i} className={`step-dot ${i === step ? 'active' : i < step ? 'done' : ''}`}>
             <Text className="step-num">{i + 1}</Text>
           </View>

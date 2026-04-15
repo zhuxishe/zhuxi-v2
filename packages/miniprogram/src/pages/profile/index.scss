@@ -48,6 +48,63 @@
   color: #ABABAB;
 }
 
+.stats-grid {
+  display: flex;
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.stat-card {
+  flex: 1;
+  padding: 20px 12px;
+  border-radius: 16px;
+  background: #F7F6F2;
+  text-align: center;
+}
+
+.stat-value {
+  display: block;
+  font-size: 34px;
+  font-weight: 600;
+  color: #2C2C2C;
+}
+
+.stat-label {
+  display: block;
+  margin-top: 8px;
+  font-size: 22px;
+  color: #7A7A6E;
+}
+
+.round-card-name {
+  display: block;
+  margin-top: 12px;
+  font-size: 32px;
+  font-weight: 600;
+  color: #2C2C2C;
+}
+
+.round-card-status {
+  display: block;
+  margin-top: 12px;
+  font-size: 24px;
+
+  &.done {
+    color: #3C6E47;
+  }
+
+  &.todo {
+    color: #D4A853;
+  }
+}
+
+.round-card-deadline {
+  display: block;
+  margin-top: 10px;
+  font-size: 22px;
+  color: #7A7A6E;
+}
+
 // 信息行
 .info-row {
   display: flex;

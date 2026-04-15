@@ -1,6 +1,7 @@
-import { View, Text } from '@tarojs/components'
+import { View, Text, Image } from '@tarojs/components'
 import Taro, { useRouter } from '@tarojs/taro'
 import { DIMENSION_LABELS } from '../../lib/quiz-data'
+import { getMiniQuizImage } from '../../lib/quiz-images'
 import './result.scss'
 
 const DIMENSIONS = ['E', 'A', 'O', 'C', 'N'] as const
@@ -18,11 +19,16 @@ export default function QuizResult() {
   }
 
   const personalityType = decodeURIComponent(type || '')
+  const illustration = getMiniQuizImage(personalityType)
 
   return (
     <View className="result-page">
       <View className="result-card">
         <Text className="result-title">测试完成</Text>
+
+        {illustration && (
+          <Image className="result-illustration" src={illustration} mode="widthFix" />
+        )}
 
         {personalityType && (
           <View className="type-badge">

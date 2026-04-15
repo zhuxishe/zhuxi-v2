@@ -1,6 +1,7 @@
 import { getTranslations } from "next-intl/server"
 import { Users, MapPin, Wallet } from "lucide-react"
 import { fetchLandingScripts } from "@/lib/queries/scripts"
+import { rewriteStorageUrl } from "@/lib/storage-url"
 
 export async function ScriptsSection() {
   const t = await getTranslations("home")
@@ -31,7 +32,7 @@ export async function ScriptsSection() {
                 <div className="aspect-[4/5] bg-muted relative overflow-hidden">
                   {script.cover_url ? (
                     <img
-                      src={script.cover_url}
+                      src={rewriteStorageUrl(script.cover_url)}
                       alt={script.title}
                       loading="lazy"
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"

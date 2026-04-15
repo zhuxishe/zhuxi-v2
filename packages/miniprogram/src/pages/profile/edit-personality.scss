@@ -5,6 +5,7 @@
   font-size: 24px;
   color: #7A7A6E;
   margin-bottom: 24px;
+  line-height: 1.7;
 }
 
 .score-section {
@@ -26,9 +27,22 @@
   margin-bottom: 16px;
 }
 
+.slider-hints {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.slider-hint {
+  font-size: 22px;
+  color: #ABABAB;
+}
+
 .score-select {
   display: flex;
   gap: 20px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
 }
 
 .score-dot {
@@ -49,5 +63,28 @@
 
 .score-dot-text {
   font-size: 28px;
+  color: #2C2C2C;
+}
+
+.tag-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.tag {
+  padding: 14px 24px;
+  background: #F7F6F2;
+  border-radius: 12px;
+  border: 2px solid #E8E6E0;
+
+  &.active {
+    background: #E7F0E9;
+    border-color: #3C6E47;
+  }
+}
+
+.tag-text {
+  font-size: 26px;
   color: #2C2C2C;
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { addAdminWhitelist, removeAdmin, fetchAdminList } from "@/app/admin/users/actions"
 import { Button } from "@/components/ui/button"
 import { Trash2, UserPlus, Shield, ShieldCheck } from "lucide-react"
@@ -14,14 +14,16 @@ interface AdminRow {
   created_at: string
 }
 
-export function AdminUserList() {
-  const [admins, setAdmins] = useState<AdminRow[]>([])
+interface Props {
+  initialAdmins: AdminRow[]
+}
+
+export function AdminUserList({ initialAdmins }: Props) {
+  const [admins, setAdmins] = useState<AdminRow[]>(initialAdmins)
   const [email, setEmail] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
-
-  useEffect(() => { loadList() }, [])
 
   async function loadList() {
     const result = await fetchAdminList()
@@ -36,13 +38,13 @@ export function AdminUserList() {
     setLoading(false)
     if (result.error) { setError(result.error); return }
     setEmail("")
-    loadList()
+    await loadList()
   }
 
   async function handleRemove(id: string) {
     const result = await removeAdmin(id)
     if (result.error) { setError(result.error); return }
-    loadList()
+    await loadList()
   }
 
   return (

@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { notFound } from "next/navigation"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchScript, checkScriptAccess } from "@/lib/queries/scripts"
@@ -107,7 +108,16 @@ export default async function ScriptDetailPage({ params }: Props) {
 
 function CoverImage({ url, title }: { url: string | null; title: string }) {
   if (url) {
-    return <img src={url} alt={title} className="aspect-[3/4] w-full object-cover rounded-xl" />
+    return (
+      <Image
+        src={url}
+        alt={title}
+        width={900}
+        height={1200}
+        sizes="(min-width: 1024px) 32rem, 100vw"
+        className="aspect-[3/4] w-full rounded-xl object-cover"
+      />
+    )
   }
   return (
     <div className="aspect-[3/4] w-full bg-gradient-to-br from-primary/20 to-primary/5 rounded-xl flex items-center justify-center p-8">

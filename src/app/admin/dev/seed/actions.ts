@@ -103,7 +103,7 @@ export async function generateTestData(count: number): Promise<SeedResult> {
 
 // ── Helpers ──
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function insertIdentity(db: any, memberId: string, name: string) {
   return db.from("member_identity").insert({
     member_id: memberId,
@@ -121,7 +121,7 @@ function insertIdentity(db: any, memberId: string, name: string) {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function insertInterests(db: any, memberId: string) {
   return db.from("member_interests").insert({
     member_id: memberId,
@@ -133,7 +133,7 @@ function insertInterests(db: any, memberId: string) {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function insertPersonality(db: any, memberId: string) {
   return db.from("member_personality").insert({
     member_id: memberId,
@@ -146,7 +146,7 @@ function insertPersonality(db: any, memberId: string) {
   })
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function insertBoundaries(db: any, memberId: string) {
   return db.from("member_boundaries").insert({
     member_id: memberId,

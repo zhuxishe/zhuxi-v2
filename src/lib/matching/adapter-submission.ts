@@ -11,9 +11,9 @@ function normalizeGender(g: string | null): string | null {
 
 import type { MatchCandidate } from "./types"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type MemberRow = Record<string, any>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type SubmissionRow = Record<string, any>
 
 /**

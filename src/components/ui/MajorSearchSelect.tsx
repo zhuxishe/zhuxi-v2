@@ -8,7 +8,7 @@ interface Major {
   en: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const majors: Major[] = require("@/data/majors.json")
 
 interface Props {

@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useRef, useState, useCallback } from "react"
 
 interface Props {
@@ -57,10 +58,13 @@ export function ScriptCoverUpload({ coverUrl, onUpload }: Props) {
       />
 
       {displayUrl ? (
-        <img
+        <Image
           src={displayUrl}
           alt="封面预览"
-          className="absolute inset-0 h-full w-full rounded-xl object-cover"
+          fill
+          unoptimized
+          sizes="200px"
+          className="rounded-xl object-cover"
         />
       ) : (
         <div className="flex flex-col items-center gap-2 p-4 text-center">

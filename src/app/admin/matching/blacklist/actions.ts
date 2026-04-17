@@ -22,7 +22,7 @@ export async function searchMembersForBlacklist(query: string) {
   if (!allData) return []
 
   const lower = q.toLowerCase()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return (allData as any[])
     .filter((m) => {
       const name = m.member_identity?.full_name ?? ""

@@ -14,7 +14,7 @@ const GENDER_PREFS = ["男", "女", "都可以"] as const
 const SLOTS = ["上午", "下午", "晚上"] as const
 const SOCIAL_STYLES = ["慢热", "活跃", "善于倾听", "话题广", "温和", "喜欢竞技"] as const
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type Sub = Record<string, any>
 
 interface Props {

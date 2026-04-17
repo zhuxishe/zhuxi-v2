@@ -9,7 +9,7 @@ interface University {
   short?: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const universities: University[] = require("@/data/universities.json")
 
 interface Props {

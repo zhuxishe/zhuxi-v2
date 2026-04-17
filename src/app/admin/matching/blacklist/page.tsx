@@ -47,7 +47,7 @@ export default async function BlacklistPage() {
               </thead>
               <tbody className="divide-y">
                 {blacklist.map((row) => {
-                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                   
                   const r = row as any
                   const nameA =
                     r.member_a?.member_identity?.full_name ?? "未知"

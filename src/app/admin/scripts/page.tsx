@@ -1,4 +1,5 @@
 import Link from "next/link"
+import Image from "next/image"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchAdminScripts } from "@/lib/queries/scripts"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
@@ -38,7 +39,15 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
                 className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 hover:ring-primary/30 transition-all space-y-2"
               >
                 {s.cover_url && (
-                  <img src={rewriteStorageUrl(s.cover_url)} alt={s.title} className="w-full h-32 object-cover rounded-lg" />
+                  <div className="relative h-32 w-full overflow-hidden rounded-lg">
+                    <Image
+                      src={rewriteStorageUrl(s.cover_url)}
+                      alt={s.title}
+                      fill
+                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                      className="object-cover"
+                    />
+                  </div>
                 )}
                 <p className="text-sm font-semibold">{s.title}</p>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">

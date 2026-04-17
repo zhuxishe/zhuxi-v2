@@ -8,9 +8,9 @@ import type { MatchCandidate, Availability } from "./types"
 // Re-export for backward compatibility
 export { submissionToCandidate } from "./adapter-submission"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type MemberRow = Record<string, any>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type AnyRecord = Record<string, any>
 
 /** Supabase join 可能返回数组或对象，统一解包 */

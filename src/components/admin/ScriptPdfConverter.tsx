@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useRef, useState, useCallback } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { updatePageImages } from "@/app/admin/scripts/[id]/convert-actions"
@@ -82,9 +83,11 @@ export function ScriptPdfConverter({ scriptId, existingPages, onConverted }: Pro
 
       {(preview || hasPages) && (
         <div className="flex items-center gap-3">
-          <img
+          <Image
             src={preview ?? existingPages![0]}
             alt="第一页预览"
+            width={80}
+            height={112}
             className="w-20 h-28 object-cover rounded border border-border"
           />
           <span className="text-xs text-muted-foreground">

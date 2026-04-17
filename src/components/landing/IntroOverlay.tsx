@@ -15,7 +15,7 @@
  * DOM components (ScrollPicker, LogoReveal) update at ~10fps via throttled domFrame state.
  * During morph-only phase (225-310), no DOM updates at all.
  */
-import { useEffect, useRef, useState, useCallback } from "react"
+import { useEffect, useRef, useState, useCallback, useSyncExternalStore } from "react"
 import { useLocale } from "next-intl"
 import { interpolate } from "./intro/animation-utils"
 import { projectUniversities, computeNetworkParticles, buildScrollOrder } from "./intro/university-data"
@@ -38,6 +38,16 @@ function getPhase(f: number): Phase {
   return "network"
 }
 
+function subscribeReducedMotion(callback: () => void) {
+  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+  mediaQuery.addEventListener("change", callback)
+  return () => mediaQuery.removeEventListener("change", callback)
+}
+
+function getReducedMotionSnapshot() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+}
+
 export function IntroOverlay() {
   const locale = useLocale()
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -45,19 +55,19 @@ export function IntroOverlay() {
   const startRef = useRef(0)
   const frameRef = useRef(0)
   const sizeRef = useRef({ w: 1280, h: 720 })
-  const scrollOrderRef = useRef<ReturnType<typeof buildScrollOrder>>([])
 
   const [hidden, setHidden] = useState(false)
   const [phase, setPhase] = useState<Phase>("network")
   const [domFrame, setDomFrame] = useState(0)
+  const [viewport, setViewport] = useState({ w: 1280, h: 720 })
+  const [scrollOrder, setScrollOrder] = useState<ReturnType<typeof buildScrollOrder>>([])
   const lastDomUpdateRef = useRef(0)
 
-  // prefers-reduced-motion: skip animation entirely
-  const [reducedMotion, setReducedMotion] = useState(false)
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)")
-    if (mq.matches) setReducedMotion(true)
-  }, [])
+  const reducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    () => false,
+  )
 
   const done = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
@@ -72,7 +82,9 @@ export function IntroOverlay() {
 
     const resize = () => {
       const dpr = window.devicePixelRatio || 1
-      sizeRef.current = { w: window.innerWidth, h: window.innerHeight }
+      const next = { w: window.innerWidth, h: window.innerHeight }
+      sizeRef.current = next
+      setViewport(next)
       canvas.width = sizeRef.current.w * dpr
       canvas.height = sizeRef.current.h * dpr
       canvas.style.width = `${sizeRef.current.w}px`
@@ -90,8 +102,7 @@ export function IntroOverlay() {
     const targets = generateLogoTargets(sourceParticles.length, logoCX, logoCY, LOGO_SIZE)
     const particles = initParticles(sourceParticles, targets)
 
-    // Cache scrollOrder in ref once
-    scrollOrderRef.current = buildScrollOrder(screenPos)
+    setScrollOrder(buildScrollOrder(screenPos))
 
     // 手机竖版：跳过网络节点阶段，直接从粒子聚拢（frame 200）开始
     const MOBILE_START_FRAME = 200
@@ -156,21 +167,21 @@ export function IntroOverlay() {
 
   if (hidden || reducedMotion) return null
 
-  const { w, h } = sizeRef.current
+  const { w, h } = viewport
   const logoCX = w / 2
   const logoCY = h * 0.38
   const logoProgress = interpolate(domFrame, [310, 400], [0, 1])
   const fadeOp = domFrame >= 400 ? interpolate(domFrame, [400, 420], [1, 0]) : 1
 
   return (
-    <div className="fixed inset-0 z-50" style={{
+    <div className="fixed inset-0 z-[100] isolate" style={{
       backgroundColor: BG, opacity: fadeOp,
     }}>
-      <canvas ref={canvasRef} className="absolute inset-0" />
+      <canvas ref={canvasRef} className="absolute inset-0 pointer-events-none" />
 
       {/* ScrollPicker: visible during network phase */}
       {phase === "network" && (
-        <ScrollPicker scrollOrder={scrollOrderRef.current} frame={domFrame} />
+        <ScrollPicker scrollOrder={scrollOrder} frame={domFrame} />
       )}
 
       {/* LogoReveal: DOM layer, starts at logo phase */}
@@ -180,7 +191,8 @@ export function IntroOverlay() {
 
       {/* Skip button */}
       <button onClick={done}
-        className="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 text-xs sm:text-sm z-20
+        className="absolute bottom-6 right-6 sm:bottom-8 sm:right-8 text-xs sm:text-sm z-[110]
+          pointer-events-auto rounded-full bg-[#f7f3eb]/90 px-3 py-1.5 shadow-sm
           text-[#6b7c6b]/40 hover:text-[#2d3a2e] active:text-[#2d3a2e] transition-colors">
         {locale === "ja" ? "スキップ" : "跳过"} &rarr;
       </button>

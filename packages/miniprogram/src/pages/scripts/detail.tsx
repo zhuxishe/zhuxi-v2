@@ -16,7 +16,14 @@ export default function ScriptDetailPage() {
   const [loading, setLoading] = useState(true)
   const [canViewFull, setCanViewFull] = useState(false)
   const [openingPdf, setOpeningPdf] = useState(false)
-  useDidShow(() => { if (id) loadScript() })
+  useDidShow(() => {
+    if (!id) {
+      setLoading(false)
+      setScript(null)
+      return
+    }
+    void loadScript()
+  })
 
   const loadScript = async () => {
     try {

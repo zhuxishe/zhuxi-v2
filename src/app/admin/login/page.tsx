@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useSearchParams, useRouter } from "next/navigation"
+import { useRouter } from "next/navigation"
 import { loginAdmin, signInWithGoogleAdmin, checkAdminSession } from "./actions"
 import { Button } from "@/components/ui/button"
 
@@ -12,13 +12,15 @@ const ERROR_MESSAGES: Record<string, string> = {
 }
 
 export default function AdminLoginPage() {
-  const searchParams = useSearchParams()
   const router = useRouter()
+  const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
 
   useEffect(() => {
-    const errCode = searchParams?.get("error")
+    const params = new URLSearchParams(window.location.search)
+    const errCode = params.get("error")
     if (errCode && ERROR_MESSAGES[errCode]) {
       setError(ERROR_MESSAGES[errCode])
     }
@@ -29,9 +31,13 @@ export default function AdminLoginPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  async function handleSubmit(formData: FormData) {
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
     setPending(true)
     setError(null)
+    const formData = new FormData()
+    formData.set("email", email)
+    formData.set("password", password)
     const result = await loginAdmin(formData)
     if (result?.error) {
       setError(result.error)
@@ -58,13 +64,15 @@ export default function AdminLoginPage() {
           </div>
         </div>
 
-        <form action={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="text-sm font-medium">邮箱</label>
             <input
               name="email"
               type="email"
               required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               placeholder="admin@zhuxishe.com"
             />
@@ -75,6 +83,8 @@ export default function AdminLoginPage() {
               name="password"
               type="password"
               required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full mt-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
           </div>

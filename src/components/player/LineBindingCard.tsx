@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { buildPublicUrl } from "@/lib/site-url"
@@ -14,16 +14,13 @@ interface Props {
 export function LineBindingCard({ lineUserId: initial }: Props) {
   const searchParams = useSearchParams()
   const t = useTranslations("line")
+  const success = searchParams?.get("line_success")
+  const error = searchParams?.get("line_error")
   const [loading, setLoading] = useState(false)
-  const [bound, setBound] = useState(!!initial)
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
-
-  useEffect(() => {
-    const success = searchParams?.get("line_success")
-    const error = searchParams?.get("line_error")
-    if (success) { setMsg({ ok: true, text: success }); setBound(true) }
-    else if (error) { setMsg({ ok: false, text: error }) }
-  }, [searchParams])
+  const [bound, setBound] = useState(() => !!initial || !!success)
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(() =>
+    success ? { ok: true, text: success } : error ? { ok: false, text: error } : null,
+  )
 
   function handleBind() {
     // 用 crypto.getRandomValues 生成不可预测的 state，防 CSRF

@@ -1,14 +1,16 @@
 import Link from "next/link"
+import Image from "next/image"
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
 import { fetchScript } from "@/lib/queries/scripts"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
-import { ScriptAccessPanel } from "@/components/admin/ScriptAccessPanel"
+import { ScriptAccessPanel, type AccessRecord } from "@/components/admin/ScriptAccessPanel"
 import { ScriptPublishToggle } from "@/components/admin/ScriptPublishToggle"
 import { ScriptDeleteButton } from "@/components/admin/ScriptDeleteButton"
 import { TagBadge } from "@/components/shared/TagBadge"
 import { rewriteStorageUrl } from "@/lib/storage-url"
+import { fetchScriptAccessList } from "./actions"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -36,13 +38,21 @@ export default async function AdminScriptDetailPage({ params }: Props) {
     const identity = Array.isArray(m.member_identity) ? m.member_identity[0] : m.member_identity
     return { id: m.id, name: (identity as { full_name?: string })?.full_name ?? m.id, memberNumber: m.member_number }
   })
+  const accessResult = await fetchScriptAccessList(id)
 
   return (
     <div>
       <AdminTopBar admin={admin} title={script.title} />
       <div className="p-6 max-w-2xl space-y-4">
         {script.cover_url && (
-          <img src={rewriteStorageUrl(script.cover_url)} alt={script.title} className="w-full max-h-48 object-cover rounded-xl" />
+          <Image
+            src={rewriteStorageUrl(script.cover_url)}
+            alt={script.title}
+            width={1200}
+            height={480}
+            sizes="(min-width: 1024px) 42rem, 100vw"
+            className="h-auto w-full max-h-48 rounded-xl object-cover"
+          />
         )}
 
         <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-3">
@@ -79,9 +89,11 @@ export default async function AdminScriptDetailPage({ params }: Props) {
           <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
             <p className="text-sm font-semibold mb-3">剧本预览</p>
             <div className="flex items-center gap-3">
-              <img
+              <Image
                 src={rewriteStorageUrl(script.page_images[0])}
                 alt="第一页"
+                width={96}
+                height={128}
                 className="w-24 h-32 object-cover rounded border border-border"
               />
               <span className="text-sm text-muted-foreground">
@@ -98,7 +110,7 @@ export default async function AdminScriptDetailPage({ params }: Props) {
           </div>
         ) : null}
 
-        <ScriptAccessPanel scriptId={id} allMembers={allMembers} />
+        <ScriptAccessPanel scriptId={id} allMembers={allMembers} initialAccessList={accessResult.data as AccessRecord[]} />
       </div>
     </div>
   )

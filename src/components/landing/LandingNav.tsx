@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
 import Link from "next/link"
@@ -23,7 +24,14 @@ export function LandingNav() {
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
         {/* Brand */}
         <a href="#" className="flex items-center gap-2 group">
-          <img src="/logo.svg" alt="" className="size-7 transition-transform duration-300 group-hover:rotate-6" />
+          <Image
+            src="/logo.svg"
+            alt=""
+            width={28}
+            height={28}
+            loading="eager"
+            className="size-7 transition-transform duration-300 group-hover:rotate-6"
+          />
           <span className="font-display text-lg font-bold text-primary tracking-wide">
             {t("title")}
           </span>

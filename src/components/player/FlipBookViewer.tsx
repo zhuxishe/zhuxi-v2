@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useState, useCallback, useRef } from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { useTranslations } from "next-intl"
@@ -75,13 +76,16 @@ export function FlipBookViewer({ pages, title }: Props) {
           }}
         >
           {pages.map((url, i) => (
-            <img
+            <Image
               key={i}
               src={url}
               alt={t("pageAlt", { title: title ?? "", page: i + 1 })}
+              width={900}
+              height={1200}
+              sizes="100vw"
+              priority={i === 0}
               className="w-full h-auto shrink-0"
-              draggable={false}
-              loading={Math.abs(i - current) <= 1 ? "eager" : "lazy"}
+              loading={i === 0 ? "eager" : "lazy"}
             />
           ))}
         </div>

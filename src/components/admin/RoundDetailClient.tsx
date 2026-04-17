@@ -9,9 +9,9 @@ import { SubmissionEditDialog } from "./SubmissionEditDialog"
 import { updateRoundStatus, runRoundMatching } from "@/app/admin/matching/rounds/[id]/actions"
 import { Play, Eye, EyeOff, Plus } from "lucide-react"
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type Round = Record<string, any>
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 type Sub = Record<string, any>
 
 interface Stats {

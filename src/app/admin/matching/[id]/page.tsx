@@ -25,9 +25,9 @@ export default async function MatchSessionDetailPage({ params }: Props) {
 
   // Collect member IDs for pair relationship lookup
   const memberIds = results.flatMap((r: Record<string, unknown>) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const a = (r as any).member_a?.id
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const b = (r as any).member_b?.id
     return [a, b].filter(Boolean) as string[]
   })
@@ -63,7 +63,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     for (const m of umData ?? []) unmatchedMemberMap.set(m.id, m)
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const diagnostics = (diagnosticsRaw ?? []).map((d: any) => ({
     ...d,
     memberData: unmatchedMemberMap.get(d.member_id) ?? null,
@@ -71,7 +71,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
 
   // Get time slot data: 优先从轮次问卷的 availability 读取，无轮次时从成员档案读
   const candidates = await fetchMatchCandidates()
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const roundId = (session as any).round_id as string | null
   let timeSlotData: Array<{ preferred_time_slots: string[] }> = []
 
@@ -92,7 +92,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   } else {
     // 直接匹配（测试）：从成员档案读
     timeSlotData = candidates.map((c) => ({
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       preferred_time_slots: ((c as any).member_interests?.preferred_time_slots ?? []) as string[],
     }))
   }
@@ -121,7 +121,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   // 排除已在活跃配对中的成员（防止手动配对时选到已匹配的人）
   const activeMemberIds = new Set<string>()
   for (const r of results) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     const row = r as any
     if (row.status === "cancelled") continue
     if (row.member_a_id) activeMemberIds.add(row.member_a_id)
@@ -134,7 +134,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   const allMemberOptions = candidates
     .filter((c) => !activeMemberIds.has(c.id))
     .map((c) => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       const identity = (c as any).member_identity
       const name = (Array.isArray(identity) ? identity[0] : identity)?.full_name
         || (Array.isArray(identity) ? identity[0] : identity)?.nickname

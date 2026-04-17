@@ -1,3 +1,4 @@
+import Image from "next/image"
 import { getTranslations } from "next-intl/server"
 import { Users, MapPin, Wallet } from "lucide-react"
 import { fetchLandingScripts } from "@/lib/queries/scripts"
@@ -31,10 +32,11 @@ export async function ScriptsSection() {
                 {/* Cover */}
                 <div className="aspect-[4/5] bg-muted relative overflow-hidden">
                   {script.cover_url ? (
-                    <img
+                    <Image
                       src={rewriteStorageUrl(script.cover_url)}
                       alt={script.title}
-                      loading="lazy"
+                      fill
+                      sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   ) : (

@@ -52,7 +52,7 @@ export async function fetchMatchSession(id: string) {
     }
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const groupMemberMap = new Map<string, any>()
   if (groupMemberIds.size > 0) {
     const { data: gmData } = await supabase
@@ -70,9 +70,9 @@ export async function fetchMatchSession(id: string) {
 
   const enrichedResults = (results ?? []).map((r) => ({
     ...r,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     group_member_details: Array.isArray(r.group_members) && r.group_members.length > 0
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+       
       ? (r.group_members as string[]).map((id) => groupMemberMap.get(id)).filter(Boolean) as any[]
       : null,
   }))

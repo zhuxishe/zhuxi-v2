@@ -8,7 +8,7 @@ interface Station {
   area: string
 }
 
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const stations: Station[] = require("@/data/stations.json")
 
 interface Props {

@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState } from "react"
 import { grantScriptAccess, revokeScriptAccess, fetchScriptAccessList } from "@/app/admin/scripts/[id]/actions"
 import { Button } from "@/components/ui/button"
 import { Shield, X, UserPlus, Loader2 } from "lucide-react"
 
-interface AccessRecord {
+export interface AccessRecord {
   member_id: string
   can_view_full: boolean
   member: { id: string; member_number: string | null; member_identity: { full_name: string } | null } | null
@@ -14,21 +14,27 @@ interface AccessRecord {
 interface Props {
   scriptId: string
   allMembers: { id: string; name: string; memberNumber: string | null }[]
+  initialAccessList: AccessRecord[]
 }
 
-export function ScriptAccessPanel({ scriptId, allMembers }: Props) {
-  const [accessList, setAccessList] = useState<AccessRecord[]>([])
-  const [loading, setLoading] = useState(true)
+export function ScriptAccessPanel({ scriptId, allMembers, initialAccessList }: Props) {
+  const [accessList, setAccessList] = useState<AccessRecord[]>(initialAccessList)
+  const [loading, setLoading] = useState(false)
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [granting, setGranting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
-  const loadAccess = useCallback(async () => {
-    const res = await fetchScriptAccessList(scriptId)
-    setAccessList(res.data as AccessRecord[])
-    setLoading(false)
-  }, [scriptId])
-
-  useEffect(() => { loadAccess() }, [loadAccess])
+  async function loadAccess() {
+    setLoading(true)
+    try {
+      const res = await fetchScriptAccessList(scriptId)
+      if (res.error) { setError(res.error); return }
+      setError(null)
+      setAccessList(res.data as AccessRecord[])
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const authorizedIds = new Set(accessList.map((a) => a.member_id))
   const availableMembers = allMembers.filter((m) => !authorizedIds.has(m.id))
@@ -36,15 +42,19 @@ export function ScriptAccessPanel({ scriptId, allMembers }: Props) {
   async function handleGrant() {
     if (selectedIds.length === 0) return
     setGranting(true)
-    await grantScriptAccess(scriptId, selectedIds)
-    setSelectedIds([])
+    setError(null)
+    const res = await grantScriptAccess(scriptId, selectedIds)
     setGranting(false)
-    loadAccess()
+    if (res.error) { setError(res.error); return }
+    setSelectedIds([])
+    await loadAccess()
   }
 
   async function handleRevoke(memberId: string) {
-    await revokeScriptAccess(scriptId, memberId)
-    loadAccess()
+    setError(null)
+    const res = await revokeScriptAccess(scriptId, memberId)
+    if (res.error) { setError(res.error); return }
+    await loadAccess()
   }
 
   if (loading) {
@@ -58,6 +68,7 @@ export function ScriptAccessPanel({ scriptId, allMembers }: Props) {
         <h3 className="text-sm font-semibold">访问权限管理</h3>
         <span className="text-xs text-muted-foreground">({accessList.length} 人已授权)</span>
       </div>
+      {error && <p className="text-xs text-destructive">{error}</p>}
 
       {/* 已授权列表 */}
       {accessList.length > 0 && (

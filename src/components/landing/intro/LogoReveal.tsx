@@ -8,6 +8,7 @@
  *
  * progress maps frame 310-400 to 0-1 (from parent).
  */
+import Image from "next/image"
 import { interpolate, spring } from './animation-utils'
 
 const ZX_GOLD_LIGHT = '#f0d68a'
@@ -81,14 +82,14 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
         transformOrigin: 'center center',
         opacity: fillOp,
       }}>
-        <img src="/logo-fill.svg" alt="" width={logoSize} height={logoSize} />
+        <Image src="/logo-fill.svg" alt="" width={logoSize} height={logoSize} loading="eager" />
       </div>
       {/* Black outline (stays fixed) */}
       <div className="absolute" style={{
         left: centerX - halfLogo, top: centerY - halfLogo,
         width: logoSize, height: logoSize, opacity: outlineOp,
       }}>
-        <img src="/logo-outline.svg" alt="" width={logoSize} height={logoSize} />
+        <Image src="/logo-outline.svg" alt="" width={logoSize} height={logoSize} loading="eager" />
       </div>
       {/* English title */}
       <div className="absolute flex justify-center" style={{

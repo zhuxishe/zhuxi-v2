@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Users, MapPin, Banknote } from "lucide-react"
@@ -28,8 +29,14 @@ export function ScriptCard({ script }: { script: Script }) {
       className="group rounded-xl bg-card shadow-soft hover:shadow-soft-lg transition-all overflow-hidden"
     >
       {coverUrl ? (
-        <img src={coverUrl} alt={script.title}
-          className="aspect-[3/4] w-full object-cover group-hover:scale-[1.02] transition-transform" />
+        <Image
+          src={coverUrl}
+          alt={script.title}
+          width={900}
+          height={1200}
+          sizes="(min-width: 1024px) 20rem, (min-width: 640px) 50vw, 100vw"
+          className="aspect-[3/4] w-full object-cover transition-transform group-hover:scale-[1.02]"
+        />
       ) : (
         <div className="aspect-[3/4] w-full bg-gradient-to-br from-sakura-light via-gold-muted to-card flex items-center justify-center p-4">
           <span className="heading-display text-lg text-foreground/50 text-center leading-tight line-clamp-3">

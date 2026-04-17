@@ -26,8 +26,11 @@ export default function Scripts() {
   const [genre, setGenre] = useState('全部')
 
   useDidShow(() => {
-    if (!requireAuth()) return
-    loadScripts()
+    if (!requireAuth()) {
+      setLoading(false)
+      return
+    }
+    void loadScripts()
   })
 
   const loadScripts = async () => {

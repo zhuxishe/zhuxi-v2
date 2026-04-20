@@ -7,6 +7,23 @@ import { checkGroupConstraints, groupHasAvoidPairs } from "./constraints"
 import { findGroupBestSlot } from "./match-utils"
 import { scorePair } from "./scorer"
 
+function availabilityKeys(candidate: MatchCandidate): Set<string> {
+  const keys = new Set<string>()
+  for (const [date, slots] of Object.entries(candidate.availability)) {
+    for (const slot of slots) keys.add(`${date}_${slot}`)
+  }
+  return keys
+}
+
+function intersectSharedSlots(shared: Set<string>, candidate: MatchCandidate): Set<string> {
+  const next = new Set<string>()
+  const candidateKeys = availabilityKeys(candidate)
+  for (const key of shared) {
+    if (candidateKeys.has(key)) next.add(key)
+  }
+  return next
+}
+
 function computeGroupAvgScore(
   members: MatchCandidate[],
   config: MatchingConfig,
@@ -88,9 +105,14 @@ function runMultiRound(
     if (group) {
       for (const gi of group) assigned.add(gi)
       const groupMembers = group.map((i) => candidates[i])
+      const bestSlot = findGroupBestSlot(groupMembers)
+      if (!bestSlot) {
+        for (const gi of group) assigned.delete(gi)
+        continue
+      }
       groups.push({
         members: groupMembers,
-        bestSlot: findGroupBestSlot(groupMembers),
+        bestSlot,
         avgScore: computeGroupAvgScore(groupMembers, config, pairRelations),
       })
     }
@@ -108,10 +130,10 @@ function tryBuildGroup(
   strictAvoid: boolean,
 ): number[] | null {
   const compatible: number[] = []
+  let sharedSlots = availabilityKeys(candidates[seed])
   for (let j = 0; j < n; j++) {
     if (j === seed || assigned.has(j)) continue
-    const common = getCommonSlots(candidates[seed].availability, candidates[j].availability)
-    if (common.length === 0) continue
+    if (intersectSharedSlots(sharedSlots, candidates[j]).size === 0) continue
     if (!checkGroupConstraints(candidates[j], [candidates[seed]], config, pairRelations).passed) continue
     if (strictAvoid && groupHasAvoidPairs(candidates[j], [candidates[seed]], pairRelations)) continue
     compatible.push(j)
@@ -123,14 +145,15 @@ function tryBuildGroup(
   assigned.add(seed)
 
   while (group.length < groupSize && compatible.length > 0) {
-    const bestIdx = findBestCandidate(candidates, group, compatible, assigned, config, pairRelations, strictAvoid)
-    if (bestIdx === -1) break
-    group.push(compatible[bestIdx])
-    assigned.add(compatible[bestIdx])
-    compatible.splice(bestIdx, 1)
+    const best = findBestCandidate(candidates, group, compatible, assigned, config, pairRelations, strictAvoid, sharedSlots)
+    if (!best) break
+    group.push(compatible[best.index])
+    assigned.add(compatible[best.index])
+    sharedSlots = best.sharedSlots
+    compatible.splice(best.index, 1)
   }
 
-  if (group.length >= 3) return group
+  if (group.length >= 3 && sharedSlots.size > 0) return group
 
   // Rollback
   for (const gi of group) assigned.delete(gi)
@@ -144,8 +167,9 @@ function findBestCandidate(
   config: MatchingConfig,
   pairRelations: Map<string, PairRelation> | undefined,
   strictAvoid: boolean,
-): number {
-  let bestIdx = -1
+  sharedSlots: Set<string>,
+): { index: number; sharedSlots: Set<string> } | null {
+  let best: { index: number; sharedSlots: Set<string> } | null = null
   let bestCount = -1
 
   for (let ci = 0; ci < compatible.length; ci++) {
@@ -156,18 +180,19 @@ function findBestCandidate(
     if (!checkGroupConstraints(candidates[cand], groupMembers, config, pairRelations).passed) continue
     if (strictAvoid && groupHasAvoidPairs(candidates[cand], groupMembers, pairRelations)) continue
 
+    const nextSharedSlots = intersectSharedSlots(sharedSlots, candidates[cand])
+    if (nextSharedSlots.size === 0) continue
+
     let commonCount = 0
-    let commonWithAll = true
     for (const gi of group) {
-      const common = getCommonSlots(candidates[cand].availability, candidates[gi].availability)
-      if (common.length === 0) { commonWithAll = false; break }
-      commonCount += common.length
+      commonCount += getCommonSlots(candidates[cand].availability, candidates[gi].availability).length
     }
 
-    if (commonWithAll && commonCount > bestCount) {
-      bestCount = commonCount; bestIdx = ci
+    if (commonCount > bestCount) {
+      bestCount = commonCount
+      best = { index: ci, sharedSlots: nextSharedSlots }
     }
   }
 
-  return bestIdx
+  return best
 }

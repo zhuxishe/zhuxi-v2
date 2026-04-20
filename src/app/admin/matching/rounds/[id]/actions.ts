@@ -9,6 +9,8 @@ import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { submissionToCandidate } from "@/lib/matching/adapter"
 import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
+import { getImportedHistory } from "@/lib/matching/import-metadata"
+import { mergeMatchHistory } from "@/lib/matching/round-import-utils"
 import type { MatchingConfig } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
 
@@ -68,7 +70,10 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   // submissionId = member_id，history 中的 partner name 也是 member_id，无需转换
   const candidates = submissions.map((sub) => {
     const member = Array.isArray(sub.member) ? sub.member[0] : sub.member
-    const history = historyMap.get(sub.member_id) ?? []
+    const history = mergeMatchHistory(
+      historyMap.get(sub.member_id) ?? [],
+      getImportedHistory((sub as Record<string, unknown>).import_metadata),
+    )
     return submissionToCandidate(sub, member, history)
   })
 

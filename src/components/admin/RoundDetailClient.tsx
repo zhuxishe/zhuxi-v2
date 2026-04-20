@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import { SubmissionTable } from "./SubmissionTable"
 import { RoundStatsPanel } from "./RoundStatsPanel"
 import { SubmissionEditDialog } from "./SubmissionEditDialog"
+import { RoundImportPanel } from "./RoundImportPanel"
+import { canRunRoundMatching } from "./round-detail-rules"
 import { updateRoundStatus, runRoundMatching } from "@/app/admin/matching/rounds/[id]/actions"
 import { Play, Eye, EyeOff, Plus } from "lucide-react"
 
@@ -100,7 +102,7 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
               <EyeOff className="size-4 mr-1" />截止问卷
             </Button>
           )}
-          {(round.status === "closed" || round.status === "open") && (
+          {canRunRoundMatching(round.status) && (
             <Button size="sm" onClick={handleRunMatch} disabled={loading || submissions.length < 2}>
               <Play className="size-4 mr-1" />运行匹配
             </Button>
@@ -109,6 +111,8 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+
+      <RoundImportPanel roundId={round.id} roundStatus={round.status} />
 
       {/* 统计面板 */}
       <RoundStatsPanel stats={stats} activityStart={round.activity_start} activityEnd={round.activity_end} />

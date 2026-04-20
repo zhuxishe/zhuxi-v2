@@ -2,6 +2,8 @@
  * 从 match_round_submissions 构建候选人
  */
 
+import { getImportedLegacyProfile } from "./import-metadata"
+
 /** DB stores gender as 'male'/'female'/'other'; algorithm expects '男'/'女' */
 function normalizeGender(g: string | null): string | null {
   if (g === "male") return "男"
@@ -26,6 +28,7 @@ export function submissionToCandidate(
   memberProfile: MemberRow | null,
   matchHistory: { name: string; count: number }[],
 ): MatchCandidate {
+  const importedLegacy = getImportedLegacyProfile(sub.import_metadata)
   const identity = memberProfile?.member_identity ?? {}
   const interests = memberProfile?.member_interests ?? {}
   const personality = memberProfile?.member_personality ?? {}
@@ -40,6 +43,7 @@ export function submissionToCandidate(
     ...(identity.hobby_tags ?? []),
     ...(interests.scenario_mode_pref ?? []),
     ...(interests.scenario_theme_tags ?? []),
+    ...(importedLegacy?.interest_tags ?? []),
   ]
   const mergedInterests = [...new Set([...formTags, ...profileTags])]
 
@@ -47,10 +51,11 @@ export function submissionToCandidate(
     ...(identity.personality_self_tags ?? []),
     ...(personality.expression_style_tags ?? []),
     ...(personality.group_role_tags ?? []),
+    ...(importedLegacy?.social_tags ?? []),
   ]
 
-  const level = stats.activity_count ?? 0
-  const name = identity.full_name ?? identity.nickname ?? "未知"
+  const level = stats.activity_count ?? importedLegacy?.session_count ?? 0
+  const name = identity.full_name ?? identity.nickname ?? importedLegacy?.full_name ?? "未知"
 
   return {
     submissionId: sub.member_id,
@@ -60,15 +65,15 @@ export function submissionToCandidate(
     availability,
     formInterestTags: formTags,
     formSocialStyle: sub.social_style ?? personality.warmup_speed ?? null,
-    gender: normalizeGender(identity.gender ?? null),
-    school: identity.school_name ?? null,
+    gender: normalizeGender(identity.gender ?? importedLegacy?.gender ?? null),
+    school: identity.school_name ?? importedLegacy?.school ?? null,
     interestTags: mergedInterests,
     socialTags: mergedSocial,
     level,
-    compatibilityScore: memberProfile?.attractiveness_score ?? null,
+    compatibilityScore: memberProfile?.attractiveness_score ?? importedLegacy?.compatibility_score ?? null,
     matchHistory,
-    gameMode: interests.scenario_mode_pref?.[0] ?? null,
-    hasProfile: !!identity.full_name,
+    gameMode: interests.scenario_mode_pref?.[0] ?? importedLegacy?.game_mode ?? null,
+    hasProfile: !!(identity.full_name ?? importedLegacy?.full_name),
     tabooTags: [
       ...(identity.taboo_tags ?? []),
       ...(memberProfile?.member_boundaries?.taboo_tags ?? []),

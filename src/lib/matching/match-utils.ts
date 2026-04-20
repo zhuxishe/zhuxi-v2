@@ -89,8 +89,9 @@ export function tryPair(
   }
 }
 
-/** 找组内最佳公共时段 */
-export function findGroupBestSlot(members: MatchCandidate[]): string {
+/** 严格查找组内所有成员都有的公共时段 */
+export function findStrictCommonSlot(members: MatchCandidate[]): string | null {
+  if (members.length === 0) return null
   for (const [date, slots] of Object.entries(members[0].availability)) {
     for (const slot of slots) {
       if (members.every((m) => m.availability[date]?.includes(slot))) {
@@ -98,16 +99,10 @@ export function findGroupBestSlot(members: MatchCandidate[]): string {
       }
     }
   }
-  const counts = new Map<string, number>()
-  for (const m of members) {
-    for (const [date, slots] of Object.entries(m.availability)) {
-      for (const slot of slots) {
-        const key = `${date}_${slot}`
-        counts.set(key, (counts.get(key) || 0) + 1)
-      }
-    }
-  }
-  let best = "未知时段"; let bestN = 0
-  for (const [k, v] of counts) { if (v > bestN) { best = k; bestN = v } }
-  return best
+  return null
+}
+
+/** 找组内最佳公共时段（严格模式，无 fallback） */
+export function findGroupBestSlot(members: MatchCandidate[]): string | null {
+  return findStrictCommonSlot(members)
 }

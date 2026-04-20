@@ -3,8 +3,8 @@
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
-import { Button } from "@/components/ui/button"
-import { CheckCircle, UserPlus, RefreshCw, Search, ChevronDown, ChevronRight, XCircle } from "lucide-react"
+import { Button, buttonVariants } from "@/components/ui/button"
+import { CheckCircle, UserPlus, RefreshCw, Search, ChevronDown, ChevronRight, XCircle, Download } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MatchPairCard } from "./MatchPairCard"
 import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
@@ -139,6 +139,12 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             <UserPlus className="size-3.5" /> 手动配对
           </Button>
         )}
+        <a
+          href={`/admin/matching/${session.id}/export`}
+          className={buttonVariants({ size: "sm", variant: "outline" })}
+        >
+          <Download className="size-3.5" /> 导出 Excel
+        </a>
         {session.status === "draft" && (
           <>
             <Button size="sm" variant="outline" onClick={() => {

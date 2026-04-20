@@ -227,3 +227,60 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
 6. packages/shared/ 常量共享（减少 Web/小程序双份维护）
 7. 人格测试结果页：确认配图在浏览器中正确展示
 8. （可选）清理 `public/images/personality/color_test/` 和 `public/images/personality_backup/`
+
+### 04-17 首页视频导出补记
+- 已验证：**当前首页横版可以直接导出为独立 mp4，不依赖 App**
+- 导出方式：
+  - 本地 `next build`
+  - 本地 `next start`
+  - Playwright 录制 `1920x1080`
+  - `ffmpeg` 转码为 `H.264 mp4`
+- 产物：
+  - `output/playwright/landing-export/zhuxishe-homepage-landscape-1920x1080.mp4`
+  - 原始录制：`output/playwright/landing-export/raw/page@15a175e16f4546b09c618711d14c54db.webm`
+  - 校验截图：`output/playwright/landing-export/landing-export-check.png`
+- 成片参数：
+  - `1920x1080`
+  - `18.52s`
+  - `25fps`
+  - `h264`
+- 说明：
+  - 视频内容是“当前首页顶屏 + 开场动画 → Hero 出现”的实际运行录制，不是旧 Remotion 历史导出物
+
+### 04-20 匹配导入导出补记
+- 已完成 3 个匹配链路修复：
+  - `RoundDetailClient` 只在 `round.status === "closed"` 时显示“运行匹配”，前后端状态校验对齐
+  - `fetchMatchHistory()` 仅统计 `match_results.status = confirmed` 且 `match_sessions.status = confirmed` 的历史，草稿/未发布结果不再污染重复配对惩罚
+  - 多人组构建改为严格维护“全组共同时间交集”，无共同时间时不再产出伪 `bestSlot`
+- 已完成 Excel 导入：
+  - 入口：`src/components/admin/RoundImportPanel.tsx`
+  - action：`src/app/admin/matching/rounds/[id]/import-actions.ts`
+  - 服务：`src/lib/matching/round-import-service.ts`
+  - 解析：`src/lib/matching/round-import-parser.ts`
+  - 策略：**当前轮次 submissions 全量覆盖**
+  - 规则：只支持 `.xlsx` 第一张表；一二志愿不同标准化为 `都可以`；姓名按 `当前 members -> legacy_members -> temp member` 严格唯一匹配
+- 已完成导入数据落库扩展：
+  - migration：`supabase/migrations/035_match_round_import_metadata.sql`
+  - `match_round_submissions.import_metadata jsonb` 用于保存原始一二志愿、legacy 补强、来源、warning 等
+- 已完成匹配逻辑接线：
+  - `submissionToCandidate()` 会优先读当前 member 资料，缺失字段再读 `import_metadata` 的 legacy 补强
+  - `runRoundMatching()` / 手动匹配校验都会把 `import_metadata` 中的 legacy 历史合并进 `historyMap`
+- 已完成 Excel 导出：
+  - 路由：`src/app/admin/matching/[id]/export/route.ts`
+  - 服务：`src/lib/matching/session-export.ts`
+  - session 页新增“导出 Excel”，固定导出 `配对结果` + `未匹配名单` 两张 sheet
+- 本轮新增测试：
+  - `src/__tests__/matching-history.test.ts`
+  - `src/__tests__/matching-multi-group.test.ts`
+  - `src/__tests__/round-import-parser.test.ts`
+  - `src/__tests__/round-import-resolver.test.ts`
+  - `src/__tests__/matching-import-metadata.test.ts`
+  - `src/__tests__/round-detail-client.test.ts`
+- 本轮验证结果：
+  - `pnpm lint`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm test:unit`：通过（63 tests / 22 files）
+  - `pnpm build`：通过
+- 下次若继续：
+  1. 用真实 Google Sheets 导出的 `.xlsx` 做一次后台导入 -> 运行匹配 -> 导出 Excel 的人工 smoke
+  2. 迁移 `035` 上库后重新生成 Supabase 类型，减少 `legacy_members` / `import_metadata` 相关的 `any` 和断言

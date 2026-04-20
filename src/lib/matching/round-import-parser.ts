@@ -1,0 +1,135 @@
+import * as XLSX from "xlsx"
+import type { Availability } from "./types"
+import type { ParsedImportRow } from "./round-import-types"
+import { normalizeGameTypeChoice, normalizeGenderPref, normalizeImportName, isCheckedCell } from "./round-import-utils"
+
+const SLOT_LABELS = ["上午", "下午", "晚上", "全天"] as const
+
+function normalizeHeader(value: unknown): string {
+  return String(value ?? "").normalize("NFKC").replace(/\s+/g, "")
+}
+
+function buildDateHeaders(start: string, end: string): Array<{ date: string; labels: string[] }> {
+  const dates: Array<{ date: string; labels: string[] }> = []
+  const cursor = new Date(start)
+  const last = new Date(end)
+  while (cursor <= last) {
+    const date = cursor.toISOString().slice(0, 10)
+    const month = cursor.getMonth() + 1
+    const day = cursor.getDate()
+    dates.push({
+      date,
+      labels: [
+        `${String(month).padStart(2, "0")}月${String(day).padStart(2, "0")}日`,
+        `${month}月${day}日`,
+        `${String(month).padStart(2, "0")}/${String(day).padStart(2, "0")}`,
+        `${month}/${day}`,
+        date,
+      ],
+    })
+    cursor.setDate(cursor.getDate() + 1)
+  }
+  return dates
+}
+
+function findSingleColumn(headers: string[], label: string): number {
+  const index = headers.findIndex((header) => header.includes(label))
+  if (index === -1) throw new Error(`未找到列：${label}`)
+  return index
+}
+
+function findDateSlotColumns(headers: string[], start: string, end: string) {
+  return buildDateHeaders(start, end).map(({ date, labels }) => {
+    const columns = SLOT_LABELS.reduce<Record<string, number>>((acc, slot) => {
+      const index = headers.findIndex((header) =>
+        labels.some((label) => header.includes(label)) && header.includes(slot)
+      )
+      if (index !== -1) acc[slot] = index
+      return acc
+    }, {})
+    if (Object.keys(columns).length === 0) throw new Error(`未找到日期列：${date}`)
+    return { date, columns }
+  })
+}
+
+function buildAvailability(row: unknown[], dateColumns: Array<{ date: string; columns: Record<string, number> }>): Availability {
+  const availability: Availability = {}
+  for (const { date, columns } of dateColumns) {
+    const slots = new Set<string>()
+    if (columns["全天"] !== undefined && isCheckedCell(row[columns["全天"]])) {
+      slots.add("上午"); slots.add("下午"); slots.add("晚上")
+    }
+    for (const slot of ["上午", "下午", "晚上"] as const) {
+      if (columns[slot] !== undefined && isCheckedCell(row[columns[slot]])) slots.add(slot)
+    }
+    if (slots.size > 0) availability[date] = Array.from(slots)
+  }
+  return availability
+}
+
+export function parseRoundImportWorkbook(
+  buffer: Buffer,
+  activityStart: string,
+  activityEnd: string,
+): ParsedImportRow[] {
+  const workbook = XLSX.read(buffer, { type: "buffer" })
+  const sheet = workbook.Sheets[workbook.SheetNames[0]]
+  if (!sheet) throw new Error("Excel 文件为空")
+
+  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" })
+  if (matrix.length < 2) throw new Error("Excel 文件没有可导入的数据")
+
+  const headers = (matrix[0] ?? []).map(normalizeHeader)
+  const nameIndex = findSingleColumn(headers, "姓名")
+  const firstChoiceIndex = findSingleColumn(headers, "第一志愿")
+  const secondChoiceIndex = findSingleColumn(headers, "第二志愿")
+  const genderIndex = findSingleColumn(headers, "匹配对象的性别倾向")
+  const scriptIndex = findSingleColumn(headers, "是否倾向选择社团提供的剧本或活动")
+  const messageIndex = findSingleColumn(headers, "给工作人员的话")
+  const dateColumns = findDateSlotColumns(headers, activityStart, activityEnd)
+
+  return matrix.slice(1)
+    .filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""))
+    .map((row, index) => {
+      const rowNumber = index + 2
+      const name = String(row[nameIndex] ?? "").trim()
+      if (!name) throw new Error(`第 ${rowNumber} 行：姓名不能为空`)
+
+      const rawFirstChoice = String(row[firstChoiceIndex] ?? "").trim()
+      const rawSecondChoice = String(row[secondChoiceIndex] ?? "").trim() || null
+      const firstChoice = normalizeGameTypeChoice(rawFirstChoice)
+      const secondChoice = normalizeGameTypeChoice(rawSecondChoice)
+      if (!firstChoice) throw new Error(`第 ${rowNumber} 行：第一志愿不能为空`)
+      if (rawSecondChoice && !secondChoice) throw new Error(`第 ${rowNumber} 行：第二志愿无法识别`)
+
+      const genderPref = normalizeGenderPref(String(row[genderIndex] ?? "").trim())
+      if (!genderPref) throw new Error(`第 ${rowNumber} 行：性别倾向无法识别`)
+
+      const availability = buildAvailability(row, dateColumns)
+      if (Object.keys(availability).length === 0) {
+        throw new Error(`第 ${rowNumber} 行：至少需要一个可用时段`)
+      }
+
+      return {
+        rowNumber,
+        name,
+        normalizedName: normalizeImportName(name),
+        gameTypePref: !rawSecondChoice || firstChoice === secondChoice ? firstChoice : "都可以",
+        rawFirstChoice,
+        rawSecondChoice,
+        genderPref,
+        availability,
+        scriptActivityPref: String(row[scriptIndex] ?? "").trim() || null,
+        message: String(row[messageIndex] ?? "").trim() || null,
+        importMetadata: {
+          source: "temp",
+          normalized_name: normalizeImportName(name),
+          raw_first_choice: rawFirstChoice,
+          raw_second_choice: rawSecondChoice,
+          script_activity_pref: String(row[scriptIndex] ?? "").trim() || null,
+          raw_notes: String(row[messageIndex] ?? "").trim() || null,
+          warnings: [],
+        },
+      }
+    })
+}

@@ -17,11 +17,18 @@ export async function fetchMatchHistory(memberIds: string[]) {
     const idList = batch.join(",")
     const { data, error } = await supabase
       .from("match_results")
-      .select("member_a_id, member_b_id")
+      .select("member_a_id, member_b_id, session:match_sessions!inner(status)")
+      .eq("status", "confirmed")
+      .eq("session.status", "confirmed")
       .or(`member_a_id.in.(${idList}),member_b_id.in.(${idList})`)
 
     if (error) throw error
-    if (data) allData = allData.concat(data)
+    if (data) {
+      allData = allData.concat(data.map((row) => ({
+        member_a_id: row.member_a_id,
+        member_b_id: row.member_b_id,
+      })))
+    }
   }
 
   // Deduplicate (batches may overlap)

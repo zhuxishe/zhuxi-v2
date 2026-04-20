@@ -5,28 +5,17 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { submissionToCandidate } from "@/lib/matching/adapter-submission"
 import { checkHardConstraints, checkGroupConstraints } from "@/lib/matching/constraints"
+import { findStrictCommonSlot } from "@/lib/matching/match-utils"
 import { scorePair } from "@/lib/matching/scorer"
 import { getCommonSlots } from "@/lib/matching/time-filter"
-import type { MatchCandidate as MC } from "@/lib/matching/types"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { fetchMatchHistory } from "@/lib/queries/match-history"
+import { getImportedHistory } from "@/lib/matching/import-metadata"
+import { mergeMatchHistory } from "@/lib/matching/round-import-utils"
 import { validateUuids } from "@/lib/sanitize"
 import type { MatchCandidate, ScoreComponent } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
-
-/** 严格查找所有人都有的公共时段（无 fallback） */
-function findStrictCommonSlot(members: MC[]): string | null {
-  if (members.length === 0) return null
-  for (const [date, slots] of Object.entries(members[0].availability)) {
-    for (const slot of slots) {
-      if (members.every((m) => m.availability[date]?.includes(slot))) {
-        return `${date}_${slot}`
-      }
-    }
-  }
-  return null
-}
 
 /** 获取单个成员完整资料 */
 async function fetchMemberFull(memberId: string) {
@@ -76,13 +65,15 @@ async function fetchSubmission(roundId: string, memberId: string) {
 /** 构建 MatchCandidate：必须有问卷数据 */
 async function buildCandidate(memberId: string, roundId: string) {
   const member = await fetchMemberFull(memberId)
-  const historyMap = await fetchMatchHistory([memberId])
-  const history = historyMap.get(memberId) ?? []
-
   const sub = await fetchSubmission(roundId, memberId)
   if (!sub) {
     throw new Error(`成员 ${memberId} 未提交本轮问卷，无法参与匹配`)
   }
+  const historyMap = await fetchMatchHistory([memberId])
+  const history = mergeMatchHistory(
+    historyMap.get(memberId) ?? [],
+    getImportedHistory((sub as Record<string, unknown>).import_metadata),
+  )
   return submissionToCandidate(sub, member, history)
 }
 

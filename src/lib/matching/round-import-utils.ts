@@ -30,6 +30,10 @@ export function normalizeLegacyGender(value: string | null | undefined): "male" 
   return "other"
 }
 
+export function isManualSelfGender(value: unknown): value is "male" | "female" | "other" {
+  return value === "male" || value === "female" || value === "other"
+}
+
 export function isCheckedCell(value: unknown): boolean {
   if (value === true || value === 1) return true
   const text = String(value ?? "").trim().toLowerCase()

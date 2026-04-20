@@ -1,5 +1,6 @@
 import type {
   CurrentImportMember,
+  GenderOverrideMap,
   ImportPreviewRow,
   LegacyImportMember,
   LegacyOption,
@@ -67,6 +68,7 @@ export function resolveImportRows(
   currentMembers: CurrentImportMember[],
   legacyMembers: LegacyImportMember[],
   legacyOverrides: LegacyOverrideMap = {},
+  genderOverrides: GenderOverrideMap = {},
 ): PreparedImportRow[] {
   return rows.map((row) => {
     const currentMatches = buildCurrentMatches(row, currentMembers)
@@ -79,8 +81,10 @@ export function resolveImportRows(
         importMetadata: {
           ...row.importMetadata,
           source: "current",
+          manual_self_gender: null,
           matched_member_id: currentMatches[0].id,
         },
+        manualGender: null,
       }
     }
 
@@ -97,14 +101,17 @@ export function resolveImportRows(
         importMetadata: {
           ...row.importMetadata,
           source: "legacy-temp",
+          manual_self_gender: null,
           matched_legacy_id: matchedLegacy.legacy_id,
           legacy_profile: matchedLegacy,
           warnings,
         },
+        manualGender: null,
       }
     }
 
     const legacyMatches = currentMatches.length > 0 ? [] : buildLegacyMatches(row, legacyMembers)
+    const manualGender = genderOverrides[String(row.rowNumber)] ?? null
     return {
       ...row,
       source: "temp",
@@ -113,8 +120,10 @@ export function resolveImportRows(
       importMetadata: {
         ...row.importMetadata,
         source: "temp",
+        manual_self_gender: manualGender,
         warnings: legacyMatches.length > 1 ? [...warnings, "ambiguous_name_match"] : warnings,
       },
+      manualGender,
     }
   })
 }

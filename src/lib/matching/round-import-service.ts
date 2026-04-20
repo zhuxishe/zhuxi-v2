@@ -8,6 +8,7 @@ import { supportsImportMetadataColumn } from "./import-metadata-column"
 import { loadRoundImportContext } from "./round-import-context"
 import { resolveImportRows } from "./round-import-resolver"
 import type {
+  GenderOverrideMap,
   ImportSummary,
   LegacyOverrideMap,
   PreparedImportRow,
@@ -108,7 +109,7 @@ async function createTempMember(
     const { error: identityError } = await db.from("member_identity").insert({
       member_id: memberId,
       full_name: row.name,
-      gender: normalizeLegacyGender(legacy?.gender),
+      gender: legacy ? normalizeLegacyGender(legacy.gender) : (row.manualGender ?? "other"),
       age_range: "未填写",
       nationality: "未填写",
       current_city: "未填写",
@@ -162,15 +163,25 @@ function assertNoDuplicateImports(rows: PreparedImportRow[]) {
   }
 }
 
+function assertManualGenderSelections(rows: PreparedImportRow[]) {
+  for (const row of rows) {
+    if (row.source === "temp" && !row.manualGender) {
+      throw new Error(`第 ${row.rowNumber} 行：未绑定老成员时必须手动选择本人性别`)
+    }
+  }
+}
+
 export async function importRoundWorkbook(
   roundId: string,
   buffer: Buffer,
   legacyOverrides: LegacyOverrideMap = {},
+  genderOverrides: GenderOverrideMap = {},
 ) {
   const { db, parsedRows, currentMembers, legacyMembers, existingSubs } = await loadRoundImportContext(roundId, buffer)
   const includeImportMetadata = await supportsImportMetadataColumn(db)
-  const preparedRows = resolveImportRows(parsedRows, currentMembers, legacyMembers, legacyOverrides)
+  const preparedRows = resolveImportRows(parsedRows, currentMembers, legacyMembers, legacyOverrides, genderOverrides)
   assertNoDuplicateImports(preparedRows)
+  assertManualGenderSelections(preparedRows)
   const roundPrefix = `IMP-${roundId.slice(0, 8)}-`
   const existingTempBundle = await loadExistingTempBundle(db, roundPrefix)
   const createdMemberIds: string[] = []

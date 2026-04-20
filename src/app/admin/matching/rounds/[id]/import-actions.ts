@@ -5,7 +5,8 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { previewRoundWorkbook } from "@/lib/matching/round-import-preview"
 import { importRoundWorkbook } from "@/lib/matching/round-import-service"
 import { getPostgrestErrorMessage } from "@/lib/supabase/postgrest-error"
-import type { LegacyOverrideMap } from "@/lib/matching/round-import-types"
+import { isManualSelfGender } from "@/lib/matching/round-import-utils"
+import type { GenderOverrideMap, LegacyOverrideMap } from "@/lib/matching/round-import-types"
 
 function readExcelFile(formData: FormData) {
   const file = formData.get("file")
@@ -14,14 +15,28 @@ function readExcelFile(formData: FormData) {
   return file
 }
 
-function parseOverrides(formData: FormData): LegacyOverrideMap {
-  const raw = formData.get("legacyOverrides")
+function parseJsonRecord(formData: FormData, key: string, label: string) {
+  const raw = formData.get(key)
   if (typeof raw !== "string" || !raw.trim()) return {}
   try {
-    return JSON.parse(raw) as LegacyOverrideMap
+    return JSON.parse(raw) as Record<string, string>
   } catch {
-    throw new Error("老成员手动匹配配置无效")
+    throw new Error(`${label}配置无效`)
   }
+}
+
+function parseLegacyOverrides(formData: FormData): LegacyOverrideMap {
+  return parseJsonRecord(formData, "legacyOverrides", "老成员手动匹配") as LegacyOverrideMap
+}
+
+function parseGenderOverrides(formData: FormData): GenderOverrideMap {
+  const raw = parseJsonRecord(formData, "genderOverrides", "本人性别")
+  const result: GenderOverrideMap = {}
+  for (const [rowNumber, value] of Object.entries(raw)) {
+    if (!isManualSelfGender(value)) throw new Error("本人性别配置无效")
+    result[rowNumber] = value
+  }
+  return result
 }
 
 export async function previewRoundExcel(roundId: string, formData: FormData) {
@@ -43,9 +58,10 @@ export async function importRoundExcel(roundId: string, formData: FormData) {
 
   try {
     const file = readExcelFile(formData)
-    const overrides = parseOverrides(formData)
+    const legacyOverrides = parseLegacyOverrides(formData)
+    const genderOverrides = parseGenderOverrides(formData)
     const buffer = Buffer.from(await file.arrayBuffer())
-    const result = await importRoundWorkbook(roundId, buffer, overrides)
+    const result = await importRoundWorkbook(roundId, buffer, legacyOverrides, genderOverrides)
     revalidatePath(`/admin/matching/rounds/${roundId}`)
     return { success: true, summary: result.summary }
   } catch (error) {

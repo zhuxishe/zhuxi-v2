@@ -61,6 +61,20 @@ describe("resolveImportRows", () => {
     expect(row.legacyProfile?.school).toBe("早大")
   })
 
+  it("attaches manual self gender when temp rows are not bound to legacy", () => {
+    const [row] = resolveImportRows(
+      [buildRow("张三")],
+      [],
+      [],
+      {},
+      { "2": "female" },
+    )
+
+    expect(row.source).toBe("temp")
+    expect(row.manualGender).toBe("female")
+    expect(row.importMetadata.manual_self_gender).toBe("female")
+  })
+
   it("falls back to temp with warning when current match is ambiguous", () => {
     const [row] = resolveImportRows(
       [buildRow("张三")],

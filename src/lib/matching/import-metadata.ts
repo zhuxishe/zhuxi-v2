@@ -21,6 +21,7 @@ export interface SubmissionImportMetadata {
   raw_second_choice: string | null
   script_activity_pref: string | null
   raw_notes: string | null
+  manual_self_gender?: "male" | "female" | "other" | null
   matched_member_id?: string | null
   matched_legacy_id?: string | null
   legacy_profile?: LegacyImportProfile | null
@@ -38,6 +39,7 @@ export function getImportMetadata(value: unknown): SubmissionImportMetadata | nu
     raw_second_choice: candidate.raw_second_choice ?? null,
     script_activity_pref: candidate.script_activity_pref ?? null,
     raw_notes: candidate.raw_notes ?? null,
+    manual_self_gender: candidate.manual_self_gender ?? null,
     matched_member_id: candidate.matched_member_id ?? null,
     matched_legacy_id: candidate.matched_legacy_id ?? null,
     legacy_profile: candidate.legacy_profile ?? null,

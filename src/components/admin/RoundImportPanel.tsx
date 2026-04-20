@@ -4,7 +4,7 @@ import { useRef, useState, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { importRoundExcel, previewRoundExcel } from "@/app/admin/matching/rounds/[id]/import-actions"
 import { RoundImportPreview } from "./RoundImportPreview"
-import type { ImportPreviewRow, ImportSummary, LegacyOption } from "@/lib/matching/round-import-types"
+import type { ImportPreviewRow, ImportSummary, LegacyOption, ManualSelfGender } from "@/lib/matching/round-import-types"
 
 interface Props {
   roundId: string
@@ -19,9 +19,14 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
   const [previewRows, setPreviewRows] = useState<ImportPreviewRow[]>([])
   const [legacyOptions, setLegacyOptions] = useState<LegacyOption[]>([])
   const [legacyOverrides, setLegacyOverrides] = useState<Record<string, string>>({})
+  const [genderOverrides, setGenderOverrides] = useState<Record<string, ManualSelfGender>>({})
   const [isPreviewing, startPreview] = useTransition()
   const [isImporting, startImport] = useTransition()
   const disabled = roundStatus === "matched"
+  const pendingGenderRows = previewRows.filter((row) => {
+    const key = String(row.rowNumber)
+    return !row.currentMatch && !legacyOverrides[key] && !genderOverrides[key]
+  }).length
 
   function buildFormData() {
     const file = inputRef.current?.files?.[0]
@@ -35,6 +40,7 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
     setPreviewRows([])
     setLegacyOptions([])
     setLegacyOverrides({})
+    setGenderOverrides({})
     setSummary(null)
   }
 
@@ -49,6 +55,7 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
       setPreviewRows(res.rows ?? [])
       setLegacyOptions(res.legacyOptions ?? [])
       setLegacyOverrides({})
+      setGenderOverrides({})
     })
   }
 
@@ -56,6 +63,7 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
     const formData = buildFormData()
     if (!formData) { setError("请先选择 .xlsx 文件"); return }
     formData.set("legacyOverrides", JSON.stringify(legacyOverrides))
+    formData.set("genderOverrides", JSON.stringify(genderOverrides))
     startImport(async () => {
       setError("")
       const res = await importRoundExcel(roundId, formData)
@@ -64,6 +72,7 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
       setPreviewRows([])
       setLegacyOptions([])
       setLegacyOverrides({})
+      setGenderOverrides({})
     })
   }
 
@@ -78,7 +87,11 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
           <Button size="sm" variant="outline" onClick={handlePreview} disabled={disabled || isPreviewing || isImporting}>
             {isPreviewing ? "解析中..." : "解析预览"}
           </Button>
-          <Button size="sm" onClick={handleImport} disabled={disabled || isPreviewing || isImporting || previewRows.length === 0}>
+          <Button
+            size="sm"
+            onClick={handleImport}
+            disabled={disabled || isPreviewing || isImporting || previewRows.length === 0 || pendingGenderRows > 0}
+          >
             {isImporting ? "导入中..." : "确认导入"}
           </Button>
         </div>
@@ -103,6 +116,7 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
           rows={previewRows}
           legacyOptions={legacyOptions}
           overrides={legacyOverrides}
+          genderOverrides={genderOverrides}
           onChange={(rowNumber, legacyId) => {
             const key = String(rowNumber)
             setLegacyOverrides((current) => {
@@ -112,9 +126,21 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
               return next
             })
           }}
+          onGenderChange={(rowNumber, gender) => {
+            const key = String(rowNumber)
+            setGenderOverrides((current) => {
+              const next = { ...current }
+              if (gender) next[key] = gender
+              else delete next[key]
+              return next
+            })
+          }}
         />
       )}
       {disabled && <p className="text-xs text-muted-foreground">已匹配轮次禁止再次导入。</p>}
+      {!disabled && pendingGenderRows > 0 && (
+        <p className="text-xs text-destructive">还有 {pendingGenderRows} 行未绑定老成员且未选择本人性别，暂时不能导入。</p>
+      )}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {summary && (
         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-5">

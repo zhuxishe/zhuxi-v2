@@ -31,6 +31,8 @@ export interface LegacyOption {
   department: string | null
 }
 
+export type ManualSelfGender = "male" | "female" | "other"
+
 export interface ImportPreviewRow {
   rowNumber: number
   name: string
@@ -44,6 +46,7 @@ export interface ImportPreviewRow {
 }
 
 export type LegacyOverrideMap = Record<string, string>
+export type GenderOverrideMap = Record<string, ManualSelfGender>
 
 export interface ResolvedImportRow extends ParsedImportRow {
   memberId: string
@@ -54,6 +57,7 @@ export interface PreparedImportRow extends ParsedImportRow {
   source: ImportSource
   existingMemberId: string | null
   legacyProfile: LegacyImportProfile | null
+  manualGender: ManualSelfGender | null
 }
 
 export interface ImportSummary {

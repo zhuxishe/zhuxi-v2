@@ -561,3 +561,38 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - `pnpm test:unit`：75/75 通过
   - `pnpm lint`：通过
   - `pnpm build`：通过
+
+### 04-20 导入预览手动本人性别补记
+- 用户继续要求：
+  - 在“解析预览”里，**未绑定老成员**的行必须允许管理员手动选择“本人性别”
+  - 目标是补上 Excel 缺失的“参与者自报性别”字段，避免 temp member 一律落成 `other`
+- 已完成实现：
+  - `src/components/admin/RoundImportPanel.tsx`
+    - 新增 `genderOverrides`
+    - 导入前会统计“未绑定老成员且未选本人性别”的行数
+    - 这类行存在时，“确认导入”按钮直接禁用
+  - `src/components/admin/RoundImportPreview.tsx`
+    - 每行现在明确二选一：
+      - 绑定老成员
+      - 手动选择本人性别
+    - 未选完时会显示红色提示
+  - 新增 `src/components/admin/ImportSelfGenderSelect.tsx`
+    - 提供 `男 / 女 / 其他 / 不确定`
+  - `src/app/admin/matching/rounds/[id]/import-actions.ts`
+    - 新增 `genderOverrides` 解析
+  - `src/lib/matching/round-import-resolver.ts`
+    - `temp` 行会携带 `manualGender`
+    - 同步写入 `importMetadata.manual_self_gender`
+  - `src/lib/matching/round-import-service.ts`
+    - 对 `temp` 行新增后端 hard fail：
+      - 未绑定老成员时，若没选本人性别，直接报错拒绝导入
+    - 创建 temp member 时，`member_identity.gender` 现在优先用手动选择值
+- 当前规则（以本次代码为准）：
+  - `current member` 自动命中：不需要手动选本人性别
+  - 手动绑定 `legacy_members`：直接沿用该老成员性别
+  - 未绑定老成员：**必须手动选本人性别**
+- 本次验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：76/76 通过
+  - `pnpm build`：通过

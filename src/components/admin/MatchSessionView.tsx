@@ -263,6 +263,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       {/* Manual pair dialog */}
       {!readOnly && (
         <ManualPairDialog
+          key={`${showFreeManual ? "open" : "closed"}:${preselectedA || "none"}`}
           open={showFreeManual}
           onOpenChange={setShowFreeManual}
           sessionId={session.id}

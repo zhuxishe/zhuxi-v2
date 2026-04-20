@@ -754,3 +754,39 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - `pnpm test:unit`：77/77 通过
   - `pnpm build`：通过
   - `pnpm --dir packages/miniprogram build:weapp`：通过
+
+### 04-20 匹配历史与候选人构建补记
+- 本轮根据外部审计意见，确认并修复了 3 个真实问题：
+  1. `src/lib/queries/match-history.ts`
+     - 之前只统计 `member_a_id/member_b_id`
+     - 多人组历史写在 `group_members` 中，会被漏算
+     - 现已改为：
+       - 查询 `id/member_a_id/member_b_id/group_members`
+       - 过滤条件同时覆盖 `group_members`
+       - 按 `match_results.id` 去重
+       - 多人组按无向两两关系写回 history map
+  2. `src/components/admin/ManualPairDialog.tsx`
+     - 之前弹窗只在首次 mount 时读取 `preselectedA`
+     - 现已改为在 `MatchSessionView` 按 `open + preselectedA` 重新挂载对话框
+     - 这样从未匹配诊断入口再次打开时，会稳定带入当前预选成员，不再残留上一次状态
+  3. `src/lib/matching/adapter-submission.ts`
+     - 之前未统一解包 Supabase nested relation
+     - 现已改为使用 `getSingleRelation()` 解包：
+       - `member_identity`
+       - `member_interests`
+       - `member_personality`
+       - `member_dynamic_stats`
+       - `member_boundaries`
+       - `member_language`
+       - `personality_quiz_results`
+- 本轮测试补充：
+  - `src/__tests__/matching-history.test.ts`
+    - 新增多人组历史统计与按 `id` 去重覆盖
+  - `src/__tests__/matching-import-metadata.test.ts`
+    - 新增 array-shaped relation 解包覆盖
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - `pnpm --dir packages/miniprogram build:weapp`：通过

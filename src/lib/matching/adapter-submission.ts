@@ -3,6 +3,7 @@
  */
 
 import { getImportedLegacyProfile } from "./import-metadata"
+import { getSingleRelation } from "@/lib/supabase/relations"
 
 /** DB stores gender as 'male'/'female'/'other'; algorithm expects '男'/'女' */
 function normalizeGender(g: string | null): string | null {
@@ -29,10 +30,13 @@ export function submissionToCandidate(
   matchHistory: { name: string; count: number }[],
 ): MatchCandidate {
   const importedLegacy = getImportedLegacyProfile(sub.import_metadata)
-  const identity = memberProfile?.member_identity ?? {}
-  const interests = memberProfile?.member_interests ?? {}
-  const personality = memberProfile?.member_personality ?? {}
-  const stats = memberProfile?.member_dynamic_stats ?? {}
+  const identity = getSingleRelation(memberProfile?.member_identity) ?? {}
+  const interests = getSingleRelation(memberProfile?.member_interests) ?? {}
+  const personality = getSingleRelation(memberProfile?.member_personality) ?? {}
+  const stats = getSingleRelation(memberProfile?.member_dynamic_stats) ?? {}
+  const boundaries = getSingleRelation(memberProfile?.member_boundaries) ?? {}
+  const language = getSingleRelation(memberProfile?.member_language) ?? {}
+  const quiz = getSingleRelation(memberProfile?.personality_quiz_results)
 
   const gameTypePref = sub.game_type_pref ?? "都可以"
   const genderPref = sub.gender_pref ?? "都可以"
@@ -76,21 +80,17 @@ export function submissionToCandidate(
     hasProfile: !!(identity.full_name ?? importedLegacy?.full_name),
     tabooTags: [
       ...(identity.taboo_tags ?? []),
-      ...(memberProfile?.member_boundaries?.taboo_tags ?? []),
-      ...(memberProfile?.member_boundaries?.deal_breakers ?? []),
+      ...(boundaries.taboo_tags ?? []),
+      ...(boundaries.deal_breakers ?? []),
     ],
-    languagePref: memberProfile?.member_language?.communication_language_pref ?? [],
-    japaneseLevel: memberProfile?.member_language?.japanese_level ?? null,
+    languagePref: language.communication_language_pref ?? [],
+    japaneseLevel: language.japanese_level ?? null,
     acceptBeginners: interests.accept_beginners ?? true,
     acceptCrossSchool: interests.accept_cross_school ?? true,
     activityArea: interests.activity_area ?? identity.current_city ?? null,
     reliabilityScore: stats.reliability_score ?? 5.0,
-    quizScores: (() => {
-      const q = Array.isArray(memberProfile?.personality_quiz_results)
-        ? memberProfile.personality_quiz_results[0]
-        : memberProfile?.personality_quiz_results
-      if (!q) return null
-      return { E: q.score_e, A: q.score_a, O: q.score_o, C: q.score_c, N: q.score_n }
-    })(),
+    quizScores: quiz
+      ? { E: quiz.score_e, A: quiz.score_a, O: quiz.score_o, C: quiz.score_c, N: quiz.score_n }
+      : null,
   }
 }

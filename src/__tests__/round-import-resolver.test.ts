@@ -30,7 +30,7 @@ describe("resolveImportRows", () => {
   it("prefers current members over legacy data", () => {
     const [row] = resolveImportRows(
       [buildRow("张三")],
-      [{ id: "m1", full_name: "张三", nickname: null }],
+      [{ id: "m1", member_number: "ZX001", full_name: "张三", nickname: null }],
       [{ legacy_id: "l1", full_name: "张三", gender: "男", school: null, department: null, interest_tags: [], social_tags: [], game_mode: null, compatibility_score: null, session_count: 2, match_history: [] }],
     )
 
@@ -79,8 +79,8 @@ describe("resolveImportRows", () => {
     const [row] = resolveImportRows(
       [buildRow("张三")],
       [
-        { id: "m1", full_name: "张三", nickname: null },
-        { id: "m2", full_name: "张三", nickname: null },
+        { id: "m1", member_number: "ZX001", full_name: "张三", nickname: null },
+        { id: "m2", member_number: "ZX002", full_name: "张三", nickname: null },
       ],
       [],
     )
@@ -100,5 +100,16 @@ describe("resolveImportRows", () => {
     expect(preview.exactLegacyMatches).toHaveLength(1)
     expect(preview.exactLegacyMatches[0]?.name).toBe("张三")
     expect(preview.exactLegacyMatches[0]?.gender).toBe("男")
+  })
+
+  it("does not treat imported IMP temp members as reusable current members", () => {
+    const [preview] = buildImportPreview(
+      [buildRow("张三")],
+      [{ id: "m1", member_number: "IMP-a558252c-001", full_name: "张三", nickname: null }],
+      [{ legacy_id: "l1", full_name: "张三", gender: "男", school: "早大", department: null, interest_tags: [], social_tags: [], game_mode: null, compatibility_score: null, session_count: 2, match_history: [] }],
+    )
+
+    expect(preview.currentMatch).toBeNull()
+    expect(preview.exactLegacyMatches).toHaveLength(1)
   })
 })

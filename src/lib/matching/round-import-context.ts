@@ -10,13 +10,20 @@ import type { CurrentImportMember, LegacyImportMember, ParsedImportRow } from ".
 export async function fetchCurrentImportMembers(db: SupabaseClient<any, any, any>): Promise<CurrentImportMember[]> {
   const { data, error } = await db
     .from("members")
-    .select("id, member_identity(full_name, nickname)")
+    .select("id, member_number, member_identity(full_name, nickname)")
     .eq("membership_type", "player")
   if (error) throw error
-  return (data ?? []).map((row: any) => {
-    const identity = Array.isArray(row.member_identity) ? row.member_identity[0] : row.member_identity
-    return { id: row.id, full_name: identity?.full_name ?? null, nickname: identity?.nickname ?? null }
-  })
+  return (data ?? [])
+    .filter((row: any) => !String(row.member_number ?? "").startsWith("IMP-"))
+    .map((row: any) => {
+      const identity = Array.isArray(row.member_identity) ? row.member_identity[0] : row.member_identity
+      return {
+        id: row.id,
+        member_number: row.member_number ?? null,
+        full_name: identity?.full_name ?? null,
+        nickname: identity?.nickname ?? null,
+      }
+    })
 }
 
 export async function fetchLegacyImportMembers(db: SupabaseClient<any, any, any>): Promise<LegacyImportMember[]> {

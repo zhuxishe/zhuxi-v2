@@ -37,7 +37,7 @@ export function RoundCreateForm() {
     })
     setSubmitting(false)
     if (res.error) { setError(res.error); return }
-    router.push(`/admin/matching/rounds/${res.roundId}`)
+    router.replace(`/admin/matching/rounds/${res.roundId}`)
   }
 
   return (
@@ -102,7 +102,7 @@ export function RoundCreateForm() {
         <Button onClick={handleSubmit} disabled={submitting}>
           {submitting ? "创建中..." : "创建轮次"}
         </Button>
-        <Button variant="outline" onClick={() => router.back()}>取消</Button>
+        <Button variant="outline" onClick={() => router.replace("/admin/matching")}>取消</Button>
       </div>
     </div>
   )

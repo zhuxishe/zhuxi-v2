@@ -9,6 +9,8 @@ import { MatchSessionView } from "@/components/admin/MatchSessionView"
 import type { EnrichedMember, SubmissionPrefInfo } from "@/components/admin/match-detail-types"
 import { createClient } from "@/lib/supabase/server"
 import { fetchPoolMembers } from "@/lib/queries/pool-members"
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -196,6 +198,14 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   return (
     <div>
       <AdminTopBar admin={admin} title={session.session_name ?? "匹配详情"} />
+      <div className="px-6 pt-6">
+        <Link
+          href={roundId ? `/admin/matching/rounds/${roundId}` : "/admin/matching"}
+          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="size-4" /> {roundId ? "返回轮次详情" : "返回匹配管理"}
+        </Link>
+      </div>
       <MatchSessionView
         session={session}
         results={enrichedResults}

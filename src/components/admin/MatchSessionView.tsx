@@ -163,7 +163,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
                   const target = session.round_id
                     ? `/admin/matching/rounds/${session.round_id}`
                     : "/admin/matching"
-                  router.push(target)
+                  router.replace(target)
                 }
               })
             }} disabled={isPending}>

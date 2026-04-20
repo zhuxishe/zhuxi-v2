@@ -596,3 +596,85 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - `pnpm lint`：通过
   - `pnpm test:unit`：76/76 通过
   - `pnpm build`：通过
+
+### 04-20 匹配页跳转逻辑补记
+- 用户指出“匹配页面跳转有点问题”，本次已确认并收口 3 个真实问题：
+  1. `RoundCreateForm` 的“取消”原来使用 `router.back()`  
+     - 直接打开 `/admin/matching/rounds/new` 时会退回浏览器历史，目标不确定，甚至可能离开管理后台
+  2. 创建轮次成功后原来使用 `router.push()`  
+     - 会把创建页保留在历史栈里，回退体验不稳定
+  3. `MatchSessionView` 删除 session 后原来使用 `router.push()`  
+     - 已删除的 session 详情页会残留在历史栈，浏览器 Back 可能回到无效页
+- 已完成修改：
+  - `src/components/admin/RoundCreateForm.tsx`
+    - 创建成功：`router.replace('/admin/matching/rounds/:id')`
+    - 取消：固定跳到 `/admin/matching/rounds`
+  - `src/app/admin/matching/rounds/new/page.tsx`
+    - 新增显式“返回轮次列表”
+  - `src/components/admin/MatchSessionView.tsx`
+    - 删除 session 成功后改为 `router.replace(target)`
+  - `src/app/admin/matching/[id]/page.tsx`
+    - 新增显式返回入口：
+      - 有 `round_id`：返回对应轮次详情
+      - 无 `round_id`：返回匹配管理主页
+- 当前结论：
+  - 轮次创建页不再依赖浏览器历史
+  - 删除 session 后不会再把已删除页面留在回退栈里
+  - 匹配详情页与轮次页之间现在有明确导航链
+- 本次验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：76/76 通过
+  - `pnpm build`：通过
+
+### 04-20 导入预览排除 IMP 临时成员补记
+- 用户发现一个真实问题：
+  - “当前正式成员自动复用”会把上一轮 Excel 导入创建的 `IMP-...` 临时成员也识别成“当前成员”
+  - 结果是这些旧 temp member 会抢先命中，导致本轮无法继续手动匹配 `legacy_members`
+- 已完成修复：
+  - `src/lib/matching/round-import-context.ts`
+    - `fetchCurrentImportMembers()` 现在显式过滤 `member_number` 以 `IMP-` 开头的成员
+  - `src/lib/matching/round-import-resolver.ts`
+    - `buildCurrentMatches()` 再加一道防线，即使未来有人把 `IMP-...` 传进来也不会被当成可复用 current member
+- 当前规则（以本次代码为准）：
+  - 自动复用 `current member` 只针对真实正式成员
+  - 上一轮 Excel 导入产生的 `IMP-...` 临时成员**不再参与自动复用**
+  - 因此这些名字会重新进入“老成员手动匹配 / 本人性别手动选择”分支
+- 已补测试：
+  - `src/__tests__/round-import-resolver.test.ts`
+    - 新增用例：`IMP-...` 当前成员不会被识别为可复用 current member
+- 本次验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：77/77 通过
+  - `pnpm build`：通过
+
+### 04-20 匹配页结构与返回链简化补记
+- 用户明确指出当前匹配区跳转逻辑仍然混乱，主要问题是：
+  1. `/admin/matching` 与 `/admin/matching/rounds` 都在承担“轮次列表页”，职责重复
+  2. 轮次详情、创建页、session 详情页的返回入口不统一
+  3. 用户会在“匹配管理 / 轮次列表 / 轮次详情 / session 详情”之间来回跳，心智负担过高
+- 本次已做结构收口：
+  - `src/app/admin/matching/page.tsx`
+    - 现在直接展示**全部轮次**
+    - 删除“只显示前 5 个轮次 + 查看全部”这一层跳转
+  - `src/app/admin/matching/rounds/page.tsx`
+    - 改为直接 `redirect("/admin/matching")`
+    - 保留旧路径兼容，但不再作为独立列表页存在
+  - `src/app/admin/matching/rounds/[id]/page.tsx`
+    - 返回入口统一改成“返回匹配管理”
+  - `src/app/admin/matching/rounds/new/page.tsx`
+    - 返回入口统一改成“返回匹配管理”
+  - `src/components/admin/RoundCreateForm.tsx`
+    - 取消按钮改成固定跳 `/admin/matching`
+    - 创建成功后继续 `replace()` 到轮次详情，避免把创建页留在历史栈
+- 当前跳转主链（以本次代码为准）：
+  - `匹配管理 (/admin/matching)` = 唯一列表页
+  - `轮次详情 (/admin/matching/rounds/[id])` ← 从匹配管理进入，返回也回匹配管理
+  - `匹配详情 (/admin/matching/[id])` ← 从轮次运行匹配进入，有显式返回
+  - `/admin/matching/rounds` 仅作为旧路径兼容，已不承担独立页面职责
+- 本次验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：77/77 通过
+  - `pnpm build`：通过

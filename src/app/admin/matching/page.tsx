@@ -34,7 +34,7 @@ export default async function MatchingPage() {
             <EmptyState icon={Shuffle} title="暂无轮次" description="创建匹配轮次，收集玩家问卷后运行匹配" />
           ) : (
             <div className="space-y-2">
-              {rounds.slice(0, 5).map((r) => {
+              {rounds.map((r) => {
                 const st = STATUS_LABELS[r.status] ?? STATUS_LABELS.draft
                 return (
                   <Link key={r.id} href={`/admin/matching/rounds/${r.id}`}
@@ -52,11 +52,6 @@ export default async function MatchingPage() {
                   </Link>
                 )
               })}
-              {rounds.length > 5 && (
-                <Link href="/admin/matching/rounds" className="block text-center text-sm text-primary hover:underline py-2">
-                  查看全部 {rounds.length} 个轮次
-                </Link>
-              )}
             </div>
           )}
         </section>

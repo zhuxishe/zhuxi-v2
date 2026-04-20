@@ -18,6 +18,7 @@ function dedupeCurrentMembers(members: CurrentImportMember[]): CurrentImportMemb
 
 function buildCurrentMatches(row: ParsedImportRow, members: CurrentImportMember[]): CurrentImportMember[] {
   const matches = members.filter((member) => {
+    if (String(member.member_number ?? "").startsWith("IMP-")) return false
     const fullName = member.full_name ? normalizeImportName(member.full_name) : ""
     const nickname = member.nickname ? normalizeImportName(member.nickname) : ""
     return row.normalizedName === fullName || row.normalizedName === nickname

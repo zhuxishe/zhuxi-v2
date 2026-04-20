@@ -33,10 +33,10 @@ export default async function RoundDetailPage({ params }: Props) {
       <AdminTopBar admin={admin} title="轮次详情" />
       <div className="p-6">
         <Link
-          href="/admin/matching/rounds"
+          href="/admin/matching"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground"
         >
-          <ArrowLeft className="size-4" /> 返回轮次列表
+          <ArrowLeft className="size-4" /> 返回匹配管理
         </Link>
         <RoundDetailClient round={round} submissions={submissions} stats={stats} allMembers={allMembers} />
       </div>

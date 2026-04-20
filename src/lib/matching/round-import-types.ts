@@ -17,6 +17,7 @@ export interface ParsedImportRow {
 
 export interface CurrentImportMember {
   id: string
+  member_number: string | null
   full_name: string | null
   nickname: string | null
 }

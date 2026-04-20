@@ -25,6 +25,7 @@ interface Props {
   poolMembers?: PoolMember[]
   allMemberOptions?: { id: string; name: string }[]
   submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
+  readOnly?: boolean
 }
 
 function memberName(m: EnrichedMember | null): string {
@@ -44,7 +45,7 @@ function matchesSearch(r: EnrichedMatchResult, query: string): boolean {
   return false
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {} }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -108,9 +109,9 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       result={r}
       pairRel={findRel(r.member_a?.id, r.member_b?.id)}
       submissionPrefs={submissionPrefs}
-      onLock={(id) => handleAction(r.status === "locked" ? restorePair : lockPair, id)}
-      onSplit={(id) => handleAction(splitPair, id)}
-      onRestore={(id) => handleAction(restorePair, id)}
+      onLock={readOnly ? undefined : (id) => handleAction(r.status === "locked" ? restorePair : lockPair, id)}
+      onSplit={readOnly ? undefined : (id) => handleAction(splitPair, id)}
+      onRestore={readOnly ? undefined : (id) => handleAction(restorePair, id)}
     />
   )
 
@@ -134,7 +135,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             {session.total_unmatched} 人未匹配
           </span>
         )}
-        {allMemberOptions.length > 0 && (
+        {!readOnly && allMemberOptions.length > 0 && (
           <Button size="sm" variant="outline" onClick={() => { setPreselectedA(""); setShowFreeManual(true) }}>
             <UserPlus className="size-3.5" /> 手动配对
           </Button>
@@ -145,7 +146,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
         >
           <Download className="size-3.5" /> 导出 Excel
         </a>
-        {session.status === "draft" && (
+        {!readOnly && session.status === "draft" && (
           <>
             <Button size="sm" variant="outline" onClick={() => {
               if (!confirm("确定要删除当前结果并重新匹配？")) return
@@ -168,7 +169,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             </Button>
           </>
         )}
-        {session.status === "confirmed" && (
+        {!readOnly && session.status === "confirmed" && (
           <Button size="sm" variant="outline" className="text-red-600 border-red-200 hover:bg-red-50" onClick={() => {
             if (!confirm("撤回后玩家将无法看到匹配结果，确定吗？")) return
             startTransition(async () => {
@@ -213,19 +214,21 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       </div>
 
       {/* 再匹配池 */}
-      <RematchPool
-        sessionId={session.id}
-        poolMembers={poolMembers}
-        submissionPrefs={submissionPrefs}
-        onRefresh={() => router.refresh()}
-      />
+      {!readOnly && (
+        <RematchPool
+          sessionId={session.id}
+          poolMembers={poolMembers}
+          submissionPrefs={submissionPrefs}
+          onRefresh={() => router.refresh()}
+        />
+      )}
 
       {/* 未匹配诊断 */}
       {diagnostics.length > 0 && (
         <UnmatchedDiagnostics
           diagnostics={diagnostics}
           submissionPrefs={submissionPrefs}
-          onManualPair={handleManualPairFromUnmatched}
+          onManualPair={readOnly ? undefined : handleManualPairFromUnmatched}
         />
       )}
 
@@ -253,14 +256,16 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       )}
 
       {/* Manual pair dialog */}
-      <ManualPairDialog
-        open={showFreeManual}
-        onOpenChange={setShowFreeManual}
-        sessionId={session.id}
-        poolMembers={allMemberOptions}
-        preselectedA={preselectedA}
-        onPaired={() => { setShowFreeManual(false); router.refresh() }}
-      />
+      {!readOnly && (
+        <ManualPairDialog
+          open={showFreeManual}
+          onOpenChange={setShowFreeManual}
+          sessionId={session.id}
+          poolMembers={allMemberOptions}
+          preselectedA={preselectedA}
+          onPaired={() => { setShowFreeManual(false); router.refresh() }}
+        />
+      )}
     </div>
   )
 }

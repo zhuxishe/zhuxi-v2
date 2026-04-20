@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { normalizeLegacyGender } from "./round-import-utils"
+import { supportsImportMetadataColumn } from "./import-metadata-column"
 import { parseRoundImportWorkbook } from "./round-import-parser"
 import { resolveImportRows } from "./round-import-resolver"
 import type {
@@ -139,6 +140,7 @@ export async function importRoundWorkbook(roundId: string, buffer: Buffer) {
   if (roundError || !round) throw new Error("轮次不存在")
   if (round.status === "matched") throw new Error("该轮次已完成匹配，禁止导入 Excel")
 
+  const includeImportMetadata = await supportsImportMetadataColumn(db)
   const parsedRows = parseRoundImportWorkbook(buffer, round.activity_start, round.activity_end)
   const [currentMembers, legacyMembers, existingSubs] = await Promise.all([
     fetchCurrentImportMembers(db),
@@ -175,7 +177,7 @@ export async function importRoundWorkbook(roundId: string, buffer: Buffer) {
       interest_tags: [],
       social_style: null,
       message: row.message,
-      import_metadata: row.importMetadata,
+      ...(includeImportMetadata ? { import_metadata: row.importMetadata } : {}),
     }))
     const { error: insertError } = await (db as any).from("match_round_submissions").insert(inserts)
     if (insertError) throw insertError

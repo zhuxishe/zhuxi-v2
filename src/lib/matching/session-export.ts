@@ -1,5 +1,6 @@
 import * as XLSX from "xlsx"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { buildRoundSubmissionSelect, supportsImportMetadataColumn } from "./import-metadata-column"
 import { getImportMetadata, getImportedSource } from "./import-metadata"
 
 function memberSlots(row: any): string[] {
@@ -35,9 +36,10 @@ export async function buildSessionExportWorkbook(sessionId: string): Promise<{ b
 
   const submissionMap = new Map<string, any>()
   if (session.round_id) {
+    const includeImportMetadata = await supportsImportMetadataColumn(db)
     const { data: submissions, error: submissionError } = await db
       .from("match_round_submissions")
-      .select("member_id, game_type_pref, gender_pref, message, import_metadata")
+      .select(buildRoundSubmissionSelect(includeImportMetadata))
       .eq("round_id", session.round_id)
     if (submissionError) throw submissionError
     for (const row of submissions ?? []) submissionMap.set(row.member_id, row)

@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { fetchCancelledPoolIds } from "./cancelled-pool"
 import { getSingleRelation } from "@/lib/supabase/relations"
 import type { EnrichedMember } from "@/components/admin/match-detail-types"
 
@@ -14,47 +15,10 @@ export interface PoolMember {
  */
 export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]> {
   const supabase = await createClient()
-
-  // 1. 获取被取消的 match_results（含 group_members）
-  const { data: cancelled, error } = await supabase
-    .from("match_results")
-    .select("member_a_id, member_b_id, group_members")
-    .eq("session_id", sessionId)
-    .eq("status", "cancelled")
-
-  if (error) throw error
-  if (!cancelled || cancelled.length === 0) return []
-
-  // 2. 收集唯一成员 ID（含多人组 group_members）
-  const ids = new Set<string>()
-  for (const row of cancelled) {
-    if (row.member_a_id) ids.add(row.member_a_id)
-    if (row.member_b_id) ids.add(row.member_b_id)
-    if (Array.isArray(row.group_members)) {
-      for (const gm of row.group_members) ids.add(gm as string)
-    }
-  }
-
-  // 3. 排除已在其他非取消结果中重新配对的成员（含 group_members）
-  const { data: active } = await supabase
-    .from("match_results")
-    .select("member_a_id, member_b_id, group_members")
-    .eq("session_id", sessionId)
-    .neq("status", "cancelled")
-
-  const matched = new Set<string>()
-  for (const row of active ?? []) {
-    if (row.member_a_id) matched.add(row.member_a_id)
-    if (row.member_b_id) matched.add(row.member_b_id)
-    if (Array.isArray(row.group_members)) {
-      for (const gm of row.group_members) matched.add(gm as string)
-    }
-  }
-
-  const poolIds = [...ids].filter((id) => !matched.has(id))
+  const poolIds = await fetchCancelledPoolIds(sessionId)
   if (poolIds.length === 0) return []
 
-  // 4. 获取成员详情（含 popover 所需数据）
+  // 获取成员详情（含 popover 所需数据）
   const { data: members, error: mErr } = await supabase
     .from("members")
     .select(`

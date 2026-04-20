@@ -258,6 +258,117 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - 服务：`src/lib/matching/round-import-service.ts`
   - 解析：`src/lib/matching/round-import-parser.ts`
   - 策略：**当前轮次 submissions 全量覆盖**
+
+### 04-20 simplify 审计补记
+- 已完成冗余代码清理与匹配链收口：
+  - 删除测试写入链路：`src/app/admin/matching/new/*`、`src/components/admin/MatchConfigPanel.tsx`
+  - 删除 dev seed：`src/app/admin/dev/seed/*`、`src/lib/dev/fake-data.ts`
+  - 删除零引用/旧遗留文件：
+    - `src/components/landing/TeamSection.tsx`
+    - `src/components/admin/ScriptPdfUpload.tsx`
+    - `src/components/admin/MatchResultsTable.tsx`
+    - `src/components/admin/MatchResultRow.tsx`
+    - `src/components/ui/avatar.tsx`
+    - `src/components/ui/card.tsx`
+    - `src/lib/constants/personality-quiz-loader.ts`
+    - `src/lib/constants/personality-quiz-ja.ts`
+    - `src/lib/queries/pair-relationships.ts`
+    - `src/lib/matching/index.ts`
+    - `src/lib/matching/duo-helpers.ts`
+    - `src/lib/matching/duo-matching.ts`
+    - `src/lib/matching/multi-matching.ts`
+- 已新增统一 helper：
+  - `src/lib/matching/build-round-candidates.ts`
+  - `src/lib/queries/cancelled-pool.ts`
+- 当前 live 匹配链已统一：
+  - 正式运行：`src/app/admin/matching/rounds/[id]/actions.ts`
+  - 手动兼容检查 / 手动配对：`src/app/admin/matching/[id]/manual-actions.ts`
+  - 取消池重匹配：`src/app/admin/matching/[id]/pool-actions.ts`
+  - 三处都走 `buildRoundCandidates()`，统一 live history + import legacy history 合并逻辑
+- 已补 3 个关键行为修复：
+  - **旧测试 session 只读**：`src/app/admin/matching/[id]/actions.ts` 新增后端 guard，`round_id == null` 时 lock/split/restore/delete/confirm/unpublish 全部拒绝；`MatchSessionView` 只保留为第二道 UI 防线
+  - **matched round 冻结**：`src/components/admin/round-detail-rules.ts` 新增 `canUpdateRoundStatus()`；`src/app/admin/matching/rounds/[id]/actions.ts` 阻止 `matched` 被手动降级，也阻止手动伪造切到 `matched`
+  - **旧 session 热力图不再漂移**：`src/app/admin/matching/[id]/page.tsx` 在无 `round_id` 时不再伪造 heatmap
+- 手动配对漏洞已修：
+  - `ManualPairDialog` 现在只允许本轮 submission 成员进入 round session
+  - 缺 submission 时后端 hard fail
+  - 无共同时间时后端 hard fail
+  - 旧测试 session 不允许手动配对
+- 本地清理：
+  - 所有未跟踪 `*.bak` 已归档到 `.local-backups/untracked-bak-2026-04-20.zip`
+  - 原始 `.bak` 已从工作区删除
+  - `docs/`、`output/`、图片素材、`.claude/worktrees/` 仍保留在本地，**未纳入本次提交范围**
+- 本次验证结果：
+  - `pnpm typecheck` 通过
+  - `pnpm lint` 通过
+  - `pnpm test:unit` 64/64 通过
+  - `pnpm build` 通过
+  - 子 agent（删除安全）：确认已删除文件无现存源码 import / 测试依赖 / 运行时入口；仅 `.next/dev` typed-routes 与 docs/worktrees 残留旧路径
+  - 子 agent（匹配链复核）：确认 old session 已是后端只读、matched round 冻结生效、candidate 构建三处统一、未发现新的运行时双轨
+- GLM 摘要复核：未指出有证据的 `P0/P1` 回归，剩余意见主要是“继续防范动态引用”；已通过本地静态搜索再次确认无源码残留引用
+
+### 04-20 Excel 导入失败补记
+- 已定位当前导入失败根因：
+  - **不是 Google Forms 回复表结构变化**
+  - 当前连接的 Supabase 库仍缺 `match_round_submissions.import_metadata` 列
+  - 直接探针结果：`42703 column match_round_submissions.import_metadata does not exist`
+- 已完成兼容修复：
+  - `src/lib/matching/round-import-service.ts`
+    - 导入前会探测 `import_metadata` 列是否存在
+    - 若不存在，自动降级为**不写入 `import_metadata`**，保证 Excel 仍可导入
+  - `src/lib/matching/session-export.ts`
+    - 导出时同样按 schema 能力探测，缺列时不再因 `select import_metadata` 失败
+  - `src/app/admin/matching/rounds/[id]/import-actions.ts`
+    - 现在会把 Supabase/PostgREST 对象错误转为可读消息，不再只显示“导入失败”
+  - 新增：
+    - `src/lib/supabase/postgrest-error.ts`
+    - `src/lib/matching/import-metadata-column.ts`
+    - `src/__tests__/import-metadata-column.test.ts`
+- 兼容后的实际含义：
+  - **当前库未跑 035 的情况下，导入可继续使用**
+  - 但由于没有 `import_metadata` 列，这次导入不会把原始第一/第二志愿、legacy history、script/activity 偏好落库
+  - 一旦数据库补上 `035_match_round_import_metadata.sql`，上述元数据会自动恢复写入，无需再改代码
+- 本次验证结果：
+  - `pnpm typecheck` 通过
+  - `pnpm test:unit` 67/67 通过
+  - `pnpm lint` 通过
+  - `pnpm build` 通过
+
+### 04-20 假成员数据清理补记
+- 用户确认：**4/9 生成的成员是假数据**，来源是旧成员信息的随机生成，不应继续保留在当前库里
+- 已识别并清理的目标：
+  - `96` 个假成员
+  - 识别特征：
+    - `membership_type = player`
+    - `email is null`
+    - `created_at` 落在 `2026-04-09T15:26:12.271556+00:00 ~ 2026-04-09T15:29:34.207954+00:00`
+    - `member_number = No.xxx`
+  - 这批数据实际对应东京时间 `2026-04-10`
+- 已同步删除的测试链路数据：
+  - `match_rounds.id = 5695237d-d480-4c0a-a41f-f5e5ee22e055`
+  - `round_name = test`
+  - `match_sessions.id = 37258435-4ebc-4b94-a43d-2eb3539fda64`
+  - `session_name = test 匹配`
+  - 关联 `match_round_submissions`
+  - 关联 `match_results`
+  - 关联 `mutual_reviews`
+- 清理原因：
+  - 该测试 session 为 `confirmed`，如果保留，会继续污染真实成员的 match history / pair relation 统计
+  - session 中还混入了 2 个真实成员，因此不能只删假成员本体，必须把整个测试 round/session 一起移除
+- 已保留的真实成员：
+  - `c9778775-b4b3-4bc0-95db-34464d89ddbc` → `yunyoumao77@gmail.com` / 李佩泽
+  - `2f08f6a5-351e-4a2f-a8f6-ef53480c9560` → `yunyoumaoeel@gmail.com` / 张飞
+  - 这 2 人仅删除了他们挂在 `test 匹配` 上的测试结果，本体账号仍在
+- 本地备份：
+  - 已写入 `.local-backups/db-fake-members-2026-04-09-backup.json`
+  - 备份包含：假成员、test round、test session、submissions、results、mutual reviews
+- 清理后复核：
+  - `remainingFakeMembers = 0`
+  - `remainingTestRound = 0`
+  - `remainingTestSession = 0`
+  - `remainingTestSubmissions = 0`
+  - `remainingTestResults = 0`
+  - `remainingTestMutualReviews = 0`
   - 规则：只支持 `.xlsx` 第一张表；一二志愿不同标准化为 `都可以`；姓名按 `当前 members -> legacy_members -> temp member` 严格唯一匹配
   - 2026-04-20 补记：导入格式已进一步收口为 **Google Forms 回复表原始导出格式**
     - 日期区结构：`1 天 = 1 列`

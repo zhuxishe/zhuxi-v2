@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchMatchSession, fetchMatchCandidates, fetchPairRelationships } from "@/lib/queries/matching"
+import { fetchMatchSession, fetchPairRelationships } from "@/lib/queries/matching"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MatchSessionView } from "@/components/admin/MatchSessionView"
 import { createClient } from "@/lib/supabase/server"
@@ -22,6 +22,8 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   }
 
   const { session, results } = data
+  const roundId = (session as any).round_id as string | null
+  const readOnly = !roundId
 
   // Collect member IDs for pair relationship lookup
   const memberIds = results.flatMap((r: Record<string, unknown>) => {
@@ -35,7 +37,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   // Fetch pair relationships, pool members, diagnostics in parallel
   const [pairRelationships, poolMembers, supabase] = await Promise.all([
     fetchPairRelationships([...new Set(memberIds)]),
-    fetchPoolMembers(id),
+    roundId ? fetchPoolMembers(id) : Promise.resolve([]),
     createClient(),
   ])
 
@@ -70,18 +72,28 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   }))
 
   // Get time slot data: 优先从轮次问卷的 availability 读取，无轮次时从成员档案读
-  const candidates = await fetchMatchCandidates()
-   
-  const roundId = (session as any).round_id as string | null
   let timeSlotData: Array<{ preferred_time_slots: string[] }> = []
+  let allMemberOptions: { id: string; name: string }[] = []
+  const submissionPrefs = new Map<string, {
+    game_type_pref: string
+    gender_pref: string
+    availability?: Record<string, string[]>
+    interest_tags?: string[]
+    social_style?: string | null
+  }>()
 
   if (roundId) {
-    // 轮次匹配：从 match_round_submissions.availability 读取
+    // 轮次匹配：从 match_round_submissions 读取热力图、偏好和手动配对候选
     const { data: subs } = await supabase
       .from("match_round_submissions")
-      .select("availability")
+      .select(`
+        member_id, game_type_pref, gender_pref, availability, interest_tags, social_style,
+        member:members(member_identity(full_name, nickname))
+      `)
       .eq("round_id", roundId)
-    timeSlotData = (subs ?? []).map((sub) => {
+
+    const submissionRows = subs ?? []
+    timeSlotData = submissionRows.map((sub) => {
       const avail = (sub.availability ?? {}) as Record<string, string[]>
       const slots: string[] = []
       for (const [date, times] of Object.entries(avail)) {
@@ -89,25 +101,9 @@ export default async function MatchSessionDetailPage({ params }: Props) {
       }
       return { preferred_time_slots: slots }
     })
-  } else {
-    // 直接匹配（测试）：从成员档案读
-    timeSlotData = candidates.map((c) => ({
-       
-      preferred_time_slots: ((c as any).member_interests?.preferred_time_slots ?? []) as string[],
-    }))
-  }
 
-  // 构建问卷提交映射（memberId → 本轮偏好），供配对卡片、约束检查和 Popover 展示
-  let submissionPrefs = new Map<string, {
-    game_type_pref: string; gender_pref: string
-    availability?: Record<string, string[]>; interest_tags?: string[]; social_style?: string | null
-  }>()
-  if (roundId) {
-    const { data: subs } = await supabase
-      .from("match_round_submissions")
-      .select("member_id, game_type_pref, gender_pref, availability, interest_tags, social_style")
-      .eq("round_id", roundId)
-    for (const s of subs ?? []) {
+    // 构建问卷提交映射（memberId → 本轮偏好），供配对卡片、约束检查和 Popover 展示
+    for (const s of submissionRows) {
       submissionPrefs.set(s.member_id, {
         game_type_pref: s.game_type_pref,
         gender_pref: s.gender_pref,
@@ -116,31 +112,35 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         social_style: s.social_style as string | null | undefined,
       })
     }
-  }
 
-  // 排除已在活跃配对中的成员（防止手动配对时选到已匹配的人）
-  const activeMemberIds = new Set<string>()
-  for (const r of results) {
-     
-    const row = r as any
-    if (row.status === "cancelled") continue
-    if (row.member_a_id) activeMemberIds.add(row.member_a_id)
-    if (row.member_b_id) activeMemberIds.add(row.member_b_id)
-    if (Array.isArray(row.group_members)) {
-      for (const gm of row.group_members) activeMemberIds.add(gm)
+    // 排除已在活跃配对中的成员（防止手动配对时选到已匹配的人）
+    const activeMemberIds = new Set<string>()
+    for (const r of results) {
+      const row = r as any
+      if (row.status === "cancelled") continue
+      if (row.member_a_id) activeMemberIds.add(row.member_a_id)
+      if (row.member_b_id) activeMemberIds.add(row.member_b_id)
+      if (Array.isArray(row.group_members)) {
+        for (const gm of row.group_members) activeMemberIds.add(gm)
+      }
     }
-  }
 
-  const allMemberOptions = candidates
-    .filter((c) => !activeMemberIds.has(c.id))
-    .map((c) => {
-       
-      const identity = (c as any).member_identity
-      const name = (Array.isArray(identity) ? identity[0] : identity)?.full_name
-        || (Array.isArray(identity) ? identity[0] : identity)?.nickname
-        || "未知"
-      return { id: c.id, name }
-    })
+    allMemberOptions = submissionRows
+      .filter((sub) => !activeMemberIds.has(sub.member_id))
+      .map((sub) => {
+        const member = Array.isArray(sub.member) ? sub.member[0] : sub.member
+        const identity = Array.isArray(member?.member_identity)
+          ? member.member_identity[0]
+          : member?.member_identity
+        return {
+          id: sub.member_id,
+          name: identity?.full_name || identity?.nickname || "未知",
+        }
+      })
+  } else {
+    // 历史测试会话缺少可信的问卷快照，这里不再伪造热力图
+    timeSlotData = []
+  }
 
   return (
     <div>
@@ -154,6 +154,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         poolMembers={poolMembers}
         allMemberOptions={allMemberOptions}
         submissionPrefs={Object.fromEntries(submissionPrefs)}
+        readOnly={readOnly}
       />
     </div>
   )

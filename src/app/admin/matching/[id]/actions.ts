@@ -4,20 +4,50 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 
+type WritableSession = { status: string; round_id: string | null }
+type WritableResult = { status: string; session_id: string }
+type SessionGuard = { session: WritableSession } | { error: string }
+type ResultGuard = { result: WritableResult; session: WritableSession } | { error: string }
+
+async function getWritableSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+): Promise<SessionGuard> {
+  const { data: session } = await supabase
+    .from("match_sessions")
+    .select("status, round_id")
+    .eq("id", sessionId)
+    .single()
+
+  if (!session) return { error: "会话不存在" }
+  if (!session.round_id) return { error: "旧测试匹配记录仅支持查看" }
+  return { session }
+}
+
+async function getWritableResultSession(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  resultId: string,
+): Promise<ResultGuard> {
+  const { data: result } = await supabase
+    .from("match_results")
+    .select("status, session_id")
+    .eq("id", resultId)
+    .single()
+
+  if (!result) return { error: "配对结果不存在" }
+  const guarded = await getWritableSession(supabase, result.session_id)
+  if ("error" in guarded) return guarded
+  return { result, session: guarded.session }
+}
+
 export async function lockPair(resultId: string) {
   const admin = await requireAdmin()
   const supabase = await createClient()
 
-  // 状态校验：只有 draft 状态才能锁定
-  const { data: current } = await supabase
-    .from("match_results")
-    .select("status")
-    .eq("id", resultId)
-    .single()
-
-  if (!current) return { error: "配对结果不存在" }
-  if (current.status !== "draft") {
-    return { error: `当前状态为「${current.status}」，只有「draft」状态才能锁定` }
+  const guarded = await getWritableResultSession(supabase, resultId)
+  if ("error" in guarded) return { error: guarded.error }
+  if (guarded.result.status !== "draft") {
+    return { error: `当前状态为「${guarded.result.status}」，只有「draft」状态才能锁定` }
   }
 
   const { error } = await supabase
@@ -41,16 +71,10 @@ export async function splitPair(resultId: string) {
   await requireAdmin()
   const supabase = await createClient()
 
-  // 状态校验：只有 draft 或 locked 状态才能拆分
-  const { data: current } = await supabase
-    .from("match_results")
-    .select("status")
-    .eq("id", resultId)
-    .single()
-
-  if (!current) return { error: "配对结果不存在" }
-  if (current.status !== "draft" && current.status !== "locked") {
-    return { error: `当前状态为「${current.status}」，只有「draft」或「locked」状态才能拆分` }
+  const guarded = await getWritableResultSession(supabase, resultId)
+  if ("error" in guarded) return { error: guarded.error }
+  if (guarded.result.status !== "draft" && guarded.result.status !== "locked") {
+    return { error: `当前状态为「${guarded.result.status}」，只有「draft」或「locked」状态才能拆分` }
   }
 
   const { error } = await supabase
@@ -70,16 +94,10 @@ export async function restorePair(resultId: string) {
   await requireAdmin()
   const supabase = await createClient()
 
-  // 状态校验：只有 cancelled 状态才能恢复
-  const { data: current } = await supabase
-    .from("match_results")
-    .select("status")
-    .eq("id", resultId)
-    .single()
-
-  if (!current) return { error: "配对结果不存在" }
-  if (current.status !== "cancelled") {
-    return { error: `当前状态为「${current.status}」，只有「cancelled」状态才能恢复` }
+  const guarded = await getWritableResultSession(supabase, resultId)
+  if ("error" in guarded) return { error: guarded.error }
+  if (guarded.result.status !== "cancelled") {
+    return { error: `当前状态为「${guarded.result.status}」，只有「cancelled」状态才能恢复` }
   }
 
   const { error } = await supabase
@@ -100,25 +118,12 @@ export async function deleteSession(sessionId: string) {
   await requireAdmin()
   const supabase = await createClient()
 
-  // 状态校验：只有 draft 状态才能删除
-  const { data: session } = await supabase
-    .from("match_sessions")
-    .select("status")
-    .eq("id", sessionId)
-    .single()
-
-  if (!session) return { error: "会话不存在" }
-  if (session.status !== "draft") {
-    return { error: `当前状态为「${session.status}」，只有「draft」状态才能删除` }
+  const guarded = await getWritableSession(supabase, sessionId)
+  if ("error" in guarded) return { error: guarded.error }
+  if (guarded.session.status !== "draft") {
+    return { error: `当前状态为「${guarded.session.status}」，只有「draft」状态才能删除` }
   }
-
-  // 获取关联的轮次 ID（用于重置轮次状态）
-  const { data: sessionData } = await supabase
-    .from("match_sessions")
-    .select("round_id")
-    .eq("id", sessionId)
-    .single()
-  const roundId = sessionData?.round_id
+  const roundId = guarded.session.round_id
 
   // 按外键依赖顺序删除（CASCADE 应该处理，但显式更安全）
   await supabase.from("unmatched_diagnostics").delete().eq("session_id", sessionId)
@@ -147,6 +152,8 @@ export async function deleteSession(sessionId: string) {
 export async function confirmSession(sessionId: string) {
   await requireAdmin()
   const supabase = await createClient()
+  const guarded = await getWritableSession(supabase, sessionId)
+  if ("error" in guarded) return { error: guarded.error }
 
   // 原子条件更新：只有 draft 状态才会被更新（防止并发重复确认）
   const { data: updated, error: sErr } = await supabase
@@ -189,6 +196,8 @@ export async function confirmSession(sessionId: string) {
 export async function unpublishSession(sessionId: string) {
   await requireAdmin()
   const supabase = await createClient()
+  const guarded = await getWritableSession(supabase, sessionId)
+  if ("error" in guarded) return { error: guarded.error }
 
   const { data: updated, error: sErr } = await supabase
     .from("match_sessions")

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/admin"
 import { importRoundWorkbook } from "@/lib/matching/round-import-service"
+import { getPostgrestErrorMessage } from "@/lib/supabase/postgrest-error"
 
 export async function importRoundExcel(roundId: string, formData: FormData) {
   await requireAdmin()
@@ -17,7 +18,7 @@ export async function importRoundExcel(roundId: string, formData: FormData) {
     revalidatePath(`/admin/matching/rounds/${roundId}`)
     return { success: true, summary: result.summary }
   } catch (error) {
-    const message = error instanceof Error ? error.message : "导入失败"
+    const message = getPostgrestErrorMessage(error, "导入失败")
     return { error: message }
   }
 }

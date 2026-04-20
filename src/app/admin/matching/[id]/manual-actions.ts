@@ -3,41 +3,16 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
-import { submissionToCandidate } from "@/lib/matching/adapter-submission"
+import { buildRoundCandidates } from "@/lib/matching/build-round-candidates"
 import { checkHardConstraints, checkGroupConstraints } from "@/lib/matching/constraints"
 import { findStrictCommonSlot } from "@/lib/matching/match-utils"
 import { scorePair } from "@/lib/matching/scorer"
 import { getCommonSlots } from "@/lib/matching/time-filter"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
-import { fetchMatchHistory } from "@/lib/queries/match-history"
-import { getImportedHistory } from "@/lib/matching/import-metadata"
-import { mergeMatchHistory } from "@/lib/matching/round-import-utils"
 import { validateUuids } from "@/lib/sanitize"
 import type { MatchCandidate, ScoreComponent } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
-
-/** 获取单个成员完整资料 */
-async function fetchMemberFull(memberId: string) {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from("members")
-    .select(`
-      id, member_number, status, attractiveness_score,
-      member_identity (*),
-      member_interests (*),
-      member_personality (*),
-      member_language (*),
-      member_boundaries (*),
-      member_dynamic_stats (activity_count, reliability_score),
-      personality_quiz_results (score_e, score_a, score_o, score_c, score_n)
-    `)
-    .eq("id", memberId)
-    .single()
-
-  if (error) throw error
-  return data
-}
 
 /** 获取 session 对应的 round_id */
 async function getSessionRoundId(sessionId: string): Promise<string | null> {
@@ -50,37 +25,6 @@ async function getSessionRoundId(sessionId: string): Promise<string | null> {
   return data?.round_id ?? null
 }
 
-/** 获取成员在某轮次的问卷提交 */
-async function fetchSubmission(roundId: string, memberId: string) {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("match_round_submissions")
-    .select("*")
-    .eq("round_id", roundId)
-    .eq("member_id", memberId)
-    .single()
-  return data
-}
-
-/** 构建 MatchCandidate：必须有问卷数据 */
-async function buildCandidate(memberId: string, roundId: string) {
-  const member = await fetchMemberFull(memberId)
-  const sub = await fetchSubmission(roundId, memberId)
-  if (!sub) {
-    throw new Error(`成员 ${memberId} 未提交本轮问卷，无法参与匹配`)
-  }
-  const historyMap = await fetchMatchHistory([memberId])
-  const history = mergeMatchHistory(
-    historyMap.get(memberId) ?? [],
-    getImportedHistory((sub as Record<string, unknown>).import_metadata),
-  )
-  return submissionToCandidate(sub, member, history)
-}
-
-/** 批量构建候选人 */
-async function buildCandidates(memberIds: string[], roundId: string) {
-  return Promise.all(memberIds.map((id) => buildCandidate(id, roundId)))
-}
 
 // ── 硬约束条目（供前端展示） ──
 
@@ -201,29 +145,12 @@ export async function checkPairCompatibility(
   const roundId = await getSessionRoundId(sessionId)
   if (!roundId) throw new Error("该匹配会话无关联轮次，无法获取问卷数据")
 
-  const [candidateA, candidateB] = await Promise.all([
-    buildCandidate(memberAId, roundId),
-    buildCandidate(memberBId, roundId),
-  ])
+  const { candidates } = await buildRoundCandidates(roundId, [memberAId, memberBId])
+  const [candidateA, candidateB] = candidates
   const config = { ...DEFAULT_CONFIG }
 
   const pairRelations = await fetchPairRelations([memberAId, memberBId])
   const constraint = checkHardConstraints(candidateA, candidateB, config, pairRelations)
-
-  // 额外黑名单 DB 检查
-  const supabase = await createClient()
-  const blacklistWarnings: string[] = []
-  const [{ data: relsAB }, { data: relsBA }] = await Promise.all([
-    supabase.from("pair_relationships").select("status, notes")
-      .eq("member_a_id", memberAId).eq("member_b_id", memberBId),
-    supabase.from("pair_relationships").select("status, notes")
-      .eq("member_a_id", memberBId).eq("member_b_id", memberAId),
-  ])
-  for (const rel of [...(relsAB ?? []), ...(relsBA ?? [])]) {
-    if (rel.status === "blacklist") {
-      blacklistWarnings.push(`黑名单: ${rel.notes || "无备注"}`)
-    }
-  }
 
   const score = scorePair(candidateA, candidateB, config, pairRelations)
   const commonSlots = getCommonSlots(candidateA.availability, candidateB.availability)
@@ -233,8 +160,8 @@ export async function checkPairCompatibility(
   const constraints = buildPairConstraints(candidateA, candidateB, bestSlot)
 
   return {
-    compatible: constraint.passed && blacklistWarnings.length === 0,
-    warnings: [...constraint.reasons, ...blacklistWarnings],
+    compatible: constraint.passed,
+    warnings: constraint.reasons,
     constraints,
     score: score.totalScore,
     breakdown: score.breakdown as ScoreComponent[],
@@ -253,7 +180,7 @@ export async function checkGroupCompatibility(
   const roundId = await getSessionRoundId(sessionId)
   if (!roundId) throw new Error("该匹配会话无关联轮次，无法获取问卷数据")
 
-  const candidates = await buildCandidates(memberIds, roundId)
+  const { candidates } = await buildRoundCandidates(roundId, memberIds)
   const config = { ...DEFAULT_CONFIG }
   const pairRelations = await fetchPairRelations(memberIds)
 
@@ -310,6 +237,10 @@ export async function manualPair(
   if (memberIds.length > 6) return { error: "最多 6 人" }
 
   const supabase = await createClient()
+  const roundId = await getSessionRoundId(sessionId)
+  if (!roundId) {
+    return { error: "旧测试匹配记录仅支持查看，不能继续手动配对" }
+  }
 
   // ── 防重复校验 ──
   for (const mId of memberIds) {
@@ -339,24 +270,34 @@ export async function manualPair(
   }
 
   // ── 计算评分/时段 ──
+  let candidates: MatchCandidate[]
+  try {
+    const bundle = await buildRoundCandidates(roundId, memberIds)
+    candidates = bundle.candidates
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "无法获取本轮问卷数据" }
+  }
+
   let totalScore = 0
   let scoreBreakdown: Json = null
   let bestSlot: string | null = null
+  const config = { ...DEFAULT_CONFIG }
+  const pairRelations = await fetchPairRelations(memberIds)
 
   if (memberIds.length === 2) {
-    // 双人：完整评分
-    try {
-      const result = await checkPairCompatibility(sessionId, memberIds[0], memberIds[1])
-      totalScore = result.score
-      scoreBreakdown = result.breakdown as unknown as Json
-      bestSlot = result.bestSlot
-    } catch { /* 评分失败不阻止 */ }
+    // 双人：完整评分，但无共同时段时禁止写入
+    const [candidateA, candidateB] = candidates
+    const commonSlots = getCommonSlots(candidateA.availability, candidateB.availability)
+    if (commonSlots.length === 0) return { error: "无共同可用时段，无法配对" }
+
+    const score = scorePair(candidateA, candidateB, config, pairRelations)
+    totalScore = score.totalScore
+    scoreBreakdown = score.breakdown as unknown as Json
+    bestSlot = `${commonSlots[0].date}_${commonSlots[0].slot}`
   } else {
-    // 多人组：只取时段
-    try {
-      const result = await checkGroupCompatibility(sessionId, memberIds)
-      bestSlot = result.bestSlot
-    } catch { /* 失败不阻止 */ }
+    // 多人组：只要严格公共时段，没有就禁止写入
+    bestSlot = findStrictCommonSlot(candidates)
+    if (!bestSlot) return { error: "无共同可用时段，无法组建多人组" }
   }
 
   // ── 插入配对 ──

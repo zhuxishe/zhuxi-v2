@@ -3,14 +3,11 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchRoundSubmissions } from "@/lib/queries/rounds"
-import { fetchMatchHistory } from "@/lib/queries/matching"
 import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
-import { submissionToCandidate } from "@/lib/matching/adapter"
+import { buildRoundCandidates } from "@/lib/matching/build-round-candidates"
 import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
-import { getImportedHistory } from "@/lib/matching/import-metadata"
-import { mergeMatchHistory } from "@/lib/matching/round-import-utils"
+import { canUpdateRoundStatus } from "@/components/admin/round-detail-rules"
 import type { MatchingConfig } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
 
@@ -24,6 +21,16 @@ export async function updateRoundStatus(roundId: string, status: string) {
   }
 
   const supabase = await createClient()
+  const { data: round, error: roundError } = await supabase
+    .from("match_rounds")
+    .select("status")
+    .eq("id", roundId)
+    .single()
+
+  if (roundError || !round) return { error: "轮次不存在" }
+  if (!canUpdateRoundStatus(round.status, status)) {
+    return { error: `当前轮次状态为「${round.status}」，不允许切换到「${status}」` }
+  }
 
   const { error } = await supabase
     .from("match_rounds")
@@ -57,30 +64,18 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
   }
 
   // 1. 获取问卷提交（含用户资料）
-  const submissions = await fetchRoundSubmissions(roundId)
+  const { submissions, candidates } = await buildRoundCandidates(roundId)
   if (submissions.length < 2) {
     return { error: "至少需要 2 人提交问卷才能匹配" }
   }
 
-  // 2. 获取匹配历史，并将 partnerId 转为 submissionId
+  // 2. 获取成员 ID
   const memberIds = submissions.map((s) => s.member_id)
-  const historyMap = await fetchMatchHistory(memberIds)
 
-  // 3. 转换为 MatchCandidate（从 submission 读取本轮偏好）
-  // submissionId = member_id，history 中的 partner name 也是 member_id，无需转换
-  const candidates = submissions.map((sub) => {
-    const member = Array.isArray(sub.member) ? sub.member[0] : sub.member
-    const history = mergeMatchHistory(
-      historyMap.get(sub.member_id) ?? [],
-      getImportedHistory((sub as Record<string, unknown>).import_metadata),
-    )
-    return submissionToCandidate(sub, member, history)
-  })
-
-  // 4. 构建配对历史关系（黑名单、互评、配对次数，使用 member UUID 作为 key）
+  // 3. 构建配对历史关系（黑名单、互评、配对次数，使用 member UUID 作为 key）
   const pairRelations = await fetchPairRelations(memberIds)
 
-  // 5. 三阶段分流匹配（双人池 → 多人池 → 回流兜底）
+  // 4. 三阶段分流匹配（双人池 → 多人池 → 回流兜底）
   // idMap: submissionId(=member_id) → member_id，用于结果写入
   const config: MatchingConfig = { ...DEFAULT_CONFIG }
   const idMap = new Map<string, string>()
@@ -88,7 +83,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
 
   const result = runFullMatching(candidates, config, idMap, pairRelations)
 
-  // 6. 保存 match_session
+  // 5. 保存 match_session
   const { data: session, error: sErr } = await supabase
     .from("match_sessions")
     .insert({
@@ -109,7 +104,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     return { error: "操作失败" }
   }
 
-  // 7. 保存 match_results
+  // 6. 保存 match_results
   const rows = result.rows.map((r) => ({
     session_id: session.id,
     member_a_id: r.member_a_id,
@@ -131,7 +126,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     }
   }
 
-  // 8. 保存未匹配诊断
+  // 7. 保存未匹配诊断
   if (result.unmatchedIds.length > 0) {
     const diagRows = result.unmatchedIds.map((subId) => ({
       session_id: session.id,
@@ -142,7 +137,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     await supabase.from("unmatched_diagnostics").insert(diagRows)
   }
 
-  // 9. 更新轮次状态为 matched
+  // 8. 更新轮次状态为 matched
   await supabase.from("match_rounds").update({ status: "matched" }).eq("id", roundId)
 
   revalidatePath(`/admin/matching/rounds/${roundId}`)

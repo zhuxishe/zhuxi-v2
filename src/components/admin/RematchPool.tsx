@@ -7,6 +7,7 @@ import { RefreshCw, Users, UserPlus } from "lucide-react"
 import { runPoolRematch } from "@/app/admin/matching/[id]/pool-actions"
 import { ManualPairDialog } from "./ManualPairDialog"
 import { PlayerInfoPopover } from "./PlayerInfoPopover"
+import type { SubmissionPrefInfo } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
 
 export type { PoolMember }
@@ -14,7 +15,7 @@ export type { PoolMember }
 interface Props {
   sessionId: string
   poolMembers: PoolMember[]
-  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
+  submissionPrefs?: Record<string, SubmissionPrefInfo>
   onRefresh: () => void
 }
 

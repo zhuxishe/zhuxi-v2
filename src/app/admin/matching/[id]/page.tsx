@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMatchSession, fetchPairRelationships } from "@/lib/queries/matching"
+import { buildImportInfoMap } from "@/lib/matching/import-display"
+import { supportsImportMetadataColumn } from "@/lib/matching/import-metadata-column"
+import { getSingleRelation } from "@/lib/supabase/relations"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MatchSessionView } from "@/components/admin/MatchSessionView"
+import type { EnrichedMember, SubmissionPrefInfo } from "@/components/admin/match-detail-types"
 import { createClient } from "@/lib/supabase/server"
 import { fetchPoolMembers } from "@/lib/queries/pool-members"
 
@@ -66,7 +70,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   }
 
    
-  const diagnostics = (diagnosticsRaw ?? []).map((d: any) => ({
+  let diagnostics = (diagnosticsRaw ?? []).map((d: any) => ({
     ...d,
     memberData: unmatchedMemberMap.get(d.member_id) ?? null,
   }))
@@ -74,26 +78,55 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   // Get time slot data: 优先从轮次问卷的 availability 读取，无轮次时从成员档案读
   let timeSlotData: Array<{ preferred_time_slots: string[] }> = []
   let allMemberOptions: { id: string; name: string }[] = []
-  const submissionPrefs = new Map<string, {
-    game_type_pref: string
-    gender_pref: string
-    availability?: Record<string, string[]>
-    interest_tags?: string[]
-    social_style?: string | null
-  }>()
+  const submissionPrefs = new Map<string, SubmissionPrefInfo>()
+  const importInfoMap = new Map<string, EnrichedMember["import_info"]>()
 
   if (roundId) {
-    // 轮次匹配：从 match_round_submissions 读取热力图、偏好和手动配对候选
-    const { data: subs } = await supabase
-      .from("match_round_submissions")
-      .select(`
+    const includeImportMetadata = await supportsImportMetadataColumn(supabase)
+    const submissionSelect = includeImportMetadata
+      ? `
+        member_id, game_type_pref, gender_pref, availability, interest_tags, social_style, import_metadata,
+        member:members(id, member_number, member_identity(full_name, nickname))
+      `
+      : `
         member_id, game_type_pref, gender_pref, availability, interest_tags, social_style,
-        member:members(member_identity(full_name, nickname))
-      `)
+        member:members(id, member_number, member_identity(full_name, nickname))
+      `
+
+    // 轮次匹配：从 match_round_submissions 读取热力图、偏好和手动配对候选
+    const { data: subs } = await (supabase as any)
+      .from("match_round_submissions")
+      .select(submissionSelect)
       .eq("round_id", roundId)
 
-    const submissionRows = subs ?? []
-    timeSlotData = submissionRows.map((sub) => {
+    const submissionRows: any[] = subs ?? []
+    const needsFallbackImportLookup = !includeImportMetadata && submissionRows.some((sub: any) => {
+      const member = getSingleRelation(sub.member as any)
+      return String(member?.member_number ?? "").startsWith("IMP-")
+    })
+    const legacyRows = needsFallbackImportLookup
+      ? ((await (supabase as any)
+          .from("legacy_members")
+          .select("id, full_name, gender, school, department, interest_tags, social_tags, game_mode, compatibility_score, session_count, match_history")).data ?? []).map((row: any) => ({
+            legacy_id: row.id,
+            full_name: row.full_name,
+            gender: row.gender ?? null,
+            school: row.school ?? null,
+            department: row.department ?? null,
+            interest_tags: row.interest_tags ?? [],
+            social_tags: row.social_tags ?? [],
+            game_mode: row.game_mode ?? null,
+            compatibility_score: row.compatibility_score ?? null,
+            session_count: row.session_count ?? null,
+            match_history: row.match_history ?? [],
+          }))
+      : []
+    const builtImportInfo = buildImportInfoMap(submissionRows as any[], legacyRows)
+    for (const [memberId, info] of Object.entries(builtImportInfo)) {
+      importInfoMap.set(memberId, info)
+    }
+
+    timeSlotData = submissionRows.map((sub: any) => {
       const avail = (sub.availability ?? {}) as Record<string, string[]>
       const slots: string[] = []
       for (const [date, times] of Object.entries(avail)) {
@@ -126,12 +159,10 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     }
 
     allMemberOptions = submissionRows
-      .filter((sub) => !activeMemberIds.has(sub.member_id))
-      .map((sub) => {
-        const member = Array.isArray(sub.member) ? sub.member[0] : sub.member
-        const identity = Array.isArray(member?.member_identity)
-          ? member.member_identity[0]
-          : member?.member_identity
+      .filter((sub: any) => !activeMemberIds.has(sub.member_id))
+      .map((sub: any) => {
+        const member = getSingleRelation(sub.member as any)
+        const identity = getSingleRelation(member?.member_identity as any)
         return {
           id: sub.member_id,
           name: identity?.full_name || identity?.nickname || "未知",
@@ -142,16 +173,36 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     timeSlotData = []
   }
 
+  const attachImportInfo = (member: EnrichedMember | null): EnrichedMember | null => {
+    if (!member?.id) return member
+    return { ...member, import_info: importInfoMap.get(member.id) ?? null }
+  }
+
+  const enrichedResults = results.map((result) => ({
+    ...result,
+    member_a: attachImportInfo(result.member_a as EnrichedMember | null),
+    member_b: attachImportInfo(result.member_b as EnrichedMember | null),
+    group_member_details: result.group_member_details?.map((member) => attachImportInfo(member as EnrichedMember) as EnrichedMember) ?? null,
+  }))
+  diagnostics = diagnostics.map((item) => ({
+    ...item,
+    memberData: attachImportInfo(item.memberData as EnrichedMember | null),
+  }))
+  const enrichedPoolMembers = poolMembers.map((member) => ({
+    ...member,
+    memberData: attachImportInfo(member.memberData),
+  }))
+
   return (
     <div>
       <AdminTopBar admin={admin} title={session.session_name ?? "匹配详情"} />
       <MatchSessionView
         session={session}
-        results={results}
+        results={enrichedResults}
         diagnostics={diagnostics}
         candidates={timeSlotData}
         pairRelationships={pairRelationships}
-        poolMembers={poolMembers}
+        poolMembers={enrichedPoolMembers}
         allMemberOptions={allMemberOptions}
         submissionPrefs={Object.fromEntries(submissionPrefs)}
         readOnly={readOnly}

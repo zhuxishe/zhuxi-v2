@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { resolveImportRows } from "@/lib/matching/round-import-resolver"
+import { buildImportPreview, resolveImportRows } from "@/lib/matching/round-import-resolver"
 import type { ParsedImportRow } from "@/lib/matching/round-import-types"
 
 function buildRow(name: string): ParsedImportRow {
@@ -38,6 +38,29 @@ describe("resolveImportRows", () => {
     expect(row.existingMemberId).toBe("m1")
   })
 
+  it("does not auto-apply legacy data without a manual override", () => {
+    const [row] = resolveImportRows(
+      [buildRow("张三")],
+      [],
+      [{ legacy_id: "l1", full_name: "张三", gender: "男", school: null, department: null, interest_tags: [], social_tags: [], game_mode: null, compatibility_score: null, session_count: 2, match_history: [] }],
+    )
+
+    expect(row.source).toBe("temp")
+    expect(row.legacyProfile).toBeNull()
+  })
+
+  it("applies legacy data when admin selects an override", () => {
+    const [row] = resolveImportRows(
+      [buildRow("张三")],
+      [],
+      [{ legacy_id: "l1", full_name: "张三", gender: "男", school: "早大", department: null, interest_tags: [], social_tags: [], game_mode: null, compatibility_score: null, session_count: 2, match_history: [] }],
+      { "2": "l1" },
+    )
+
+    expect(row.source).toBe("legacy-temp")
+    expect(row.legacyProfile?.school).toBe("早大")
+  })
+
   it("falls back to temp with warning when current match is ambiguous", () => {
     const [row] = resolveImportRows(
       [buildRow("张三")],
@@ -50,5 +73,17 @@ describe("resolveImportRows", () => {
 
     expect(row.source).toBe("temp")
     expect(row.importMetadata.warnings).toContain("ambiguous_name_match")
+  })
+
+  it("builds preview rows with exact legacy hints but no auto-binding", () => {
+    const [preview] = buildImportPreview(
+      [buildRow("张三")],
+      [],
+      [{ legacy_id: "l1", full_name: "张三", gender: "男", school: "早大", department: "理工", interest_tags: [], social_tags: [], game_mode: null, compatibility_score: null, session_count: 2, match_history: [] }],
+    )
+
+    expect(preview.currentMatch).toBeNull()
+    expect(preview.exactLegacyMatches).toHaveLength(1)
+    expect(preview.exactLegacyMatches[0]?.name).toBe("张三")
   })
 })

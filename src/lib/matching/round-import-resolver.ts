@@ -1,4 +1,12 @@
-import type { CurrentImportMember, LegacyImportMember, ParsedImportRow, PreparedImportRow } from "./round-import-types"
+import type {
+  CurrentImportMember,
+  ImportPreviewRow,
+  LegacyImportMember,
+  LegacyOption,
+  LegacyOverrideMap,
+  ParsedImportRow,
+  PreparedImportRow,
+} from "./round-import-types"
 import { normalizeImportName } from "./round-import-utils"
 
 function dedupeCurrentMembers(members: CurrentImportMember[]): CurrentImportMember[] {
@@ -20,10 +28,44 @@ function buildLegacyMatches(row: ParsedImportRow, members: LegacyImportMember[])
   return members.filter((member) => row.normalizedName === normalizeImportName(member.full_name))
 }
 
+function toLegacyOption(member: LegacyImportMember): LegacyOption {
+  return {
+    id: member.legacy_id,
+    name: member.full_name,
+    school: member.school,
+    department: member.department,
+  }
+}
+
+export function buildImportPreview(
+  rows: ParsedImportRow[],
+  currentMembers: CurrentImportMember[],
+  legacyMembers: LegacyImportMember[],
+): ImportPreviewRow[] {
+  return rows.map((row) => {
+    const currentMatches = buildCurrentMatches(row, currentMembers)
+    const legacyMatches = currentMatches.length > 0 ? [] : buildLegacyMatches(row, legacyMembers)
+    return {
+      rowNumber: row.rowNumber,
+      name: row.name,
+      gameTypePref: row.gameTypePref,
+      genderPref: row.genderPref,
+      availabilityDays: Object.keys(row.availability).length,
+      message: row.message,
+      currentMatch: currentMatches.length === 1
+        ? { id: currentMatches[0].id, name: currentMatches[0].full_name ?? currentMatches[0].nickname ?? "未知" }
+        : null,
+      exactLegacyMatches: legacyMatches.map(toLegacyOption),
+      warnings: currentMatches.length > 1 ? ["ambiguous_name_match"] : [],
+    }
+  })
+}
+
 export function resolveImportRows(
   rows: ParsedImportRow[],
   currentMembers: CurrentImportMember[],
   legacyMembers: LegacyImportMember[],
+  legacyOverrides: LegacyOverrideMap = {},
 ): PreparedImportRow[] {
   return rows.map((row) => {
     const currentMatches = buildCurrentMatches(row, currentMembers)
@@ -42,23 +84,26 @@ export function resolveImportRows(
     }
 
     const warnings = currentMatches.length > 1 ? ["ambiguous_name_match"] : []
-    const legacyMatches = currentMatches.length > 0 ? [] : buildLegacyMatches(row, legacyMembers)
-    if (legacyMatches.length === 1) {
+    const overrideId = legacyOverrides[String(row.rowNumber)]
+    if (overrideId) {
+      const matchedLegacy = legacyMembers.find((member) => member.legacy_id === overrideId)
+      if (!matchedLegacy) throw new Error(`第 ${row.rowNumber} 行：手动指定的老成员不存在`)
       return {
         ...row,
         source: "legacy-temp",
         existingMemberId: null,
-        legacyProfile: legacyMatches[0],
+        legacyProfile: matchedLegacy,
         importMetadata: {
           ...row.importMetadata,
           source: "legacy-temp",
-          matched_legacy_id: legacyMatches[0].legacy_id,
-          legacy_profile: legacyMatches[0],
+          matched_legacy_id: matchedLegacy.legacy_id,
+          legacy_profile: matchedLegacy,
           warnings,
         },
       }
     }
 
+    const legacyMatches = currentMatches.length > 0 ? [] : buildLegacyMatches(row, legacyMembers)
     return {
       ...row,
       source: "temp",
@@ -66,7 +111,7 @@ export function resolveImportRows(
       legacyProfile: null,
       importMetadata: {
         ...row.importMetadata,
-        source: currentMatches.length > 0 ? "temp" : "temp",
+        source: "temp",
         warnings: legacyMatches.length > 1 ? [...warnings, "ambiguous_name_match"] : warnings,
       },
     }

@@ -10,6 +10,7 @@ import { scorePair } from "@/lib/matching/scorer"
 import { getCommonSlots } from "@/lib/matching/time-filter"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
+import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
 import { validateUuids } from "@/lib/sanitize"
 import type { MatchCandidate, ScoreComponent } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
@@ -326,6 +327,7 @@ export async function manualPair(
     .eq("session_id", sessionId)
     .in("member_id", memberIds)
 
+  await syncSessionSummary(supabase, sessionId)
   revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true }
 }

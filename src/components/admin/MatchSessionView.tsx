@@ -12,7 +12,8 @@ import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { RematchPool } from "./RematchPool"
 import { ManualPairDialog } from "./ManualPairDialog"
 import { lockPair, splitPair, restorePair, confirmSession, deleteSession, unpublishSession } from "@/app/admin/matching/[id]/actions"
-import type { EnrichedMatchResult, PairRelationship, EnrichedMember } from "./match-detail-types"
+import { buildSessionSummary } from "@/lib/matching/session-summary"
+import type { EnrichedMatchResult, PairRelationship, EnrichedMember, SubmissionPrefInfo } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
 import type { DiagnosticItem } from "./UnmatchedDiagnostics"
 
@@ -24,7 +25,7 @@ interface Props {
   pairRelationships?: PairRelationship[]
   poolMembers?: PoolMember[]
   allMemberOptions?: { id: string; name: string }[]
-  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
+  submissionPrefs?: Record<string, SubmissionPrefInfo>
   readOnly?: boolean
 }
 
@@ -74,6 +75,10 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
   // 分离活跃配对和已取消配对
   const activeResults = useMemo(() => results.filter((r) => r.status !== "cancelled"), [results])
   const cancelledResults = useMemo(() => results.filter((r) => r.status === "cancelled"), [results])
+  const summary = useMemo(
+    () => buildSessionSummary(session.total_candidates, results),
+    [results, session.total_candidates],
+  )
 
   // 搜索过滤（只过滤活跃配对）
   const filteredActive = useMemo(() => {
@@ -123,16 +128,16 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           {session.total_candidates} 人参与
         </span>
         <span className="rounded-full bg-green-500/10 text-green-600 px-3 py-1 text-sm font-medium">
-          {activeResults.length} 组活跃配对
+          {summary.totalMatched} 人已匹配
         </span>
         {cancelledResults.length > 0 && (
           <span className="rounded-full bg-red-500/10 text-red-600 px-3 py-1 text-sm font-medium">
             {cancelledResults.length} 组已取消
           </span>
         )}
-        {session.total_unmatched > 0 && (
+        {summary.totalUnmatched > 0 && (
           <span className="rounded-full bg-orange-500/10 text-orange-600 px-3 py-1 text-sm font-medium">
-            {session.total_unmatched} 人未匹配
+            {summary.totalUnmatched} 人未匹配
           </span>
         )}
         {!readOnly && allMemberOptions.length > 0 && (

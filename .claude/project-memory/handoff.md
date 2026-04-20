@@ -426,3 +426,111 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
 - 下次若继续：
   1. 用真实 Google Sheets 导出的 `.xlsx` 做一次后台导入 -> 运行匹配 -> 导出 Excel 的人工 smoke
   2. 迁移 `035` 上库后重新生成 Supabase 类型，减少 `legacy_members` / `import_metadata` 相关的 `any` 和断言
+
+### 04-20 匹配详情页可见性与统计补记
+- 用户在当前 session `0d720e58-2fa1-4bee-9ec8-3ae12d0abf15` 上提出 3 个问题：
+  1. 可用时段只显示前 3 天并带 `+N天`，无法看全
+  2. 想确认老成员资料到底用了什么信息
+  3. 想审一下当前匹配结果和成员信息有没有异常
+- 已确认并处理：
+  - `src/components/admin/PlayerInfoPopover.tsx`
+    - 可用时段改为**完整显示**，不再截断为前 3 天
+    - 新增“导入来源”区块
+    - 在 `import_metadata` 缺列时，按 `IMP-成员号 + 姓名命中 legacy_members` 的同规则做**现场推断**显示
+  - `src/app/admin/matching/[id]/page.tsx`
+    - 轮次详情页会构建 `importInfoMap`
+    - 把导入来源 / legacy 补强信息附着到结果成员、取消池成员、未匹配成员 popover
+  - `src/components/admin/MatchSessionView.tsx`
+    - session 详情页顶部 KPI 改为按当前 `match_results` 实时推导
+    - 不再直接相信已漂移的 `match_sessions.total_matched / total_unmatched`
+  - `src/app/admin/matching/[id]/actions.ts`
+  - `src/app/admin/matching/[id]/manual-actions.ts`
+  - `src/app/admin/matching/[id]/pool-actions.ts`
+    - 在拆散 / 恢复 / 手动配对 / 取消池再匹配后，自动回写 session 汇总人数
+- 本次查库结论（当前这轮真实状态）：
+  - 当前 round：`a558252c-8ac9-464e-a638-d0f3697b7f0a`
+  - 当前 session：`0d720e58-2fa1-4bee-9ec8-3ae12d0abf15`
+  - 导入后的 `20` 位成员**全部是 `IMP-...` 临时成员**
+  - 其中 `8` 位按姓名命中了 `legacy_members` 并做了补强：
+    - `白杨`
+    - `吕嘉玥`
+    - `吴璠`
+    - `南以勒`
+    - `常啸天`
+    - `叶淑雯`
+    - `朱捍华`
+    - `方奥陶`
+  - 当前数据库仍缺 `match_round_submissions.import_metadata` 列
+    - 这意味着：**当前这轮没有保存 raw 志愿 / script-activity 偏好 / legacy history**
+    - 也意味着：**legacy match history 没有并入这次算法**
+    - 真正已进入算法的是导入时落库到 temp member 的这些字段：
+      - `member_identity.school_name`
+      - `member_identity.department`
+      - `member_identity.hobby_tags`
+      - `member_identity.personality_self_tags`
+      - `member_interests.scenario_mode_pref`
+      - `member_dynamic_stats.activity_count`
+      - `members.attractiveness_score`
+- 本次发现的实际异常：
+  - session 汇总值原来漂移：
+    - 库里原值：`total_matched = 16`, `total_unmatched = 4`
+    - 按当前活跃结果真实计算应为：`18` 人已匹配、`2` 人未匹配
+    - 已直接回写数据库修正当前 session
+  - `rank = 999` 的手动配对仍存在：
+    - 这是当前设计（手动插入结果固定 `999`）
+    - 其中一组 `total_score = 0` 说明它是强制手动配对，不是自动算法高分结果
+- 本次新增测试：
+  - `src/__tests__/player-info-format.test.ts`
+  - `src/__tests__/import-display.test.ts`
+  - `src/__tests__/session-summary.test.ts`
+- 本次验证结果：
+  - `pnpm test:unit`：72/72 通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm build`：通过
+  - 浏览器最小验收（本地 `next dev` + Playwright 脚本）：
+    - `导入来源` 已可见
+    - `04-21 晚上` 与更后面的 `04-28 晚上` 同时可见，说明时段不再截断
+    - 顶部 KPI 已显示 `18 人已匹配 / 2 人未匹配`
+
+### 04-20 老成员手动匹配补记
+- 用户要求调整 Excel 导入链路：
+  - **老成员不再自动补全**
+  - 改为管理员先看导入预览，再逐行手动指定要挂到哪个 `legacy_members` 记录
+  - 目标是允许处理 Excel 名字错字/别名场景
+- 已完成实现：
+  - `src/app/admin/matching/rounds/[id]/import-actions.ts`
+    - 新增 `previewRoundExcel()`
+    - `importRoundExcel()` 现支持 `legacyOverrides` JSON
+  - `src/lib/matching/round-import-preview.ts`
+    - 解析 `.xlsx` 后返回预览行 + 全部老成员选项
+  - `src/lib/matching/round-import-context.ts`
+    - 收口 round / current members / legacy members / existing submissions 载入
+  - `src/lib/matching/round-import-resolver.ts`
+    - 当前正式成员：仍按精确姓名自动复用
+    - 老成员：**默认不自动套用**
+    - 只有管理员手动指定 `legacy_id` 才会走 `legacy-temp`
+  - `src/components/admin/RoundImportPanel.tsx`
+    - 导入改为两步：`解析预览 -> 手动指定老成员 -> 确认导入`
+  - 新增 UI：
+    - `src/components/admin/RoundImportPreview.tsx`
+    - `src/components/admin/LegacyMemberSearchSelect.tsx`
+- 当前实际规则（以本次代码为准）：
+  - `current members`：精确姓名命中时自动复用
+  - `legacy members`：不再自动命中，即使同名也只作为提示显示
+  - 管理员可以在预览列表里为任意行手动指定 `legacy_members`
+  - 未指定的行继续按普通 `temp member` 导入
+- 已补测试：
+  - `src/__tests__/round-import-resolver.test.ts`
+    - 覆盖“同名 legacy 不自动套用”
+    - 覆盖“手动 override 后才走 legacy-temp”
+    - 覆盖“预览阶段只给 legacy hint，不自动绑定”
+- 本次验证结果：
+  - `pnpm lint`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm test:unit`：75/75 通过
+  - `pnpm build`：通过
+- 当前限制：
+  - 数据库若仍未上 `035_match_round_import_metadata.sql`，手动指定的 legacy 来源不会完整落在 `import_metadata`
+  - 这不影响匹配算法和临时成员补强本身，但会影响后续“导入来源”回显的完整性
+  - 一旦 `035` 上库，手动指定来源会完整可追踪，无需再改逻辑

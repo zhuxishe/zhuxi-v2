@@ -8,6 +8,7 @@ import { fetchCancelledPoolIds } from "@/lib/queries/cancelled-pool"
 import { buildRoundCandidates } from "@/lib/matching/build-round-candidates"
 import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
+import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
 import type { Json } from "@/types/database.types"
 
 /** 对取消池成员重新运行匹配算法 */
@@ -66,6 +67,7 @@ export async function runPoolRematch(sessionId: string) {
     }
   }
 
+  await syncSessionSummary(supabase, sessionId)
   revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true, matchCount: result.rows.length }
 }

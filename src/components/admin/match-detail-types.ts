@@ -1,5 +1,7 @@
 /** Types shared across match detail admin components */
 
+import type { ImportSource, LegacyImportProfile } from "@/lib/matching/import-metadata"
+
 export interface MemberIdentityInfo {
   full_name: string
   nickname: string | null
@@ -29,6 +31,25 @@ export interface MemberBoundariesInfo {
   preferred_gender_mix: string | null
 }
 
+export interface ImportDisplayInfo {
+  source: ImportSource
+  inferred: boolean
+  raw_first_choice: string | null
+  raw_second_choice: string | null
+  script_activity_pref: string | null
+  raw_notes: string | null
+  warnings: string[]
+  legacy_profile: LegacyImportProfile | null
+}
+
+export interface SubmissionPrefInfo {
+  game_type_pref: string
+  gender_pref: string
+  availability?: Record<string, string[]>
+  interest_tags?: string[]
+  social_style?: string | null
+}
+
 export interface EnrichedMember {
   id: string
   member_number: string | null
@@ -36,6 +57,7 @@ export interface EnrichedMember {
   member_interests: MemberInterestsInfo | null
   member_personality: MemberPersonalityInfo | null
   member_boundaries: MemberBoundariesInfo | null
+  import_info?: ImportDisplayInfo | null
 }
 
 export interface EnrichedMatchResult {

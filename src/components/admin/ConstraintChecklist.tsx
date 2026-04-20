@@ -2,7 +2,8 @@
 
 import { CheckCircle2, XCircle, AlertTriangle } from "lucide-react"
 import { cn } from "@/lib/utils"
-import type { EnrichedMember, PairRelationship } from "./match-detail-types"
+import { displayGender } from "./player-info-format"
+import type { EnrichedMember, PairRelationship, SubmissionPrefInfo } from "./match-detail-types"
 
 interface ConstraintItem {
   label: string
@@ -17,18 +18,11 @@ interface Props {
   groupMembers?: EnrichedMember[] | null
   pairRel?: PairRelationship | null
   bestSlot: string | null
-  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
+  submissionPrefs?: Record<string, SubmissionPrefInfo>
 }
 
 function nameOf(m: EnrichedMember | null): string {
   return m?.member_identity?.full_name || m?.member_identity?.nickname || "未知"
-}
-
-/** DB 存 male/female，统一转为 男/女 显示和比较 */
-function displayGender(g: string | null | undefined): string {
-  if (g === "male") return "男"
-  if (g === "female") return "女"
-  return g || "未知"
 }
 
 /** 单向性别兼容检查：pref 是否接受 targetGender */

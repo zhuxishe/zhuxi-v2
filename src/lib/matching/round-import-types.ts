@@ -23,6 +23,27 @@ export interface CurrentImportMember {
 
 export interface LegacyImportMember extends LegacyImportProfile {}
 
+export interface LegacyOption {
+  id: string
+  name: string
+  school: string | null
+  department: string | null
+}
+
+export interface ImportPreviewRow {
+  rowNumber: number
+  name: string
+  gameTypePref: "双人" | "多人" | "都可以"
+  genderPref: "男" | "女" | "都可以"
+  availabilityDays: number
+  message: string | null
+  currentMatch: { id: string; name: string } | null
+  exactLegacyMatches: LegacyOption[]
+  warnings: string[]
+}
+
+export type LegacyOverrideMap = Record<string, string>
+
 export interface ResolvedImportRow extends ParsedImportRow {
   memberId: string
   source: ImportSource

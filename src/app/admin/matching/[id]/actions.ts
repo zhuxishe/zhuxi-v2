@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
+import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
 
 type WritableSession = { status: string; round_id: string | null }
 type WritableResult = { status: string; session_id: string }
@@ -86,6 +87,7 @@ export async function splitPair(resultId: string) {
     console.error("[splitPair]", error)
     return { error: "操作失败" }
   }
+  await syncSessionSummary(supabase, guarded.result.session_id)
   revalidatePath("/admin/matching", "layout")
   return { success: true }
 }
@@ -109,6 +111,7 @@ export async function restorePair(resultId: string) {
     console.error("[restorePair]", error)
     return { error: "操作失败" }
   }
+  await syncSessionSummary(supabase, guarded.result.session_id)
   revalidatePath("/admin/matching", "layout")
   return { success: true }
 }

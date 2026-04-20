@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { ScoreBreakdownChart } from "./ScoreBreakdownChart"
 import { ConstraintChecklist } from "./ConstraintChecklist"
 import { PlayerInfoPopover } from "./PlayerInfoPopover"
-import type { EnrichedMember, PairRelationship } from "./match-detail-types"
+import type { EnrichedMember, PairRelationship, SubmissionPrefInfo } from "./match-detail-types"
 
 const STATUS_STYLES: Record<string, { label: string; className: string }> = {
   draft: { label: "草稿", className: "bg-gray-100 text-gray-700" },
@@ -30,7 +30,7 @@ interface Props {
     group_member_details: EnrichedMember[] | null
   }
   pairRel?: PairRelationship | null
-  submissionPrefs?: Record<string, { game_type_pref: string; gender_pref: string }>
+  submissionPrefs?: Record<string, SubmissionPrefInfo>
   onLock?: (id: string) => void
   onSplit?: (id: string) => void
   onRestore?: (id: string) => void

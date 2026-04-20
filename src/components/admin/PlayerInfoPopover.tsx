@@ -3,35 +3,19 @@
 import Link from "next/link"
 import { Badge } from "@/components/ui/badge"
 import { Popover, PopoverTrigger, PopoverContent } from "@/components/ui/popover"
-import type { EnrichedMember } from "./match-detail-types"
+import { displayGender, formatAvailabilityEntries } from "./player-info-format"
+import type { EnrichedMember, SubmissionPrefInfo } from "./match-detail-types"
+import type { ImportSource } from "@/lib/matching/import-metadata"
 
-function displayGender(g: string | null | undefined): string {
-  if (g === "male") return "男"
-  if (g === "female") return "女"
-  return g || "未知"
-}
-
-/** 将 availability 对象压缩为可读字符串 */
-function formatAvailability(avail?: Record<string, string[]>): string | null {
-  if (!avail) return null
-  const entries = Object.entries(avail).filter(([, v]) => v.length > 0)
-  if (entries.length === 0) return null
-  // 只显示前3个日期
-  const display = entries.slice(0, 3).map(([date, slots]) => {
-    const short = date.replace(/^\d{4}-/, "")  // "04-12"
-    return `${short} ${slots.join(",")}`
-  })
-  const suffix = entries.length > 3 ? ` +${entries.length - 3}天` : ""
-  return display.join(" · ") + suffix
+function sourceLabel(source: ImportSource) {
+  if (source === "legacy-temp") return "老成员补强"
+  if (source === "temp") return "纯导入临时成员"
+  return "当前正式成员"
 }
 
 interface Props {
   member: EnrichedMember | null
-  /** 问卷偏好（memberId → {game_type_pref, gender_pref, availability?, interest_tags?, social_style?}） */
-  submissionPrefs?: Record<string, {
-    game_type_pref: string; gender_pref: string
-    availability?: Record<string, string[]>; interest_tags?: string[]; social_style?: string | null
-  }>
+  submissionPrefs?: Record<string, SubmissionPrefInfo>
   children: React.ReactNode
 }
 
@@ -41,7 +25,8 @@ export function PlayerInfoPopover({ member, submissionPrefs, children }: Props) 
   const identity = member.member_identity
   const personality = member.member_personality
   const subPref = member.id ? submissionPrefs?.[member.id] : undefined
-  const availText = formatAvailability(subPref?.availability)
+  const availEntries = formatAvailabilityEntries(subPref?.availability)
+  const importInfo = member.import_info
 
   return (
     <Popover>
@@ -64,12 +49,21 @@ export function PlayerInfoPopover({ member, submissionPrefs, children }: Props) 
             <div>类型偏好: <span className="font-medium">{subPref?.game_type_pref ?? "未填问卷"}</span></div>
             {identity.school_name && <div>学校: <span className="font-medium">{identity.school_name}</span></div>}
           </div>
-          {/* 可用时段（始终在 grid 外独立行显示） */}
-          <div className="text-xs pt-1 border-t border-amber-200/60">
-            <span className="text-amber-600">可用时段: </span>
-            <span className={availText ? "font-medium" : "text-amber-500"}>
-              {availText ?? "未填写"}
-            </span>
+          <div className="space-y-1 pt-1 border-t border-amber-200/60 text-xs">
+            <div className="text-amber-600">可用时段</div>
+            {availEntries.length > 0 ? (
+              <div className="max-h-28 overflow-auto rounded border border-amber-200/60 bg-white/70 p-1.5">
+                <div className="flex flex-wrap gap-1">
+                  {availEntries.map((entry) => (
+                    <Badge key={entry} variant="outline" className="text-[11px] font-normal">
+                      {entry}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <div className="text-amber-500">未填写</div>
+            )}
           </div>
         </div>
 
@@ -87,6 +81,54 @@ export function PlayerInfoPopover({ member, submissionPrefs, children }: Props) 
           <div className="text-xs">
             <span className="text-muted-foreground">社交风格:</span>{" "}
             <span className="font-medium">{subPref.social_style}</span>
+          </div>
+        )}
+
+        {importInfo && (
+          <div className="space-y-1 rounded-md border border-sky-200 bg-sky-50 p-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-sky-700">导入来源</span>
+              <Badge variant="outline" className="text-[11px]">
+                {sourceLabel(importInfo.source)}
+              </Badge>
+            </div>
+            <div className="text-xs text-sky-900">
+              {importInfo.inferred ? "当前库未存导入元数据，此处按导入规则现场推断。" : "以下信息来自导入时保存的元数据。"}
+            </div>
+            {importInfo.legacy_profile && (
+              <div className="space-y-1 text-xs">
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {importInfo.legacy_profile.school && <div>老档案学校: {importInfo.legacy_profile.school}</div>}
+                  {importInfo.legacy_profile.department && <div>老档案学部: {importInfo.legacy_profile.department}</div>}
+                  {importInfo.legacy_profile.game_mode && <div>老档案剧本偏好: {importInfo.legacy_profile.game_mode}</div>}
+                  {importInfo.legacy_profile.session_count != null && <div>历史参加: {importInfo.legacy_profile.session_count}</div>}
+                  {importInfo.legacy_profile.compatibility_score != null && <div>历史合拍分: {importInfo.legacy_profile.compatibility_score}</div>}
+                </div>
+                {(importInfo.legacy_profile.interest_tags.length > 0 || importInfo.legacy_profile.social_tags.length > 0) && (
+                  <div className="space-y-1">
+                    <TagSection title="老档案兴趣标签" tags={importInfo.legacy_profile.interest_tags} />
+                    <TagSection title="老档案社交标签" tags={importInfo.legacy_profile.social_tags} />
+                  </div>
+                )}
+              </div>
+            )}
+            {(importInfo.raw_first_choice || importInfo.raw_second_choice) && (
+              <div className="text-xs">
+                原始志愿: {importInfo.raw_first_choice || "未记录"}
+                {importInfo.raw_second_choice ? ` / ${importInfo.raw_second_choice}` : ""}
+              </div>
+            )}
+            {importInfo.script_activity_pref && (
+              <div className="text-xs">社团剧本/活动倾向: {importInfo.script_activity_pref}</div>
+            )}
+            {importInfo.raw_notes && (
+              <div className="text-xs">导入备注: {importInfo.raw_notes}</div>
+            )}
+            {importInfo.warnings.length > 0 && (
+              <div className="text-xs text-amber-700">
+                警告: {importInfo.warnings.join("、")}
+              </div>
+            )}
           </div>
         )}
 

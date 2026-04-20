@@ -5,13 +5,8 @@ import { useState } from "react"
 import { ChevronDown, ChevronRight, AlertCircle, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { PlayerInfoPopover } from "./PlayerInfoPopover"
-import type { EnrichedMember } from "./match-detail-types"
-
-function displayGender(g: string | null | undefined): string {
-  if (g === "male") return "男"
-  if (g === "female") return "女"
-  return g || "未知"
-}
+import { displayGender } from "./player-info-format"
+import type { EnrichedMember, SubmissionPrefInfo } from "./match-detail-types"
 
 export interface DiagnosticItem {
   id: string
@@ -25,10 +20,7 @@ export interface DiagnosticItem {
 interface Props {
   diagnostics: DiagnosticItem[]
   sessionId?: string
-  submissionPrefs?: Record<string, {
-    game_type_pref: string; gender_pref: string
-    availability?: Record<string, string[]>
-  }>
+  submissionPrefs?: Record<string, SubmissionPrefInfo>
   onManualPair?: (memberId: string, name: string) => void
 }
 

@@ -259,6 +259,10 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - 解析：`src/lib/matching/round-import-parser.ts`
   - 策略：**当前轮次 submissions 全量覆盖**
   - 规则：只支持 `.xlsx` 第一张表；一二志愿不同标准化为 `都可以`；姓名按 `当前 members -> legacy_members -> temp member` 严格唯一匹配
+  - 2026-04-20 补记：导入格式已进一步收口为 **Google Forms 回复表原始导出格式**
+    - 日期区结构：`1 天 = 1 列`
+    - 每个日期单元格内容形如：`上午有空, 下午有空` / `全天有空`
+    - **不再兼容** 旧的“`1 天 = 上午/下午/晚上/全天 多列`”清洗格式
 - 已完成导入数据落库扩展：
   - migration：`supabase/migrations/035_match_round_import_metadata.sql`
   - `match_round_submissions.import_metadata jsonb` 用于保存原始一二志愿、legacy 补强、来源、warning 等
@@ -281,6 +285,9 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - `pnpm typecheck`：通过
   - `pnpm test:unit`：通过（63 tests / 22 files）
   - `pnpm build`：通过
+- 2026-04-20 格式实测：
+  - 已用真实文件 `竹溪社26年4～5月第一次匹配（回复）.xlsx` 直接跑解析器
+  - 结果：**20 条回复全部解析成功**
 - 下次若继续：
   1. 用真实 Google Sheets 导出的 `.xlsx` 做一次后台导入 -> 运行匹配 -> 导出 Excel 的人工 smoke
   2. 迁移 `035` 上库后重新生成 Supabase 类型，减少 `legacy_members` / `import_metadata` 相关的 `any` 和断言

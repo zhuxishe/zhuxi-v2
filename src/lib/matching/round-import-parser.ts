@@ -1,9 +1,7 @@
 import * as XLSX from "xlsx"
 import type { Availability } from "./types"
 import type { ParsedImportRow } from "./round-import-types"
-import { normalizeGameTypeChoice, normalizeGenderPref, normalizeImportName, isCheckedCell } from "./round-import-utils"
-
-const SLOT_LABELS = ["上午", "下午", "晚上", "全天"] as const
+import { normalizeGameTypeChoice, normalizeGenderPref, normalizeImportName } from "./round-import-utils"
 
 function normalizeHeader(value: unknown): string {
   return String(value ?? "").normalize("NFKC").replace(/\s+/g, "")
@@ -38,31 +36,40 @@ function findSingleColumn(headers: string[], label: string): number {
   return index
 }
 
-function findDateSlotColumns(headers: string[], start: string, end: string) {
+function findDateColumns(headers: string[], start: string, end: string) {
   return buildDateHeaders(start, end).map(({ date, labels }) => {
-    const columns = SLOT_LABELS.reduce<Record<string, number>>((acc, slot) => {
-      const index = headers.findIndex((header) =>
-        labels.some((label) => header.includes(label)) && header.includes(slot)
-      )
-      if (index !== -1) acc[slot] = index
-      return acc
-    }, {})
-    if (Object.keys(columns).length === 0) throw new Error(`未找到日期列：${date}`)
-    return { date, columns }
+    const index = headers.findIndex((header) =>
+      labels.some((label) => header.includes(label))
+    )
+    if (index === -1) throw new Error(`未找到日期列：${date}`)
+    return { date, index }
   })
 }
 
-function buildAvailability(row: unknown[], dateColumns: Array<{ date: string; columns: Record<string, number> }>): Availability {
+function parseDailySlots(value: unknown): string[] {
+  const text = String(value ?? "")
+    .normalize("NFKC")
+    .replace(/\s+/g, "")
+    .trim()
+  if (!text) return []
+
+  const slots = new Set<string>()
+  if (text.includes("全天有空") || text.includes("全天")) {
+    slots.add("上午")
+    slots.add("下午")
+    slots.add("晚上")
+  }
+  if (text.includes("上午有空") || text.includes("上午")) slots.add("上午")
+  if (text.includes("下午有空") || text.includes("下午")) slots.add("下午")
+  if (text.includes("晚上有空") || text.includes("晚上")) slots.add("晚上")
+  return Array.from(slots)
+}
+
+function buildAvailability(row: unknown[], dateColumns: Array<{ date: string; index: number }>): Availability {
   const availability: Availability = {}
-  for (const { date, columns } of dateColumns) {
-    const slots = new Set<string>()
-    if (columns["全天"] !== undefined && isCheckedCell(row[columns["全天"]])) {
-      slots.add("上午"); slots.add("下午"); slots.add("晚上")
-    }
-    for (const slot of ["上午", "下午", "晚上"] as const) {
-      if (columns[slot] !== undefined && isCheckedCell(row[columns[slot]])) slots.add(slot)
-    }
-    if (slots.size > 0) availability[date] = Array.from(slots)
+  for (const { date, index } of dateColumns) {
+    const slots = parseDailySlots(row[index])
+    if (slots.length > 0) availability[date] = slots
   }
   return availability
 }
@@ -86,7 +93,7 @@ export function parseRoundImportWorkbook(
   const genderIndex = findSingleColumn(headers, "匹配对象的性别倾向")
   const scriptIndex = findSingleColumn(headers, "是否倾向选择社团提供的剧本或活动")
   const messageIndex = findSingleColumn(headers, "给工作人员的话")
-  const dateColumns = findDateSlotColumns(headers, activityStart, activityEnd)
+  const dateColumns = findDateColumns(headers, activityStart, activityEnd)
 
   return matrix.slice(1)
     .filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""))

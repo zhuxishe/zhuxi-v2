@@ -678,3 +678,79 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - `pnpm lint`：通过
   - `pnpm test:unit`：77/77 通过
   - `pnpm build`：通过
+
+### 04-20 老成员搜索下拉显示层级补记
+- 用户在轮次导入预览页截图指出：老成员搜索框展开时，显示层级异常，视觉上会被下面的问卷列表“串出来/盖住”
+- 已定位为 UI 层级与定位写法不一致：
+  - `LegacyMemberSearchSelect` 的下拉层没有像现有 `SchoolSearchSelect` / `MajorSearchSelect` 那样明确使用 `top-full left-0 right-0`
+  - 导入预览块也没有显式抬高 stacking context
+- 已完成修复：
+  - `src/components/admin/LegacyMemberSearchSelect.tsx`
+    - 外层改为 `relative isolate`
+    - 下拉层改为 `absolute top-full left-0 right-0 z-[70]`
+  - `src/components/admin/RoundImportPanel.tsx`
+    - 导入面板改为 `relative z-10`
+  - `src/components/admin/RoundImportPreview.tsx`
+    - 预览块改为 `relative z-10`
+  - `src/components/admin/RoundDetailClient.tsx`
+    - 问卷列表区显式标记 `relative z-0`
+- 当前结论：
+  - 老成员搜索下拉现在使用与项目内其它搜索框一致的定位方式
+  - 即使下面还有问卷列表，导入预览区也会在视觉层级上压住后面的内容
+- 本次验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：77/77 通过
+  - `pnpm build`：通过
+
+### 04-20 依赖漏洞修复补记
+- 本轮按既定顺序完成了依赖安全修复的前 3 步：
+  1. **Web Excel 链路弃用 `xlsx`，改用 `exceljs`**
+     - `src/lib/matching/round-import-parser.ts`
+     - `src/lib/matching/session-export.ts`
+     - `src/__tests__/round-import-parser.test.ts`
+     - 当前 `.xlsx` 导入 / 导出都已基于 `exceljs`
+  2. **根 `pnpm.overrides` 升级 `follow-redirects`**
+     - `package.json`: `follow-redirects >=1.16.0`
+  3. **小程序工具链升级**
+     - `packages/miniprogram/package.json`
+     - `@tarojs/*`: `4.1.11 -> 4.2.0`
+     - `babel-preset-taro`: `4.1.11 -> 4.2.0`
+     - `webpack`: `5.98.0 -> 5.106.2`
+- 小程序升级后的兼容修复：
+  - `packages/miniprogram/config/index.ts`
+    - 新增 `mini.webpackChain(chain) { chain.plugins.delete("webpackbar") }`
+    - 原因：`@tarojs/webpack5-runner 4.2.0` 自带的 `webpackbar` 进度插件参数已不兼容 `webpack 5.106.2`
+    - 影响：仅去掉终端 fancy progress，不影响构建产物
+- 进一步通过 override 收口的传递依赖：
+  - `package.json`
+    - `esbuild >=0.25.0`
+    - `webpack-dev-server >=5.2.1`
+- 当前 audit 结果（以本地 `pnpm audit --json` 为准）：
+  - 已清除：
+    - `xlsx`
+    - `follow-redirects`
+    - `esbuild`
+    - `webpack-dev-server`
+    - `webpack`
+  - 当前仅剩 **2 个高危 advisory**
+    - `packages__miniprogram>@tarojs/cli>download-git-repo>git-clone`
+    - `packages__miniprogram>@tarojs/webpack5-runner>html-minifier`
+  - 这 2 项在当前 Taro 4.2.0 依赖链中**没有可用 patched version**
+  - 2026-04-20 二次确认（带上游版本探测）：
+    - `pnpm view @tarojs/cli version` -> `4.2.0`
+    - `pnpm view @tarojs/webpack5-runner version` -> `4.2.0`
+    - `pnpm view download-git-repo version dependencies` -> 最新 `3.0.2` 仍依赖 `git-clone ^0.1.0`
+    - `pnpm view html-minifier version` -> 最新仍是 `4.0.0`
+  - 结论：
+    - 当前剩余 2 个高危是 **Taro 上游未修复依赖**
+    - 在不 fork / patch-package 上游包的前提下，本仓库已无法继续通过正常升级清除
+    - 其中：
+      - `git-clone` 位于 `@tarojs/cli` 的下载脚手架链路，属于 dev/tooling 依赖
+      - `html-minifier` 位于 `@tarojs/webpack5-runner` 构建链，属于构建依赖
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：77/77 通过
+  - `pnpm build`：通过
+  - `pnpm --dir packages/miniprogram build:weapp`：通过

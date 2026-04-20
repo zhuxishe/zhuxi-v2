@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { buildRoundSubmissionSelect, supportsImportMetadataColumn } from "./import-metadata-column"
 import { getImportMetadata, getImportedSource } from "./import-metadata"
@@ -16,6 +16,17 @@ function detailText(value: unknown): string {
 
 function safeFileName(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, "-")
+}
+
+function appendSheet(
+  workbook: ExcelJS.Workbook,
+  name: string,
+  columns: string[],
+  rows: Array<Record<string, string | number | null>>,
+) {
+  const sheet = workbook.addWorksheet(name)
+  sheet.addRow(columns)
+  rows.forEach((row) => sheet.addRow(columns.map((column) => row[column] ?? "")))
 }
 
 export async function buildSessionExportWorkbook(sessionId: string): Promise<{ buffer: Buffer; fileName: string }> {
@@ -101,13 +112,24 @@ export async function buildSessionExportWorkbook(sessionId: string): Promise<{ b
     }
   })
 
-  const workbook = XLSX.utils.book_new()
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(resultRows), "配对结果")
-  XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(unmatchedRows), "未匹配名单")
+  const resultColumns = [
+    "rank", "session_status", "result_status", "group_type", "group_size", "best_slot", "total_score", "round_name",
+    ...Array.from({ length: 6 }, (_, index) => `member_${index + 1}_name`),
+    ...Array.from({ length: 6 }, (_, index) => `member_${index + 1}_id`),
+    ...Array.from({ length: 6 }, (_, index) => `member_${index + 1}_source`),
+  ]
+  const unmatchedColumns = [
+    "name", "member_id", "source", "normalized_game_type_pref", "raw_first_choice", "raw_second_choice",
+    "gender_pref", "diagnostic_reason", "diagnostic_details", "notes",
+  ]
+  const workbook = new ExcelJS.Workbook()
+  appendSheet(workbook, "配对结果", resultColumns, resultRows)
+  appendSheet(workbook, "未匹配名单", unmatchedColumns, unmatchedRows)
   const name = session.session_name ?? roundName ?? sessionId
   const date = new Date().toISOString().slice(0, 10)
+  const rawBuffer = await workbook.xlsx.writeBuffer()
   return {
-    buffer: XLSX.write(workbook, { bookType: "xlsx", type: "buffer" }),
+    buffer: Buffer.isBuffer(rawBuffer) ? rawBuffer : Buffer.from(rawBuffer),
     fileName: `${safeFileName(name)}-${date}.xlsx`,
   }
 }

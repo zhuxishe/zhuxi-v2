@@ -28,6 +28,9 @@ export default defineConfig<'webpack5'>(async () => {
           },
         },
       },
+      webpackChain(chain) {
+        chain.plugins.delete('webpackbar')
+      },
     },
     h5: {
       publicPath: '/',

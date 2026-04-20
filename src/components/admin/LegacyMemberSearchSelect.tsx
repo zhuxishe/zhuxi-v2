@@ -42,7 +42,7 @@ export function LegacyMemberSearchSelect({ value, options, onChange, disabled = 
   }
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative isolate">
       <input
         disabled={disabled}
         value={displayValue}
@@ -60,7 +60,7 @@ export function LegacyMemberSearchSelect({ value, options, onChange, disabled = 
         }}
       />
       {open && !disabled && (
-        <div className="absolute z-50 mt-1 max-h-56 w-full overflow-y-auto rounded-lg border bg-background shadow-lg">
+        <div className="absolute top-full left-0 right-0 z-[70] mt-1 max-h-56 overflow-y-auto rounded-lg border bg-background shadow-lg">
           <button
             type="button"
             className="w-full border-b px-3 py-2 text-left text-xs hover:bg-muted"

@@ -1,17 +1,18 @@
 import { describe, expect, it } from "vitest"
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import { parseRoundImportWorkbook } from "@/lib/matching/round-import-parser"
 
-function buildWorkbook(rows: unknown[][]) {
-  const workbook = XLSX.utils.book_new()
-  const sheet = XLSX.utils.aoa_to_sheet(rows)
-  XLSX.utils.book_append_sheet(workbook, sheet, "Sheet1")
-  return XLSX.write(workbook, { bookType: "xlsx", type: "buffer" })
+async function buildWorkbook(rows: unknown[][]) {
+  const workbook = new ExcelJS.Workbook()
+  const sheet = workbook.addWorksheet("Sheet1")
+  rows.forEach((row) => sheet.addRow(row))
+  const buffer = await workbook.xlsx.writeBuffer()
+  return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
 }
 
 describe("parseRoundImportWorkbook", () => {
-  it("parses google forms single-column date answers and normalizes mixed first/second choice to 都可以", () => {
-    const buffer = buildWorkbook([
+  it("parses google forms single-column date answers and normalizes mixed first/second choice to 都可以", async () => {
+    const buffer = await buildWorkbook([
       [
         "时间戳记",
         "姓名",
@@ -26,15 +27,15 @@ describe("parseRoundImportWorkbook", () => {
       [46131.74, "张三", "双人本", "多人本", "都可以", "全天有空", "上午有空, 晚上有空", "都可以", "备注"],
     ])
 
-    const [row] = parseRoundImportWorkbook(buffer, "2026-04-21", "2026-04-22")
+    const [row] = await parseRoundImportWorkbook(buffer, "2026-04-21", "2026-04-22")
 
     expect(row.gameTypePref).toBe("都可以")
     expect(row.availability["2026-04-21"]).toEqual(["上午", "下午", "晚上"])
     expect(row.availability["2026-04-22"]).toEqual(["上午", "晚上"])
   })
 
-  it("throws when a row has no available time slots", () => {
-    const buffer = buildWorkbook([
+  it("throws when a row has no available time slots", async () => {
+    const buffer = await buildWorkbook([
       [
         "时间戳记",
         "姓名",
@@ -48,6 +49,6 @@ describe("parseRoundImportWorkbook", () => {
       [46131.74, "张三", "双人本", "", "都可以", "", "都可以", ""],
     ])
 
-    expect(() => parseRoundImportWorkbook(buffer, "2026-04-21", "2026-04-21")).toThrow("至少需要一个可用时段")
+    await expect(parseRoundImportWorkbook(buffer, "2026-04-21", "2026-04-21")).rejects.toThrow("至少需要一个可用时段")
   })
 })

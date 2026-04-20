@@ -118,7 +118,7 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
       <RoundStatsPanel stats={stats} activityStart={round.activity_start} activityEnd={round.activity_end} />
 
       {/* 问卷列表 */}
-      <div>
+      <div className="relative z-0">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold">问卷提交 ({submissions.length})</h3>
           {editable && (

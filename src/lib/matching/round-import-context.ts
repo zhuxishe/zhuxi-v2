@@ -60,7 +60,7 @@ export async function loadRoundImportContext(roundId: string, buffer: Buffer): P
   if (roundError || !round) throw new Error("轮次不存在")
   if (round.status === "matched") throw new Error("该轮次已完成匹配，禁止导入 Excel")
 
-  const parsedRows = parseRoundImportWorkbook(buffer, round.activity_start, round.activity_end)
+  const parsedRows = await parseRoundImportWorkbook(buffer, round.activity_start, round.activity_end)
   const [currentMembers, legacyMembers, existingSubs] = await Promise.all([
     fetchCurrentImportMembers(db),
     fetchLegacyImportMembers(db),

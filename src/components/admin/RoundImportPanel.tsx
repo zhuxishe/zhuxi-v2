@@ -77,7 +77,7 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
   }
 
   return (
-    <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 space-y-3">
+    <div className="relative z-10 rounded-xl bg-card p-4 ring-1 ring-foreground/10 space-y-3">
       <div className="flex items-center justify-between gap-3">
         <div>
           <h3 className="text-sm font-semibold">导入 Excel</h3>

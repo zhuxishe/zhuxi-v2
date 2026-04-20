@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx"
+import ExcelJS from "exceljs"
 import type { Availability } from "./types"
 import type { ParsedImportRow } from "./round-import-types"
 import { normalizeGameTypeChoice, normalizeGenderPref, normalizeImportName } from "./round-import-utils"
@@ -74,16 +74,41 @@ function buildAvailability(row: unknown[], dateColumns: Array<{ date: string; in
   return availability
 }
 
-export function parseRoundImportWorkbook(
+function normalizeCellValue(value: ExcelJS.CellValue | undefined): unknown {
+  if (value == null) return ""
+  if (value instanceof Date) return value
+  if (typeof value !== "object") return value
+  if ("result" in value) return value.result ?? ""
+  if ("text" in value) return value.text ?? ""
+  if ("richText" in value) return value.richText.map((part) => part.text).join("")
+  if ("hyperlink" in value) {
+    const hyperlinkValue = value as { text?: string; hyperlink?: string }
+    return hyperlinkValue.text ?? hyperlinkValue.hyperlink ?? ""
+  }
+  return ""
+}
+
+async function readMatrix(buffer: Buffer): Promise<unknown[][]> {
+  const workbook = new ExcelJS.Workbook()
+  await workbook.xlsx.load(buffer as any)
+  const sheet = workbook.worksheets[0]
+  if (!sheet) throw new Error("Excel 文件为空")
+
+  const width = Math.max(sheet.columnCount, sheet.actualColumnCount, 1)
+  return Array.from({ length: sheet.rowCount }, (_, rowIndex) => {
+    const row = sheet.getRow(rowIndex + 1)
+    return Array.from({ length: width }, (_, colIndex) =>
+      normalizeCellValue(row.getCell(colIndex + 1).value)
+    )
+  })
+}
+
+export async function parseRoundImportWorkbook(
   buffer: Buffer,
   activityStart: string,
   activityEnd: string,
-): ParsedImportRow[] {
-  const workbook = XLSX.read(buffer, { type: "buffer" })
-  const sheet = workbook.Sheets[workbook.SheetNames[0]]
-  if (!sheet) throw new Error("Excel 文件为空")
-
-  const matrix = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: "" })
+): Promise<ParsedImportRow[]> {
+  const matrix = await readMatrix(buffer)
   if (matrix.length < 2) throw new Error("Excel 文件没有可导入的数据")
 
   const headers = (matrix[0] ?? []).map(normalizeHeader)

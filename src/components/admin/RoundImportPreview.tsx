@@ -29,7 +29,7 @@ export function RoundImportPreview({
   onGenderChange,
 }: Props) {
   return (
-    <div className="space-y-3 rounded-lg border bg-muted/20 p-3">
+    <div className="relative z-10 space-y-3 rounded-lg border bg-muted/20 p-3">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold">老成员手动匹配</h4>
         <p className="text-xs text-muted-foreground">当前正式成员仍按精确姓名自动复用；老成员改为你手动指定。</p>

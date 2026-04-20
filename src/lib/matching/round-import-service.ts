@@ -1,5 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createAdminClient } from "@/lib/supabase/admin"
+import {
+  normalizeLegacyCompatibilityScore,
+  normalizeLegacySessionCount,
+} from "./legacy-import-normalize"
 import { normalizeLegacyGender } from "./round-import-utils"
 import { supportsImportMetadataColumn } from "./import-metadata-column"
 import { parseRoundImportWorkbook } from "./round-import-parser"
@@ -36,8 +40,8 @@ async function fetchLegacyImportMembers(db: SupabaseClient<any, any, any>): Prom
     interest_tags: row.interest_tags ?? [],
     social_tags: row.social_tags ?? [],
     game_mode: row.game_mode ?? null,
-    compatibility_score: row.compatibility_score ?? null,
-    session_count: row.session_count ?? null,
+    compatibility_score: normalizeLegacyCompatibilityScore(row.compatibility_score),
+    session_count: normalizeLegacySessionCount(row.session_count),
     match_history: row.match_history ?? [],
   }))
 }
@@ -64,7 +68,7 @@ async function createTempMember(
       member_number: memberNumber,
       membership_type: "player",
       status: "approved",
-      attractiveness_score: row.legacyProfile?.compatibility_score ?? null,
+      attractiveness_score: normalizeLegacyCompatibilityScore(row.legacyProfile?.compatibility_score),
     })
     .select("id")
     .single()
@@ -96,7 +100,7 @@ async function createTempMember(
 
       const { error: statsError } = await db.from("member_dynamic_stats").insert({
         member_id: memberId,
-        activity_count: legacy.session_count ?? 0,
+        activity_count: normalizeLegacySessionCount(legacy.session_count),
       })
       if (statsError) throw statsError
     }

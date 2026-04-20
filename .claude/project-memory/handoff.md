@@ -334,6 +334,30 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - `pnpm lint` 通过
   - `pnpm build` 通过
 
+### 04-20 Excel 导入数值归一化补记
+- 新出现的导入报错：`invalid input syntax for type integer: "4.1"`
+- 已定位根因：
+  - 不是 `.xlsx` 表结构问题
+  - `legacy_members.compatibility_score` 中存在小数值（如 `4.03`、`4.1`、`4.666666667`）
+  - 导入时 legacy-temp 成员会把该值写入 `members.attractiveness_score`
+  - 当前数据库对应列按整数约束处理，因此 `4.1` 直接报错
+- 已完成修复：
+  - 新增 `src/lib/matching/legacy-import-normalize.ts`
+  - `round-import-service.ts` 现在会在落库前做安全归一化：
+    - `compatibility_score` → 四舍五入并夹到 `0~5`
+    - `session_count` → 四舍五入并保证非负整数
+  - 归一化同时用于：
+    - `legacy_members -> PreparedImportRow`
+    - `members.attractiveness_score`
+    - `member_dynamic_stats.activity_count`
+- 已补测试：
+  - `src/__tests__/legacy-import-normalize.test.ts`
+- 本次验证结果：
+  - `pnpm typecheck` 通过
+  - `pnpm test:unit` 69/69 通过
+  - `pnpm lint` 通过
+  - `pnpm build` 通过
+
 ### 04-20 假成员数据清理补记
 - 用户确认：**4/9 生成的成员是假数据**，来源是旧成员信息的随机生成，不应继续保留在当前库里
 - 已识别并清理的目标：

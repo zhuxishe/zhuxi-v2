@@ -534,3 +534,30 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - 数据库若仍未上 `035_match_round_import_metadata.sql`，手动指定的 legacy 来源不会完整落在 `import_metadata`
   - 这不影响匹配算法和临时成员补强本身，但会影响后续“导入来源”回显的完整性
   - 一旦 `035` 上库，手动指定来源会完整可追踪，无需再改逻辑
+
+### 04-20 导入覆盖与性别说明补记
+- 用户追加澄清：
+  - 所谓“老成员”指 `legacy_members` 里的那 96 条历史记录
+  - 这些记录本身有 `gender` 字段
+  - Excel 回复表**没有“成员本人的性别”字段**，只有“希望匹配对象的性别倾向”
+- 基于这个澄清，本次又做了两处修正：
+  1. `RoundImportPreview` / `LegacyMemberSearchSelect`
+     - 老成员候选现在显示：`姓名 + 性别 + 学校 + 学部`
+     - 预览区新增明确说明：
+       - 只有手动绑定到老成员，系统才会带入该老成员的男女信息
+       - 没绑定的行会按 `other/未知` 导入，性别偏好匹配会变弱
+  2. `round-import-service.ts`
+     - 现在重新导入同一轮时，会把该轮旧的 `IMP-<round>-*` 临时成员一并覆盖
+     - 也就是：**不是只覆盖 submissions，而是连这轮旧临时成员档案一起替换**
+     - 实现方式不是粗暴删库：
+       - 先备份该轮旧 temp members 及其 `member_identity / member_interests / member_dynamic_stats`
+       - 新导入流程出错时会尝试恢复旧 temp members + 旧 submissions
+- 当前结论（非常重要）：
+  - 系统**没有**用性别去“自动匹配老成员”
+  - 之前的自动逻辑仅依赖姓名规范化
+  - 现在老成员已改为人工指定，因此后续是否带入男女信息，由管理员手动决定
+- 本次补改后验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm test:unit`：75/75 通过
+  - `pnpm lint`：通过
+  - `pnpm build`：通过

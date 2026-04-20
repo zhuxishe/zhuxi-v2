@@ -32,6 +32,7 @@ function toLegacyOption(member: LegacyImportMember): LegacyOption {
   return {
     id: member.legacy_id,
     name: member.full_name,
+    gender: member.gender,
     school: member.school,
     department: member.department,
   }

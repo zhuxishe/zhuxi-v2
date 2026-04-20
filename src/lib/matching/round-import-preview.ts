@@ -14,6 +14,7 @@ export async function previewRoundWorkbook(roundId: string, buffer: Buffer) {
     legacyOptions: sortLegacyOptions(legacyMembers.map((member) => ({
       id: member.legacy_id,
       name: member.full_name,
+      gender: member.gender,
       school: member.school,
       department: member.department,
     }))),

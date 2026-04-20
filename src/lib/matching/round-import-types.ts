@@ -26,6 +26,7 @@ export interface LegacyImportMember extends LegacyImportProfile {}
 export interface LegacyOption {
   id: string
   name: string
+  gender: string | null
   school: string | null
   department: string | null
 }

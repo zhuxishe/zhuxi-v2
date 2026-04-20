@@ -18,6 +18,11 @@ export function RoundImportPreview({ rows, legacyOptions, overrides, onChange }:
         <h4 className="text-sm font-semibold">老成员手动匹配</h4>
         <p className="text-xs text-muted-foreground">当前正式成员仍按精确姓名自动复用；老成员改为你手动指定。</p>
       </div>
+      <div className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        这份 Excel 没有“成员本人的性别”字段。
+        只有你手动绑定到老成员后，系统才会带入该老成员的男女信息；
+        没绑定的行会按“未知/other”导入，性别偏好匹配会变弱。
+      </div>
 
       <div className="space-y-3">
         {rows.map((row) => (
@@ -38,7 +43,7 @@ export function RoundImportPreview({ rows, legacyOptions, overrides, onChange }:
               <div className="space-y-1">
                 {row.exactLegacyMatches.length > 0 && (
                   <div className="text-amber-700">
-                    检测到 {row.exactLegacyMatches.length} 个同名老成员，但不会自动套用，请手动确认。
+                    检测到 {row.exactLegacyMatches.length} 个同名老成员，但不会自动套用，请按姓名/性别/学校/学部手动确认。
                   </div>
                 )}
                 {row.warnings.includes("ambiguous_name_match") && (

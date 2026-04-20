@@ -23,6 +23,66 @@ async function nextTempNumber(db: SupabaseClient<any, any, any>, prefix: string)
   }, 0) + 1
 }
 
+async function loadExistingTempBundle(
+  db: SupabaseClient<any, any, any>,
+  prefix: string,
+) {
+  const { data: members, error: memberError } = await db
+    .from("members")
+    .select("*")
+    .like("member_number", `${prefix}%`)
+  if (memberError) throw memberError
+
+  const memberIds = (members ?? []).map((row: any) => row.id)
+  if (memberIds.length === 0) {
+    return {
+      memberIds,
+      members: [] as any[],
+      memberIdentity: [] as any[],
+      memberInterests: [] as any[],
+      memberDynamicStats: [] as any[],
+    }
+  }
+
+  const [memberIdentity, memberInterests, memberDynamicStats] = await Promise.all([
+    db.from("member_identity").select("*").in("member_id", memberIds),
+    db.from("member_interests").select("*").in("member_id", memberIds),
+    db.from("member_dynamic_stats").select("*").in("member_id", memberIds),
+  ])
+  if (memberIdentity.error) throw memberIdentity.error
+  if (memberInterests.error) throw memberInterests.error
+  if (memberDynamicStats.error) throw memberDynamicStats.error
+
+  return {
+    memberIds,
+    members: members ?? [],
+    memberIdentity: memberIdentity.data ?? [],
+    memberInterests: memberInterests.data ?? [],
+    memberDynamicStats: memberDynamicStats.data ?? [],
+  }
+}
+
+async function restoreExistingTempBundle(
+  db: SupabaseClient<any, any, any>,
+  bundle: Awaited<ReturnType<typeof loadExistingTempBundle>>,
+) {
+  if (bundle.members.length === 0) return
+  const { error: memberError } = await db.from("members").insert(bundle.members)
+  if (memberError) throw memberError
+  if (bundle.memberIdentity.length > 0) {
+    const { error } = await db.from("member_identity").insert(bundle.memberIdentity)
+    if (error) throw error
+  }
+  if (bundle.memberInterests.length > 0) {
+    const { error } = await db.from("member_interests").insert(bundle.memberInterests)
+    if (error) throw error
+  }
+  if (bundle.memberDynamicStats.length > 0) {
+    const { error } = await db.from("member_dynamic_stats").insert(bundle.memberDynamicStats)
+    if (error) throw error
+  }
+}
+
 async function createTempMember(
   db: SupabaseClient<any, any, any>,
   roundPrefix: string,
@@ -112,10 +172,12 @@ export async function importRoundWorkbook(
   const preparedRows = resolveImportRows(parsedRows, currentMembers, legacyMembers, legacyOverrides)
   assertNoDuplicateImports(preparedRows)
   const roundPrefix = `IMP-${roundId.slice(0, 8)}-`
+  const existingTempBundle = await loadExistingTempBundle(db, roundPrefix)
   const createdMemberIds: string[] = []
   const resolvedRows: ResolvedImportRow[] = []
   let tempCounter = await nextTempNumber(db, roundPrefix)
   let replaced = false
+  let deletedExistingTemp = false
 
   try {
     for (const row of preparedRows) {
@@ -127,6 +189,12 @@ export async function importRoundWorkbook(
     const { error: deleteError } = await db.from("match_round_submissions").delete().eq("round_id", roundId)
     if (deleteError) throw deleteError
     replaced = true
+
+    if (existingTempBundle.memberIds.length > 0) {
+      const { error: tempDeleteError } = await db.from("members").delete().in("id", existingTempBundle.memberIds)
+      if (tempDeleteError) throw tempDeleteError
+      deletedExistingTemp = true
+    }
 
     const inserts = resolvedRows.map((row) => ({
       round_id: roundId,
@@ -142,6 +210,9 @@ export async function importRoundWorkbook(
     const { error: insertError } = await (db as any).from("match_round_submissions").insert(inserts)
     if (insertError) throw insertError
   } catch (error) {
+    if (deletedExistingTemp) {
+      await restoreExistingTempBundle(db, existingTempBundle)
+    }
     if (replaced && existingSubs.length > 0) {
       await (db as any).from("match_round_submissions").insert(existingSubs)
     }

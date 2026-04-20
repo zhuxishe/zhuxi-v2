@@ -85,5 +85,6 @@ describe("resolveImportRows", () => {
     expect(preview.currentMatch).toBeNull()
     expect(preview.exactLegacyMatches).toHaveLength(1)
     expect(preview.exactLegacyMatches[0]?.name).toBe("张三")
+    expect(preview.exactLegacyMatches[0]?.gender).toBe("男")
   })
 })

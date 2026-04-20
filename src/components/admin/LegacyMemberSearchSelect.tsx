@@ -11,7 +11,7 @@ interface Props {
 }
 
 function buildLabel(option: LegacyOption) {
-  const extras = [option.school, option.department].filter(Boolean).join(" · ")
+  const extras = [option.gender, option.school, option.department].filter(Boolean).join(" · ")
   return extras ? `${option.name}｜${extras}` : option.name
 }
 
@@ -46,7 +46,7 @@ export function LegacyMemberSearchSelect({ value, options, onChange, disabled = 
       <input
         disabled={disabled}
         value={displayValue}
-        placeholder="搜索老成员姓名/学校/学部"
+        placeholder="搜索老成员姓名/性别/学校/学部"
         className="w-full rounded-md border bg-background px-3 py-2 text-xs"
         onChange={(event) => {
           const next = event.target.value

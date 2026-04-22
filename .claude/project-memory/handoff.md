@@ -2,10 +2,45 @@
 
 ## 当前状态
 - **main 分支** `4aee24f`，已 push，Vercel 自动部署
-- Supabase 东京 (wjjhprflldvclulistcx)，迁移 001-034（034 本地就绪但未 push）
+- Supabase 东京：当前业务库为 `wjjhprflldvclulistcx`（项目名 `zhuxishe`）；老玩家同步数据已写入该库的 `legacy_members` / `legacy_member_sources`
 - Edge Function `wechat-auth` v5（含孤儿用户容错）
 - Vercel: zhuxi-v2.vercel.app
 - 安全漏洞：35 → 10（0 critical，剩余为 Taro 间接依赖/devDeps）
+
+---
+
+## 04-22 老玩家数据库同步状态补记
+- 用户追问“数据库的信息存到哪里了”：本次老玩家清洗结果**不是存到 GitHub**，而是已经写入 Supabase 新项目：
+  - Supabase URL：`https://wjjhprflldvclulistcx.supabase.co`
+  - Supabase project ref：`wjjhprflldvclulistcx`
+  - 项目名：`zhuxishe`
+  - 主数据表：`public.legacy_members`
+  - 来源审计表：`public.legacy_member_sources`
+- 已在远程数据库执行老玩家同步所需 schema 扩展：
+  - 本地迁移文件：`supabase/migrations/036_legacy_member_sync_audit.sql`
+  - 作用：扩展 `legacy_members` 字段，并新增 `legacy_member_sources` 审计表
+- 已实际写库的结果（以 04-20 同步后回查为准）：
+  - `legacy_members`：`119` 条
+  - `legacy_member_sources`：`310` 条审计记录
+  - `member_no is null` 的新增历史档案：`23` 条
+  - 本轮 `manualNeeded = 0`
+  - 本轮写库阻塞：`0`
+- 本地可复跑链路位置：
+  - `scripts/legacy-members/run.mjs`
+  - `scripts/legacy-members/README.md`
+  - `pnpm legacy:sync`：重新扫描 2025/2026 Word + Excel 并写入 Supabase
+  - `pnpm legacy:report`：只生成报告，不写库
+- 最近一次同步报告位置：
+  - `output/legacy-members/2026-04-20T12-05-17-628Z/sync-report.md`
+  - 报告统计：发现来源文件 `142`，zip entries `150`，Excel 结构化行 `196`，Word/PDF 结构化源 `114`，解析候选 `121`，最终入库唯一记录 `119`
+- GitHub 状态：
+  - 曾误推到 `zhuxishe/zhuxi-v2` 的 `codex/legacy-member-sync` 分支
+  - 用户指出不是要推该项目后，已删除远端分支和本地分支
+  - **没有合并到 `main`**
+- 重要边界：
+  - 图片/JPG/PNG 未 OCR 入结构化字段，只作为未结构化来源记录/报告说明
+  - `不合格` 目录不进入主库
+  - 字段决议规则：`Word > Excel`，`2026 Excel > 2025 Excel`，本次同步覆盖库内旧值，源文件无值则留空
 
 ---
 
@@ -813,6 +848,44 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - `pnpm typecheck`：通过
   - `pnpm lint`：通过
   - `pnpm build`：通过
+
+### 04-22 Staff 远程数据库迁移已执行
+- 用户提供 Supabase Postgres 直连信息后，已对远程项目 `wjjhprflldvclulistcx` 执行 `036_staff_profiles.sql` 的等价单语句迁移：
+  - `CREATE TABLE IF NOT EXISTS public.staff_profiles`
+  - `staff_profiles_updated_at` trigger
+  - RLS enable
+  - `anyone_read_published_staff` policy
+  - `admin_all_staff` policy
+  - `idx_staff_profiles_published_order` index
+  - `NOTIFY pgrst, 'reload schema'`
+- 远程验证：
+  - Supabase API 查询 `staff_profiles` 成功
+  - 当前 count = `0`
+  - error = `null`
+- 后台 `/admin/staff` 现在应显示空状态而不是“数据库未更新”或 500。
+
+### 04-22 首页图与精选活动独立页补记
+- 用户认为原首页校园图分辨率低且观感不佳，已替换为新生成的半写实日式校园全景图：
+  - 生成图原始位置保留在 `C:\Users\yunyo\.codex\generated_images\019d9627-eb5d-7ba1-9a97-1c63a15253ea`
+  - 项目使用图：`public/images/landing/campus-panorama.webp`
+  - 输出尺寸：`2560x1098`
+- “精选活动/剧本库”不再放在首页滚动区：
+  - 首页 `src/app/page.tsx` 已移除 `ScriptsSection`
+  - 新增公开页面：`src/app/scripts/page.tsx`
+  - `LandingNav` 中“精选活动”跳 `/scripts`
+  - Hero “探索热门活动”按钮跳 `/scripts`
+- 仍然复用后台精选逻辑：
+  - 后台剧本详情/编辑页控制 `scripts.is_featured`
+  - `/scripts` 页面只展示 `is_published=true && is_featured=true` 的剧本/活动
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm build`：通过
+  - 本地生产服务 + Playwright DOM 冒烟：通过
+    - 首页 Hero CTA href = `/scripts`
+    - 首页 nav “精选活动” href = `/scripts`
+    - 首页 `#featured-activities` 数量 = `0`
+    - `/scripts` 页面“精选活动”标题可见
   - `pnpm --dir packages/miniprogram build:weapp`：通过
 
 ### 04-22 首页 / App 导航 / Staff / 精选活动补记

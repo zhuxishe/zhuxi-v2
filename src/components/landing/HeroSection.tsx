@@ -50,7 +50,7 @@ export async function HeroSection() {
         {/* CTA */}
         <div className="mt-10 animate-fade-in-up delay-2">
           <a
-            href="#featured-activities"
+            href="/scripts"
             className="inline-flex items-center justify-center px-8 py-3 rounded-xl bg-white/12 text-white font-medium text-sm border border-white/20 backdrop-blur-sm hover:bg-white/20 hover:border-white/30 transition-all duration-300"
           >
             {t("heroCta")}

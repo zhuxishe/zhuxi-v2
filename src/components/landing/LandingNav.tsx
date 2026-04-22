@@ -8,11 +8,11 @@ import { Menu, X } from "lucide-react"
 import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 
 const NAV_LINKS = [
-  { key: "navAbout", href: "#mission" },
-  { key: "navScripts", href: "#featured-activities" },
-  { key: "navTestimonials", href: "#testimonials" },
-  { key: "navFaq", href: "#faq" },
-  { key: "navContact", href: "#contact" },
+  { key: "navAbout", href: "/#mission" },
+  { key: "navScripts", href: "/scripts" },
+  { key: "navTestimonials", href: "/#testimonials" },
+  { key: "navFaq", href: "/#faq" },
+  { key: "navContact", href: "/#contact" },
 ] as const
 
 export function LandingNav() {
@@ -23,7 +23,7 @@ export function LandingNav() {
     <nav className="glass-nav fixed top-0 left-0 right-0 z-50">
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
         {/* Brand */}
-        <a href="#" className="flex items-center gap-2 group">
+        <Link href="/" className="flex items-center gap-2 group">
           <Image
             src="/logo.svg"
             alt=""
@@ -35,7 +35,7 @@ export function LandingNav() {
           <span className="font-display text-lg font-bold text-primary tracking-wide">
             {t("title")}
           </span>
-        </a>
+        </Link>
 
         {/* Desktop links */}
         <div className="hidden md:flex items-center gap-5">

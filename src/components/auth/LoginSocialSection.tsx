@@ -9,6 +9,7 @@ import { buildPublicUrl } from "@/lib/site-url"
 
 interface LoginSocialSectionProps {
   onError: (message: string | null) => void
+  nextPath?: string
 }
 
 function isWebView() {
@@ -17,7 +18,7 @@ function isWebView() {
   return /micromessenger|weibo|redbook|discover\/|aweme|douyin|qq\/|line\/|instagram|fbav|fban/.test(ua)
 }
 
-export function LoginSocialSection({ onError }: LoginSocialSectionProps) {
+export function LoginSocialSection({ onError, nextPath = "/app" }: LoginSocialSectionProps) {
   const t = useTranslations("login")
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -45,7 +46,7 @@ export function LoginSocialSection({ onError }: LoginSocialSectionProps) {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: buildPublicUrl("/login/callback"),
+          redirectTo: buildPublicUrl(`/login/callback?next=${encodeURIComponent(nextPath)}`),
           queryParams: { prompt: "consent select_account" },
         },
       })
@@ -69,7 +70,7 @@ export function LoginSocialSection({ onError }: LoginSocialSectionProps) {
     const result = await authenticateWithLine()
 
     if (result.success) {
-      router.push("/app")
+      router.push(nextPath)
       return
     }
 

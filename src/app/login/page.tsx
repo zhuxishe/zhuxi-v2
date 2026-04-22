@@ -18,6 +18,13 @@ const ERROR_KEYS: Record<string, string> = {
   login_error: "loginError",
 }
 
+function getSafeNextPath() {
+  if (typeof window === "undefined") return "/app"
+  const next = new URLSearchParams(window.location.search).get("next")
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/app"
+  return next.startsWith("/app") ? next : "/app"
+}
+
 export default function LoginPage() {
   const t = useTranslations("login")
   const router = useRouter()
@@ -27,8 +34,10 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
+  const [nextPath, setNextPath] = useState("/app")
 
   useEffect(() => {
+    setNextPath(getSafeNextPath())
     const params = new URLSearchParams(window.location.search)
     if (params.get("error") === "oauth_failed") {
       setError(t("loginError"))
@@ -55,7 +64,7 @@ export default function LoginPage() {
       const result = await signIn(email, password)
       setLoading(false)
       if (result.error) setError(translateError(result.error))
-      else router.push("/app")
+      else router.push(nextPath)
     }
   }
 
@@ -82,7 +91,7 @@ export default function LoginPage() {
         </div>
 
         {/* Social Login */}
-        <LoginSocialSection onError={setError} />
+        <LoginSocialSection onError={setError} nextPath={nextPath} />
 
         <div className="relative">
           <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-border" /></div>

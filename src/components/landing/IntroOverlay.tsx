@@ -28,6 +28,7 @@ const FPS = 30
 const TOTAL_FRAMES = 420
 const BG = "#f7f3eb"
 const LOGO_SIZE = 400
+const INTRO_SEEN_KEY = "zhuxi:intro-seen"
 
 type Phase = "network" | "morph" | "logo" | "fade" | "done"
 
@@ -56,7 +57,10 @@ export function IntroOverlay() {
   const frameRef = useRef(0)
   const sizeRef = useRef({ w: 1280, h: 720 })
 
-  const [hidden, setHidden] = useState(false)
+  const [hidden, setHidden] = useState(() => {
+    if (typeof window === "undefined") return false
+    return window.sessionStorage.getItem(INTRO_SEEN_KEY) === "1" || window.location.hash.length > 0
+  })
   const [phase, setPhase] = useState<Phase>("network")
   const [domFrame, setDomFrame] = useState(0)
   const [viewport, setViewport] = useState({ w: 1280, h: 720 })
@@ -71,10 +75,12 @@ export function IntroOverlay() {
 
   const done = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
+    window.sessionStorage.setItem(INTRO_SEEN_KEY, "1")
     setHidden(true)
   }, [])
 
   useEffect(() => {
+    if (hidden) return
     const canvas = canvasRef.current
     if (!canvas) return
     const ctx = canvas.getContext("2d")
@@ -163,7 +169,7 @@ export function IntroOverlay() {
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener("resize", resize)
     }
-  }, [done])
+  }, [done, hidden])
 
   if (hidden || reducedMotion) return null
 

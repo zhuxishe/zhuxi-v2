@@ -9,6 +9,56 @@
 
 ---
 
+## 04-22 公开精选活动页设计统一补记
+- 用户指出 `/scripts` 公开页设计语言没有和首页统一。
+- 已确认问题：
+  - 原 `/scripts` 使用旧版居中标题 + 竖版大卡片。
+  - 与首页新方向（Starbucks 转译：暖奶油底、深绿色功能头图、白色实体卡片、pill CTA）不一致。
+- 已修复：
+  - `src/app/scripts/page.tsx` 去掉额外 `pt-16`，由页面区块自己控制顶部节奏。
+  - `src/components/landing/ScriptsSection.tsx` 改为：
+    - 暖奶油背景
+    - 深绿色圆角头图区
+    - 白色 pill CTA
+    - 16:10 活动封面卡
+    - 白色活动卡 + pill 元信息标签
+  - `src/messages/zh.json` / `src/messages/ja.json` 增加公开活动页 kicker 与 CTA 文案。
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - 本地 production `/scripts` 截图审查：通过，当前活动图片正常显示。
+
+---
+
+## 04-22 首页 CTA / 精选活动图片 / 动画复访修复补记
+- 用户反馈：
+  1. `填写匹配偏好` 是否应该进登录页不明确。
+  2. `/scripts` 精选活动中部分图片不显示。
+  3. 从精选活动页点击顶部导航回首页锚点时，首页动画会再次播放。
+- 已修复：
+  1. Hero 次 CTA 从直连 `/app/matching/survey` 改为 `/login?next=/app/matching/survey`。
+     - 邮箱密码登录成功后会跳回 `next`。
+     - Google 登录 callback 会读取安全的 `next` 并在用户状态允许时跳回。
+     - LINE 登录成功后也使用同一 `nextPath`。
+  2. `rewriteStorageUrl()` 不再硬编码改写到 `https://api.zhuxishe.com`。
+     - 默认直接使用 Supabase Storage 公开 URL。
+     - 若以后需要 CDN/代理，使用 `NEXT_PUBLIC_STORAGE_PROXY_ORIGIN` 显式开启。
+     - 已确认原本失败的 3 个 WebP 封面源地址均为 `200 image/webp`。
+  3. `IntroOverlay` 增加 session 级已播放标记：
+     - 同一浏览器标签内看过/跳过后不再重复播放。
+     - 带 hash 进入首页时默认跳过动画，用于 `/scripts` 顶部导航返回 `/#mission` 等场景。
+- 本轮验证结果：
+  - `pnpm test:unit -- src/lib/storage-url.test.ts`：4/4 通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - 本地 production `/scripts` 截图确认当前首屏活动图片显示正常。
+
+---
+
 ## 04-22 首页定位与 Starbucks 风格转译补记
 - 用户提供 `DESIGN-starbucks.md`，要求动画先不改，其余按“业务更明确”的方向调整。
 - 设计判断：

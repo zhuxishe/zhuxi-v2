@@ -1,23 +1,22 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import { rewriteStorageUrl } from "@/lib/storage-url"
 
 describe("rewriteStorageUrl", () => {
-  it("rewrites Supabase storage urls to api.zhuxishe.com", () => {
+  it("keeps Supabase urls unchanged when no proxy origin is configured", () => {
     const url =
       "https://wjjhprflldvclulistcx.supabase.co/storage/v1/object/public/scripts/cover.jpg"
 
-    expect(rewriteStorageUrl(url)).toBe(
-      "https://api.zhuxishe.com/storage/v1/object/public/scripts/cover.jpg",
-    )
+    expect(rewriteStorageUrl(url)).toBe(url)
   })
 
-  it("rewrites other Supabase urls to api.zhuxishe.com", () => {
-    const url =
-      "https://wjjhprflldvclulistcx.supabase.co/functions/v1/download-script?id=1"
+  it("rewrites Supabase urls when a proxy origin is configured", async () => {
+    vi.stubEnv("NEXT_PUBLIC_STORAGE_PROXY_ORIGIN", "https://cdn.zhuxishe.com")
+    vi.resetModules()
+    const { rewriteStorageUrl: rewriteWithProxy } = await import("@/lib/storage-url")
+    const url = "https://wjjhprflldvclulistcx.supabase.co/storage/v1/object/public/scripts/cover.jpg"
 
-    expect(rewriteStorageUrl(url)).toBe(
-      "https://api.zhuxishe.com/functions/v1/download-script?id=1",
-    )
+    expect(rewriteWithProxy(url)).toBe("https://cdn.zhuxishe.com/storage/v1/object/public/scripts/cover.jpg")
+    vi.unstubAllEnvs()
   })
 
   it("keeps non-Supabase urls unchanged", () => {

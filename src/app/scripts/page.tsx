@@ -8,7 +8,7 @@ export default function PublicScriptsPage() {
     <>
       <BambooLeaves />
       <LandingNav />
-      <main className="pt-16">
+      <main>
         <ScriptsSection />
       </main>
       <LandingFooter />

@@ -63,7 +63,7 @@ export async function HeroSection() {
             {t("heroCta")}
           </a>
           <a
-            href="/app/matching/survey"
+            href="/login?next=/app/matching/survey"
             className="inline-flex items-center justify-center rounded-full border border-white/70 px-7 py-3.5 text-sm font-semibold text-white backdrop-blur-sm transition-all duration-200 hover:bg-white hover:text-[#1E3932] active:scale-95"
           >
             {t("heroSecondaryCta")}

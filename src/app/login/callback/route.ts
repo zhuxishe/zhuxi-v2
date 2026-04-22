@@ -21,6 +21,12 @@ function buildRedirectUrl(req: NextRequest, path: string) {
   return new URL(path, new URL(req.url).origin)
 }
 
+function getSafeNextPath(req: NextRequest) {
+  const next = new URL(req.url).searchParams.get("next")
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/app"
+  return next.startsWith("/app") ? next : "/app"
+}
+
 function copyCookies(from: NextResponse, to: NextResponse) {
   from.cookies.getAll().forEach(({ name, value, ...rest }) => {
     to.cookies.set(name, value, rest)
@@ -31,6 +37,7 @@ function copyCookies(from: NextResponse, to: NextResponse) {
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get("code")
+  const nextPath = getSafeNextPath(req)
   const supabaseKey =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -109,6 +116,6 @@ export async function GET(req: NextRequest) {
 
   return copyCookies(
     authResponse,
-    NextResponse.redirect(buildRedirectUrl(req, "/app"))
+    NextResponse.redirect(buildRedirectUrl(req, nextPath))
   )
 }

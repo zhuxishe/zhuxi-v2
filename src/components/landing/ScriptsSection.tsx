@@ -1,6 +1,7 @@
 import Image from "next/image"
+import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { Users, MapPin, Wallet } from "lucide-react"
+import { MapPin, Sparkles, Users, Wallet } from "lucide-react"
 import { fetchLandingScripts } from "@/lib/queries/scripts"
 import { rewriteStorageUrl } from "@/lib/storage-url"
 
@@ -9,28 +10,40 @@ export async function ScriptsSection() {
   const scripts = await fetchLandingScripts(6)
 
   return (
-    <section id="featured-activities" className="section-padding relative" style={{ background: "var(--washi-dark, var(--muted))" }}>
+    <section id="featured-activities" className="relative min-h-screen bg-[#f2f0eb] px-5 pb-20 pt-28 md:pt-32">
       <div className="container mx-auto max-w-6xl">
-        <div className="text-center mb-16">
-          <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold">
-            <span className="gradient-text">{t("scriptsTitle")}</span>
-          </h2>
-          <p className="text-muted-foreground mt-4 text-sm sm:text-base">
-            {t("scriptsSubtitle")}
+        <div className="mb-10 rounded-[2rem] bg-[#1E3932] px-6 py-10 text-white shadow-[0_0_6px_rgba(0,0,0,0.20),0_8px_12px_rgba(0,0,0,0.12)] md:px-10 md:py-12">
+          <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">
+            {t("scriptsPageKicker")}
           </p>
-          <div className="ink-divider mt-8" />
+          <div className="mt-4 flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+            <div>
+              <h1 className="font-display text-4xl font-bold leading-tight md:text-5xl">
+                {t("scriptsTitle")}
+              </h1>
+              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-white/72 md:text-base">
+                {t("scriptsSubtitle")}
+              </p>
+            </div>
+            <Link
+              href="/login"
+              className="inline-flex w-fit items-center justify-center rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-[#00754A] transition-all duration-200 hover:bg-[#f2f0eb] active:scale-95"
+            >
+              {t("scriptsPageCta")}
+            </Link>
+          </div>
         </div>
 
         {scripts.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-lg text-muted-foreground font-display">{t("scriptsComingSoon")}</p>
+          <div className="landing-card bg-white p-10 text-center">
+            <Sparkles className="mx-auto mb-4 size-9 text-bamboo" />
+            <p className="font-display text-lg text-muted-foreground">{t("scriptsComingSoon")}</p>
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6">
+          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {scripts.map((script) => (
-              <div key={script.id} className="landing-card overflow-hidden group">
-                {/* Cover */}
-                <div className="aspect-[4/5] bg-muted relative overflow-hidden">
+              <article key={script.id} className="landing-card group overflow-hidden bg-white">
+                <div className="relative aspect-[16/10] overflow-hidden bg-bamboo-muted">
                   {script.cover_url ? (
                     <Image
                       src={rewriteStorageUrl(script.cover_url)}
@@ -40,43 +53,41 @@ export async function ScriptsSection() {
                       className="w-full h-full object-cover transition-transform duration-700 ease-out group-hover:scale-[1.03]"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-bamboo-muted">
-                      <span className="text-4xl opacity-40">📖</span>
+                    <div className="flex h-full w-full items-center justify-center text-bamboo">
+                      <Sparkles className="size-9" />
                     </div>
                   )}
-                  {/* Genre badge */}
                   {script.genre_tags?.[0] && (
-                    <span className="absolute top-3 left-3 text-[11px] font-medium px-2.5 py-1 rounded-full bg-ink/50 text-white backdrop-blur-sm border border-white/10">
+                    <span className="absolute left-3 top-3 rounded-full bg-[#1E3932]/75 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
                       {script.genre_tags[0]}
                     </span>
                   )}
                 </div>
 
-                {/* Info */}
-                <div className="p-4 space-y-2">
-                  <h3 className="font-display font-semibold text-[15px] leading-snug">
+                <div className="space-y-3 p-5">
+                  <h2 className="font-display text-lg font-semibold leading-snug">
                     {script.title}
-                  </h3>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <Users size={11} />
+                  </h2>
+                  <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-[#f2f0eb] px-2.5 py-1">
+                      <Users className="size-3" />
                       {script.player_count_min}-{script.player_count_max}{t("scriptPlayers")}
                     </span>
                     {script.location && (
-                      <span className="inline-flex items-center gap-1">
-                        <MapPin size={11} />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f2f0eb] px-2.5 py-1">
+                        <MapPin className="size-3" />
                         {script.location}
                       </span>
                     )}
                     {script.budget && (
-                      <span className="inline-flex items-center gap-1">
-                        <Wallet size={11} />
+                      <span className="inline-flex items-center gap-1 rounded-full bg-[#f2f0eb] px-2.5 py-1">
+                        <Wallet className="size-3" />
                         {script.budget}
                       </span>
                     )}
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
           </div>
         )}

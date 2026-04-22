@@ -32,6 +32,7 @@ export async function StaffSection() {
                       fill
                       sizes="56px"
                       className="object-cover"
+                      unoptimized={member.avatar_url.endsWith(".svg")}
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center font-display text-lg">

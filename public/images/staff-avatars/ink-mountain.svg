@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Ink mountain staff avatar">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#F7F1E7"/>
+      <stop offset="1" stop-color="#D8E1D6"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#bg)"/>
+  <path d="M20 142c25-33 46-48 65-46 22 2 34 27 54 22 12-3 22-17 41-38v120H20z" fill="#BEC8B5"/>
+  <path d="M18 152c28-18 52-21 75-9 18 10 38 11 58-2 9-6 19-14 31-27v86H18z" fill="#536854" opacity=".72"/>
+  <circle cx="104" cy="80" r="32" fill="#EED0BA"/>
+  <path d="M72 80c3-23 20-37 45-33 22 4 32 19 28 40-22-11-45-13-73-7z" fill="#2C332D"/>
+  <path d="M72 174c6-31 50-31 57 0z" fill="#2F4A3E"/>
+  <path d="M76 134c18 12 34 12 51 0" stroke="#E6D9C9" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="91" cy="86" r="3" fill="#2D2824"/>
+  <circle cx="115" cy="86" r="3" fill="#2D2824"/>
+  <path d="M92 104c7 5 15 5 22 0" stroke="#9B6652" stroke-width="4" stroke-linecap="round"/>
+</svg>

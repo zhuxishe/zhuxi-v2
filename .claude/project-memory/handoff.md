@@ -9,6 +9,32 @@
 
 ---
 
+## 04-22 Staff 头像上传与本地预设补记
+- 用户希望 Staff 头像不要依赖手填外部 URL，并需要几套符合竹溪社视觉语言的头像。
+- 已新增 6 个项目内置 SVG 预设头像：
+  - `public/images/staff-avatars/bamboo.svg`
+  - `public/images/staff-avatars/sakura.svg`
+  - `public/images/staff-avatars/ink-mountain.svg`
+  - `public/images/staff-avatars/campus-lantern.svg`
+  - `public/images/staff-avatars/washi-wave.svg`
+  - `public/images/staff-avatars/tea-garden.svg`
+- 已新增后台上传 action：
+  - `src/app/admin/staff/avatar-actions.ts`
+  - 上传到 Supabase Storage bucket：`staff-avatars`
+  - 首次上传时会自动创建 public bucket
+  - 限制：JPG / PNG / WebP / SVG，最大 2MB
+- 后台 `/admin/staff` 现在支持：
+  - 新增 Staff 时上传头像，或选择本地预设头像
+  - 编辑 Staff 时上传新头像，或改用本地预设头像
+  - 不选头像时继续显示姓名首字
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+
+---
+
 ## 04-22 老玩家数据库同步状态补记
 - 用户追问“数据库的信息存到哪里了”：本次老玩家清洗结果**不是存到 GitHub**，而是已经写入 Supabase 新项目：
   - Supabase URL：`https://wjjhprflldvclulistcx.supabase.co`

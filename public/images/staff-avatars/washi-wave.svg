@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Washi wave staff avatar">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F6EEDF"/>
+      <stop offset="1" stop-color="#D7E4E0"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#bg)"/>
+  <path d="M-8 142c36-23 67-23 94 0s58 23 94 0 67-23 94 0v58H-8z" fill="#8DA9A2"/>
+  <path d="M-10 162c35-16 65-15 89 4 25 19 55 19 90 0 22-12 45-15 71-9v43H-10z" fill="#577A73"/>
+  <circle cx="100" cy="78" r="32" fill="#F0D1BD"/>
+  <path d="M68 77c5-24 22-38 46-34 22 3 33 18 31 39-25-9-49-10-77-5z" fill="#283631"/>
+  <path d="M69 174c4-34 58-34 63 0z" fill="#D7A662"/>
+  <path d="M77 133c19 11 36 11 53 0" stroke="#F5E8D8" stroke-width="7" stroke-linecap="round"/>
+  <circle cx="89" cy="84" r="3" fill="#292724"/>
+  <circle cx="114" cy="84" r="3" fill="#292724"/>
+  <path d="M91 102c8 5 16 5 23 0" stroke="#9B6652" stroke-width="4" stroke-linecap="round"/>
+</svg>

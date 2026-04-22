@@ -15,7 +15,7 @@ export default async function AdminStaffPage() {
       <AdminTopBar admin={admin} title="Staff 管理" />
       <div className="p-6 space-y-6">
         <div className="rounded-xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-foreground/10">
-          Staff 会显示在首页“关于我们”下方。头像 URL 可留空；如需头像，请填写任意可公开访问的图片链接。
+          Staff 会显示在首页“关于我们”下方。头像可上传本地图片，也可选择系统预设；不选则显示姓名首字。
         </div>
         {setupRequired ? (
           <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800">

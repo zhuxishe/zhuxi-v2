@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Tea garden staff avatar">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#F3E7D5"/>
+      <stop offset="1" stop-color="#C9D8B8"/>
+    </linearGradient>
+    <linearGradient id="coat" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#819869"/>
+      <stop offset="1" stop-color="#3D5D43"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="200" rx="48" fill="url(#bg)"/>
+  <ellipse cx="48" cy="146" rx="27" ry="12" fill="#C89251"/>
+  <path d="M28 139c5 19 35 19 40 0" fill="none" stroke="#6E553B" stroke-width="5" stroke-linecap="round"/>
+  <path d="M73 152c18-18 37-18 58 0 15 12 31 16 49 12v36H20v-30c18 0 35-6 53-18z" fill="#A9B98C"/>
+  <circle cx="105" cy="80" r="31" fill="#F0D0BA"/>
+  <path d="M75 78c4-26 22-41 48-36 21 4 31 19 28 41-25-10-49-11-76-5z" fill="#26362E"/>
+  <path d="M76 174c7-32 54-33 62 0z" fill="url(#coat)"/>
+  <path d="M89 127l15 17 16-17" stroke="#F5E8D8" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="93" cy="86" r="3" fill="#292724"/>
+  <circle cx="116" cy="86" r="3" fill="#292724"/>
+  <path d="M94 103c7 5 15 5 22 0" stroke="#A66E55" stroke-width="4" stroke-linecap="round"/>
+</svg>

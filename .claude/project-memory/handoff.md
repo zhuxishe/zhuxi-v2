@@ -9,6 +9,32 @@
 
 ---
 
+## 04-23 首页 IntroOverlay 内部返回主页二次卡死修复补记
+- 用户反馈：进入 `/scripts` 精选活动后，再点击主页会再次卡死在首页动画位置。
+- 已确认问题：
+  - `/scripts` 里的顶部品牌链接原来是纯 `/`。
+  - 如果用户直接进入 `/scripts`，当前 tab 内没有 `zhuxi:intro-seen` 标记，再点主页会重新挂载 `IntroOverlay`。
+  - 上轮只修了 `sessionStorage` 抛错，但没有彻底解决“内部导航返回主页不应该再播放 intro”的产品逻辑。
+- 已修复：
+  - 新增 `src/lib/landing-intro.ts`，集中管理：
+    - `HOME_SKIP_INTRO_HREF = "/#top"`
+    - intro seen 安全读写
+    - hash/session 判断
+  - `IntroOverlay` 不再在 SSR/hydration 前输出白屏遮罩；必须等客户端 mounted 后才允许渲染 overlay。
+  - `LandingNav` 左上角品牌链接改为 `/#top`，点击时提前写入 intro seen 标记。
+  - 登录/玩家区返回首页链接也统一改为 `/#top`。
+  - `HeroSection` 增加 `id="top"`，保证跳转目标存在。
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - Playwright production smoke：
+    - `/scripts` 清空 intro 标记后点击左上角“竹溪社” -> URL 到 `/#top`，`skipCount=0`，`overlayCount=0`，Hero 可见，无 JS error。
+    - 强制 `sessionStorage` 抛 `SecurityError` 后直进 `/`，点击“跳过”后 overlay 消失，Hero 可见，无 JS error。
+
+---
+
 ## 04-22 首页 IntroOverlay 白屏卡死修复补记
 - 用户反馈：首页卡死在开场动画白屏层，右下角“跳过”点击无反应。
 - 根因判断：

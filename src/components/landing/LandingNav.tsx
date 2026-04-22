@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { LocaleSwitcher } from "@/components/LocaleSwitcher"
+import { HOME_SKIP_INTRO_HREF, rememberLandingIntroSeen } from "@/lib/landing-intro"
 
 const NAV_LINKS = [
   { key: "navAbout", href: "/#mission" },
@@ -23,7 +24,11 @@ export function LandingNav() {
     <nav className="glass-nav fixed top-0 left-0 right-0 z-50">
       <div className="container mx-auto flex items-center justify-between px-4 py-3">
         {/* Brand */}
-        <Link href="/" className="flex items-center gap-2 group">
+        <Link
+          href={HOME_SKIP_INTRO_HREF}
+          onClick={rememberLandingIntroSeen}
+          className="flex items-center gap-2 group"
+        >
           <Image
             src="/logo.svg"
             alt=""

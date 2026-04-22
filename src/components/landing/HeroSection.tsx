@@ -6,7 +6,7 @@ export async function HeroSection() {
   const t = await getTranslations("home")
 
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden grain-overlay">
+    <section id="top" className="relative min-h-screen flex items-center justify-center overflow-hidden grain-overlay">
       {/* Background image */}
       <Image
         src="/images/landing/campus-panorama.webp"

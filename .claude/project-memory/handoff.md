@@ -793,6 +793,26 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
     - 首页 CTA href = `#featured-activities`
     - 首页“精选活动”可见
     - `/login` “返回首页”可见
+
+### 04-22 Staff 远程数据库缺表补记
+- 用户反馈后台 Staff 显示异常后，已确认远程 Supabase 缺少 `public.staff_profiles`：
+  - 查询结果：`PGRST205 Could not find the table 'public.staff_profiles' in the schema cache`
+- 当前环境只有 Supabase URL / anon key / service role key，没有 Supabase Access Token 或 Postgres connection string：
+  - `npx supabase projects list` 返回 Unauthorized
+  - 因此本机无法直接替远程库执行 migration
+- 已补防崩溃处理：
+  - `src/lib/queries/staff.ts`
+    - 管理端查询遇到缺表时返回 `setupRequired=true`
+  - `src/app/admin/staff/page.tsx`
+    - 缺表时显示“数据库未更新，请应用 036_staff_profiles.sql”的提示
+  - `src/app/admin/staff/actions.ts`
+    - 缺表时返回可读错误，不再只显示“操作失败”
+- 仍需人工/有权限环境执行：
+  - `supabase/migrations/036_staff_profiles.sql`
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm build`：通过
   - `pnpm --dir packages/miniprogram build:weapp`：通过
 
 ### 04-22 首页 / App 导航 / Staff / 精选活动补记

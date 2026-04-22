@@ -45,6 +45,13 @@ function revalidateStaffPaths() {
   revalidatePath("/admin/staff")
 }
 
+function formatStaffDbError(error: { code?: string; message?: string }) {
+  if (error.code === "PGRST205" || error.message?.includes("staff_profiles")) {
+    return "数据库未更新：请先应用 supabase/migrations/036_staff_profiles.sql"
+  }
+  return "操作失败"
+}
+
 export async function createStaffProfile(input: StaffProfileInput) {
   await requireAdmin()
   const validationError = validateStaffInput(input)
@@ -63,7 +70,7 @@ export async function createStaffProfile(input: StaffProfileInput) {
 
   if (error) {
     console.error("[createStaffProfile]", error)
-    return { error: "操作失败" }
+    return { error: formatStaffDbError(error) }
   }
   revalidateStaffPaths()
   return { success: true }
@@ -86,7 +93,7 @@ export async function updateStaffProfile(id: string, input: Partial<StaffProfile
 
   if (error) {
     console.error("[updateStaffProfile]", error)
-    return { error: "操作失败" }
+    return { error: formatStaffDbError(error) }
   }
   revalidateStaffPaths()
   return { success: true }
@@ -99,7 +106,7 @@ export async function deleteStaffProfile(id: string) {
 
   if (error) {
     console.error("[deleteStaffProfile]", error)
-    return { error: "操作失败" }
+    return { error: formatStaffDbError(error) }
   }
   revalidateStaffPaths()
   return { success: true }

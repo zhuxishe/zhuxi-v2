@@ -19,6 +19,15 @@ export type StaffProfilePublic = Pick<
   "id" | "name" | "school" | "major" | "intro" | "avatar_url"
 >
 
+export interface StaffAdminState {
+  staff: StaffProfile[]
+  setupRequired: boolean
+}
+
+function isMissingStaffTable(error: { code?: string; message?: string }) {
+  return error.code === "PGRST205" || error.message?.includes("staff_profiles")
+}
+
 export async function fetchPublishedStaffProfiles(): Promise<StaffProfilePublic[]> {
   const supabase = await createClient()
 
@@ -34,6 +43,11 @@ export async function fetchPublishedStaffProfiles(): Promise<StaffProfilePublic[
 }
 
 export async function fetchAllStaffProfiles(): Promise<StaffProfile[]> {
+  const result = await fetchStaffAdminState()
+  return result.staff
+}
+
+export async function fetchStaffAdminState(): Promise<StaffAdminState> {
   const supabase = createAdminClient()
 
   const { data, error } = await supabase
@@ -42,6 +56,9 @@ export async function fetchAllStaffProfiles(): Promise<StaffProfile[]> {
     .order("sort_order", { ascending: true })
     .order("created_at", { ascending: true })
 
+  if (error && isMissingStaffTable(error)) {
+    return { staff: [], setupRequired: true }
+  }
   if (error) throw error
-  return (data ?? []) as StaffProfile[]
+  return { staff: (data ?? []) as StaffProfile[], setupRequired: false }
 }

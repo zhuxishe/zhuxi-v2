@@ -61,7 +61,7 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
                   {s.is_featured && (
                     <>
                       <span>·</span>
-                      <span className="text-primary">首页精选</span>
+                      <span className="text-primary">精选活动</span>
                     </>
                   )}
                 </div>

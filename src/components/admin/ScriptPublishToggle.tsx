@@ -59,7 +59,7 @@ export function ScriptPublishToggle({ scriptId, isPublished, isFeatured }: Props
               : "bg-muted text-muted-foreground"
           }`}
         >
-          {isFeatured ? "首页精选" : "未精选"}
+          {isFeatured ? "精选活动" : "未精选"}
         </span>
       )}
       <Button

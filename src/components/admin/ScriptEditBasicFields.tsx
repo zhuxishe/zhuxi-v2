@@ -69,8 +69,8 @@ export function ScriptEditBasicFields(props: Props) {
             className="mt-0.5"
           />
           <span>
-            <span className="block font-medium">首页精选活动</span>
-            <span className="block text-xs text-muted-foreground">勾选后会出现在首页“精选活动”区块。</span>
+            <span className="block font-medium">精选活动展示</span>
+            <span className="block text-xs text-muted-foreground">勾选后会出现在公开“精选活动”页面。</span>
           </span>
         </label>
       </div>

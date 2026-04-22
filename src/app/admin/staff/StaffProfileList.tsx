@@ -83,7 +83,10 @@ function StaffProfileItem({ item }: { item: StaffProfile }) {
         </select>
         <p className="text-xs text-muted-foreground">上传新头像优先；不上传时可改用本地预设头像。</p>
         <textarea name="intro" required defaultValue={item.intro} rows={2} className={`${inputClass} w-full`} />
-        <input name="sort_order" type="number" defaultValue={item.sort_order} className={`${inputClass} w-24`} />
+        <label className="block space-y-1">
+          <span className="text-xs font-medium text-muted-foreground">显示排序（数字越小越靠前）</span>
+          <input name="sort_order" type="number" defaultValue={item.sort_order} className={`${inputClass} w-28`} />
+        </label>
         <div className="flex gap-2">
           <Button type="submit" size="sm" disabled={loading}>
             {loading ? "保存中..." : "保存"}

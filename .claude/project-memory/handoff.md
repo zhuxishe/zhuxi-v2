@@ -789,4 +789,32 @@ src/__tests__/*.test.ts                 ← 3 个测试文件（新建）
   - `pnpm lint`：通过
   - `pnpm test:unit`：78/78 通过
   - `pnpm build`：通过
+  - 本地生产服务 + Playwright DOM 冒烟：通过
+    - 首页 CTA href = `#featured-activities`
+    - 首页“精选活动”可见
+    - `/login` “返回首页”可见
   - `pnpm --dir packages/miniprogram build:weapp`：通过
+
+### 04-22 首页 / App 导航 / Staff / 精选活动补记
+- 本轮完成用户指定的首页与玩家区体验修复：
+  1. 登录页、注册成功页、待审核/拒绝页、入会资料表单页新增“返回首页”入口。
+  2. 玩家区 `/app/**` 新增顶部 header，左上角竹溪社 logo 指向 `/`。
+  3. 玩家资料页退出按钮补 `type="submit"`，`signOut()` 后改为跳回首页 `/`。
+  4. 字体从本地系统回退为主的栈改为 `Noto Sans SC / Noto Serif SC` 受控变量，降低 Mac/Windows 中文与日文行高漂移。
+  5. 新增 `staff_profiles` 表、查询、后台 `/admin/staff`，首页关于我们区域接入 Staff 展示。
+  6. 首页“剧本库”改为“精选活动”，`fetchLandingScripts()` 改为读取 `is_published=true && is_featured=true`。
+  7. 后台剧本详情与编辑页可切换 `scripts.is_featured`，列表展示“首页精选”状态。
+  8. Hero CTA 指向精选活动区块，FAQ 答案区域去掉缩进，Hero 改用本地校园全景图资源。
+- 关键新增/修改入口：
+  - `src/components/auth/HomeLink.tsx`
+  - `src/components/player/PlayerTopHeader.tsx`
+  - `src/app/admin/staff/*`
+  - `src/lib/queries/staff.ts`
+  - `supabase/migrations/036_staff_profiles.sql`
+  - `src/components/landing/StaffSection.tsx`
+  - `src/lib/queries/scripts.ts`
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过

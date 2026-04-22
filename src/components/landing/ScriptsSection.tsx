@@ -9,7 +9,7 @@ export async function ScriptsSection() {
   const scripts = await fetchLandingScripts(6)
 
   return (
-    <section id="scripts" className="section-padding relative" style={{ background: "var(--washi-dark, var(--muted))" }}>
+    <section id="featured-activities" className="section-padding relative" style={{ background: "var(--washi-dark, var(--muted))" }}>
       <div className="container mx-auto max-w-6xl">
         <div className="text-center mb-16">
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold">

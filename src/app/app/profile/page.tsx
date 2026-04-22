@@ -52,7 +52,7 @@ export default async function ProfilePage() {
       </div>
 
       <form action={signOut}>
-        <Button variant="outline" className="w-full text-destructive">{t("logout")}</Button>
+        <Button type="submit" variant="outline" className="w-full text-destructive">{t("logout")}</Button>
       </form>
     </div>
   )

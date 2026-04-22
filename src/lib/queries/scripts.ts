@@ -30,6 +30,7 @@ export async function fetchLandingScripts(limit = 6) {
     .from("scripts")
     .select("id, title, cover_url, genre_tags, player_count_min, player_count_max, budget, location")
     .eq("is_published", true)
+    .eq("is_featured", true)
     .order("created_at", { ascending: false })
     .limit(limit)
 

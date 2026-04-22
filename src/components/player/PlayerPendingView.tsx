@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useTranslations } from "next-intl"
 import { Clock, XCircle, Pencil } from "lucide-react"
 import { buttonVariants } from "@/components/ui/button"
+import { HomeLink } from "@/components/auth/HomeLink"
 
 interface Props {
   rejected?: boolean
@@ -35,6 +36,9 @@ export function PlayerPendingView({ rejected }: Props) {
             </Link>
           </>
         )}
+        <div className="pt-2">
+          <HomeLink />
+        </div>
       </div>
     </div>
   )

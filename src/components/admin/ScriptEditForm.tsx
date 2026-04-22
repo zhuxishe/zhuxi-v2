@@ -28,6 +28,7 @@ export interface ScriptData {
   pdf_url: string | null
   page_images: string[] | null
   is_published: boolean | null
+  is_featured: boolean | null
   budget: string | null
   location: string | null
 }
@@ -49,6 +50,7 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
   const [roles, setRoles] = useState<ScriptRole[]>((script.roles as ScriptRole[]) ?? [])
   const [budget, setBudget] = useState(script.budget ?? "")
   const [location, setLocation] = useState(script.location ?? "")
+  const [isFeatured, setIsFeatured] = useState(script.is_featured ?? false)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [pageImages, setPageImages] = useState<string[] | null>(script.page_images)
   const [submitting, setSubmitting] = useState(false)
@@ -68,7 +70,7 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
       duration_minutes: duration, difficulty,
       genre_tags: genreTags, theme_tags: themeTags,
       content_html: contentHtml, warnings, roles: JSON.parse(JSON.stringify(roles)),
-      is_published: script.is_published ?? false,
+      is_published: script.is_published ?? false, is_featured: isFeatured,
       budget: budget || null, location: location || null,
     })
 
@@ -105,6 +107,7 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
         themeTags={themeTags} onThemeTagsChange={setThemeTags}
         budget={budget} onBudgetChange={setBudget}
         location={location} onLocationChange={setLocation}
+        isFeatured={isFeatured} onIsFeaturedChange={setIsFeatured}
       />
       <ScriptContentFields
         contentHtml={contentHtml} onContentHtmlChange={setContentHtml}

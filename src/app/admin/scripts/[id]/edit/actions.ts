@@ -20,6 +20,7 @@ const ALLOWED_FIELDS = [
   "genre_tags",
   "theme_tags",
   "is_published",
+  "is_featured",
   "budget",
   "location",
   "roles",
@@ -81,6 +82,25 @@ export async function toggleScriptPublish(scriptId: string, isPublished: boolean
     console.error("[toggleScriptPublish]", error)
     return { error: "操作失败" }
   }
+  revalidatePath("/admin/scripts")
+  revalidatePath(`/admin/scripts/${scriptId}`)
+  return { success: true }
+}
+
+export async function toggleScriptFeatured(scriptId: string, isFeatured: boolean) {
+  await requireAdmin()
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from("scripts")
+    .update({ is_featured: !isFeatured })
+    .eq("id", scriptId)
+
+  if (error) {
+    console.error("[toggleScriptFeatured]", error)
+    return { error: "操作失败" }
+  }
+  revalidatePath("/")
   revalidatePath("/admin/scripts")
   revalidatePath(`/admin/scripts/${scriptId}`)
   return { success: true }

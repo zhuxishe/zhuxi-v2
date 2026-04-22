@@ -70,8 +70,8 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
-  --font-sans: var(--font-geist-sans), "Hiragino Sans", "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
-  --font-display: "Noto Serif JP", "Hiragino Mincho ProN", "Yu Mincho", Georgia, serif;
+  --font-sans: var(--font-noto-sans-sc), var(--font-geist-sans), "Noto Sans JP", ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-noto-serif-sc), var(--font-noto-sans-sc), "Noto Serif JP", serif;
 
   /* Extended palette — 侘寂竹林 */
   --color-bamboo: oklch(0.52 0.10 150);
@@ -102,6 +102,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   letter-spacing: 0.01em;
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -161,7 +162,7 @@ body {
   font-family: var(--font-display);
   font-weight: 500;
   letter-spacing: 0.03em;
-  line-height: 1.25;
+  line-height: 1.22;
 }
 
 /* -- Decorative gradients -- */

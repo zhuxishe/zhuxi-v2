@@ -8,6 +8,7 @@ import { EMPTY_FORM } from "@/types"
 import { submitPreInterviewForm } from "@/app/app/interview-form/actions"
 import { FormStepIndicator } from "@/components/shared/FormStepIndicator"
 import { Button } from "@/components/ui/button"
+import { HomeLink } from "@/components/auth/HomeLink"
 import { InterviewStep1 } from "./InterviewStep1"
 import { InterviewStep2 } from "./InterviewStep2"
 import { InterviewStep3 } from "./InterviewStep3"
@@ -58,6 +59,7 @@ export function PreInterviewForm({ defaultValues }: Props) {
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
+      <HomeLink className="mb-6" />
       <h1 className="text-2xl font-bold text-foreground mb-2">{t("title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">{t("subtitle")}</p>
 

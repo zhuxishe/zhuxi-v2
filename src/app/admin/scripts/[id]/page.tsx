@@ -65,7 +65,7 @@ export default async function AdminScriptDetailPage({ params }: Props) {
               >
                 编辑
               </Link>
-              <ScriptPublishToggle scriptId={id} isPublished={script.is_published} />
+              <ScriptPublishToggle scriptId={id} isPublished={script.is_published} isFeatured={script.is_featured} />
               <ScriptDeleteButton scriptId={id} />
             </div>
           </div>

@@ -9,7 +9,7 @@ import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 
 const NAV_LINKS = [
   { key: "navAbout", href: "#mission" },
-  { key: "navScripts", href: "#scripts" },
+  { key: "navScripts", href: "#featured-activities" },
   { key: "navTestimonials", href: "#testimonials" },
   { key: "navFaq", href: "#faq" },
   { key: "navContact", href: "#contact" },

@@ -3,7 +3,7 @@
     "title": "竹渓社",
     "description": "在日中国人のオフライン交流プラットフォーム",
     "navAbout": "私たちについて",
-    "navScripts": "シナリオ",
+  "navScripts": "おすすめ活動",
     "navTeam": "スタッフ紹介",
     "navTestimonials": "メンバーの声",
     "navFaq": "よくある質問",
@@ -19,9 +19,9 @@
     "missionSocialDesc": "東京各大学の中国語圏の学生をつなぎ、人脈と友情の可能性を広げます。",
     "missionCampus": "キャンパス適応",
     "missionCampusDesc": "日本のキャンパスライフへの適応を支援し、履修・アルバイト・文化交流の情報を提供します。",
-    "scriptsTitle": "シナリオライブラリ",
-    "scriptsSubtitle": "厳選されたシナリオで、毎回違う体験を。",
-    "scriptsComingSoon": "素敵なシナリオを準備中です。お楽しみに",
+  "scriptsTitle": "おすすめ活動",
+  "scriptsSubtitle": "管理画面で選ばれたオフライン活動とシナリオ体験。",
+  "scriptsComingSoon": "おすすめ活動を準備中です。お楽しみに",
     "scriptPlayers": "人",
     "scriptDuration": "分",
     "navLogin": "ログイン",
@@ -77,7 +77,7 @@
     "home": "ホーム",
     "profile": "プロフィール",
     "matches": "マッチング",
-    "scripts": "シナリオ"
+  "scripts": "おすすめ活動"
   },
   "login": {
     "title": "竹渓社",

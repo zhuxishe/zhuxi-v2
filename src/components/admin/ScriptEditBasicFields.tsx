@@ -22,6 +22,7 @@ interface Props {
   themeTags: string[]; onThemeTagsChange: (v: string[]) => void
   budget: string; onBudgetChange: (v: string) => void
   location: string; onLocationChange: (v: string) => void
+  isFeatured: boolean; onIsFeaturedChange: (v: boolean) => void
 }
 
 export function ScriptEditBasicFields(props: Props) {
@@ -60,6 +61,18 @@ export function ScriptEditBasicFields(props: Props) {
         </div>
         <TextInput label="预算" value={props.budget} onChange={props.onBudgetChange} />
         <TextInput label="场地" value={props.location} onChange={props.onLocationChange} />
+        <label className="flex items-start gap-3 rounded-lg border border-border bg-background px-3 py-3 text-sm">
+          <input
+            type="checkbox"
+            checked={props.isFeatured}
+            onChange={(e) => props.onIsFeaturedChange(e.target.checked)}
+            className="mt-0.5"
+          />
+          <span>
+            <span className="block font-medium">首页精选活动</span>
+            <span className="block text-xs text-muted-foreground">勾选后会出现在首页“精选活动”区块。</span>
+          </span>
+        </label>
       </div>
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">

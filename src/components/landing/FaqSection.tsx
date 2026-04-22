@@ -28,7 +28,7 @@ export function FaqSection() {
                 <span className="pr-4">{t(`faqQ${n}`)}</span>
                 <ChevronDown size={16} className="faq-chevron text-muted-foreground shrink-0" />
               </summary>
-              <div className="px-5 pb-5 text-sm text-muted-foreground leading-relaxed border-t border-border/30 pt-4 mx-5 mb-0">
+              <div className="border-t border-border/30 px-5 pb-5 pt-3 text-sm leading-relaxed text-muted-foreground">
                 {t(`faqA${n}`)}
               </div>
             </details>

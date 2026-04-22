@@ -1382,6 +1382,45 @@ export type Database = {
           },
         ]
       }
+      staff_profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          intro: string
+          is_published: boolean
+          major: string
+          name: string
+          school: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          intro: string
+          is_published?: boolean
+          major: string
+          name: string
+          school: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          intro?: string
+          is_published?: boolean
+          major?: string
+          name?: string
+          school?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       testimonials: {
         Row: {
           created_at: string | null

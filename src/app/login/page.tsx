@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { signIn, signUp } from "./actions"
 import { LoginSocialSection } from "@/components/auth/LoginSocialSection"
 import { Button } from "@/components/ui/button"
+import { HomeLink } from "@/components/auth/HomeLink"
 
 const ERROR_KEYS: Record<string, string> = {
   already_registered: "alreadyRegistered",
@@ -62,6 +63,7 @@ export default function LoginPage() {
     return (
       <div className="flex min-h-screen items-center justify-center p-6">
         <div className="w-full max-w-sm text-center space-y-4">
+          <HomeLink className="justify-center" />
           <div className="text-4xl">{"\u{1F4E7}"}</div>
           <h1 className="text-xl font-bold">{t("checkEmail")}</h1>
           <p className="text-sm text-muted-foreground">{t("confirmSent", { email })}</p>
@@ -73,6 +75,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-sm space-y-6">
+        <HomeLink className="justify-center" />
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">{t("title")}</h1>
           <p className="text-sm text-muted-foreground">{t("subtitle")}</p>

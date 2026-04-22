@@ -3,7 +3,7 @@
     "title": "竹溪社",
     "description": "在日华人线下社交活动平台",
     "navAbout": "关于我们",
-    "navScripts": "剧本库",
+  "navScripts": "精选活动",
     "navTeam": "干部介绍",
     "navTestimonials": "成员评论",
     "navFaq": "常见问题",
@@ -19,9 +19,9 @@
     "missionSocialDesc": "连结东京各大学华语圈学生，拓展人脉与友谊的无限可能。",
     "missionCampus": "融入校园",
     "missionCampusDesc": "协助同学适应日本校园生活，提供选课、打工、文化交流等信息。",
-    "scriptsTitle": "剧本库",
-    "scriptsSubtitle": "精选剧本，每场活动都有不一样的体验。",
-    "scriptsComingSoon": "精彩剧本即将推出，敬请期待",
+  "scriptsTitle": "精选活动",
+  "scriptsSubtitle": "由后台精选展示的线下活动与剧本体验。",
+  "scriptsComingSoon": "精选活动即将推出，敬请期待",
     "scriptPlayers": "人",
     "scriptDuration": "分钟",
     "navLogin": "登录",
@@ -77,7 +77,7 @@
     "home": "首页",
     "profile": "个人资料",
     "matches": "匹配",
-    "scripts": "剧本库"
+  "scripts": "精选活动"
   },
   "login": {
     "title": "竹溪社",

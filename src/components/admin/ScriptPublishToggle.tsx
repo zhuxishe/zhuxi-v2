@@ -2,15 +2,16 @@
 
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
-import { toggleScriptPublish } from "@/app/admin/scripts/[id]/edit/actions"
+import { toggleScriptFeatured, toggleScriptPublish } from "@/app/admin/scripts/[id]/edit/actions"
 import { Button } from "@/components/ui/button"
 
 interface Props {
   scriptId: string
   isPublished: boolean
+  isFeatured?: boolean
 }
 
-export function ScriptPublishToggle({ scriptId, isPublished }: Props) {
+export function ScriptPublishToggle({ scriptId, isPublished, isFeatured }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -27,8 +28,20 @@ export function ScriptPublishToggle({ scriptId, isPublished }: Props) {
     })
   }
 
+  function handleFeaturedToggle() {
+    setError(null)
+    startTransition(async () => {
+      const result = await toggleScriptFeatured(scriptId, Boolean(isFeatured))
+      if (result.error) {
+        setError(result.error)
+      } else {
+        router.refresh()
+      }
+    })
+  }
+
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex flex-wrap items-center gap-2">
       <span
         className={`text-xs font-medium px-2.5 py-1 rounded-full ${
           isPublished
@@ -38,6 +51,17 @@ export function ScriptPublishToggle({ scriptId, isPublished }: Props) {
       >
         {isPublished ? "已发布" : "草稿"}
       </span>
+      {typeof isFeatured === "boolean" && (
+        <span
+          className={`text-xs font-medium px-2.5 py-1 rounded-full ${
+            isFeatured
+              ? "bg-primary/10 text-primary"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {isFeatured ? "首页精选" : "未精选"}
+        </span>
+      )}
       <Button
         variant="outline"
         size="xs"
@@ -46,6 +70,16 @@ export function ScriptPublishToggle({ scriptId, isPublished }: Props) {
       >
         {isPending ? "处理中..." : isPublished ? "取消发布" : "发布"}
       </Button>
+      {typeof isFeatured === "boolean" && (
+        <Button
+          variant="outline"
+          size="xs"
+          onClick={handleFeaturedToggle}
+          disabled={isPending}
+        >
+          {isPending ? "处理中..." : isFeatured ? "取消精选" : "设为精选"}
+        </Button>
+      )}
       {error && <span className="text-xs text-destructive">{error}</span>}
     </div>
   )

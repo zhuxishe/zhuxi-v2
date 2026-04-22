@@ -58,6 +58,12 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
                   <span className={s.is_published ? "text-green-600" : "text-orange-500"}>
                     {s.is_published ? "已发布" : "草稿"}
                   </span>
+                  {s.is_featured && (
+                    <>
+                      <span>·</span>
+                      <span className="text-primary">首页精选</span>
+                    </>
+                  )}
                 </div>
               </Link>
             ))}

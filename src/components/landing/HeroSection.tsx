@@ -9,8 +9,8 @@ export async function HeroSection() {
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden grain-overlay">
       {/* Background image */}
       <Image
-        src="https://images.unsplash.com/photo-1536098561742-ca998e48cbcc?w=1920&q=80"
-        alt="Tokyo campus"
+        src="/images/landing/campus-panorama.webp"
+        alt="Panoramic Japanese campus"
         fill
         className="object-cover"
         priority
@@ -50,7 +50,7 @@ export async function HeroSection() {
         {/* CTA */}
         <div className="mt-10 animate-fade-in-up delay-2">
           <a
-            href="#scripts"
+            href="#featured-activities"
             className="inline-flex items-center justify-center px-8 py-3 rounded-xl bg-white/12 text-white font-medium text-sm border border-white/20 backdrop-blur-sm hover:bg-white/20 hover:border-white/30 transition-all duration-300"
           >
             {t("heroCta")}

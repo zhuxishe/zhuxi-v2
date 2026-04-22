@@ -9,6 +9,31 @@
 
 ---
 
+## 04-22 首页 IntroOverlay 白屏卡死修复补记
+- 用户反馈：首页卡死在开场动画白屏层，右下角“跳过”点击无反应。
+- 根因判断：
+  - 上轮为避免复访重复播放，在 `IntroOverlay` 里新增了 `sessionStorage` 读写。
+  - 如果浏览器隐私模式、嵌入环境或异常 WebView 禁止 `sessionStorage`，`useState` 初始化或 `done()` 点击路径会同步抛错。
+  - 抛错会导致 hydration/点击处理链中断，表现为白色 overlay 留在页面上，跳过按钮无效。
+- 已修复：
+  - `src/components/landing/IntroOverlay.tsx`
+  - `sessionStorage.getItem/setItem` 改为安全 try/catch 包装。
+  - 即使无法写入 session 标记，`setHidden(true)` 仍会继续执行。
+  - `matchMedia` 也增加存在性判断，避免极端浏览器环境下 reduced-motion 订阅抛错。
+- 复核：
+  - 已按用户要求调用 `glm-provider`；GLM 给出闭包方向，但本地代码判断闭包不是主因，因为 `done` 只使用 ref 与稳定 setState。
+  - 最终按可复现的同步 storage 异常路径修复。
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - Playwright production smoke：
+    - 正常浏览器：点击“跳过”后 overlay 消失，无 JS error。
+    - 强制 `sessionStorage.getItem/setItem` 抛 `SecurityError`：点击“跳过”后 overlay 仍可消失，无 JS error。
+
+---
+
 ## 04-22 公开精选活动页设计统一补记
 - 用户指出 `/scripts` 公开页设计语言没有和首页统一。
 - 已确认问题：

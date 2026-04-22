@@ -40,13 +40,45 @@ function getPhase(f: number): Phase {
 }
 
 function subscribeReducedMotion(callback: () => void) {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return () => {}
+  }
+
   const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
   mediaQuery.addEventListener("change", callback)
   return () => mediaQuery.removeEventListener("change", callback)
 }
 
 function getReducedMotionSnapshot() {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
+    return false
+  }
+
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches
+}
+
+function hasSeenIntro() {
+  if (typeof window === "undefined") return false
+
+  try {
+    return window.sessionStorage.getItem(INTRO_SEEN_KEY) === "1"
+  } catch {
+    return false
+  }
+}
+
+function markIntroSeen() {
+  try {
+    window.sessionStorage.setItem(INTRO_SEEN_KEY, "1")
+  } catch {
+    // Privacy modes and embedded browsers can block sessionStorage.
+  }
+}
+
+function shouldHideIntroInitially() {
+  if (typeof window === "undefined") return false
+
+  return window.location.hash.length > 0 || hasSeenIntro()
 }
 
 export function IntroOverlay() {
@@ -57,10 +89,7 @@ export function IntroOverlay() {
   const frameRef = useRef(0)
   const sizeRef = useRef({ w: 1280, h: 720 })
 
-  const [hidden, setHidden] = useState(() => {
-    if (typeof window === "undefined") return false
-    return window.sessionStorage.getItem(INTRO_SEEN_KEY) === "1" || window.location.hash.length > 0
-  })
+  const [hidden, setHidden] = useState(shouldHideIntroInitially)
   const [phase, setPhase] = useState<Phase>("network")
   const [domFrame, setDomFrame] = useState(0)
   const [viewport, setViewport] = useState({ w: 1280, h: 720 })
@@ -75,7 +104,7 @@ export function IntroOverlay() {
 
   const done = useCallback(() => {
     cancelAnimationFrame(rafRef.current)
-    window.sessionStorage.setItem(INTRO_SEEN_KEY, "1")
+    markIntroSeen()
     setHidden(true)
   }, [])
 

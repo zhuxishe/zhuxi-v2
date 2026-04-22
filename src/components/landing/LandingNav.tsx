@@ -52,7 +52,7 @@ export function LandingNav() {
           <LocaleSwitcher />
           <Link
             href="/login"
-            className="rounded-lg bg-primary px-4 py-1.5 text-[13px] font-medium text-primary-foreground hover:bg-primary/90 active:scale-[0.97] transition-all duration-200"
+            className="rounded-full bg-[#00754A] px-5 py-2 text-[13px] font-semibold text-white shadow-[0_0_6px_rgba(0,0,0,0.12)] transition-all duration-200 hover:bg-[#006241] active:scale-95"
           >
             {t("navLogin")}
           </Link>
@@ -85,7 +85,7 @@ export function LandingNav() {
             <LocaleSwitcher />
             <Link
               href="/login"
-              className="rounded-lg bg-primary px-4 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="rounded-full bg-[#00754A] px-5 py-2 text-sm font-semibold text-white transition-all duration-200 hover:bg-[#006241] active:scale-95"
               onClick={() => setOpen(false)}
             >
               {t("navLogin")}

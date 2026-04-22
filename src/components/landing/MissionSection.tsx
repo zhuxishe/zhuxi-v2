@@ -1,10 +1,10 @@
 import { getTranslations } from "next-intl/server"
-import { BookOpen, Users, GraduationCap } from "lucide-react"
+import { CalendarDays, ShieldCheck, UsersRound } from "lucide-react"
 
 const FEATURES = [
-  { key: "Academic", icon: BookOpen },
-  { key: "Social", icon: Users },
-  { key: "Campus", icon: GraduationCap },
+  { key: "Academic", icon: CalendarDays },
+  { key: "Social", icon: UsersRound },
+  { key: "Campus", icon: ShieldCheck },
 ] as const
 
 export async function MissionSection() {

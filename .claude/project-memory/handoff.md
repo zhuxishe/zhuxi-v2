@@ -9,6 +9,37 @@
 
 ---
 
+## 04-22 首页定位与 Starbucks 风格转译补记
+- 用户提供 `DESIGN-starbucks.md`，要求动画先不改，其余按“业务更明确”的方向调整。
+- 设计判断：
+  - Starbucks 风格比 Spotify 更适合竹溪社：暖奶油底、多层绿色、pill CTA、实体卡片感，更接近“温暖社群 + 线下活动”。
+  - 不能照搬 Starbucks；本轮只做“语义转译”，保留竹溪社的竹/校园/日式气质。
+- 已完成：
+  1. Hero 文案从抽象“连结东京校园”改为直接表达“东京华语学生线下社交 / 精选活动 / 剧本体验 / 同好匹配”。
+  2. Hero CTA 改成双入口：
+     - `查看精选活动` -> `/scripts`
+     - `填写匹配偏好` -> `/app/matching/survey`
+  3. 新增首页轻量业务证据区：
+     - `src/components/landing/ActivityPreviewSection.tsx`
+     - 有后台精选活动时展示 3 个活动卡；无数据时展示“剧本体验 / 同好匹配 / 周末组局”说明卡。
+  4. Mission 文案从“学术成长 / 社交网络 / 融入校园”改为“精选活动 / 同好匹配 / 安心社群”。
+  5. 视觉语言局部迁移 Starbucks：
+     - warm cream band
+     - green filled pill CTA
+     - outlined pill secondary action
+     - softer card shadow and 12px card radius
+     - nav soft layered shadow
+- 明确未改：
+  - `IntroOverlay` 14 秒开场动画按用户要求暂不动。
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - 本地 production 服务 + Chrome reduced-motion 截图审查：通过
+
+---
+
 ## 04-22 首页 Hero 图替换候选已落地
 - 用户提供新图：`public/images/landing/ChatGPT Image 2026年4月22日 21_45_10.png`
 - 判断：适合首页 Hero，原因是左侧留白充足，右侧建筑/樱花构成视觉重心，整体更接近真实网站主视觉。

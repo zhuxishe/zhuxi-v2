@@ -9,6 +9,37 @@
 
 ---
 
+## 04-23 原开场动画改为首页品牌短片补记
+- 用户要求：
+  - 原动画每一帧都仔细调整过，改位置时不能动现有帧。
+  - 可以在动画外层按设计加文案和内容。
+- 已完成：
+  - 未修改 `src/components/landing/IntroOverlay.tsx` 的原有帧逻辑。
+  - 新增 `src/components/landing/EmbeddedIntroFilm.tsx`：
+    - 固定使用 1280×720 逻辑画布。
+    - 保持 `FPS=30`、`TOTAL_FRAMES=420`、`LOGO_SIZE=400`。
+    - 保持原时间线：network 0-235、particle 200-340、logo 310-400、fade 400-420。
+    - 复用原 `drawNetwork`、`drawParticles`、`ScrollPicker`、`LogoReveal`。
+  - 新增 `src/components/landing/BrandFilmCard.tsx`：
+    - 默认显示高级 poster + 播放按钮。
+    - 点击后只在卡片内部播放原动画，不全屏遮罩，不阻塞首页。
+    - 播放中隐藏按钮，避免遮挡任何动画帧。
+  - `BrandMotionSection` 替换为横向品牌影片卡片 + 面向学生访问者的文案。
+  - `src/messages/zh.json` / `src/messages/ja.json` 增加播放按钮与 poster 文案。
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - Playwright production smoke：
+    - 未出现首页跳过按钮或全屏 IntroOverlay。
+    - 点击“播放品牌短片”后，`#story` 内出现 1 个 canvas。
+    - 播放中按钮隐藏，不遮挡动画帧。
+    - 无 JS error。
+  - 截图：`output/brand-film-poster.png`、`output/brand-film-playing-clean.png`。
+
+---
+
 ## 04-23 首页文案口吻与首屏结构二次调整补记
 - 用户反馈：
   - 新版首页和上一版方案差异不够明显。

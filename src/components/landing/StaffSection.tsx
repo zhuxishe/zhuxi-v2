@@ -1,27 +1,32 @@
 import Image from "next/image"
-import { getTranslations } from "next-intl/server"
 import { fetchPublishedStaffProfiles } from "@/lib/queries/staff"
 
-export async function StaffSection() {
-  const t = await getTranslations("home")
+type StaffSectionProps = {
+  id?: string
+  kicker: string
+  title: string
+  subtitle: string
+}
+
+export async function StaffSection({ id = "staff", kicker, title, subtitle }: StaffSectionProps) {
   const staff = await fetchPublishedStaffProfiles()
 
   if (staff.length === 0) return null
 
   return (
-    <section id="staff" className="relative bg-[#fbf8f1] px-5 py-16 md:py-24">
+    <section id={id} className="relative bg-[#fbf8f1] px-5 py-16 md:py-24">
       <div className="container mx-auto max-w-6xl">
         <div className="mb-10 grid gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-end">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-bamboo">
-              {t("teamKicker")}
+              {kicker}
             </p>
             <h2 className="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">
-              {t("teamTitle")}
+              {title}
             </h2>
           </div>
           <p className="text-sm leading-[1.85] text-muted-foreground md:text-base">
-            {t("teamSubtitle")}
+            {subtitle}
           </p>
         </div>
 

@@ -2,10 +2,8 @@ import { getTranslations } from "next-intl/server"
 import { BambooLeaves } from "@/components/landing/BambooLeaves"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { HeroSection } from "@/components/landing/HeroSection"
-import { ActivityPreviewSection } from "@/components/landing/ActivityPreviewSection"
 import { MissionSection } from "@/components/landing/MissionSection"
 import { CommunityProofSection } from "@/components/landing/CommunityProofSection"
-import { StaffSection } from "@/components/landing/StaffSection"
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection"
 import { FaqSection } from "@/components/landing/FaqSection"
 import { ContactSection } from "@/components/landing/ContactSection"
@@ -21,10 +19,8 @@ export default async function HomePage() {
       <LandingNav />
       <main>
         <HeroSection />
-        <ActivityPreviewSection />
         <MissionSection />
         <CommunityProofSection />
-        <StaffSection />
         <TestimonialsSection />
         <FaqSection />
         <ContactSection />

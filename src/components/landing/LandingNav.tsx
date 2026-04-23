@@ -12,7 +12,6 @@ const NAV_LINKS = [
   { key: "navAbout", href: "/#mission" },
   { key: "navScripts", href: "/scripts" },
   { key: "navMatching", href: "/#matching" },
-  { key: "navTeam", href: "/#staff" },
   { key: "navFaq", href: "/#faq" },
 ] as const
 

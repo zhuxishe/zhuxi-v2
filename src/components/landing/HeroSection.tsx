@@ -1,4 +1,3 @@
-import Image from "next/image"
 import { getTranslations } from "next-intl/server"
 import { ChevronDown } from "lucide-react"
 
@@ -15,14 +14,7 @@ export async function HeroSection() {
     <section id="top" className="relative overflow-hidden bg-[#f2f0eb] px-5 pb-16 pt-28 grain-overlay md:pb-24 md:pt-32">
       <div className="container relative z-10 mx-auto max-w-6xl">
         <div className="mx-auto max-w-3xl text-center">
-          <div className="flex items-center justify-center gap-3">
-            <Image src="/logo.svg" alt="" width={46} height={46} loading="eager" className="size-11" />
-            <span className="rounded-full bg-[#1E3932]/8 px-4 py-2 text-xs font-semibold tracking-[0.16em] text-bamboo">
-              {t("heroKicker")}
-            </span>
-          </div>
-
-          <h1 className="mt-7 font-display text-4xl font-bold leading-[1.06] tracking-wide text-[#13241d] sm:text-5xl lg:text-7xl">
+          <h1 className="font-display text-4xl font-bold leading-[1.06] tracking-wide text-[#13241d] sm:text-5xl lg:text-7xl">
             {t("heroTitle")}
           </h1>
 
@@ -61,7 +53,7 @@ export async function HeroSection() {
       </div>
 
       <a
-        href="#activity-preview"
+        href="#mission"
         className="absolute bottom-5 left-1/2 z-10 -translate-x-1/2 text-[#1E3932]/35 animate-bounce-down"
       >
         <ChevronDown size={24} />

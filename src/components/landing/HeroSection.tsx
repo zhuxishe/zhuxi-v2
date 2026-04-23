@@ -1,6 +1,6 @@
 import Image from "next/image"
 import { getTranslations } from "next-intl/server"
-import { CalendarDays, ChevronDown, MapPin, UsersRound } from "lucide-react"
+import { ChevronDown } from "lucide-react"
 
 const HERO_STATS = [
   { valueKey: "heroStatMembersValue", labelKey: "heroStatMembersLabel" },
@@ -13,8 +13,18 @@ export async function HeroSection() {
 
   return (
     <section id="top" className="relative overflow-hidden bg-[#f2f0eb] px-5 pb-16 pt-28 grain-overlay md:pb-24 md:pt-32">
-      <div className="container relative z-10 mx-auto grid max-w-6xl gap-8 lg:grid-cols-[1.08fr_0.92fr] lg:items-center">
-        <div className="rounded-[2rem] bg-[#1E3932] p-7 text-white shadow-[0_24px_70px_rgba(30,57,50,0.22)] md:p-10">
+      <div className="container relative z-10 mx-auto max-w-6xl">
+        <div className="relative overflow-hidden rounded-[2.25rem] bg-[#1E3932] p-7 text-white shadow-[0_24px_70px_rgba(30,57,50,0.22)] md:min-h-[690px] md:p-12">
+          <Image
+            src="/images/landing/campus-panorama.webp"
+            alt="Tokyo campus community"
+            fill
+            priority
+            sizes="100vw"
+            className="object-cover opacity-[0.34]"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(30,57,50,0.96)_0%,rgba(30,57,50,0.84)_46%,rgba(30,57,50,0.30)_100%)]" />
+          <div className="relative z-10 max-w-3xl">
           <div className="flex items-center gap-3">
             <Image src="/logo.svg" alt="" width={46} height={46} loading="eager" className="size-11" />
             <span className="rounded-full bg-white/12 px-4 py-2 text-xs font-semibold tracking-[0.16em] text-white/78">
@@ -22,7 +32,7 @@ export async function HeroSection() {
             </span>
           </div>
 
-          <h1 className="mt-7 max-w-3xl font-display text-4xl font-bold leading-[1.05] tracking-wide sm:text-5xl lg:text-7xl">
+          <h1 className="mt-7 font-display text-4xl font-bold leading-[1.05] tracking-wide sm:text-5xl lg:text-7xl">
             {t("heroTitle")}
           </h1>
 
@@ -44,8 +54,9 @@ export async function HeroSection() {
               {t("heroSecondaryCta")}
             </a>
           </div>
+          </div>
 
-          <div className="mt-10 grid gap-3 sm:grid-cols-3">
+          <div className="relative z-10 mt-12 grid gap-3 sm:grid-cols-3 md:absolute md:bottom-10 md:left-12 md:right-12">
             {HERO_STATS.map((stat) => (
               <div key={stat.labelKey} className="rounded-2xl border border-white/12 bg-white/10 p-4">
                 <p className="font-display text-2xl font-bold leading-none">{t(stat.valueKey)}</p>
@@ -53,31 +64,6 @@ export async function HeroSection() {
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[2rem] bg-bamboo-muted shadow-[0_22px_64px_rgba(35,27,16,0.14)]">
-            <Image
-              src="/images/landing/campus-panorama.webp"
-              alt="Tokyo campus community"
-              fill
-              priority
-              sizes="(min-width: 1024px) 42vw, 100vw"
-              className="object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#1E3932]/74 via-[#1E3932]/12 to-transparent" />
-            <div className="absolute bottom-5 left-5 right-5 rounded-[1.5rem] bg-[#fbf8f1]/92 p-5 text-[#1E3932] shadow-[0_12px_34px_rgba(0,0,0,0.14)] backdrop-blur">
-              <p className="font-display text-xl font-semibold">{t("heroFeatureTitle")}</p>
-              <div className="mt-4 grid gap-3 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-2"><MapPin className="size-4 text-bamboo" />{t("heroFeatureArea")}</span>
-                <span className="inline-flex items-center gap-2"><CalendarDays className="size-4 text-bamboo" />{t("heroFeatureSchedule")}</span>
-                <span className="inline-flex items-center gap-2"><UsersRound className="size-4 text-bamboo" />{t("heroFeaturePeople")}</span>
-              </div>
-            </div>
-          </div>
-          <p className="rounded-full border border-[#d9d1c1] bg-white/70 px-4 py-3 text-center text-xs font-medium text-muted-foreground">
-            {t("heroTrustLine")}
-          </p>
         </div>
       </div>
 

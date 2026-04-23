@@ -9,6 +9,89 @@
 
 ---
 
+## 04-23 折纸竹鹤动画入口落地补记
+- 用户方向：
+  - 不再把动画当 Hero 背景，也不继续让大视频卡片占据首屏。
+  - 使用一个“小宠物/小彩蛋”式入口播放动画，形象定为折纸竹鹤。
+- 设计原则：
+  - 折纸竹鹤不是可爱宠物，而是“日式纸艺 + 竹叶线稿”的轻量品牌彩蛋。
+  - 首屏第一任务仍是让新用户理解：东京学生线下活动、交友、同好匹配。
+  - 动画作为可主动点击的品牌资产，不自动播放，不阻塞看活动。
+- 已完成：
+  - 新增 `src/components/landing/OrigamiCraneIcon.tsx`：纯 SVG 折纸竹鹤，使用纸色、竹绿、墨线和轻微悬浮动效。
+  - 新增 `src/components/landing/OrigamiCraneLauncher.tsx`：右下角浮动入口，点击后打开影院弹层并播放完整 14 秒动画。
+  - `src/app/page.tsx` 接入 `OrigamiCraneLauncher`，中日文文案从 `next-intl` 注入。
+  - `HeroSection` 移除大短片卡片，保留定位、CTA、引导句和数据卡。
+  - 删除已无引用的 `BrandFilmCard.tsx`，避免动画入口双轨。
+  - `src/messages/zh.json` / `src/messages/ja.json` 改为 `crane*` 文案键。
+  - 未修改 `EmbeddedIntroFilm` 的动画帧、节奏、绘制逻辑。
+- 本轮验证结果：
+  - `node JSON.parse zh/ja messages`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - Chrome production smoke：
+    - 首屏可见定位、CTA、数据和右下角竹鹤入口。
+    - 不再显示旧 Hero 大短片卡片。
+    - 点击竹鹤后弹层出现，canvas 正常播放。
+    - Escape 可关闭弹层。
+  - 截图：`output/origami-crane-home.png`、`output/origami-crane-modal.png`。
+
+---
+
+## 04-23 Hero 动画影院化处理补记
+- 用户问题：
+  - 原 Hero 背景是否还需要。
+  - 认可将原开场动画作为更像“电影预告片”的首页资产继续优化。
+- 设计判断：
+  - 原校园背景暂不放回 Hero。原因是 Hero 现在的主视觉是 14 秒动画，背景图会和动画争夺注意力，也会让首访者的第一行动路径变模糊。
+  - 校园背景图后续更适合放到关于区、活动详情页或 Staff/社区氛围区，不作为首屏主视觉。
+- 已完成：
+  - `BrandFilmCard` 改为深色影院框 + 内部浅色动画屏幕。
+  - 增加短片顶部标签：
+    - 中文：`竹溪社开场 · 14 秒` / `不会自动播放，想看再点开`
+    - 日文：`竹渓社オープニング · 14秒` / `自動再生なし。見たい時だけ再生できます`
+  - 播放按钮仍在用户点击后才触发，未恢复自动播放。
+  - 未修改 `EmbeddedIntroFilm` 的帧、节奏、绘制逻辑。
+- 本轮验证结果：
+  - `node JSON.parse zh/ja messages`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - Chrome production smoke：影院标签可见，点击后 canvas 正常播放。
+  - 截图：`output/landing-theater-poster.png`、`output/landing-theater-playing.png`。
+
+---
+
+## 04-23 首页首访引导与文案复核补记
+- 用户反馈：
+  - “我们尽量说人话”这种表达很奇怪。
+  - 需要确认第一次打开主页的人能否马上知道竹溪社是做什么的、上手门槛是否低、语言引导是否自然。
+  - 要用 `frontend-design` 视角和 GLM 做复核。
+- 已完成：
+  - 使用 `frontend-design` 规则按首访者路径复核：当前核心风险是 CTA 原本在短片下方，动画会抢走第一步行动。
+  - 使用 GLM 复核原文案：确认“我们尽量说人话”不合适，且 Hero 应更直接说明“活动/交友/匹配”。
+  - `HeroSection` 调整为：先说明定位 → 先给“看活动/找搭子”两个行动 → 再展示动画短片。
+  - `LandingNav` 的“找搭子”不再指向已删除的 `#story`，改为 `#matching`。
+  - `MissionSection` 给匹配卡片补 `id="matching"`。
+  - 中文/日文文案改为更直接的学生社团对玩家口吻：
+    - 中文 Hero：`在东京，从一场线下活动认识新朋友`
+    - 中文 FAQ：`来之前最容易担心的事，我们先讲清楚。`
+    - 导航：`怎么参加 / 精选活动 / 找搭子 / 组织的人`
+  - GLM 对修改后版本复核：核心结论为“新用户能快速理解这是东京学生的线下社交平台；先看活动、后填问卷的路径降低门槛；可上线”。
+- 本轮验证结果：
+  - `node JSON.parse zh/ja messages`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - Chrome production smoke：首屏 1440×900 内可见定位、主 CTA、副 CTA 和引导句。
+  - 截图：`output/landing-guidance-hero.png`。
+
+---
+
 ## 04-23 首页 Hero 品牌短片位置调整补记
 - 用户要求：
   - 动画是重点资产，应该让玩家更容易看到，形式更像首页里的“电影预告片”。

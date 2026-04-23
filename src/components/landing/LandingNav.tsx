@@ -11,7 +11,7 @@ import { HOME_SKIP_INTRO_HREF, rememberLandingIntroSeen } from "@/lib/landing-in
 const NAV_LINKS = [
   { key: "navAbout", href: "/#mission" },
   { key: "navScripts", href: "/scripts" },
-  { key: "navMatching", href: "/#story" },
+  { key: "navMatching", href: "/#matching" },
   { key: "navTeam", href: "/#staff" },
   { key: "navFaq", href: "/#faq" },
 ] as const

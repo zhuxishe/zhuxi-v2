@@ -1,7 +1,6 @@
 import Image from "next/image"
 import { getTranslations } from "next-intl/server"
 import { ChevronDown } from "lucide-react"
-import { BrandFilmCard } from "./BrandFilmCard"
 
 const HERO_STATS = [
   { valueKey: "heroStatMembersValue", labelKey: "heroStatMembersLabel" },
@@ -32,15 +31,6 @@ export async function HeroSection() {
           </p>
         </div>
 
-        <div className="mt-9">
-          <BrandFilmCard
-            playLabel={t("heroFilmPlay")}
-            replayLabel={t("heroFilmReplay")}
-            posterTitle={t("heroFilmPosterTitle")}
-            posterSubtitle={t("heroFilmPosterSubtitle")}
-          />
-        </div>
-
         <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
           <a
             href="/scripts"
@@ -55,6 +45,10 @@ export async function HeroSection() {
             {t("heroSecondaryCta")}
           </a>
         </div>
+
+        <p className="mx-auto mt-4 max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
+          {t("heroGuide")}
+        </p>
 
         <div className="mx-auto mt-8 grid max-w-4xl gap-3 sm:grid-cols-3">
           {HERO_STATS.map((stat) => (

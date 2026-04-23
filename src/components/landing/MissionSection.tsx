@@ -31,6 +31,7 @@ export async function MissionSection() {
           {FEATURES.map(({ key, icon: Icon }, i) => (
             <div
               key={key}
+              id={key === "Social" ? "matching" : undefined}
               className="landing-card bg-white p-7 sm:p-8"
               style={{ animationDelay: `${i * 0.1}s` }}
             >

@@ -9,6 +9,31 @@
 
 ---
 
+## 04-23 首页 Hero 品牌短片位置调整补记
+- 用户要求：
+  - 动画是重点资产，应该让玩家更容易看到，形式更像首页里的“电影预告片”。
+  - 不改原动画现有帧，只能调整 UI 放置、外层文案和页面结构。
+  - 全站文案继续使用学生社团对玩家/访问者说话的口吻，避免写成给设计评审看的说明。
+- 已完成：
+  - `HeroSection` 直接嵌入 `BrandFilmCard`，把原开场动画变成首屏核心视觉。
+  - 删除独立 `BrandMotionSection`，避免首页出现第二个重复动画区块。
+  - `src/app/page.tsx` 不再渲染独立品牌故事区，页面顺序变为 Hero 短片 → 精选活动 → 参与方式 → 数据 → Staff。
+  - `src/messages/zh.json` / `src/messages/ja.json` 增加 `heroFilm*` 文案，并删除已无引用的 `story*` 文案。
+  - 未修改 `src/components/landing/IntroOverlay.tsx`、`EmbeddedIntroFilm` 的动画帧、时间线和绘制逻辑。
+- 本轮验证结果：
+  - `node JSON.parse zh/ja messages`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - Chrome production smoke：
+    - 首页无全屏“跳过”按钮。
+    - Hero 内“看一下开场”可点击。
+    - 点击后 Hero 内出现 canvas，播放按钮隐藏，不遮挡动画帧。
+    - 截图：`output/hero-film-poster-current.png`、`output/hero-film-playing-current.png`。
+
+---
+
 ## 04-23 原开场动画改为首页品牌短片补记
 - 用户要求：
   - 原动画每一帧都仔细调整过，改位置时不能动现有帧。

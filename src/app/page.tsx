@@ -4,7 +4,6 @@ import { HeroSection } from "@/components/landing/HeroSection"
 import { ActivityPreviewSection } from "@/components/landing/ActivityPreviewSection"
 import { MissionSection } from "@/components/landing/MissionSection"
 import { CommunityProofSection } from "@/components/landing/CommunityProofSection"
-import { BrandMotionSection } from "@/components/landing/BrandMotionSection"
 import { StaffSection } from "@/components/landing/StaffSection"
 import { TestimonialsSection } from "@/components/landing/TestimonialsSection"
 import { FaqSection } from "@/components/landing/FaqSection"
@@ -21,7 +20,6 @@ export default function HomePage() {
         <ActivityPreviewSection />
         <MissionSection />
         <CommunityProofSection />
-        <BrandMotionSection />
         <StaffSection />
         <TestimonialsSection />
         <FaqSection />

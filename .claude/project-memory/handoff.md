@@ -9,6 +9,40 @@
 
 ---
 
+## 04-23 首页 UI/UE 重设计落地补记
+- 用户确认首页第一身份：
+  - “东京各个大学学生扩圈平台，线下活动交友”
+  - 新用户先看活动
+  - 首页可以展示人数
+  - Staff 头像沿用 AI 绘图头像风格
+- 设计决策：
+  - 首页不再使用阻塞式 `IntroOverlay` 开场动画。
+  - 动画概念改为页内非阻塞品牌动效区块，作为“学校/活动/成员被连接起来”的品牌故事，不挡住精选活动入口。
+  - 首屏主 CTA 固定为“查看精选活动”，匹配偏好降级为次入口。
+- 已完成：
+  - `src/app/page.tsx` 移除 `<IntroOverlay />`，新增 `CommunityProofSection` 与 `BrandMotionSection`。
+  - `HeroSection` 重写为双栏首屏：左侧品牌定位与 CTA，右侧校园图 + 新用户活动说明卡。
+  - `ActivityPreviewSection` 提升为新用户第一入口，增强活动卡图层、标签与人数/地点信息。
+  - `MissionSection` 改为说明“不是陌生人社交软件，而是有人组织的线下扩圈”。
+  - `CommunityProofSection` 展示 119 历史成员、20+ 学校覆盖、3-6 人小组、2 周活动窗口。
+  - `BrandMotionSection` 新增非阻塞品牌动效，替代首页强制开场。
+  - `StaffSection` 改为更接近 AI 头像卡片的信任入口。
+  - `FaqSection` 改为回答第一次参加前的真实顾虑。
+  - `LandingNav` 调整为：我们做什么 / 精选活动 / 同好匹配 / 干部介绍 / 常见问题。
+  - `src/messages/zh.json` 与 `src/messages/ja.json` 同步更新文案。
+- 设计稿产物：
+  - 本地 HTML 概念稿：`output/frontend-design/zhuxi-ui-redesign-concept.html`
+  - 本地截图：`output/frontend-design/zhuxi-ui-redesign-concept.png`
+  - 这些位于 `output/`，作为本地设计过程产物，不纳入 Git 提交。
+- 本轮验证结果：
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：78/78 通过
+  - `pnpm build`：通过
+  - Chrome production screenshot：`output/frontend-redesign-home.png`，首屏可直接识别“扩圈/线下活动/精选活动入口”，没有 IntroOverlay 遮罩。
+
+---
+
 ## 04-23 首页 IntroOverlay 内部返回主页二次卡死修复补记
 - 用户反馈：进入 `/scripts` 精选活动后，再点击主页会再次卡死在首页动画位置。
 - 已确认问题：

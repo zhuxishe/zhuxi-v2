@@ -1,8 +1,9 @@
 "use client"
 
+import Link from "next/link"
 import { useState } from "react"
 import { useTranslations } from "next-intl"
-import { Send, CheckCircle } from "lucide-react"
+import { ArrowRight, CheckCircle, Send } from "lucide-react"
 import { submitContactForm } from "@/app/actions/contact"
 
 export function ContactSection() {
@@ -66,6 +67,17 @@ export function ContactSection() {
             <Send size={15} />
           </button>
         </form>
+
+        <div className="mt-6 rounded-2xl border border-border/60 bg-card/70 px-5 py-4 text-sm text-muted-foreground shadow-[0_10px_30px_rgba(16,37,31,0.05)]">
+          <p className="leading-7">{t("contactAboutHint")}</p>
+          <Link
+            href="/organization"
+            className="mt-3 inline-flex items-center gap-2 font-semibold text-[#00754A] transition hover:text-[#006241]"
+          >
+            {t("contactAboutCta")}
+            <ArrowRight size={15} />
+          </Link>
+        </div>
       </div>
     </section>
   )

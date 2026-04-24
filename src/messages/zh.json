@@ -75,9 +75,15 @@
     "contactEmail": "你的 Email",
     "contactMessage": "你想说的话...",
     "contactSend": "送出讯息",
+    "contactAboutHint": "如果你想先了解竹溪社是怎么做活动的，也可以先看看这边。",
+    "contactAboutCta": "关于竹溪社",
     "contactRequired": "请填写所有必填项",
     "contactSentTitle": "讯息已送出！",
     "contactSentDesc": "感谢你的留言，我们会尽快回复。",
+    "scriptsAboutHint": "想先了解竹溪社，再决定要不要来？",
+    "scriptsAboutDesc": "这里可以看到是谁在组织这些活动、平时怎么把活动真的做起来。",
+    "scriptsAboutCta": "去看看关于竹溪社",
+    "footerAbout": "关于竹溪社",
     "footerCopyright": "© 2026 Tokyo University Students Community"
   },
   "organization": {

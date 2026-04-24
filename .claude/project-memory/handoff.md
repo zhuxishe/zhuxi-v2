@@ -9,6 +9,80 @@
 
 ---
 
+## 04-24 首页信息架构补记（关于竹溪社 + 千纸鹤精修）
+- 用户问题：
+  - `/scripts` 是公开分页且在主导航里，`/organization` 也是完整独立页，但没有入口，层级感割裂。
+  - 认可“关于竹溪社”这个命名，但不想把它和活动并列成玩家首页主路径。
+  - 希望右下角千纸鹤再精致一些，更像折纸品牌徽记。
+- 最终处理：
+  - 保留 `精选活动 /scripts` 在主导航，它仍然是玩家首访主路径的一部分。
+  - `关于竹溪社 /organization` 不进主导航，降为**次级公开页**，入口改放：
+    - 联系区底部
+    - `/scripts` 页底部
+    - 页脚
+  - 这样层级变成：
+    - 主路径：首页 -> 精选活动 -> 匹配/登录
+    - 次路径：联系区/页脚/活动页底部 -> 关于竹溪社
+- 已完成：
+  - `LandingFooter` 新增 `精选活动` / `关于竹溪社` 两个底部链接。
+  - `ContactSection` 新增轻量说明卡片，引导到 `/organization`。
+  - `ScriptsSection` 底部新增“想先了解竹溪社，再决定要不要来？”入口卡片。
+  - `OrigamiCraneIcon` 重新绘制：
+    - 从偏叶片/小插画的轮廓，改为更明确的折纸鹤几何
+    - 加强双翼、颈部、喙、尾部与折痕层次
+    - 保持 `竹绿 + 米白 + 深墨线` 的品牌配色
+  - 后续补充：
+    - 已真实执行“先参考、再收 SVG”的流程，而不是只凭口头描述：
+      - 使用内置 `image_gen` 生成 4 联折纸鹤方向参考板
+      - 将参考板复制到 `output/imagegen/origami-crane-reference-sheet.png`
+      - 用户明确喜欢参考板右下角方向
+      - 基于右下角“侧身纸鹤 + 大绿色翼面 + 轻弧线”的方向，再次手工精修 `OrigamiCraneIcon`
+- 本轮验证结果：
+  - `node JSON.parse zh/ja messages`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：`78/78` 通过
+  - `pnpm build`：通过
+  - 生产模式截图检查：
+    - 首页联系区可见 `关于竹溪社`
+    - 页脚可见 `关于竹溪社`
+    - `/scripts` 页底部可见引导卡片
+    - 参考板已存档，可作为后续继续精修千纸鹤的视觉母版
+
+---
+
+## 04-24 依赖漏洞修复补记
+- 用户问题：
+  - GitHub 默认分支仍提示 `2 high` 依赖漏洞，要求确认是否可修。
+- 排查结论：
+  - 两个 `high` 都来自 `packages/miniprogram` 的 Taro 工具链传递依赖，而不是 Web 运行时代码：
+    - `@tarojs/cli -> download-git-repo -> git-clone`
+    - `@tarojs/webpack5-runner -> html-minifier`
+  - 当前 npm registry 上 `@tarojs/cli` / `@tarojs/webpack5-runner` 最新均仍为 `4.2.0`，不能靠继续升级 Taro 消除。
+- 已完成：
+  - 根 `package.json` 的 `pnpm.overrides` 新增：
+    - `html-minifier -> npm:html-minifier-terser@6.1.0`
+    - `download-git-repo -> link:./packages/security-overrides/download-git-repo`
+  - 新增本地安全 shim：`packages/security-overrides/download-git-repo`
+    - 保持 `download-git-repo` 的回调式接口
+    - 内部直接调用 `git clone`
+    - 不再引入 `git-clone` 包，所以锁文件中已无 `git-clone`
+  - 重新 `pnpm install`，已更新 `pnpm-lock.yaml`
+  - 结果：`pnpm audit` 从 `2 high + 1 moderate` 降为 `0 high + 1 moderate`
+- 剩余项：
+  - 还剩 1 个 `moderate`：`exceljs -> uuid@8.3.2`
+  - 该项不在本轮 GitHub 的 `2 high` 范围内；是否继续处理，要看 `exceljs` 与 `uuid@14` 的兼容性验证结果。
+- 本轮验证结果：
+  - `pnpm audit`：`0 high / 1 moderate`
+  - `pnpm audit --prod`：`0 high / 1 moderate`
+  - `pnpm --dir packages/miniprogram build:weapp`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm test:unit`：`78/78` 通过
+  - `pnpm build`：通过
+
+---
+
 ## 04-24 首页去重精简补记
 - 用户反馈：
   - Hero 顶部的 logo + “东京各校学生一起玩的地方”重复。

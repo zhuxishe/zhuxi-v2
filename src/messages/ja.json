@@ -75,9 +75,15 @@
     "contactEmail": "メールアドレス",
     "contactMessage": "メッセージ...",
     "contactSend": "送信する",
+    "contactAboutHint": "竹渓社がどんなふうに活動を作っているか、先に見ておきたい人はこちらへ。",
+    "contactAboutCta": "竹渓社について",
     "contactRequired": "すべての項目を入力してください",
     "contactSentTitle": "メッセージを送信しました！",
     "contactSentDesc": "お問い合わせありがとうございます。できるだけ早くご返信いたします。",
+    "scriptsAboutHint": "来る前に、竹渓社のことを少し見ておきたいなら",
+    "scriptsAboutDesc": "どんな人が活動を動かしているのか、普段どうやって場を作っているのかをまとめています。",
+    "scriptsAboutCta": "竹渓社について見る",
+    "footerAbout": "竹渓社について",
     "footerCopyright": "© 2026 Tokyo University Students Community"
   },
   "organization": {

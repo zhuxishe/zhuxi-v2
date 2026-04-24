@@ -1,4 +1,5 @@
 import Image from "next/image"
+import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 
 export async function LandingFooter() {
@@ -10,6 +11,14 @@ export async function LandingFooter() {
         <div className="flex items-center justify-center gap-2">
           <Image src="/logo.svg" alt="" width={24} height={24} className="size-6 opacity-70" />
           <span className="font-display font-bold text-primary">{t("title")}</span>
+        </div>
+        <div className="flex items-center justify-center gap-5 text-sm text-muted-foreground">
+          <Link href="/scripts" className="transition hover:text-foreground">
+            {t("navScripts")}
+          </Link>
+          <Link href="/organization" className="transition hover:text-foreground">
+            {t("footerAbout")}
+          </Link>
         </div>
         <p className="text-muted-foreground text-[11px] tracking-wider">
           {t("footerCopyright")}

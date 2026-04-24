@@ -1,0 +1,6 @@
+{
+  "name": "download-git-repo",
+  "version": "3.0.3",
+  "private": true,
+  "main": "index.js"
+}

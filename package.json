@@ -56,7 +56,9 @@
       "esbuild": ">=0.25.0",
       "serialize-javascript": ">=6.1.0",
       "webpack-dev-server": ">=5.2.1",
-      "swiper": ">=11.2.0"
+      "swiper": ">=11.2.0",
+      "html-minifier": "npm:html-minifier-terser@6.1.0",
+      "download-git-repo": "link:./packages/security-overrides/download-git-repo"
     },
     "onlyBuiltDependencies": [
       "@swc/core",

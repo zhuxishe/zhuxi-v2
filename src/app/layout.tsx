@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next"
 import { Geist, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
+import { PwaInstallPrompt } from "@/components/shared/PwaInstallPrompt"
 import "./globals.css"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
@@ -21,6 +22,21 @@ const notoSerifSc = Noto_Serif_SC({
 export const metadata: Metadata = {
   title: "竹溪社",
   description: "竹溪社 — 在日华人线下社交活动平台",
+  applicationName: "竹溪社",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "竹溪社",
+    statusBarStyle: "default",
+  },
+  icons: {
+    icon: [
+      { url: "/logo.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" }],
+  },
 }
 
 export const viewport: Viewport = {
@@ -39,6 +55,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body className={`${geist.variable} ${notoSansSc.variable} ${notoSerifSc.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           {children}
+          <PwaInstallPrompt />
         </NextIntlClientProvider>
       </body>
     </html>

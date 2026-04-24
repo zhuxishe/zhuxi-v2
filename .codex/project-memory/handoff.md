@@ -1,5 +1,22 @@
 # 会话交接 — 2026-04-23 App / 后台 UI 重设计概念稿
 
+## 2026-04-24 PWA 安装支持补记
+- 用户要求：参考之前 TTS 项目，为竹溪社增加 PWA 安装能力，图标使用 `D:\OneDrive\7_竹溪社\剧本美工\logo\logosingle.png`。
+- 已完成：
+  - 从用户提供的 logo 生成 PWA 图标：`public/icons/icon-192.png`、`icon-512.png`、`maskable-icon-512.png`、`apple-touch-icon.png`。
+  - 新增 `public/manifest.webmanifest`，`start_url=/`，`display=standalone`。
+  - 新增 `public/sw.js`，只缓存公开壳层和静态资源；明确不拦截 `/admin`、`/app`、`/api`、登录回调，避免缓存登录态和业务数据。
+  - 新增 `src/components/shared/PwaInstallPrompt.tsx`，在 Chrome/Edge/Android 支持安装时显示“安装竹溪社”提示；后台不显示，玩家区避开底部导航。
+  - `src/app/layout.tsx` 增加 manifest、apple web app、icons metadata，并全局注册安装提示。
+- 验证：
+  - `JSON.parse` 校验 `zh/ja` 翻译和 manifest：通过。
+  - 图标尺寸检查：192/512/maskable 512/apple 180 均正确。
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm test:unit`：78/78 通过。
+  - `pnpm build`：通过。
+  - 本地生产服务确认 `/manifest.webmanifest`、`/sw.js`、`/icons/icon-192.png` 均返回 200；首页 HTML 含 manifest 与 apple icon 链接。
+
 ## 本轮完成
 - 用户要求：以高级 UI/UE 设计师角度，重新设计当前项目玩家 App 与管理后台 UI，先用 HTML 在 Chrome 打开，再列修改计划。
 - 已读取现有交接信息与关键 UI 结构：

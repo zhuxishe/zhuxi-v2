@@ -502,6 +502,11 @@
     "surveyExpired": "问卷已过期",
     "noTimeSlot": "请至少选择一个时间段"
   },
+  "pwa": {
+    "install": "安装竹溪社",
+    "hint": "添加到主屏幕，之后可以像 App 一样打开",
+    "dismiss": "暂时不要"
+  },
   "interview": {
     "title": "竹溪社 — 面试前信息表",
     "subtitle": "请填写以下信息，我们将在面试前了解你的基本情况",

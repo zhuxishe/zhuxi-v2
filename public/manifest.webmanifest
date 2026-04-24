@@ -1,0 +1,31 @@
+{
+  "name": "竹溪社",
+  "short_name": "竹溪社",
+  "description": "东京各大学学生扩圈与线下活动交友平台",
+  "lang": "zh-CN",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f7f3eb",
+  "theme_color": "#00754A",
+  "categories": ["social", "lifestyle", "events"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/icons/maskable-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

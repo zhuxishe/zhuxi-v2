@@ -37,6 +37,13 @@
       - 将参考板复制到 `output/imagegen/origami-crane-reference-sheet.png`
       - 用户明确喜欢参考板右下角方向
       - 基于右下角“侧身纸鹤 + 大绿色翼面 + 轻弧线”的方向，再次手工精修 `OrigamiCraneIcon`
+    - 04-24 二次修正：
+      - 用户反馈上一版不像参考板右下角。
+      - 已把 SVG 从偏细碎的小图标改成更接近右下角参考的宽横构图：
+        - 更宽的大绿色翼面
+        - 更明显的长颈与侧身姿态
+        - 保留底部水墨环线
+      - `OrigamiCraneLauncher` 的图标容器略放大，避免小尺寸下细节挤没。
 - 本轮验证结果：
   - `node JSON.parse zh/ja messages`：通过
   - `pnpm typecheck`：通过

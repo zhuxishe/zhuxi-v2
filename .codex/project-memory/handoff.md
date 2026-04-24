@@ -1,5 +1,27 @@
 # 会话交接 — 2026-04-23 App / 后台 UI 重设计概念稿
 
+## 2026-04-24 玩家 App 启动动画补记
+- 用户要求：玩家 App 启动时也加入动画，复用原首页入场动画里“叶子/粒子聚拢后的几秒”。
+- 已完成：
+  - 新增 `src/components/player/AppLaunchSplash.tsx`。
+  - 复用原动画模块：
+    - `projectUniversities`
+    - `computeNetworkParticles`
+    - `initParticles` / `drawParticles`
+    - `generateLogoTargets`
+    - `LogoReveal`
+  - 没有改原首页入场动画帧；App splash 只从原主动画约 `270 -> 420` 帧播放，即后段粒子聚拢、logo reveal、淡出。
+  - 接入 `src/app/app/layout.tsx`，只作用于 `/app/**` 玩家区。
+  - 使用 `sessionStorage` 键 `zhuxi:app-launch-splash-seen`，同一浏览器 session 只播一次。
+  - 支持 `prefers-reduced-motion: reduce` 自动跳过，并保留“跳过”按钮，避免卡死。
+- 验证：
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm test:unit`：78/78 通过。
+  - `pnpm build`：通过。
+- 未覆盖：
+  - 本地没有有效玩家登录 session，`/app` 会先被 `requireAuth()` 重定向到 `/login`，所以未做真实登录后的浏览器截图。上线后需用真实账号确认首次进入 `/app` 时动画出现且可跳过。
+
 ## 2026-04-24 依赖漏洞清零补记
 - 用户要求：修复 GitHub 默认分支剩余 `1 moderate` 依赖漏洞，并继续推送。
 - 根因：

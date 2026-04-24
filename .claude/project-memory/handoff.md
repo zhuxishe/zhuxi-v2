@@ -44,6 +44,13 @@
         - 更明显的长颈与侧身姿态
         - 保留底部水墨环线
       - `OrigamiCraneLauncher` 的图标容器略放大，避免小尺寸下细节挤没。
+    - 04-24 三次修正：
+      - 用户指出仍然不像参考图，且手绘版本不如原图。
+      - 已改为直接使用参考图右下角裁切资产：
+        - 新增 `public/images/landing/origami-crane-reference.png`
+        - `OrigamiCraneLauncher` 使用 `next/image` 渲染该 PNG
+        - 删除不再使用的 `OrigamiCraneIcon.tsx`
+      - 结论：这个入口不再追求纯矢量，而是优先保留用户喜欢的原始质感、纸纹和水墨圈。
 - 本轮验证结果：
   - `node JSON.parse zh/ja messages`：通过
   - `pnpm typecheck`：通过
@@ -54,6 +61,7 @@
     - 首页联系区可见 `关于竹溪社`
     - 页脚可见 `关于竹溪社`
     - `/scripts` 页底部可见引导卡片
+    - 右下角开场入口已显示参考图裁切 PNG，不再显示手绘 SVG
     - 参考板已存档，可作为后续继续精修千纸鹤的视觉母版
 
 ---

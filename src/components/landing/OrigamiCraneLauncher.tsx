@@ -1,10 +1,10 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { useCallback, useEffect, useState } from "react"
-import { ArrowRight, Play, RotateCcw, X } from "lucide-react"
+import { ArrowRight, RotateCcw, X } from "lucide-react"
 import { EmbeddedIntroFilm } from "./EmbeddedIntroFilm"
-import { OrigamiCraneIcon } from "./OrigamiCraneIcon"
 
 type OrigamiCraneLauncherProps = {
   ariaLabel: string
@@ -69,8 +69,15 @@ export function OrigamiCraneLauncher({
         onClick={openFilm}
         className="group fixed bottom-5 right-4 z-50 flex items-center gap-2 rounded-full border border-[#d9d1c1] bg-[#fffaf1]/96 p-2 pr-4 text-sm font-semibold text-[#10251f] shadow-[0_18px_45px_rgba(16,37,31,0.16)] backdrop-blur-xl transition hover:-translate-y-1 hover:border-[#1E3932]/30 hover:bg-white active:scale-95 md:bottom-7 md:right-7"
       >
-        <span className="grid size-[54px] place-items-center rounded-full border border-[#d7d0c3] bg-[radial-gradient(circle_at_50%_35%,#fffefb,#f0e7d8)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]">
-          <OrigamiCraneIcon className="h-11 w-[58px] animate-float transition-transform duration-500 group-hover:-rotate-3 group-hover:scale-105" />
+        <span className="grid size-[58px] place-items-center rounded-full border border-[#d7d0c3] bg-[radial-gradient(circle_at_50%_35%,#fffefb,#f0e7d8)] shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)]">
+          <Image
+            src="/images/landing/origami-crane-reference.png"
+            alt=""
+            width={80}
+            height={80}
+            className="size-[54px] animate-float object-contain transition-transform duration-500 group-hover:-rotate-3 group-hover:scale-105"
+            priority={false}
+          />
         </span>
         <span className="hidden sm:inline">{bubbleLabel}</span>
       </button>

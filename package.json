@@ -57,6 +57,8 @@
       "serialize-javascript": ">=6.1.0",
       "webpack-dev-server": ">=5.2.1",
       "swiper": ">=11.2.0",
+      "exceljs>uuid": ">=14.0.0",
+      "sockjs>uuid": ">=14.0.0",
       "html-minifier": "npm:html-minifier-terser@6.1.0",
       "download-git-repo": "link:./packages/security-overrides/download-git-repo"
     },

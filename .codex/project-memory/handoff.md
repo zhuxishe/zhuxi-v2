@@ -1,5 +1,25 @@
 # 会话交接 — 2026-04-23 App / 后台 UI 重设计概念稿
 
+## 2026-04-24 依赖漏洞清零补记
+- 用户要求：修复 GitHub 默认分支剩余 `1 moderate` 依赖漏洞，并继续推送。
+- 根因：
+  - `exceljs@4.4.0 -> uuid@8.3.2`
+  - scoped 覆盖 `exceljs` 后，`packages/miniprogram -> @tarojs/webpack5-runner -> webpack-dev-server -> sockjs -> uuid@8.3.2` 也被 audit 暴露。
+  - npm advisory `GHSA-w5hq-g745-h8pq` 要求 `uuid >=14.0.0`。
+- 已完成：
+  - 根 `package.json` 的 `pnpm.overrides` 新增 scoped overrides：`exceljs>uuid >=14.0.0`、`sockjs>uuid >=14.0.0`。
+  - 更新 `pnpm-lock.yaml` 并同步本地 `node_modules`。
+  - `pnpm why uuid` 确认当前解析为 `uuid@14.0.0 -> exceljs@4.4.0`。
+- 验证：
+  - `pnpm audit --json`：0 vulnerabilities。
+  - `exceljs` 基础 `Workbook().xlsx.writeBuffer()`：通过。
+  - `sockjs` CJS require：通过。
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm test:unit`：78/78 通过。
+  - `pnpm build`：通过。
+  - `pnpm --dir packages/miniprogram build:weapp`：通过。
+
 ## 2026-04-24 PWA 安装支持补记
 - 用户要求：参考之前 TTS 项目，为竹溪社增加 PWA 安装能力，图标使用 `D:\OneDrive\7_竹溪社\剧本美工\logo\logosingle.png`。
 - 已完成：

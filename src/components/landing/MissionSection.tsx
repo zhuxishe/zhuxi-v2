@@ -11,15 +11,9 @@ export async function MissionSection() {
   return (
     <section id="join" className="relative bg-[#f2f0eb] px-5 py-16 md:py-24">
       <div className="container mx-auto max-w-6xl">
-        <div className="mb-10 max-w-3xl">
+        <div className="mb-8">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-bamboo">
             {t("missionKicker")}
-          </p>
-          <h2 className="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">
-            {t("missionTitle")}
-          </h2>
-          <p className="mt-4 text-sm leading-[1.85] text-muted-foreground md:text-base">
-            {t("missionSubtitle")}
           </p>
         </div>
 

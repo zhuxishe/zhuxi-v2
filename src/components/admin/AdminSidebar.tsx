@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle, ClipboardList, UserRound } from "lucide-react"
+import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle, ClipboardList, UserRound, Images } from "lucide-react"
 import { logoutAdmin } from "@/app/admin/login/actions"
 
 const NAV_GROUPS = [
@@ -23,6 +23,7 @@ const NAV_GROUPS = [
     label: "内容",
     items: [
       { href: "/admin/scripts", label: "剧本管理", icon: BookOpen },
+      { href: "/admin/reviews", label: "往期回顾", icon: Images },
       { href: "/admin/staff", label: "Staff 管理", icon: UserRound },
       { href: "/admin/testimonials", label: "评论管理", icon: MessageCircle },
       { href: "/admin/activity-records", label: "活动记录", icon: Calendar },

@@ -2,6 +2,7 @@ import { getTranslations } from "next-intl/server"
 import { BambooLeaves } from "@/components/landing/BambooLeaves"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingNav } from "@/components/landing/LandingNav"
+import { FounderSection } from "@/components/landing/FounderSection"
 import { StaffSection } from "@/components/landing/StaffSection"
 
 export default async function OrganizationPage() {
@@ -26,11 +27,13 @@ export default async function OrganizationPage() {
           </div>
         </section>
 
+        <FounderSection />
         <StaffSection
           id="team"
           kicker={t("teamKicker")}
           title={t("teamTitle")}
           subtitle={t("teamSubtitle")}
+          excludeNames={["陈风"]}
         />
       </main>
       <LandingFooter />

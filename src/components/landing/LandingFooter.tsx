@@ -16,10 +16,16 @@ export async function LandingFooter() {
           <Link href="/scripts" className="transition hover:text-foreground">
             {t("navScripts")}
           </Link>
+          <Link href="/reviews" className="transition hover:text-foreground">
+            {t("navReviews")}
+          </Link>
           <Link href="/organization" className="transition hover:text-foreground">
             {t("footerAbout")}
           </Link>
         </div>
+        <a href={`mailto:${t("footerEmail")}`} className="block text-xs text-muted-foreground transition hover:text-foreground">
+          {t("footerEmail")}
+        </a>
         <p className="text-muted-foreground text-[11px] tracking-wider">
           {t("footerCopyright")}
         </p>

@@ -6,10 +6,13 @@ type StaffSectionProps = {
   kicker: string
   title: string
   subtitle: string
+  excludeNames?: string[]
 }
 
-export async function StaffSection({ id = "staff", kicker, title, subtitle }: StaffSectionProps) {
-  const staff = await fetchPublishedStaffProfiles()
+export async function StaffSection({ id = "staff", kicker, title, subtitle, excludeNames = [] }: StaffSectionProps) {
+  const staff = (await fetchPublishedStaffProfiles()).filter(
+    (member) => !excludeNames.includes(member.name)
+  )
 
   if (staff.length === 0) return null
 

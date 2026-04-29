@@ -9,9 +9,10 @@ import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 import { HOME_SKIP_INTRO_HREF, rememberLandingIntroSeen } from "@/lib/landing-intro"
 
 const NAV_LINKS = [
-  { key: "navAbout", href: "/#mission" },
+  { key: "navAbout", href: "/#join" },
   { key: "navScripts", href: "/scripts" },
-  { key: "navMatching", href: "/#matching" },
+  { key: "navReviews", href: "/reviews" },
+  { key: "navOrganization", href: "/organization" },
   { key: "navFaq", href: "/#faq" },
 ] as const
 

@@ -10,17 +10,11 @@ export function FaqSection() {
 
   return (
     <section id="faq" className="bg-[#f2f0eb] px-5 py-16 md:py-24">
-      <div className="container mx-auto grid max-w-6xl gap-8 md:grid-cols-[0.85fr_1.15fr]">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-bamboo">
-            {t("faqKicker")}
-          </p>
-          <h2 className="mt-3 font-display text-3xl font-bold leading-tight md:text-5xl">
+      <div className="container mx-auto max-w-4xl">
+        <div className="mb-8">
+          <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">
             {t("faqTitle")}
           </h2>
-          <p className="mt-4 text-sm leading-[1.85] text-muted-foreground md:text-base">
-            {t("faqSubtitle")}
-          </p>
         </div>
 
         <div className="space-y-3">

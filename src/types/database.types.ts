@@ -1382,6 +1382,48 @@ export type Database = {
           },
         ]
       }
+      past_event_reviews: {
+        Row: {
+          cover_url: string
+          created_at: string
+          event_date: string | null
+          gallery_urls: Json
+          id: string
+          is_published: boolean
+          sort_order: number
+          source_url: string | null
+          summary: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          cover_url: string
+          created_at?: string
+          event_date?: string | null
+          gallery_urls?: Json
+          id?: string
+          is_published?: boolean
+          sort_order?: number
+          source_url?: string | null
+          summary: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          cover_url?: string
+          created_at?: string
+          event_date?: string | null
+          gallery_urls?: Json
+          id?: string
+          is_published?: boolean
+          sort_order?: number
+          source_url?: string | null
+          summary?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       staff_profiles: {
         Row: {
           avatar_url: string | null

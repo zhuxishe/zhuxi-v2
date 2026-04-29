@@ -1,5 +1,32 @@
 # 会话交接 — 2026-04-23 App / 后台 UI 重设计概念稿
 
+## 2026-04-29 Web 公开页按 0425 修改方案重排
+- 用户要求：读取 `D:\OneDrive\7_竹溪社\竹溪社app\田\0425修改方案.docx` 的文字与截图，按移动端优先重做 Web 公开页信息架构。
+- 已确认：该 docx 内 13 张图片均可提取并视觉识别；当前首页截图对应 Hero、如何参加、数字区、成员心声、FAQ、联系我们、菜单、活动页和关于页。
+- 已完成：
+  - 首页收窄为宣传页：`HeroSection`、`AboutIntroSection`、`MissionSection`、`FaqSection`、Footer。
+  - 首页移除深色数字证明区、成员心声区、联系表单区；Hero 删除按钮，统计改为 2x2。
+  - 文案换成面向玩家的口吻，并同步 `zh/ja`。
+  - 导航新增：`往期回顾`、`关于我们`；“怎么参加”改“如何参加”。
+  - 精选活动页删除登录 CTA 和底部“关于竹溪社”引导卡，只展示后台精选活动。
+  - `/organization` 改为公开“关于我们”页，新增陈风独占卡，其他 Staff 留在次级区块。
+  - 新增 `/reviews` 往期回顾公开页。
+  - 新增 `/admin/reviews` 往期回顾后台配置页。
+  - 往期回顾后台新增图片 URL / 来源 URL 校验，公开页和后台预览使用 CSS URL 转义。
+  - 新增 migration：`supabase/migrations/037_past_event_reviews.sql`。
+  - 已通过 `supabase db query --db-url` 在远端 Supabase 应用 `past_event_reviews` 表、trigger、RLS policy、index。
+- 验证：
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm test:unit`：78/78 通过。
+  - `pnpm build`：通过，确认 `/reviews`、`/admin/reviews` 出现在 build route 列表。
+  - Playwright 移动端截图已检查：`/`、`/scripts`、`/reviews`、`/organization` 均能渲染；截图在 `I:\temp\zhuxi-web-audit\`。
+  - 远端已确认 `public.past_event_reviews` 存在，RLS policy 数量为 2。
+  - GLM 复核：主需求符合；指出 URL 校验风险，已补图片/来源 URL 校验与 CSS URL 转义。
+- 注意：
+  - `supabase db push --dry-run` 因远端 migration history 和本地编号体系不一致未使用；本轮只逐条执行 `037` 的 SQL，没有 repair 迁移历史。
+  - 现有工作区仍有用户/上一轮遗留未提交改动，提交时需要分开 staging，避免混入无关文件。
+
 ## 2026-04-24 玩家 App 启动动画补记
 - 用户要求：玩家 App 启动时也加入动画，复用原首页入场动画里“叶子/粒子聚拢后的几秒”。
 - 已完成：

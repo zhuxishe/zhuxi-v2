@@ -2,11 +2,9 @@ import { getTranslations } from "next-intl/server"
 import { BambooLeaves } from "@/components/landing/BambooLeaves"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { HeroSection } from "@/components/landing/HeroSection"
+import { AboutIntroSection } from "@/components/landing/AboutIntroSection"
 import { MissionSection } from "@/components/landing/MissionSection"
-import { CommunityProofSection } from "@/components/landing/CommunityProofSection"
-import { TestimonialsSection } from "@/components/landing/TestimonialsSection"
 import { FaqSection } from "@/components/landing/FaqSection"
-import { ContactSection } from "@/components/landing/ContactSection"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { OrigamiCraneLauncher } from "@/components/landing/OrigamiCraneLauncher"
 
@@ -19,11 +17,9 @@ export default async function HomePage() {
       <LandingNav />
       <main>
         <HeroSection />
+        <AboutIntroSection />
         <MissionSection />
-        <CommunityProofSection />
-        <TestimonialsSection />
         <FaqSection />
-        <ContactSection />
       </main>
       <LandingFooter />
       <OrigamiCraneLauncher

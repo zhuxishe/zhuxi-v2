@@ -3,6 +3,7 @@ import { createServerClient } from "@supabase/ssr"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
 import { getSingleRelation } from "@/lib/supabase/relations"
 import { buildPublicUrl } from "@/lib/site-url"
+import { APP_SPLASH_SKIP_COOKIE } from "@/lib/app-launch-splash"
 import type { Database } from "@/types/database.types"
 
 /**
@@ -32,6 +33,15 @@ function copyCookies(from: NextResponse, to: NextResponse) {
     to.cookies.set(name, value, rest)
   })
   return to
+}
+
+function markSkipAppSplash(response: NextResponse) {
+  response.cookies.set(APP_SPLASH_SKIP_COOKIE, "1", {
+    path: "/",
+    maxAge: 60,
+    sameSite: "lax",
+  })
+  return response
 }
 
 export async function GET(req: NextRequest) {
@@ -108,14 +118,14 @@ export async function GET(req: NextRequest) {
   )
 
   if (route.action === "redirect") {
-    return copyCookies(
+    return markSkipAppSplash(copyCookies(
       authResponse,
       NextResponse.redirect(buildRedirectUrl(req, route.to))
-    )
+    ))
   }
 
-  return copyCookies(
+  return markSkipAppSplash(copyCookies(
     authResponse,
     NextResponse.redirect(buildRedirectUrl(req, nextPath))
-  )
+  ))
 }

@@ -1,5 +1,67 @@
 # 会话交接 — 2026-04-23 App / 后台 UI 重设计概念稿
 
+## 2026-05-15 面试前信息表 ON CONFLICT 报错修复
+- 用户反馈：未注册/新用户提交 `/app/interview-form` 最后一步时报错 `there is no unique or exclusion constraint matching the ON CONFLICT specification`。
+- 根因：
+  - `src/app/app/interview-form/actions.ts` 里 `members.upsert(..., { onConflict: "user_id" })` 需要数据库存在可被 `ON CONFLICT(user_id)` 精确匹配的普通唯一索引/约束。
+  - 远程库原本只有 `idx_members_user_id ON public.members(user_id) WHERE user_id IS NOT NULL`，这是 partial unique index；PostgREST/Supabase upsert 不能指定 partial index predicate，因此不能匹配该冲突目标。
+  - `member_identity.member_id` 已有普通唯一约束，截图中的错误不是 `member_identity` 造成的。
+- 已修复：
+  - 新增 migration：`supabase/migrations/038_members_user_id_full_unique.sql`。
+  - 已在远程 Supabase 执行：`CREATE UNIQUE INDEX IF NOT EXISTS idx_members_user_id_full ON public.members(user_id);`
+  - 保留旧 partial index，不做破坏性删除；PostgreSQL 普通 unique index 仍允许多条 `NULL user_id`，不影响 legacy/import/temp member。
+- 已验证：
+  - 远程库同时存在 `idx_members_user_id` 与 `idx_members_user_id_full`。
+  - `members.user_id` 当前无重复非空值。
+  - DB 级烟测 `INSERT ... ON CONFLICT(user_id) DO NOTHING` 已通过，返回 `INSERT 0 0`，没有留下测试数据。
+  - `pnpm typecheck`、`pnpm lint`、`pnpm test:unit`、`pnpm build` 均通过。
+- 是否最近动了数据库：
+  - 最近确实有远程 DB 变更：`037_past_event_reviews.sql` 用于往期回顾页；更早还有 staff / legacy / quiz 等表。
+  - 这些变更没有改 `members.user_id` 或 `member_identity.member_id`。
+  - 本次问题是历史 schema 与现有 Supabase upsert 写法不闭合，最近的前端首页/公开页修改只是让用户实际走到了这个提交路径。
+
+## 2026-05-15 ON CONFLICT 同类问题复查 + 后台成员编辑保存修复
+- 复查范围：
+  - 搜索 `src/` 与 `supabase/migrations/` 内所有 `upsert/onConflict/ON CONFLICT`。
+  - 对照远程 Supabase `pg_index`，确认所有冲突目标是否存在非 partial 的唯一索引/约束。
+  - 用逐条 `EXPLAIN INSERT ... ON CONFLICT ... DO NOTHING` 做无写入烟测。
+- 结论：
+  - 当前代码里所有 `onConflict` 目标均已具备可匹配的普通唯一索引/约束。
+  - 通过烟测的目标包括：`members(user_id)`、各成员 1:1 表 `member_id`、`interview_evaluations(member_id,interviewer_id)`、`script_play_records(script_id,member_id)`、`match_round_submissions(round_id,member_id)`、`member_dynamic_stats(member_id)`。
+  - `members.email`、`members.line_user_id` 仍是 partial unique index，但当前代码没有用它们做 `onConflict`，暂不构成同类运行时问题。
+- 顺手修复：
+  - 发现 `src/app/admin/members/[id]/edit/actions.ts` 的字段白名单和当前编辑组件/远程列名漂移。
+  - 表现：后台成员编辑页部分字段可编辑但保存后不落库，例如 `degree_level`、`course_language`、`enrollment_year`、兴趣偏好若干字段、性格评分若干字段、`boundary_notes` 等。
+  - 已把白名单调整为和当前组件 + 远程 schema 对齐，并移除不存在/旧字段：`degree`、`native_language`、`other_languages`、`conflict_style`、`social_energy_level`、`special_needs`、`notes`。
+- 验证：
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm test:unit`：78/78 通过。
+  - `pnpm build`：通过。
+
+## 2026-05-13 官网首页第一轮可用性修复
+- 用户给出官网首页 6 条优化建议：四个入口可点击、右下角动画可跳过、精选活动卡片可点、Hero 文案更直接、补联系方式、后续用活动照片增强社团活力。
+- 本轮先做不依赖新素材/新表结构的小闭环：
+  - 首页 Hero 四个方块改成可点击入口：精选活动、往期回顾、同校扩圈、匹配找搭子。
+  - Hero 主文案改得更直接：强调“东京学生的线下扩圈活动社团”。
+  - 新增首页联系区 `LandingContactSection`，目前使用 `contact@zhuxishe.com`，社媒链接待用户补充。
+  - 导航和 Footer 增加“联系我们”入口。
+  - 右下角千纸鹤动画弹层新增播放中“跳过动画”按钮。
+  - 精选活动页卡片改为可点击，新增公开活动详情页 `/scripts/[id]`。
+  - 公开详情页只展示封面、简介、人数/时长/地点/预算和标签；不公开 `scripts.page_images`，因为该字段实际可能是剧本页/内部资料，不等于公开活动现场照片。
+  - 详情页“活动照片”区域先显示安全占位并引导到 `/reviews`。
+- 验证：
+  - `messages zh/ja JSON`：通过。
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm test:unit`：78/78 通过。
+  - `pnpm build`：通过，确认 `/scripts/[id]` 出现在 build route 列表。
+  - Playwright 生产服务截图检查：`/`、`/scripts`、`/scripts/[id]` 可渲染；动画弹层跳过按钮可见。
+- 后续需要用户补充：
+  - 官网公开社媒链接：LINE、Instagram、小红书等。
+  - 每个精选活动可公开展示的现场照片；当前不能用 `page_images` 替代。
+  - 如果要做第二轮大改，需要提供 3-6 张高质量活动现场/互动/合照图，用于照片主导 Hero。
+
 ## 2026-04-29 Web 公开页按 0425 修改方案重排
 - 用户要求：读取 `D:\OneDrive\7_竹溪社\竹溪社app\田\0425修改方案.docx` 的文字与截图，按移动端优先重做 Web 公开页信息架构。
 - 已确认：该 docx 内 13 张图片均可提取并视觉识别；当前首页截图对应 Hero、如何参加、数字区、成员心声、FAQ、联系我们、菜单、活动页和关于页。
@@ -21,10 +83,9 @@
   - `pnpm test:unit`：78/78 通过。
   - `pnpm build`：通过，确认 `/reviews`、`/admin/reviews` 出现在 build route 列表。
   - Playwright 移动端截图已检查：`/`、`/scripts`、`/reviews`、`/organization` 均能渲染；截图在 `I:\temp\zhuxi-web-audit\`。
-  - 远端已确认 `public.past_event_reviews` 存在，RLS policy 数量为 2。
-  - GLM 复核：主需求符合；指出 URL 校验风险，已补图片/来源 URL 校验与 CSS URL 转义。
 - 注意：
   - `supabase db push --dry-run` 因远端 migration history 和本地编号体系不一致未使用；本轮只逐条执行 `037` 的 SQL，没有 repair 迁移历史。
+  - 远端已确认 `public.past_event_reviews` 存在，RLS policy 数量为 2。
   - 现有工作区仍有用户/上一轮遗留未提交改动，提交时需要分开 staging，避免混入无关文件。
 
 ## 2026-04-24 玩家 App 启动动画补记
@@ -48,6 +109,21 @@
   - `pnpm build`：通过。
 - 未覆盖：
   - 本地没有有效玩家登录 session，`/app` 会先被 `requireAuth()` 重定向到 `/login`，所以未做真实登录后的浏览器截图。上线后需用真实账号确认首次进入 `/app` 时动画出现且可跳过。
+
+## 2026-04-29 玩家 App 启动动画行为修正
+- 用户反馈：启动动画在用户登录成功后立刻出现，影响登录后的首个操作流程。
+- 已调整：
+  - `AppLaunchSplash` 只在独立 PWA / iOS standalone 模式下考虑播放，普通浏览器进入 `/app` 不再播放。
+  - 新增 `src/lib/app-launch-splash.ts` 统一管理 splash sessionStorage key 与短期 cookie。
+  - 邮箱登录成功、LINE 登录成功时写入 `zhuxi:app-launch-splash-skip-once`，跳到 `/app` 后跳过一次。
+  - Google/OAuth `/login/callback` 成功后写入 60 秒短期 cookie `zhuxi_app_splash_skip_once`，让回调跳到 `/app` 后也跳过一次。
+- 验证：
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm test:unit`：78/78 通过。
+  - `pnpm build`：通过。
+- 未覆盖：
+  - 需要线上真实 PWA 登录流程确认：登录后不播；关闭 PWA 后重新打开才按 session 规则播放。
 
 ## 2026-04-24 依赖漏洞清零补记
 - 用户要求：修复 GitHub 默认分支剩余 `1 moderate` 依赖漏洞，并继续推送。

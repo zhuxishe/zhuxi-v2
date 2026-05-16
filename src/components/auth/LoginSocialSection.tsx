@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { buildPublicUrl } from "@/lib/site-url"
+import { skipAppLaunchSplashOnce } from "@/lib/app-launch-splash"
 
 interface LoginSocialSectionProps {
   onError: (message: string | null) => void
@@ -70,6 +71,7 @@ export function LoginSocialSection({ onError, nextPath = "/app" }: LoginSocialSe
     const result = await authenticateWithLine()
 
     if (result.success) {
+      skipAppLaunchSplashOnce()
       router.push(nextPath)
       return
     }

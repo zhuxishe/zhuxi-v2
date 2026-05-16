@@ -6,23 +6,41 @@ import { interpolate } from "@/components/landing/intro/animation-utils"
 import { projectUniversities, computeNetworkParticles } from "@/components/landing/intro/university-data"
 import { initParticles, drawParticles, generateLogoTargets } from "@/components/landing/intro/particle-canvas"
 import { LogoReveal } from "@/components/landing/intro/LogoReveal"
+import { APP_SPLASH_SEEN_KEY, APP_SPLASH_SKIP_COOKIE, APP_SPLASH_SKIP_ONCE_KEY } from "@/lib/app-launch-splash"
 
 const FPS = 30
 const START_FRAME = 270
 const END_FRAME = 420
 const BG = "#f7f3eb"
 const LOGO_SIZE = 300
-const SEEN_KEY = "zhuxi:app-launch-splash-seen"
+
+function isStandaloneApp() {
+  if (typeof window === "undefined") return false
+  const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean }
+  return window.matchMedia?.("(display-mode: standalone)").matches || navigatorWithStandalone.standalone === true
+}
+
+function consumeSkipCookie() {
+  if (typeof document === "undefined" || !document.cookie.includes(`${APP_SPLASH_SKIP_COOKIE}=`)) return false
+  document.cookie = `${APP_SPLASH_SKIP_COOKIE}=; Max-Age=0; path=/; SameSite=Lax`
+  return true
+}
 
 function shouldSkipSplash() {
   if (typeof window === "undefined") return true
-  if (window.sessionStorage.getItem(SEEN_KEY) === "1") return true
+  if (!isStandaloneApp()) return true
+  if (consumeSkipCookie()) return true
+  if (window.sessionStorage.getItem(APP_SPLASH_SKIP_ONCE_KEY) === "1") {
+    window.sessionStorage.removeItem(APP_SPLASH_SKIP_ONCE_KEY)
+    return true
+  }
+  if (window.sessionStorage.getItem(APP_SPLASH_SEEN_KEY) === "1") return true
   return window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false
 }
 
 function rememberSplashSeen() {
   try {
-    window.sessionStorage.setItem(SEEN_KEY, "1")
+    window.sessionStorage.setItem(APP_SPLASH_SEEN_KEY, "1")
   } catch {
     // sessionStorage can be blocked in strict privacy modes.
   }

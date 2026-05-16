@@ -5,6 +5,7 @@ import { HeroSection } from "@/components/landing/HeroSection"
 import { AboutIntroSection } from "@/components/landing/AboutIntroSection"
 import { MissionSection } from "@/components/landing/MissionSection"
 import { FaqSection } from "@/components/landing/FaqSection"
+import { LandingContactSection } from "@/components/landing/LandingContactSection"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { OrigamiCraneLauncher } from "@/components/landing/OrigamiCraneLauncher"
 
@@ -20,6 +21,7 @@ export default async function HomePage() {
         <AboutIntroSection />
         <MissionSection />
         <FaqSection />
+        <LandingContactSection />
       </main>
       <LandingFooter />
       <OrigamiCraneLauncher
@@ -28,6 +30,7 @@ export default async function HomePage() {
         title={t("craneTitle")}
         subtitle={t("craneSubtitle")}
         replayLabel={t("craneReplay")}
+        skipLabel={t("craneSkip")}
         closeLabel={t("craneClose")}
         activitiesLabel={t("craneActivities")}
       />

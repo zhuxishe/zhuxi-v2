@@ -7,6 +7,7 @@ import { signIn, signUp } from "./actions"
 import { LoginSocialSection } from "@/components/auth/LoginSocialSection"
 import { Button } from "@/components/ui/button"
 import { HomeLink } from "@/components/auth/HomeLink"
+import { skipAppLaunchSplashOnce } from "@/lib/app-launch-splash"
 
 const ERROR_KEYS: Record<string, string> = {
   already_registered: "alreadyRegistered",
@@ -64,7 +65,10 @@ export default function LoginPage() {
       const result = await signIn(email, password)
       setLoading(false)
       if (result.error) setError(translateError(result.error))
-      else router.push(nextPath)
+      else {
+        skipAppLaunchSplashOnce()
+        router.push(nextPath)
+      }
     }
   }
 

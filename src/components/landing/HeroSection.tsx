@@ -1,11 +1,12 @@
 import { getTranslations } from "next-intl/server"
+import Link from "next/link"
 import { ChevronDown } from "lucide-react"
 
-const HERO_STATS = [
-  { valueKey: "heroStatMembersValue", labelKey: "heroStatMembersLabel" },
-  { valueKey: "heroStatSchoolsValue", labelKey: "heroStatSchoolsLabel" },
-  { valueKey: "heroStatScriptsValue", labelKey: "heroStatScriptsLabel" },
-  { valueKey: "heroStatMatchValue", labelKey: "heroStatMatchLabel" },
+const HERO_ENTRIES = [
+  { href: "/scripts", titleKey: "heroEntryActivitiesTitle", descKey: "heroEntryActivitiesDesc" },
+  { href: "/reviews", titleKey: "heroEntryReviewsTitle", descKey: "heroEntryReviewsDesc" },
+  { href: "/organization", titleKey: "heroEntryCommunityTitle", descKey: "heroEntryCommunityDesc" },
+  { href: "/login", titleKey: "heroEntryMatchingTitle", descKey: "heroEntryMatchingDesc" },
 ] as const
 
 export async function HeroSection() {
@@ -25,11 +26,22 @@ export async function HeroSection() {
         </div>
 
         <div className="mx-auto mt-9 grid max-w-3xl grid-cols-2 gap-3">
-          {HERO_STATS.map((stat) => (
-            <div key={stat.labelKey} className="rounded-2xl border border-[#d9d1c1] bg-white/76 p-4 text-left shadow-[0_10px_28px_rgba(35,27,16,0.05)] sm:p-5">
-              <p className="font-display text-3xl font-bold leading-none text-[#1E3932]">{t(stat.valueKey)}</p>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">{t(stat.labelKey)}</p>
-            </div>
+          {HERO_ENTRIES.map((entry) => (
+            <Link
+              key={entry.titleKey}
+              href={entry.href}
+              className="group rounded-2xl border border-[#d9d1c1] bg-white/76 p-4 text-left shadow-[0_10px_28px_rgba(35,27,16,0.05)] transition hover:-translate-y-1 hover:border-[#1E3932]/30 hover:bg-white sm:p-5"
+            >
+              <p className="font-display text-xl font-bold leading-tight text-[#1E3932] sm:text-2xl">
+                {t(entry.titleKey)}
+              </p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground sm:text-sm">
+                {t(entry.descKey)}
+              </p>
+              <span className="mt-4 inline-flex text-xs font-semibold text-bamboo opacity-80 transition group-hover:translate-x-1">
+                {t("heroEntryCta")}
+              </span>
+            </Link>
           ))}
         </div>
       </div>

@@ -10,11 +10,11 @@ function getAdminDb() {
 
 /** 只允许更新的字段白名单 */
 const ALLOWED_FIELDS: Record<string, Set<string>> = {
-  identity: new Set(["full_name", "nickname", "gender", "age_range", "nationality", "current_city", "school_name", "department", "degree", "hobby_tags", "activity_type_tags", "personality_self_tags", "taboo_tags"]),
-  language: new Set(["native_language", "japanese_level", "communication_language_pref", "other_languages"]),
-  interests: new Set(["scenario_mode_pref", "preferred_time_slots", "scenario_theme_tags", "non_script_preference", "game_type_pref", "accept_beginners", "accept_cross_school", "activity_area"]),
-  personality: new Set(["warmup_speed", "expression_style_tags", "group_role_tags", "conflict_style", "social_energy_level"]),
-  boundaries: new Set(["taboo_tags", "deal_breakers", "special_needs", "notes"]),
+  identity: new Set(["full_name", "nickname", "gender", "age_range", "nationality", "current_city", "school_name", "department", "degree_level", "course_language", "enrollment_year", "height_weight", "phone", "sns_accounts", "hobby_tags", "activity_type_tags", "personality_self_tags", "taboo_tags"]),
+  language: new Set(["japanese_level", "communication_language_pref"]),
+  interests: new Set(["activity_area", "nearest_station", "graduation_year", "scenario_mode_pref", "ideal_group_size", "script_preference", "non_script_preference", "activity_frequency", "preferred_time_slots", "budget_range", "travel_radius", "social_goal_primary", "social_goal_secondary", "accept_beginners", "accept_cross_school", "scenario_theme_tags", "game_type_pref"]),
+  personality: new Set(["extroversion", "initiative", "expression_style_tags", "group_role_tags", "warmup_speed", "planning_style", "coop_compete_tendency", "emotional_stability", "boundary_strength", "reply_speed"]),
+  boundaries: new Set(["taboo_tags", "deal_breakers", "preferred_age_range", "preferred_gender_mix", "boundary_notes"]),
 }
 
 /** 过滤掉不在白名单中的字段 */

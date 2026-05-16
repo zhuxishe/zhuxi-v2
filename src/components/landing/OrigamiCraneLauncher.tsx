@@ -12,6 +12,7 @@ type OrigamiCraneLauncherProps = {
   title: string
   subtitle: string
   replayLabel: string
+  skipLabel: string
   closeLabel: string
   activitiesLabel: string
 }
@@ -22,6 +23,7 @@ export function OrigamiCraneLauncher({
   title,
   subtitle,
   replayLabel,
+  skipLabel,
   closeLabel,
   activitiesLabel,
 }: OrigamiCraneLauncherProps) {
@@ -104,6 +106,15 @@ export function OrigamiCraneLauncher({
             <div className="relative overflow-hidden rounded-[2rem] border border-white/12 bg-[#f7f3eb] shadow-[0_28px_90px_rgba(0,0,0,0.36)]">
               <div className="relative aspect-video">
                 <EmbeddedIntroFilm playToken={playToken} onFinish={() => setFinished(true)} />
+                {!finished && (
+                  <button
+                    type="button"
+                    onClick={closeFilm}
+                    className="absolute right-4 top-4 z-10 rounded-full bg-[#10251f]/72 px-4 py-2 text-xs font-semibold text-white shadow-lg backdrop-blur-sm transition hover:bg-[#10251f]"
+                  >
+                    {skipLabel}
+                  </button>
+                )}
                 {finished && (
                   <div className="absolute inset-0 grid place-items-center bg-[#f7f3eb]/88 backdrop-blur-sm">
                     <div className="flex flex-col items-center gap-3 text-center">

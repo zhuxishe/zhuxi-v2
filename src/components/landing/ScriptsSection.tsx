@@ -1,6 +1,7 @@
 import Image from "next/image"
+import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { MapPin, Sparkles, Users, Wallet } from "lucide-react"
+import { ArrowRight, MapPin, Sparkles, Users, Wallet } from "lucide-react"
 import { fetchLandingScripts } from "@/lib/queries/scripts"
 import { rewriteStorageUrl } from "@/lib/storage-url"
 
@@ -35,7 +36,11 @@ export async function ScriptsSection() {
         ) : (
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {scripts.map((script) => (
-              <article key={script.id} className="landing-card group overflow-hidden bg-white">
+              <Link
+                key={script.id}
+                href={`/scripts/${script.id}`}
+                className="landing-card group block overflow-hidden bg-white transition hover:-translate-y-1 hover:border-[#1E3932]/25"
+              >
                 <div className="relative aspect-[16/10] overflow-hidden bg-bamboo-muted">
                   {script.cover_url ? (
                     <Image
@@ -58,9 +63,12 @@ export async function ScriptsSection() {
                 </div>
 
                 <div className="space-y-3 p-5">
-                  <h2 className="font-display text-lg font-semibold leading-snug">
-                    {script.title}
-                  </h2>
+                  <div className="flex items-start justify-between gap-3">
+                    <h2 className="font-display text-lg font-semibold leading-snug">
+                      {script.title}
+                    </h2>
+                    <ArrowRight className="mt-1 size-4 shrink-0 text-bamboo transition group-hover:translate-x-1" />
+                  </div>
                   <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1 rounded-full bg-[#f2f0eb] px-2.5 py-1">
                       <Users className="size-3" />
@@ -80,7 +88,7 @@ export async function ScriptsSection() {
                     )}
                   </div>
                 </div>
-              </article>
+              </Link>
             ))}
           </div>
         )}

@@ -22,6 +22,9 @@ export async function LandingFooter() {
           <Link href="/organization" className="transition hover:text-foreground">
             {t("footerAbout")}
           </Link>
+          <Link href="/#contact" className="transition hover:text-foreground">
+            {t("navContact")}
+          </Link>
         </div>
         <a href={`mailto:${t("footerEmail")}`} className="block text-xs text-muted-foreground transition hover:text-foreground">
           {t("footerEmail")}

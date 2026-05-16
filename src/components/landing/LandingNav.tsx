@@ -14,6 +14,7 @@ const NAV_LINKS = [
   { key: "navReviews", href: "/reviews" },
   { key: "navOrganization", href: "/organization" },
   { key: "navFaq", href: "/#faq" },
+  { key: "navContact", href: "/#contact" },
 ] as const
 
 export function LandingNav() {

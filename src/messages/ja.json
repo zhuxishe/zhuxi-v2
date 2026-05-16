@@ -2,6 +2,7 @@
   "home": {
     "title": "竹渓社",
     "description": "東京の大学生向けオフライン交流・友達づくりプラットフォーム",
+    "navHome": "ホーム",
     "navAbout": "参加方法",
   "navScripts": "おすすめ活動",
     "navReviews": "過去の活動",
@@ -122,7 +123,7 @@
     "scriptsAboutCta": "竹渓社について見る",
     "footerAbout": "竹渓社について",
     "footerEmail": "contact@zhuxishe.com",
-    "footerCopyright": "© 2026 Tokyo University Students Community"
+    "footerCopyright": "© 竹渓社 · ZHUXISHE All Rights Reserved."
   },
   "organization": {
     "kicker": "私たちについて",

@@ -2,6 +2,7 @@
   "home": {
     "title": "竹溪社",
     "description": "东京各大学学生扩圈与线下活动交友平台",
+    "navHome": "首页",
     "navAbout": "如何参加",
   "navScripts": "精选活动",
     "navReviews": "往期回顾",
@@ -122,7 +123,7 @@
     "scriptsAboutCta": "去看看关于竹溪社",
     "footerAbout": "关于竹溪社",
     "footerEmail": "contact@zhuxishe.com",
-    "footerCopyright": "© 2026 Tokyo University Students Community"
+    "footerCopyright": "© 竹溪社 · ZHUXISHE All Rights Reserved."
   },
   "organization": {
     "kicker": "关于我们",

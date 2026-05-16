@@ -5,22 +5,22 @@ import { ChevronDown } from "lucide-react"
 
 const FAQ_KEYS = [1, 2, 3, 4, 5] as const
 
-export function FaqSection() {
+export function FaqSection({ compact = false }: { compact?: boolean }) {
   const t = useTranslations("home")
 
   return (
-    <section id="faq" className="bg-[#f2f0eb] px-5 py-16 md:py-24">
+    <section id="faq" className={`${compact ? "px-5 pb-10" : "bg-[#f2f0eb] px-5 py-16 md:py-24"}`}>
       <div className="container mx-auto max-w-4xl">
-        <div className="mb-8">
+        {!compact && <div className="mb-8">
           <h2 className="font-display text-3xl font-bold leading-tight md:text-5xl">
             {t("faqTitle")}
           </h2>
-        </div>
+        </div>}
 
         <div className="space-y-3">
           {FAQ_KEYS.map((n) => (
-            <details key={n} className="faq-item landing-card overflow-hidden bg-white">
-              <summary className="flex cursor-pointer items-center justify-between p-5 text-sm font-semibold">
+            <details key={n} className="faq-item overflow-hidden rounded-[1.4rem] border border-[#e5dfd3] bg-white shadow-[0_12px_30px_rgba(43,53,35,0.08)]">
+              <summary className="flex cursor-pointer items-center justify-between p-5 text-base font-semibold">
                 <span className="pr-4">{t(`faqQ${n}`)}</span>
                 <ChevronDown size={16} className="faq-chevron text-muted-foreground shrink-0" />
               </summary>

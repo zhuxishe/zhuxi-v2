@@ -1,5 +1,29 @@
 # 会话交接 — 2026-04-23 App / 后台 UI 重设计概念稿
 
+## 2026-05-16 公开官网按玩家视角移动端视觉稿重做
+- 用户提供 4 张移动端视觉稿，要求公开官网完全按图片方向改：手机首页不再依赖长滚动讲完整故事，而是用模块入口跳转到独立页面。
+- 已完成：
+  - 首页 `/` 改为图 1 风格：竹溪社 logo + 汉字主标题、特征胶囊、活动照片、2x2 入口卡片、底部信任点。
+  - `/organization` 改为图 2 风格：关于我们、理念、活动类型、对比说明、团队介绍、小红书/二维码区。
+  - `/scripts` 改为图 3 风格：活动介绍页，展示“大型活动”和“社交剧本类”两张大图入口卡。
+  - 新增 `/join`，按图 4 做四步加入流程、安心说明和二维码 CTA。
+  - 新增 `/faq`，让首页“常见问题”入口跳到独立页面。
+  - 更新 `LandingNav` / `LandingFooter` 为截图式移动端 logo + 圆形菜单，并补 `navHome` 文案。
+  - 从用户提供的 PNG 中裁切生成公开页可用图片素材，放在 `public/images/landing/mobile-redesign/`。
+  - 新增 `src/lib/landing-copy.ts`，集中放新版公开页中日文文案。
+- 验证：
+  - 所有新增/修改源码文件均 < 150 行。
+  - `node JSON.parse src/messages/zh.json + ja.json`：通过。
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm build`：通过，确认 `/join`、`/faq` 出现在 route 列表。
+  - 本地生产服务 `http://localhost:3000` 已启动；`/`、`/organization`、`/scripts`、`/join`、`/faq` 均返回 200。
+  - Playwright 手机宽度截图已生成：`output/playwright/landing-home.png`、`landing-about.png`、`landing-scripts.png`、`landing-join.png`、`landing-faq.png`。
+- 注意：
+  - 当前二维码来自用户视觉稿截图裁切，仅作为占位/临时素材；正式上线前最好替换成原始高清二维码图。
+  - `/scripts` 现在更接近“活动类型介绍”而不是原来的数据库精选活动列表；公开活动详情 `/scripts/[id]` 仍保留。
+  - 本地还有此前遗留未追踪文件，提交时需要只 stage 本轮相关文件。
+
 ## 2026-05-15 面试前信息表 ON CONFLICT 报错修复
 - 用户反馈：未注册/新用户提交 `/app/interview-form` 最后一步时报错 `there is no unique or exclusion constraint matching the ON CONFLICT specification`。
 - 根因：

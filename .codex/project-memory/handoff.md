@@ -31,6 +31,8 @@
   - 2026-05-19 `/scripts` 增加公开剧本库预览，可看到已发布剧本并进入 `/scripts/[id]` 公开详情；活动卡改为页内剧本库锚点。
   - 2026-05-19 `/reviews` 使用已遮脸活动照片做静态首屏活动回顾；`/organization` 照片墙移除与头图重复的照片；公开页中文/日文文案整体压短，并减少“真实/不用/不是”等自证式表达。
   - 2026-05-19 验证：`pnpm typecheck`、`pnpm lint`、`pnpm build` 均通过；本地生产服务 `http://localhost:3002` 截图检查 `/scripts`、`/reviews`、`/organization` 返回 200，`/scripts` 无 `/login` 链接且有 8 个公开详情链接。
+  - 2026-05-19 二次调整 `/scripts`：按 frontend-design + GLM 建议，把大型活动改为同级照片网格，不写具体活动名；社交剧本入口改为独立页 `/scripts/library`，该页展示公开剧本库并继续链接 `/scripts/[id]` 详情。
+  - 2026-05-19 验证：`pnpm typecheck`、`pnpm lint`、`pnpm build` 通过；本地生产服务截图检查 `/scripts`、`/scripts/library` 返回 200，社交剧本入口 href 为 `/scripts/library`，活动介绍页无具体活动名和自证式文案，剧本库无 `/login` 链接。
   - 本地还有此前遗留未追踪文件，提交时需要只 stage 本轮相关文件。
 
 ## 2026-05-15 面试前信息表 ON CONFLICT 报错修复

@@ -2,31 +2,33 @@ import Image from "next/image"
 import Link from "next/link"
 import type { ReactNode } from "react"
 import { getLocale } from "next-intl/server"
-import { BookOpen, ChevronRight, MapPin, Users, WalletCards } from "lucide-react"
+import { BookOpen, ChevronRight, MapPin, Users } from "lucide-react"
 import { localizeTag } from "@/lib/constants/tags-i18n"
 import { landingCopy } from "@/lib/landing-copy"
 import { fetchPublishedScripts } from "@/lib/queries/scripts"
 import { rewriteStorageUrl } from "@/lib/storage-url"
 
-export async function PublicScriptLibrary() {
+export async function PublicScriptLibrary({ showHeader = true }: { showHeader?: boolean }) {
   const locale = await getLocale()
   const copy = landingCopy(locale).activities
   const scripts = (await fetchPublishedScripts().catch(() => [])).slice(0, 8)
 
   return (
     <section id="script-library" className="scroll-mt-24 rounded-[1.8rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_16px_42px_rgba(44,55,35,0.10)] md:p-8">
-      <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
-        <div>
-          <p className="inline-flex items-center gap-2 text-sm font-semibold text-[#6b8f4e]">
-            <BookOpen className="size-4" />
-            {copy.libraryTitle}
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-[#4c5148]">{copy.librarySubtitle}</p>
+      {showHeader && (
+        <div className="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 text-sm font-semibold text-[#6b8f4e]">
+              <BookOpen className="size-4" />
+              {copy.libraryTitle}
+            </p>
+            <p className="mt-2 text-sm leading-relaxed text-[#4c5148]">{copy.librarySubtitle}</p>
+          </div>
+          <span className="hidden text-sm font-semibold text-[#5f8549] md:inline-flex">
+            {locale === "ja" ? `${scripts.length}件公開中` : `${scripts.length}个公开中`}
+          </span>
         </div>
-        <span className="hidden text-sm font-semibold text-[#5f8549] md:inline-flex">
-          {locale === "ja" ? `${scripts.length}件公開中` : `${scripts.length}个公开中`}
-        </span>
-      </div>
+      )}
 
       {scripts.length === 0 ? (
         <div className="rounded-2xl bg-[#f5f7ef] px-5 py-10 text-center text-sm text-[#5f665a]">
@@ -77,7 +79,6 @@ function ScriptPreviewCard({
         <div className="mt-4 grid gap-2 text-xs text-[#5f665a]">
           <Meta icon={<Users className="size-3.5" />} text={formatPlayers(script.player_count_min, script.player_count_max, ja)} />
           <Meta icon={<MapPin className="size-3.5" />} text={script.location ?? (ja ? "対面活動" : "线下活动")} />
-          <Meta icon={<WalletCards className="size-3.5" />} text={script.budget ?? (ja ? "活動ごとに案内" : "按活动公布")} />
         </div>
         <span className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[#5f8549]">
           {cta}

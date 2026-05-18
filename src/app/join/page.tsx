@@ -1,10 +1,11 @@
+import Image from "next/image"
 import { getLocale } from "next-intl/server"
-import { ClipboardPen, Mail, MessageCircle, PartyPopper, Users } from "lucide-react"
+import { ClipboardPen, Mail, PartyPopper, Users } from "lucide-react"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { landingCopy } from "@/lib/landing-copy"
 
-const icons = [MessageCircle, ClipboardPen, Users, PartyPopper] as const
+const icons = [Mail, ClipboardPen, Users, PartyPopper] as const
 
 export default async function JoinPage() {
   const copy = landingCopy(await getLocale()).join
@@ -66,16 +67,14 @@ export default async function JoinPage() {
               <p className="mt-6 whitespace-pre-line text-lg leading-relaxed">{copy.ctaBody}</p>
             </div>
             <div className="rounded-[1.4rem] bg-[#edf4e7] p-6 text-center">
-              <MessageCircle className="mx-auto mb-4 size-14 text-[#6b9a51]" />
-              <p className="text-sm leading-relaxed">
-                正式二维码确认后会放在这里。现在可以先通过邮箱联系管理员。
-              </p>
-              <a href="mailto:contact@zhuxishe.com" className="mt-4 inline-flex text-sm font-semibold text-[#5f8549]">
-                contact@zhuxishe.com
+              <Image src="/images/landing/mobile-redesign/contact-qr.png" alt="竹溪社管理员二维码" width={196} height={196} className="mx-auto size-36 rounded-xl bg-white p-2 shadow-sm" />
+              <p className="mt-3 text-sm leading-relaxed">扫码添加管理员微信</p>
+              <a href="mailto:zhuxishe@gmail.com" className="mt-4 inline-flex text-sm font-semibold text-[#5f8549]">
+                zhuxishe@gmail.com
               </a>
             </div>
           </div>
-          <a href="mailto:contact@zhuxishe.com" className="mt-6 inline-flex rounded-full bg-[#6b9a51] px-8 py-3 text-lg font-semibold text-white">
+          <a href="mailto:zhuxishe@gmail.com" className="mt-6 inline-flex rounded-full bg-[#6b9a51] px-8 py-3 text-lg font-semibold text-white">
             {copy.button}
             <span className="ml-3">›</span>
           </a>

@@ -1,12 +1,12 @@
 import Image from "next/image"
 import { getLocale } from "next-intl/server"
-import { Camera, Drama, Mail, MessageCircle, PartyPopper, Sprout, Users } from "lucide-react"
+import { Camera, Drama, MessageCircle, PartyPopper, Sprout, Users } from "lucide-react"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { landingCopy } from "@/lib/landing-copy"
 
 const typeIcons = [Users, Drama, Camera, PartyPopper, MessageCircle] as const
-const gallery = ["gallery-fireworks.webp", "gallery-table.webp", "gallery-park.webp", "gallery-room.webp"]
+const gallery = ["gallery-fireworks.webp", "gallery-table.webp", "gallery-park.webp", "gallery-room.webp", "gallery-bbq.webp", "gallery-mountain.webp"]
 const avatars = ["bamboo.svg", "sakura.svg", "ink-mountain.svg", "tea-garden.svg", "campus-lantern.svg"]
 
 export default async function OrganizationPage() {
@@ -74,15 +74,15 @@ export default async function OrganizationPage() {
             <div className="grid gap-6 md:grid-cols-[1fr_180px] md:items-center">
               <div>
                 <p className="font-display text-2xl font-bold">{copy.follow}</p>
-                <div className="mt-5 grid grid-cols-4 gap-3">
+                <div className="mt-5 grid grid-cols-3 gap-3 md:grid-cols-6">
                   {gallery.map((name) => <Image key={name} src={`/images/landing/mobile-redesign/${name}`} alt="" width={126} height={120} className="aspect-square rounded-xl object-cover" />)}
                 </div>
               </div>
-              <div className="rounded-[1.2rem] border border-[#dce5d0] bg-[#edf4e7] p-5 text-center">
-                <Mail className="mx-auto mb-3 size-10 text-[#6b9a51]" />
-                <p className="text-sm font-semibold">联系管理员</p>
-                <a href="mailto:contact@zhuxishe.com" className="mt-2 block break-all text-xs text-[#5f8549]">
-                  contact@zhuxishe.com
+              <div className="rounded-[1.2rem] border border-[#dce5d0] bg-[#edf4e7] p-4 text-center">
+                <Image src="/images/landing/mobile-redesign/contact-qr.png" alt="竹溪社管理员二维码" width={196} height={196} className="mx-auto size-28 rounded-lg bg-white p-1.5 shadow-sm" />
+                <p className="mt-3 text-sm font-semibold">扫码联系管理员</p>
+                <a href="mailto:zhuxishe@gmail.com" className="mt-2 block break-all text-xs text-[#5f8549]">
+                  zhuxishe@gmail.com
                 </a>
               </div>
             </div>

@@ -3,6 +3,7 @@ import Link from "next/link"
 import { getLocale } from "next-intl/server"
 import { ChevronRight, Drama, Mountain } from "lucide-react"
 import { landingCopy } from "@/lib/landing-copy"
+import { PublicScriptLibrary } from "@/components/landing/PublicScriptLibrary"
 
 const icons = [Mountain, Drama] as const
 
@@ -46,6 +47,8 @@ export async function ScriptsSection() {
             </Link>
           )
         })}
+
+        <PublicScriptLibrary />
 
         <div className="rounded-[1.2rem] border border-[#e3dfd2] bg-white/82 px-7 py-10 text-center shadow-[0_14px_34px_rgba(43,53,35,0.08)]">
           <p className="whitespace-pre-line font-display text-2xl leading-relaxed">

@@ -6,7 +6,17 @@ import { LandingNav } from "@/components/landing/LandingNav"
 import { landingCopy } from "@/lib/landing-copy"
 
 const typeIcons = [Users, Drama, Camera, PartyPopper, MessageCircle] as const
-const gallery = ["gallery-fireworks.webp", "gallery-table.webp", "gallery-park.webp", "gallery-room.webp", "gallery-bbq.webp", "gallery-mountain.webp"]
+const gallery = [
+  "gallery-fireworks.webp",
+  "gallery-table.webp",
+  "gallery-park.webp",
+  "gallery-room.webp",
+  "gallery-bbq.webp",
+  "gallery-mountain.webp",
+  "gallery-walk.webp",
+  "gallery-craft.webp",
+  "gallery-bbq-wide.webp",
+]
 const avatars = ["bamboo.svg", "sakura.svg", "ink-mountain.svg", "tea-garden.svg", "campus-lantern.svg"]
 
 export default async function OrganizationPage() {

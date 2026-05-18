@@ -1,11 +1,10 @@
 import Image from "next/image"
 import Link from "next/link"
 import { getLocale } from "next-intl/server"
-import { CalendarDays, CircleHelp, HeartHandshake, Leaf, ShieldCheck, Sprout, Users, Zap } from "lucide-react"
+import { CalendarDays, CircleHelp, Users, Zap } from "lucide-react"
 import { landingCopy } from "@/lib/landing-copy"
 
 const cardIcons = [Users, CalendarDays, Zap, CircleHelp] as const
-const trustIcons = [ShieldCheck, HeartHandshake, ShieldCheck, Sprout] as const
 const colorMap: Record<string, string> = {
   green: "bg-[#dcefc7] text-[#547d3b]",
   gold: "bg-[#ffe59b] text-[#9d7424]",
@@ -34,17 +33,9 @@ export async function HeroSection() {
           </p>
         </div>
 
-        <div className="mx-auto mt-8 flex max-w-4xl flex-wrap justify-center gap-2 rounded-full bg-white/88 p-3 shadow-[0_14px_42px_rgba(49,62,38,0.12)]">
-          {copy.pills.map((pill) => (
-            <span key={pill} className="inline-flex items-center gap-2 rounded-full px-3 py-2 text-sm font-semibold">
-              <Leaf className="size-5 text-[#6b9a51]" />
-              {pill}
-            </span>
-          ))}
-        </div>
       </div>
 
-      <div className="relative mx-auto max-w-5xl">
+      <div className="relative mx-auto mt-8 max-w-5xl">
         <Image
           src="/images/landing/mobile-redesign/home-hero.webp"
           alt=""
@@ -78,24 +69,6 @@ export async function HeroSection() {
             </Link>
           )
         })}
-      </div>
-
-      <div className="relative mx-auto max-w-5xl px-5 pb-14 text-center">
-        <p className="font-display text-2xl font-semibold tracking-[0.12em]">
-          {copy.slogan}
-        </p>
-        <div className="mt-10 grid grid-cols-2 gap-5 md:grid-cols-4">
-          {copy.trusts.map(([title, desc], index) => {
-            const Icon = trustIcons[index]
-            return (
-              <div key={title} className="text-[#5d7d49]">
-                <Icon className="mx-auto mb-2 size-8" />
-                <p className="font-semibold">{title}</p>
-                <p className="text-xs">{desc}</p>
-              </div>
-            )
-          })}
-        </div>
       </div>
     </section>
   )

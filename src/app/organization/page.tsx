@@ -1,12 +1,12 @@
 import Image from "next/image"
 import { getLocale } from "next-intl/server"
-import { Camera, Drama, MessageCircle, PartyPopper, Sprout, Users } from "lucide-react"
+import { Camera, Drama, Mail, MessageCircle, PartyPopper, Sprout, Users } from "lucide-react"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { landingCopy } from "@/lib/landing-copy"
 
 const typeIcons = [Users, Drama, Camera, PartyPopper, MessageCircle] as const
-const gallery = ["gallery-fireworks.png", "gallery-table.png", "gallery-park.png", "gallery-room.png"]
+const gallery = ["gallery-fireworks.webp", "gallery-table.webp", "gallery-park.webp", "gallery-room.webp"]
 const avatars = ["bamboo.svg", "sakura.svg", "ink-mountain.svg", "tea-garden.svg", "campus-lantern.svg"]
 
 export default async function OrganizationPage() {
@@ -17,7 +17,7 @@ export default async function OrganizationPage() {
       <LandingNav />
       <main className="bg-[#fffdf7] text-[#171717] grain-overlay">
         <section className="relative overflow-hidden pb-12 pt-28">
-          <Image src="/images/landing/mobile-redesign/about-hero.png" alt="" width={538} height={380} priority className="absolute right-0 top-0 h-[420px] w-[68%] object-cover opacity-85" />
+          <Image src="/images/landing/mobile-redesign/about-hero.webp" alt="" width={1400} height={700} priority className="absolute right-0 top-0 h-[420px] w-[68%] object-cover opacity-85" />
           <div className="absolute inset-x-0 top-0 h-[460px] bg-gradient-to-r from-[#fffdf7] via-[#fffdf7]/82 to-transparent" />
           <div className="relative mx-auto max-w-5xl px-7 pt-28">
             <h1 className="font-display text-6xl font-bold tracking-[0.1em]">{copy.title}</h1>
@@ -36,7 +36,7 @@ export default async function OrganizationPage() {
                 </h2>
                 <p className="mt-7 text-base leading-[2] text-[#343a30]">{copy.body}</p>
               </div>
-              <Image src="/images/landing/mobile-redesign/about-night.png" alt="" width={304} height={300} className="w-full rounded-[1.5rem] object-cover" />
+              <Image src="/images/landing/mobile-redesign/about-night.webp" alt="" width={1400} height={933} className="w-full rounded-[1.5rem] object-cover" />
             </div>
             <div className="mt-9 grid grid-cols-5 gap-3 text-center text-sm">
               {copy.types.map((label, index) => {
@@ -71,14 +71,20 @@ export default async function OrganizationPage() {
           </article>
 
           <article className="rounded-[2rem] border border-[#e5dfd3] bg-white p-6 shadow-[0_16px_42px_rgba(44,55,35,0.08)]">
-            <div className="grid gap-6 md:grid-cols-[1fr_160px] md:items-center">
+            <div className="grid gap-6 md:grid-cols-[1fr_180px] md:items-center">
               <div>
                 <p className="font-display text-2xl font-bold">{copy.follow}</p>
                 <div className="mt-5 grid grid-cols-4 gap-3">
                   {gallery.map((name) => <Image key={name} src={`/images/landing/mobile-redesign/${name}`} alt="" width={126} height={120} className="aspect-square rounded-xl object-cover" />)}
                 </div>
               </div>
-              <Image src="/images/landing/mobile-redesign/join-qr-v2.png" alt="" width={260} height={260} className="mx-auto rounded-xl border border-[#dce5d0]" />
+              <div className="rounded-[1.2rem] border border-[#dce5d0] bg-[#edf4e7] p-5 text-center">
+                <Mail className="mx-auto mb-3 size-10 text-[#6b9a51]" />
+                <p className="text-sm font-semibold">联系管理员</p>
+                <a href="mailto:contact@zhuxishe.com" className="mt-2 block break-all text-xs text-[#5f8549]">
+                  contact@zhuxishe.com
+                </a>
+              </div>
             </div>
             <p className="mt-8 text-center font-display text-2xl text-[#5f8549]">“{copy.quote}”</p>
           </article>

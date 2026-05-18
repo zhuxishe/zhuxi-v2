@@ -1,6 +1,5 @@
-import Image from "next/image"
 import { getLocale } from "next-intl/server"
-import { ClipboardPen, MessageCircle, PartyPopper, Users } from "lucide-react"
+import { ClipboardPen, Mail, MessageCircle, PartyPopper, Users } from "lucide-react"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { landingCopy } from "@/lib/landing-copy"
@@ -49,7 +48,9 @@ export default async function JoinPage() {
 
         <section className="relative mx-auto mt-12 max-w-4xl rounded-[1.4rem] bg-[#edf4e7] p-7">
           <div className="grid gap-6 md:grid-cols-[190px_1fr] md:items-center">
-            <Image src="/images/landing/mobile-redesign/join-envelope.png" alt="" width={190} height={150} className="mx-auto" />
+            <span className="mx-auto grid size-32 place-items-center rounded-[2rem] bg-white/80 text-[#6b9a51] shadow-inner">
+              <Mail className="size-16" />
+            </span>
             <div>
               <h2 className="font-display text-3xl font-bold tracking-[0.12em]">{copy.comfortTitle}</h2>
               <p className="mt-4 text-lg leading-relaxed">{copy.comfortBody}</p>
@@ -64,9 +65,14 @@ export default async function JoinPage() {
               <div className="mt-2 h-3 w-44 rounded-[50%] border-b-[9px] border-[#7fa063]" />
               <p className="mt-6 whitespace-pre-line text-lg leading-relaxed">{copy.ctaBody}</p>
             </div>
-            <div className="text-center">
-              <Image src="/images/landing/mobile-redesign/join-qr-v2.png" alt="" width={260} height={260} className="mx-auto rounded-xl border border-[#dce5d0]" />
-              <p className="mt-3 text-sm">扫码添加管理员微信</p>
+            <div className="rounded-[1.4rem] bg-[#edf4e7] p-6 text-center">
+              <MessageCircle className="mx-auto mb-4 size-14 text-[#6b9a51]" />
+              <p className="text-sm leading-relaxed">
+                正式二维码确认后会放在这里。现在可以先通过邮箱联系管理员。
+              </p>
+              <a href="mailto:contact@zhuxishe.com" className="mt-4 inline-flex text-sm font-semibold text-[#5f8549]">
+                contact@zhuxishe.com
+              </a>
             </div>
           </div>
           <a href="mailto:contact@zhuxishe.com" className="mt-6 inline-flex rounded-full bg-[#6b9a51] px-8 py-3 text-lg font-semibold text-white">

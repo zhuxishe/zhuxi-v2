@@ -46,10 +46,10 @@ export async function HeroSection() {
 
       <div className="relative mx-auto max-w-5xl">
         <Image
-          src="/images/landing/mobile-redesign/home-hero.png"
+          src="/images/landing/mobile-redesign/home-hero.webp"
           alt=""
-          width={862}
-          height={455}
+          width={1400}
+          height={700}
           priority
           className="h-auto w-full object-cover"
         />

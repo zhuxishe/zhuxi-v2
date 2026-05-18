@@ -20,7 +20,8 @@
   - 本地生产服务 `http://localhost:3000` 已启动；`/`、`/organization`、`/scripts`、`/join`、`/faq` 均返回 200。
   - Playwright 手机宽度截图已生成：`output/playwright/landing-home.png`、`landing-about.png`、`landing-scripts.png`、`landing-join.png`、`landing-faq.png`。
 - 注意：
-  - 当前二维码来自用户视觉稿截图裁切，仅作为占位/临时素材；正式上线前最好替换成原始高清二维码图。
+  - 2026-05-18 已将所有公开页引用的截图裁切照片替换为生图模型生成图片，并压缩为 WebP。
+  - 已移除截图裁切二维码和信封图；正式二维码未提供前，页面改为邮箱/联系管理员 CTA，避免上线不可扫的假二维码。
   - `/scripts` 现在更接近“活动类型介绍”而不是原来的数据库精选活动列表；公开活动详情 `/scripts/[id]` 仍保留。
   - 本地还有此前遗留未追踪文件，提交时需要只 stage 本轮相关文件。
 

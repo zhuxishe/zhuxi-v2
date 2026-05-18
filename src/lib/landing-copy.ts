@@ -37,8 +37,8 @@ const zhCopy = {
     title: "活动介绍",
     subtitle: "丰富多样的活动类型\n总有一种能让你找到归属感",
     cards: [
-      ["大型活动", "旅行 / 聚餐 / 节日 / 户外", "一起出去玩的人，会慢慢熟起来。", "/reviews", "activity-large-bg.png"],
-      ["社交剧本类", "剧本杀 / 桌游 / 推理 / 沉浸", "比起推理，我们更在意一起玩的人。", "/login", "activity-script-bg.png"],
+      ["大型活动", "旅行 / 聚餐 / 节日 / 户外", "一起出去玩的人，会慢慢熟起来。", "/reviews", "activity-large-bg.webp"],
+      ["社交剧本类", "剧本杀 / 桌游 / 推理 / 沉浸", "比起推理，我们更在意一起玩的人。", "/login", "activity-script-bg.webp"],
     ],
     note: "无论你是 I 人还是 E 人\n都能在这里找到属于自己的快乐！",
   },
@@ -88,8 +88,8 @@ const jaCopy = {
     title: "活動紹介",
     subtitle: "多様な活動タイプから\n自分に合う場所を見つける",
     cards: [
-      ["大型活動", "旅行 / 食事 / 季節 / アウトドア", "一緒に出かける人とは、少しずつ仲良くなれます。", "/reviews", "activity-large-bg.png"],
-      ["社交シナリオ", "シナリオ / 卓遊 / 推理 / 没入", "推理だけでなく、一緒に遊ぶ人を大切にします。", "/login", "activity-script-bg.png"],
+      ["大型活動", "旅行 / 食事 / 季節 / アウトドア", "一緒に出かける人とは、少しずつ仲良くなれます。", "/reviews", "activity-large-bg.webp"],
+      ["社交シナリオ", "シナリオ / 卓遊 / 推理 / 没入", "推理だけでなく、一緒に遊ぶ人を大切にします。", "/login", "activity-script-bg.webp"],
     ],
     note: "I 型でも E 型でも\n自分に合う楽しさを見つけられます。",
   },

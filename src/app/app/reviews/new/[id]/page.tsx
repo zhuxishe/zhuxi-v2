@@ -59,20 +59,16 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
 
   const groupMembers = mr.group_members as string[] | null
   const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0
+  const inMatch = isGroup ? groupMembers.includes(player.memberId) : mr.member_a_id === player.memberId || mr.member_b_id === player.memberId
+  if (!inMatch) notFound()
 
   if (isGroup) {
-    // 多人组：需要选择评价谁
     const otherIds = groupMembers.filter((id) => id !== player.memberId)
 
     if (!revieweeParam || !otherIds.includes(revieweeParam)) {
-      // 没选人或选的人不在组里 → 显示选人界面
       const members = await fetchMemberNames(otherIds)
-      // 查哪些人已评价过
       const reviewedSet = new Set<string>()
       for (const m of members) {
-        const done = await checkReviewExists(matchResultId, player.memberId)
-        // 需要按 reviewee 查（checkReviewExists 查的是 match+reviewer 组合）
-        // 这里用更精确的查询
         const { createAdminClient } = await import("@/lib/supabase/admin")
         const supabase = createAdminClient()
         const { data: existing } = await supabase
@@ -98,7 +94,6 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
       )
     }
 
-    // 已选人 → 检查是否已评价
     const alreadyReviewed = await checkReviewExistsPair(matchResultId, player.memberId, revieweeParam)
     if (alreadyReviewed) redirect(`/app/reviews/new/${matchResultId}`)
 

@@ -1,8 +1,8 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 interface ReviewInput {
   match_result_id: string
@@ -20,12 +20,13 @@ interface ReviewInput {
 
 export async function submitReview(input: ReviewInput) {
   const player = await requirePlayer()
-  const supabase = await createClient()
+  const supabase = createAdminClient()
+  if (input.reviewee_id === player.memberId) return { error: "unauthorized" }
 
   // 安全：从 match_result 重新派生 reviewee_id，不信任客户端传值
   const { data: mr } = await supabase
     .from("match_results")
-    .select("member_a_id, member_b_id")
+    .select("member_a_id, member_b_id, group_members")
     .eq("id", input.match_result_id)
     .single()
 
@@ -33,7 +34,12 @@ export async function submitReview(input: ReviewInput) {
 
   // 确认当前玩家是配对参与者，并派生对手 ID
   let revieweeId: string | null = null
-  if (mr.member_a_id === player.memberId) {
+  const groupMembers = mr.group_members as string[] | null
+  if (Array.isArray(groupMembers) && groupMembers.length > 0) {
+    if (groupMembers.includes(player.memberId) && groupMembers.includes(input.reviewee_id)) {
+      revieweeId = input.reviewee_id
+    }
+  } else if (mr.member_a_id === player.memberId) {
     revieweeId = mr.member_b_id
   } else if (mr.member_b_id === player.memberId) {
     revieweeId = mr.member_a_id
@@ -47,6 +53,7 @@ export async function submitReview(input: ReviewInput) {
     .select("id")
     .eq("match_result_id", input.match_result_id)
     .eq("reviewer_id", player.memberId)
+    .eq("reviewee_id", revieweeId)
     .maybeSingle()
 
   if (existing) return { error: "alreadyReviewed" }

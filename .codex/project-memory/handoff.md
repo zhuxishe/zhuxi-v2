@@ -49,6 +49,21 @@
 - 验证：
   - `pnpm typecheck`、`pnpm lint`、`pnpm test:unit`、`pnpm build` 均通过。
 
+## 2026-05-20 玩家互评 IDOR 修复
+- 复核范围：玩家互评页面 `/app/reviews/new/[id]`、互评提交 action、service role 读取边界。
+- 风险：
+  - 页面使用 `createAdminClient()` 读取 `match_results` 和成员名字，但此前在展示组员名字前没有确认当前玩家属于该 match_result。
+  - 攻击者若猜到/拿到其他 match_result id，可能触达非本人匹配的参与者信息；提交层虽然会再校验，但页面层存在信息泄露窗口。
+- 已修复：
+  - `page.tsx` 在任何成员名字查询/展示前，先校验当前 `player.memberId` 是否在双人 `member_a_id/member_b_id` 或多人 `group_members` 中；不属于则 `notFound()`。
+  - `actions.ts` 使用 `requirePlayer()` 后以 `createAdminClient()` 读取权威 `match_results`，不依赖客户端传入的 reviewee。
+  - 多人组提交要求 reviewer 和 reviewee 都在 `group_members`，并显式拒绝自评。
+  - 防重复检查改为 `match_result_id + reviewer_id + reviewee_id`，支持多人组逐个评价。
+- 验证：
+  - GLM Provider 复核：无阻塞安全问题，无明显功能回归风险。
+  - `pnpm typecheck`、`pnpm lint`、`pnpm test:unit`、`pnpm build` 均通过。
+  - `pnpm audit --json`：0 low / moderate / high / critical。
+
 ## 2026-05-16 公开官网按玩家视角移动端视觉稿重做
 - 用户提供 4 张移动端视觉稿，要求公开官网完全按图片方向改：手机首页不再依赖长滚动讲完整故事，而是用模块入口跳转到独立页面。
 - 已完成：

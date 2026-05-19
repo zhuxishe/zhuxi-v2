@@ -1,15 +1,23 @@
 ZX.addFiles = async function (files) {
-  const images = [...files].filter(file => file.type.startsWith("image/"));
+  const remaining = Math.max(0, ZX.maxPhotos - ZX.photos.length);
+  const images = [...files]
+    .filter(file => file.type.startsWith("image/") && file.size <= ZX.maxFileBytes)
+    .slice(0, remaining);
   for (const file of images) {
     const url = URL.createObjectURL(file);
-    ZX.photos.push({
-      id: crypto.randomUUID(),
-      name: file.name,
-      url,
-      img: await ZX.loadImage(url),
-      items: []
-    });
+    try {
+      ZX.photos.push({
+        id: crypto.randomUUID(),
+        name: file.name,
+        url,
+        img: await ZX.loadImage(url),
+        items: []
+      });
+    } catch {
+      URL.revokeObjectURL(url);
+    }
   }
+  if (images.length !== files.length) ZX.setStatus("部分文件因格式、大小或数量限制被跳过。");
   if (ZX.current === -1 && ZX.photos.length) ZX.current = 0;
   ZX.pushHistory();
   ZX.renderPhotoList();
@@ -49,14 +57,20 @@ ZX.renderPhotoList = function () {
   ZX.els.photoList.innerHTML = "";
   ZX.photos.forEach((p, index) => {
     const div = document.createElement("button");
+    const img = document.createElement("img");
+    const span = document.createElement("span");
     div.className = `photo ${index === ZX.current ? "active" : ""}`;
-    div.innerHTML = `<img src="${p.url}" alt=""><span>${p.name}<br>${p.items.length} 个素材</span>`;
+    img.src = p.url;
+    img.alt = "";
+    span.append(document.createTextNode(p.name), document.createElement("br"));
+    span.append(document.createTextNode(`${p.items.length} 个素材`));
     div.onclick = () => {
       ZX.current = index;
       ZX.selectedItemId = "";
       ZX.renderPhotoList();
       ZX.renderCurrent();
     };
+    div.append(img, span);
     ZX.els.photoList.appendChild(div);
   });
 };
@@ -65,9 +79,11 @@ ZX.renderAssetGrid = function () {
   ZX.els.assetGrid.innerHTML = "";
   for (const asset of ZX.assets.filter(x => x.type === ZX.activeKind)) {
     const btn = document.createElement("button");
+    const img = document.createElement("img");
     btn.className = `asset ${asset.id === ZX.selectedAssetId ? "active" : ""}`;
     btn.title = asset.label;
-    btn.innerHTML = `<img src="${asset.src}" alt="${asset.label}">`;
+    img.src = asset.src;
+    img.alt = asset.label;
     btn.onclick = () => {
       ZX.selectedAssetId = asset.id;
       ZX.selectedItemId = "";
@@ -75,6 +91,7 @@ ZX.renderAssetGrid = function () {
       ZX.syncControls();
       ZX.draw();
     };
+    btn.appendChild(img);
     ZX.els.assetGrid.appendChild(btn);
   }
 };

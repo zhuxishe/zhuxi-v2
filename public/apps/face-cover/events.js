@@ -10,7 +10,7 @@ ZX.exportOne = async function (photo, dirHandle = null) {
   const out = document.createElement("canvas");
   ZX.draw(photo, out);
   const blob = await new Promise(resolve => out.toBlob(resolve, "image/png"));
-  const name = photo.name.replace(/\.[^.]+$/, "") + "-covered.png";
+  const name = ZX.safeBaseName(photo.name) + "-covered.png";
   if (!dirHandle) return ZX.downloadBlob(blob, name);
   const file = await dirHandle.getFileHandle(name, { create: true });
   const writable = await file.createWritable();
@@ -31,10 +31,17 @@ ZX.exportProject = function () {
 ZX.importProject = function (file) {
   const reader = new FileReader();
   reader.onload = () => {
-    const data = JSON.parse(reader.result);
-    for (const saved of data.photos || []) {
-      const p = ZX.photos.find(x => x.name === saved.name);
-      if (p) p.items = saved.items || [];
+    let data;
+    try {
+      data = JSON.parse(reader.result);
+    } catch {
+      ZX.setStatus("标注 JSON 格式不正确。");
+      return;
+    }
+    for (const saved of Array.isArray(data.photos) ? data.photos : []) {
+      if (!ZX.isRecord(saved) || typeof saved.name !== "string") continue;
+      const p = ZX.photos.find(x => x.name === saved?.name);
+      if (p) p.items = ZX.sanitizeItems(saved.items);
     }
     ZX.selectedItemId = "";
     ZX.pushHistory();

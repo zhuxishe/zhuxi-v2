@@ -1,5 +1,28 @@
 # 会话交接 — 2026-04-23 App / 后台 UI 重设计概念稿
 
+## 2026-05-20 face-cover 工具安全修复
+- 复核范围：依赖漏洞、本地 `/tools/face-cover` iframe 工具、Vercel 安全头。
+- 依赖审计：
+  - `pnpm audit --json`：0 low / moderate / high / critical。
+  - `pnpm audit --prod --json`：0 low / moderate / high / critical。
+  - GitHub API `dependabot/alerts?state=open` 返回 `[]`。
+  - GLM 复核结论：当前无可操作依赖漏洞，GitHub 安全页若仍显示旧提示，多半是后台刷新滞后。
+- 已修复：
+  - `vercel.json` 全站 `X-Frame-Options` 从 `DENY` 改为 `SAMEORIGIN`，避免生产环境阻止同源 iframe 加载 `/apps/face-cover/index.html`。
+  - 为 `/apps/face-cover/(.*)` 增加 CSP，限制脚本/样式/图片来源，允许同源嵌入。
+  - face-cover 静态 HTML 增加 CSP meta，作为本地/非 Vercel 场景的兜底。
+  - 照片列表和素材库渲染改用 DOM API + `textContent`，移除照片名/素材文本 `innerHTML` 注入面。
+  - 导入标注 JSON 增加 `JSON.parse` 异常处理、普通对象检查、素材 ID 校验、数值范围清洗。
+  - 导出文件名做安全化，避免路径分隔符和过长名称。
+  - 选择照片增加格式、大小、数量限制，并在图片加载失败时释放 blob URL。
+- 验证：
+  - `vercel.json` JSON parse：通过。
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm test:unit`：27 files / 78 tests 通过。
+  - `pnpm build`：通过。
+  - 本地生产服务 `http://127.0.0.1:3003/tools/face-cover` Playwright 检查：iframe 加载成功，16 个头像素材可见，控制台无错误。
+
 ## 2026-05-16 公开官网按玩家视角移动端视觉稿重做
 - 用户提供 4 张移动端视觉稿，要求公开官网完全按图片方向改：手机首页不再依赖长滚动讲完整故事，而是用模块入口跳转到独立页面。
 - 已完成：

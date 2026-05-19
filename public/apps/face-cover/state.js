@@ -11,6 +11,9 @@ window.ZX = {
   els: {}
 };
 
+ZX.maxFileBytes = 30 * 1024 * 1024;
+ZX.maxPhotos = 60;
+
 ZX.initEls = function () {
   const ids = [
     "photoInput", "projectInput", "photoList", "assetGrid", "canvas",
@@ -55,8 +58,42 @@ ZX.getAsset = function (id) {
   return ZX.assets.find(asset => asset.id === id) || ZX.assets[0];
 };
 
+ZX.isRecord = function (value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+};
+
 ZX.setStatus = function (text) {
   ZX.els.statusText.textContent = text;
+};
+
+ZX.safeBaseName = function (name) {
+  return String(name || "photo")
+    .replace(/\.[^.]+$/, "")
+    .replace(/[\\/:*?"<>|]+/g, "-")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80) || "photo";
+};
+
+ZX.sanitizeItems = function (items) {
+  return (Array.isArray(items) ? items : []).flatMap(item => {
+    if (!ZX.isRecord(item) || typeof item.assetId !== "string") return [];
+    if (!/^[a-z0-9-]{1,40}$/i.test(item.assetId)) return [];
+    const asset = ZX.assets.find(asset => asset.id === item.assetId);
+    const x = Number(item?.x);
+    const y = Number(item?.y);
+    const size = Number(item?.size);
+    const rot = Number(item?.rot || 0);
+    if (!asset || !Number.isFinite(x) || !Number.isFinite(y)) return [];
+    return [{
+      id: crypto.randomUUID(),
+      assetId: asset.id,
+      x,
+      y,
+      size: Math.max(24, Math.min(620, Number.isFinite(size) ? size : asset.defaultSize || 120)),
+      rot: Math.max(-180, Math.min(180, Number.isFinite(rot) ? rot : 0))
+    }];
+  });
 };
 
 ZX.pushHistory = function () {

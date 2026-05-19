@@ -337,3 +337,39 @@
     - iframe 加载成功；
     - 16 个头像、24 个粉笔素材可见；
     - 选择真实照片、添加贴纸、导出 PNG 成功。
+
+---
+
+# 会话交接 — 2026-05-20 依赖安全告警清零
+
+## 背景
+- 用户反馈 `https://www.zhuxishe.jp/tools/face-cover` 访问异常，并询问 GitHub 安全警告能否逐一修复。
+- 本地复测时 `www.zhuxishe.jp` 与裸域 `zhuxishe.jp` 均已返回 200；问题更像部署刚完成时的短暂窗口或浏览器/DNS 缓存。
+
+## 安全修复
+- 直接依赖升级：
+  - `next` 16.2.3 -> 16.2.6
+  - `eslint-config-next` 16.2.3 -> 16.2.6
+  - `next-intl` 4.9.1 -> 4.12.0
+  - `@line/liff` 2.28.0 -> 2.29.0
+  - `@supabase/ssr` 0.9.0 -> 0.10.3
+  - `@supabase/supabase-js` 2.98.0 -> 2.106.0
+  - `@tailwindcss/postcss` 4.x -> 4.3.0
+  - `vitest` 4.1.4 -> 4.1.6
+- pnpm overrides 收敛：
+  - `axios >=1.15.2`
+  - `postcss >=8.5.10`
+  - `vm2 >=3.11.3`
+  - `webpack-dev-server >=5.2.4`
+  - `ws >=8.20.1`
+  - `brace-expansion >=5.0.6`
+  - `fast-uri >=3.1.2`
+  - `@babel/plugin-transform-modules-systemjs >=7.29.4`
+- Supabase 新版类型更严格，修复 `src/app/admin/scripts/[id]/edit/actions.ts` 的 `.update()` payload 类型。
+
+## 验证
+- `pnpm audit --json`：0 low / 0 moderate / 0 high / 0 critical
+- `pnpm typecheck`：通过
+- `pnpm lint`：通过
+- `pnpm build`：通过，Next 16.2.6
+- `pnpm test:unit`：27 files / 78 tests 全部通过

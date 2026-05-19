@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
-import type { Json } from "@/types/database.types"
+import type { Json, TablesUpdate } from "@/types/database.types"
 
 const ALLOWED_FIELDS = [
   "title",
@@ -55,9 +55,11 @@ export async function updateScript(scriptId: string, data: UpdateData) {
     filtered.roles = filtered.roles as Json
   }
 
+  const payload = filtered as TablesUpdate<"scripts">
+
   const { error } = await supabase
     .from("scripts")
-    .update(filtered)
+    .update(payload)
     .eq("id", scriptId)
 
   if (error) {

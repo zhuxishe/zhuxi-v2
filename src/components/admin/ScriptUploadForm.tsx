@@ -2,10 +2,8 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  createScript,
-  uploadScriptCover,
-} from "@/app/admin/scripts/new/actions"
+import { createScript } from "@/app/admin/scripts/new/actions"
+import { uploadScriptCover } from "@/app/admin/scripts/new/upload-actions"
 import { Button } from "@/components/ui/button"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { SingleSelect } from "@/components/shared/SingleSelect"

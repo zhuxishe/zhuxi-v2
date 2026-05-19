@@ -66,7 +66,7 @@ export function StaffProfileForm() {
         <input name="name" required placeholder="姓名" className={inputClass} />
         <input name="school" required placeholder="日本学校" className={inputClass} />
         <input name="major" required placeholder="专业" className={inputClass} />
-        <input name="avatar" type="file" accept="image/*" className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-bamboo-muted file:px-3 file:py-1 file:text-xs file:text-bamboo`} />
+        <input name="avatar" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-bamboo-muted file:px-3 file:py-1 file:text-xs file:text-bamboo`} />
       </div>
       <select name="preset_avatar" defaultValue="" className={inputClass}>
         <option value="">不使用预设头像</option>

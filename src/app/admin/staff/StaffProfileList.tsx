@@ -73,7 +73,7 @@ function StaffProfileItem({ item }: { item: StaffProfile }) {
           <input name="name" required defaultValue={item.name} className={inputClass} />
           <input name="school" required defaultValue={item.school} className={inputClass} />
           <input name="major" required defaultValue={item.major} className={inputClass} />
-          <input name="avatar" type="file" accept="image/*" className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-bamboo-muted file:px-3 file:py-1 file:text-xs file:text-bamboo`} />
+          <input name="avatar" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" className={`${inputClass} file:mr-3 file:rounded-md file:border-0 file:bg-bamboo-muted file:px-3 file:py-1 file:text-xs file:text-bamboo`} />
         </div>
         <select name="preset_avatar" defaultValue="" className={inputClass}>
           <option value="">保留当前头像</option>

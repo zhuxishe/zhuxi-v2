@@ -2,23 +2,17 @@
 
 import { requireAdmin } from "@/lib/auth/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { imageExtension, SAFE_IMAGE_TYPES, validateSafeImageFile } from "@/lib/file-validation"
 
 const BUCKET = "staff-avatars"
 const MAX_SIZE = 2 * 1024 * 1024
-
-const EXT_BY_TYPE: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/svg+xml": "svg",
-}
 
 export async function uploadStaffAvatar(formData: FormData) {
   await requireAdmin()
   const file = formData.get("file") as File | null
   if (!file || file.size === 0) return { error: "请选择头像文件" }
-  if (!file.type.startsWith("image/")) return { error: "仅支持图片格式" }
-  if (!EXT_BY_TYPE[file.type]) return { error: "仅支持 JPG / PNG / WebP / SVG" }
+  const validation = await validateSafeImageFile(file)
+  if (!validation.valid) return { error: validation.error }
   if (file.size > MAX_SIZE) return { error: "头像不能超过 2MB" }
 
   const supabase = createAdminClient()
@@ -27,7 +21,7 @@ export async function uploadStaffAvatar(formData: FormData) {
     const created = await supabase.storage.createBucket(BUCKET, {
       public: true,
       fileSizeLimit: MAX_SIZE,
-      allowedMimeTypes: Object.keys(EXT_BY_TYPE),
+      allowedMimeTypes: SAFE_IMAGE_TYPES,
     })
     if (created.error) {
       console.error("[createStaffAvatarBucket]", created.error)
@@ -35,7 +29,8 @@ export async function uploadStaffAvatar(formData: FormData) {
     }
   }
 
-  const ext = EXT_BY_TYPE[file.type]
+  const ext = imageExtension(file.type)
+  if (!ext) return { error: "仅支持 JPG / PNG / WebP" }
   const path = `avatars/${crypto.randomUUID()}.${ext}`
   const { error } = await supabase.storage.from(BUCKET).upload(path, file, {
     contentType: file.type,

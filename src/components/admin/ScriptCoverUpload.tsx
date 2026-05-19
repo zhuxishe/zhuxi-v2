@@ -15,7 +15,7 @@ export function ScriptCoverUpload({ coverUrl, onUpload }: Props) {
 
   const handleFile = useCallback(
     (file: File) => {
-      if (!file.type.startsWith("image/")) return
+      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) return
       const reader = new FileReader()
       reader.onload = (e) => setPreview(e.target?.result as string)
       reader.readAsDataURL(file)
@@ -49,7 +49,7 @@ export function ScriptCoverUpload({ coverUrl, onUpload }: Props) {
       <input
         ref={inputRef}
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0]

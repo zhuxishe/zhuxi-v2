@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateScript } from "@/app/admin/scripts/[id]/edit/actions"
-import { uploadScriptCover } from "@/app/admin/scripts/new/actions"
+import { uploadScriptCover } from "@/app/admin/scripts/new/upload-actions"
 import { Button } from "@/components/ui/button"
 import { ScriptEditBasicFields } from "@/components/admin/ScriptEditBasicFields"
 import { ScriptContentFields } from "@/components/admin/ScriptContentFields"

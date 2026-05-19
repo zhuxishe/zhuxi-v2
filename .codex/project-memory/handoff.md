@@ -64,6 +64,22 @@
   - `pnpm typecheck`、`pnpm lint`、`pnpm test:unit`、`pnpm build` 均通过。
   - `pnpm audit --json`：0 low / moderate / high / critical。
 
+## 2026-05-20 上传入口 SVG / 文件伪装风险修复
+- 复核范围：Staff 头像上传、剧本封面上传、公开 bucket 图片资源。
+- 风险：
+  - Staff 头像原先允许 `image/svg+xml` 上传到 public bucket，SVG 可携带脚本或外部引用，存在存储型 XSS / 内容注入风险。
+  - 剧本封面原先只检查 `file.type.startsWith("image/")`，可被伪造 MIME 绕过。
+- 已修复：
+  - 新增 `src/lib/file-validation.ts`，服务端统一只允许 JPEG / PNG / WebP，并校验 magic bytes。
+  - Staff 头像上传移除 SVG 支持，bucket allowed MIME 同步收窄到 JPEG / PNG / WebP。
+  - 剧本封面上传迁移到 `upload-actions.ts`，同样使用 MIME + magic bytes 校验。
+  - 剧本封面文件扩展名按实际类型生成，上传前清理同一 scriptId 的旧扩展名文件，避免格式切换后留下旧资源。
+  - 前端 `accept` 同步收窄到 `.jpg/.jpeg/.png/.webp`。
+- 验证：
+  - GLM Provider 最终复核：无阻塞安全问题，无功能回归风险。
+  - `pnpm typecheck`、`pnpm lint`、`pnpm test:unit`、`pnpm build` 均通过。
+  - `pnpm audit --json`：0 low / moderate / high / critical。
+
 ## 2026-05-16 公开官网按玩家视角移动端视觉稿重做
 - 用户提供 4 张移动端视觉稿，要求公开官网完全按图片方向改：手机首页不再依赖长滚动讲完整故事，而是用模块入口跳转到独立页面。
 - 已完成：

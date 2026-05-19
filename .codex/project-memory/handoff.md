@@ -10,6 +10,7 @@
 - 已修复：
   - `vercel.json` 全站 `X-Frame-Options` 从 `DENY` 改为 `SAMEORIGIN`，避免生产环境阻止同源 iframe 加载 `/apps/face-cover/index.html`。
   - 为 `/apps/face-cover/(.*)` 增加 CSP，限制脚本/样式/图片来源，允许同源嵌入。
+  - CSP 中显式放行 Cloudflare Insights beacon，避免生产环境自动注入脚本被 CSP 拦截产生控制台错误。
   - face-cover 静态 HTML 增加 CSP meta，作为本地/非 Vercel 场景的兜底。
   - 照片列表和素材库渲染改用 DOM API + `textContent`，移除照片名/素材文本 `innerHTML` 注入面。
   - 导入标注 JSON 增加 `JSON.parse` 异常处理、普通对象检查、素材 ID 校验、数值范围清洗。

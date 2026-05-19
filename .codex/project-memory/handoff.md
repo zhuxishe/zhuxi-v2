@@ -24,6 +24,17 @@
   - `pnpm build`：通过。
   - 本地生产服务 `http://127.0.0.1:3003/tools/face-cover` Playwright 检查：iframe 加载成功，16 个头像素材可见，控制台无错误。
 
+## 2026-05-20 全站安全响应头补强
+- 复核范围：依赖审计、GitHub Dependabot、前端危险 DOM API 关键词、Vercel 安全头。
+- 结果：
+  - `pnpm audit --json`：0 low / moderate / high / critical。
+  - GitHub API `dependabot/alerts?state=open` 返回 `[]`。
+  - GLM Provider 复核认为补 HSTS 和 Permissions-Policy 不会影响 `/tools/face-cover` iframe、LINE/Supabase 登录回调、本地图片选择和导出。
+- 已修复：
+  - 全站增加 `Strict-Transport-Security: max-age=31536000; includeSubDomains`。
+  - 全站增加 `Permissions-Policy`，禁用 camera、microphone、geolocation、payment、usb、serial、bluetooth、interest-cohort、browsing-topics。
+  - 全站增加只包含 `frame-ancestors 'self'; object-src 'none'; base-uri 'self'` 的 CSP，避免外站嵌入，同时不限制 Next.js 运行所需脚本。
+
 ## 2026-05-16 公开官网按玩家视角移动端视觉稿重做
 - 用户提供 4 张移动端视觉稿，要求公开官网完全按图片方向改：手机首页不再依赖长滚动讲完整故事，而是用模块入口跳转到独立页面。
 - 已完成：

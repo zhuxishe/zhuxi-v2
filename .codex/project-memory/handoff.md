@@ -292,3 +292,48 @@
   - `src/components/landing/BrandMotionSection.tsx` 删除状态
   - `src/messages/zh.json` / `src/messages/ja.json` 中 home 段落也有既有差异
 - 本轮没有回退这些改动，只在消息文件追加了玩家首页所需 `playerHome` 文案键。
+
+---
+
+# 会话交接 — 2026-05-19 本地遮脸素材库与工作台
+
+## 本轮完成
+- 使用生图模型生成并裁切出可复用素材库：
+  - 16 个方块像素头像：`output/activity-face-cover/studio/assets/faces/`
+  - 24 个粉笔质感简笔画：`output/activity-face-cover/studio/assets/chalk-doodles/`
+  - 素材预览：`output/activity-face-cover/studio/asset-library-preview.jpg`
+- 新建轻量本地遮脸工作台：`output/activity-face-cover/studio/index.html`
+  - 素材从独立 PNG + `assets.js` 读取，不再把照片/素材内嵌成 36MB base64 HTML。
+  - 支持选择本地照片、拖放照片、头像/粉笔画分类、点击添加、拖动、滚轮缩放、旋转、置顶/置底、删除。
+  - 支持导出当前 PNG、批量导出到文件夹、导出/导入标注 JSON。
+- GLM 复核后修正：
+  - Blob URL 释放；
+  - 素材加载容错；
+  - 批量导出无文件夹 API 时明确提示；
+  - 选中贴纸后点击空白改为取消选中，避免误加；
+  - 点素材进入添加模式，不再误替换已有贴纸。
+
+## 验证
+- `node --check`：`state.js` / `canvas.js` / `actions.js` / `events.js` / `boot.js` / `assets.js` 全部通过。
+- Playwright 本地静态服务验证：
+  - `http://127.0.0.1:8019/index.html`
+  - 可载入真实活动照片；
+  - 头像与粉笔画可添加；
+  - 导出 PNG 成功；
+  - 导出图：`output/activity-face-cover/studio/verify/export-final.png`
+
+## 网站 App 包装
+- 已把本地遮脸工作台包装为 Next 站内入口：
+  - 路由：`/tools/face-cover`
+  - iframe 静态 App：`public/apps/face-cover/index.html`
+  - 公开素材：`public/images/face-cover-studio/`
+- 仍保持本地处理：照片由浏览器读取为 Blob URL，不上传到服务端。
+- 验证：
+  - `node --check public/apps/face-cover/*.js`：通过
+  - `pnpm typecheck`：通过
+  - `pnpm lint`：通过
+  - `pnpm build`：通过，路由列表包含 `/tools/face-cover`
+  - Playwright 访问 `http://127.0.0.1:3003/tools/face-cover`：
+    - iframe 加载成功；
+    - 16 个头像、24 个粉笔素材可见；
+    - 选择真实照片、添加贴纸、导出 PNG 成功。

@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>竹溪社照片遮脸工作台</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="app">
+    <aside class="panel side">
+      <header class="brand">
+        <h1>照片遮脸工作台</h1>
+        <p>本地处理。照片不会上传，导出时只把贴纸合成到图片里。</p>
+      </header>
+      <section class="block">
+        <div class="row">
+          <label class="btn">
+            选择照片
+            <input id="photoInput" type="file" accept="image/*" multiple />
+          </label>
+          <label class="btn ghost">
+            导入标注
+            <input id="projectInput" type="file" accept="application/json" />
+          </label>
+          <button id="clearPhotos" class="btn secondary">清空</button>
+        </div>
+        <p class="hint">拖入照片也可以。导入标注前，请先选择对应照片。</p>
+      </section>
+      <section class="block">
+        <h2>照片列表</h2>
+        <div id="photoList" class="photoList"></div>
+      </section>
+    </aside>
+
+    <section class="panel stagePanel" id="dropZone">
+      <header class="topbar">
+        <div>
+          <strong id="currentName">未选择照片</strong>
+          <span id="statusText">请选择照片开始。</span>
+        </div>
+        <div class="row">
+          <button id="undoBtn" class="btn ghost">撤销</button>
+          <button id="redoBtn" class="btn ghost">重做</button>
+        </div>
+      </header>
+      <div class="stageWrap">
+        <div id="emptyState" class="empty">把照片拖到这里，或从左侧选择照片。</div>
+        <canvas id="canvas" hidden></canvas>
+      </div>
+      <footer class="bottom">
+        <button id="exportCurrent" class="btn">导出当前 PNG</button>
+        <button id="exportAll" class="btn secondary">批量导出</button>
+        <button id="exportProject" class="btn ghost">导出标注 JSON</button>
+        <span class="hint">滚轮缩放，Delete 删除，方向键微调。</span>
+      </footer>
+    </section>
+
+    <aside class="panel side">
+      <section class="block">
+        <h2>素材库</h2>
+        <div class="tabs">
+          <button class="tab active" data-kind="face">头像</button>
+          <button class="tab" data-kind="doodle">粉笔画</button>
+        </div>
+        <div id="assetGrid" class="assetGrid"></div>
+      </section>
+      <section class="block">
+        <h2>选中素材</h2>
+        <label class="control">大小 <b id="sizeLabel">120</b></label>
+        <input id="sizeRange" type="range" min="24" max="520" value="120" />
+        <label class="control">旋转 <b id="rotLabel">0°</b></label>
+        <input id="rotRange" type="range" min="-45" max="45" value="0" />
+        <div class="row">
+          <button id="bringFront" class="btn ghost">置顶</button>
+          <button id="sendBack" class="btn ghost">置底</button>
+          <button id="deleteItem" class="btn danger">删除</button>
+        </div>
+        <p class="hint">先选素材，再点照片添加；已有素材可拖动调整。选中素材后点空白会取消选中，避免误加。</p>
+      </section>
+    </aside>
+  </main>
+  <script src="./assets.js"></script>
+  <script src="./state.js"></script>
+  <script src="./canvas.js"></script>
+  <script src="./actions.js"></script>
+  <script src="./events.js"></script>
+  <script src="./boot.js"></script>
+</body>
+</html>

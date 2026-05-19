@@ -6,6 +6,14 @@ import { buildPublicUrl } from "@/lib/site-url"
 const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID!
 const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!
 
+function profileErrorRedirect(req: NextRequest) {
+  return NextResponse.redirect(new URL("/app/profile?line_error=callback_failed", req.url))
+}
+
+function isSecureRequest(req: NextRequest) {
+  return req.nextUrl.protocol === "https:"
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get("code")
@@ -14,8 +22,7 @@ export async function GET(req: NextRequest) {
   const profileUrl = "/app/profile"
 
   if (error || !code) {
-    const msg = error ? "LINE authorization cancelled" : "Missing auth code"
-    return NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent(msg)}`, req.url))
+    return profileErrorRedirect(req)
   }
 
   // CSRF 验证：比对 URL 中的 state 与 cookie 中保存的 state
@@ -26,12 +33,17 @@ export async function GET(req: NextRequest) {
     .find(([k]) => k === "line_oauth_state")?.[1]
 
   const clearStateCookie = (res: NextResponse) => {
-    res.cookies.set("line_oauth_state", "", { path: "/", maxAge: 0 })
+    res.cookies.set("line_oauth_state", "", {
+      path: "/",
+      maxAge: 0,
+      sameSite: "lax",
+      secure: isSecureRequest(req),
+    })
     return res
   }
 
   if (!urlState || !storedState || urlState !== storedState) {
-    const res = NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Invalid state")}`, req.url))
+    const res = profileErrorRedirect(req)
     return clearStateCookie(res)
   }
 
@@ -54,7 +66,7 @@ export async function GET(req: NextRequest) {
     })
 
     if (!tokenRes.ok) {
-      return NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Token exchange failed")}`, req.url))
+      return profileErrorRedirect(req)
     }
 
     const tokens = await tokenRes.json()
@@ -64,7 +76,7 @@ export async function GET(req: NextRequest) {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     })
     if (!profileRes.ok) {
-      return NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Failed to get LINE profile")}`, req.url))
+      return profileErrorRedirect(req)
     }
 
     const lineProfile = await profileRes.json()
@@ -90,7 +102,7 @@ export async function GET(req: NextRequest) {
       .eq("user_id", user.id)
 
     if (updateError) {
-      const res = NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Binding failed")}`, req.url))
+      const res = profileErrorRedirect(req)
       return clearStateCookie(res)
     }
 
@@ -98,7 +110,7 @@ export async function GET(req: NextRequest) {
     return clearStateCookie(res)
   } catch (err) {
     console.error("[LINE Callback] Error:", err)
-    const res = NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("Server error")}`, req.url))
+    const res = profileErrorRedirect(req)
     return clearStateCookie(res)
   }
 }

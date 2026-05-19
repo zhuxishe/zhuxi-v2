@@ -28,7 +28,8 @@ export function LineBindingCard({ lineUserId: initial }: Props) {
     crypto.getRandomValues(arr)
     const state = Array.from(arr).map(b => b.toString(16).padStart(2, "0")).join("")
     // 存 cookie 供 server-side callback 验证（5 分钟有效）
-    document.cookie = `line_oauth_state=${state}; Path=/; Max-Age=300; SameSite=Lax`
+    const secureAttr = window.location.protocol === "https:" ? "; Secure" : ""
+    document.cookie = `line_oauth_state=${state}; Path=/; Max-Age=300; SameSite=Lax${secureAttr}`
     const redirect = buildPublicUrl("/api/auth/line/callback")
     window.location.href = `https://access.line.me/oauth2/v2.1/authorize?response_type=code&client_id=${LINE_CHANNEL_ID}&redirect_uri=${encodeURIComponent(redirect)}&state=${state}&scope=profile%20openid`
   }

@@ -35,11 +35,16 @@ function copyCookies(from: NextResponse, to: NextResponse) {
   return to
 }
 
-function markSkipAppSplash(response: NextResponse) {
+function isSecureRequest(req: NextRequest) {
+  return req.nextUrl.protocol === "https:"
+}
+
+function markSkipAppSplash(response: NextResponse, req: NextRequest) {
   response.cookies.set(APP_SPLASH_SKIP_COOKIE, "1", {
     path: "/",
     maxAge: 60,
     sameSite: "lax",
+    secure: isSecureRequest(req),
   })
   return response
 }
@@ -121,11 +126,11 @@ export async function GET(req: NextRequest) {
     return markSkipAppSplash(copyCookies(
       authResponse,
       NextResponse.redirect(buildRedirectUrl(req, route.to))
-    ))
+    ), req)
   }
 
   return markSkipAppSplash(copyCookies(
     authResponse,
     NextResponse.redirect(buildRedirectUrl(req, nextPath))
-  ))
+  ), req)
 }

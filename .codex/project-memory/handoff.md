@@ -35,6 +35,20 @@
   - 全站增加 `Permissions-Policy`，禁用 camera、microphone、geolocation、payment、usb、serial、bluetooth、interest-cohort、browsing-topics。
   - 全站增加只包含 `frame-ancestors 'self'; object-src 'none'; base-uri 'self'` 的 CSP，避免外站嵌入，同时不限制 Next.js 运行所需脚本。
 
+## 2026-05-20 认证回调安全加固
+- 复核范围：Google/Supabase 登录回调、LINE 绑定 OAuth state、Cookie 属性、错误信息暴露。
+- 结果：
+  - `pnpm audit --prod --json`：0 low / moderate / high / critical。
+  - GitHub API `dependabot/alerts?state=open` 返回 `[]`。
+  - GLM Provider 复核认为 OAuth next 路径目前已限制在 `/app`，无开放重定向；建议加固 Cookie `Secure` 和 LINE 回调错误信息。
+- 已修复：
+  - `line_oauth_state` 客户端 cookie 在 HTTPS 下增加 `Secure`，本地 HTTP 保持可调试。
+  - LINE callback 清理 state cookie 时增加 `SameSite=Lax`，并按请求协议设置 `Secure`。
+  - 登录 callback 的 `APP_SPLASH_SKIP_COOKIE` 按请求协议设置 `Secure`。
+  - LINE callback 失败统一返回 `line_error=callback_failed`，不再把 state/token/profile/update/server 失败细节暴露到 URL。
+- 验证：
+  - `pnpm typecheck`、`pnpm lint`、`pnpm test:unit`、`pnpm build` 均通过。
+
 ## 2026-05-16 公开官网按玩家视角移动端视觉稿重做
 - 用户提供 4 张移动端视觉稿，要求公开官网完全按图片方向改：手机首页不再依赖长滚动讲完整故事，而是用模块入口跳转到独立页面。
 - 已完成：

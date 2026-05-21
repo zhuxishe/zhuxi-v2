@@ -1,25 +1,29 @@
 import Image from "next/image"
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
+import { publicContactHandle } from "@/lib/public-contact"
 
 export async function LandingFooter() {
   const t = await getTranslations("home")
 
   return (
-    <footer className="relative overflow-hidden bg-[#c8ddb8] px-4 pb-8 pt-14">
+    <footer className="relative overflow-hidden bg-[#c8ddb8] px-4 pb-6 pt-10 md:pb-8 md:pt-14">
       <div className="absolute -top-8 left-1/2 h-16 w-[120%] -translate-x-1/2 rounded-[50%] bg-[#fffdf7]" />
-      <div className="relative mx-auto max-w-5xl text-center space-y-3">
+      <div className="relative mx-auto max-w-5xl space-y-2.5 text-center md:space-y-3">
         <div className="flex items-center justify-center gap-2">
           <Image src="/logo.svg" alt="" width={24} height={24} className="size-6 opacity-70" />
           <span className="font-display font-bold text-primary">{t("title")}</span>
           <span className="text-sm tracking-[0.28em] text-primary/80">· ZHUXISHE</span>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-5 text-sm text-[#49643d]">
+        <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[#49643d] md:gap-5 md:text-sm">
           <Link href="/organization" className="transition hover:text-foreground">
             {t("footerAbout")}
           </Link>
           <Link href="/scripts" className="transition hover:text-foreground">
             {t("navScripts")}
+          </Link>
+          <Link href="/reviews" className="transition hover:text-foreground">
+            {t("navReviews")}
           </Link>
           <Link href="/join" className="transition hover:text-foreground">
             {t("navAbout")}
@@ -31,6 +35,7 @@ export async function LandingFooter() {
         <a href={`mailto:${t("footerEmail")}`} className="block text-xs text-[#49643d] transition hover:text-foreground">
           {t("footerEmail")}
         </a>
+        <p className="text-xs font-semibold text-[#49643d]">{t("contactHandleLabel")}：{publicContactHandle}</p>
         <p className="text-[11px] tracking-wider text-[#49643d]/80">
           {t("footerCopyright")}
         </p>

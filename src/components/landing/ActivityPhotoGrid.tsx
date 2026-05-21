@@ -1,12 +1,12 @@
 import Image from "next/image"
 
 const photos = [
-  "activity-large-bg.webp",
-  "gallery-fireworks.webp",
-  "gallery-walk.webp",
-  "gallery-table.webp",
-  "gallery-park.webp",
-  "gallery-pavilion.webp",
+  "bbq-01.webp",
+  "shibuya-party-01.webp",
+  "team-game-01.webp",
+  "asakusa-01.webp",
+  "showa-01.webp",
+  "hogwarts-01.webp",
 ]
 
 export function ActivityPhotoGrid({ title, subtitle, tags }: { title: string; subtitle: string; tags: string[] }) {
@@ -27,7 +27,7 @@ export function ActivityPhotoGrid({ title, subtitle, tags }: { title: string; su
         {photos.map((name) => (
           <Image
             key={name}
-            src={`/images/landing/mobile-redesign/${name}`}
+            src={`/images/landing/activity-wall-20260520/${name}`}
             alt=""
             width={420}
             height={320}

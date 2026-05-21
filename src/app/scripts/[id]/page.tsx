@@ -28,7 +28,7 @@ export default async function PublicScriptDetailPage({ params }: Props) {
       <LandingNav />
       <main className="min-h-screen bg-[#f2f0eb] px-5 pb-20 pt-28 md:pt-32">
         <article className="container mx-auto max-w-6xl">
-          <Link href="/scripts" className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-bamboo">
+          <Link href="/scripts/library" className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-bamboo">
             <ArrowLeft className="size-4" />
             {t("back")}
           </Link>

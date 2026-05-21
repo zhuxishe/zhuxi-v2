@@ -21,7 +21,7 @@ export const teamDepartments: TeamDepartment[] = [
   {
     slug: "events",
     name: "活动部",
-    intro: "策划线下活动，照顾现场节奏",
+    intro: "通过组织团建活动，为大家提供接触更多朋友的机会。",
     members: [
       { name: "BIGJO", role: "活动部部长", school: "东京大学", major: "新领域" },
       { name: "Alice", role: "活动部社员", school: "上智大学", major: "经济学科" },
@@ -32,17 +32,17 @@ export const teamDepartments: TeamDepartment[] = [
   },
   {
     slug: "planning",
-    name: "策划剧本部",
-    intro: "设计社交剧本，打磨互动流程",
+    name: "策划部",
+    intro: "自创社团所有社交剧本，帮助大家进行最轻松的社交。",
     members: [
-      { name: "Quinn", role: "策划剧本部成员", school: "早稻田大学", major: "社会科学部" },
+      { name: "Quinn", role: "策划部成员", school: "早稻田大学", major: "社会科学部" },
       { name: "Olivia", role: "企划部员", school: "早稻田大学", major: "政治经济学部" },
     ],
   },
   {
     slug: "media",
     name: "宣传部",
-    intro: "记录活动日常，整理对外内容",
+    intro: "负责小红书运营、宣传和招新，同步每次活动资讯，让大家走进我们。",
     members: [
       { name: "Aster", role: "宣传部部长", school: "早稻田大学", major: "电子物理系" },
       { name: "kiki", role: "宣传部", school: "早稻田大学", major: "教育学部" },

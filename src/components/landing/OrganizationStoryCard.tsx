@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { ArrowRight, Sprout } from "lucide-react"
-import { storyMission, storySections } from "@/lib/landing-story"
+import { storyMission } from "@/lib/landing-story"
 
 export function OrganizationStoryCard() {
   return (
@@ -24,14 +24,6 @@ export function OrganizationStoryCard() {
           </p>
         </div>
         <ArrowRight className="mt-2 size-5 text-[#6b8f4e] transition group-hover:translate-x-1" />
-      </div>
-      <div className="mt-6 grid gap-3 md:grid-cols-3">
-        {storySections.map((section, index) => (
-          <div key={section.title} className="rounded-2xl bg-[#faf8f0] p-4">
-            <p className="font-display text-xl font-bold text-[#6b8f4e]">0{index + 1}</p>
-            <p className="mt-2 font-semibold">{section.title}</p>
-          </div>
-        ))}
       </div>
     </Link>
   )

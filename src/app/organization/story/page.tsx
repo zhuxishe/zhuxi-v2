@@ -33,10 +33,9 @@ export default function OrganizationStoryPage() {
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">
-            {storySections.map((section, index) => (
+            {storySections.map((section) => (
               <article key={section.title} className="rounded-[1.6rem] border border-[#e5dfd3] bg-white/92 p-6 shadow-[0_14px_34px_rgba(43,53,35,0.08)]">
-                <p className="font-display text-3xl font-bold text-[#6b8f4e]">0{index + 1}</p>
-                <h2 className="mt-4 font-display text-2xl font-bold">{section.title}</h2>
+                <h2 className="font-display text-2xl font-bold">{section.title}</h2>
                 <p className="mt-4 text-sm leading-[1.95] text-[#4c5148]">{section.body}</p>
               </article>
             ))}

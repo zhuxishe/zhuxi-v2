@@ -14,8 +14,10 @@ export default async function PublicFaqPage() {
       <main className="bg-[#fffdf7] pt-28 text-[#171717] grain-overlay">
         <section className="relative mx-auto max-w-5xl px-5 py-14 text-center">
           <CircleHelp className="mx-auto mb-5 size-14 rounded-full bg-[#ffd4da] p-3 text-[#111]" />
-          <h1 className="font-display text-5xl font-bold tracking-[0.12em] md:text-6xl">{t("faqTitle")}</h1>
-          <div className="mx-auto mt-4 h-3 w-52 rounded-[50%] border-b-[8px] border-[#f3cf55]" />
+          <h1 className="mx-auto max-w-[18rem] font-display text-4xl font-bold leading-tight tracking-[0.04em] md:max-w-none md:text-6xl md:tracking-[0.12em]">
+            {t("faqTitle")}
+          </h1>
+          <div className="mx-auto mt-4 h-3 w-36 rounded-[50%] border-b-[8px] border-[#f3cf55] md:w-52" />
         </section>
         <FaqSection compact />
         <section className="mx-auto max-w-4xl px-5 pb-16">

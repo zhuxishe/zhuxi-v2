@@ -1,5 +1,31 @@
 # 会话交接 — 2026-05-21 会议改版落地
 
+## 2026-05-21 首页一屏 Hero 与数据合并
+- 使用技能：
+  - `frontend-design`：按真实照片、海报混合图层、移动端首屏完整可见的方向重排公开官网。
+- 首页：
+  - `/` 改为一屏型 hero：真实活动照片做背景，叠加暖白渐变、柔光遮罩、轻微暗角和纸纹层。
+  - 主标题、slogan、四个入口和学校分布数据都放进首屏。
+  - 删除独立滚动照片带 `HomeActivityStrip`，避免首屏外再占一块。
+  - 删除独立 `SchoolDistributionSection`，学校数据合并为 hero 内的紧凑半饼图。
+- 数据表达：
+  - 新增 `HeroSchoolStats`，用半饼图展示早稻田、东大、法政、语校、理科、其他。
+  - 同时突出 `29` 所学校、`135` 位成员，不再使用解释型长句。
+- 关于页与活动页：
+  - `OrganizationStoryCard` 去掉 01/02/03 预览小卡，只保留社团介绍入口和进入箭头。
+  - `/organization/story` 三段内容保留，但去掉可见编号。
+  - `/organization` 和 `/scripts` hero 改为照片背景 + 遮罩的海报式处理。
+  - `/scripts` 删除“活动菜单”字样，保留大型活动、社交剧本类两个同级入口。
+- FAQ 与滚动：
+  - FAQ 联系卡改为“联系管理员”，不再出现“扫码添加管理员微信”。
+  - 根布局加入 `scroll-smooth`，并保留 `motion-reduce:scroll-auto`。
+- 验证：
+  - `pnpm typecheck`：通过。
+  - `pnpm lint`：通过。
+  - `pnpm build`：通过。
+  - 本地生产服务 `http://127.0.0.1:3025` HTTP 烟测 `/`、`/organization`、`/organization/story`、`/scripts`、`/faq` 均 200。
+  - Chrome headless 手机截图输出在 `output/one-screen-hero-smoke/`，已确认首页首屏能看到标题、入口和半饼图数据，FAQ 标题不裁切。
+
 ## 2026-05-21 公开官网精修与推送
 - 使用技能：
   - `frontend-design`：按海报式、移动端优先、少说明文字的方向精修公开页。

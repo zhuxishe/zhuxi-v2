@@ -9,13 +9,14 @@ export async function ScriptsSection() {
   const locale = await getLocale()
   const copy = landingCopy(locale).activities
   const photoCta = locale === "ja" ? "写真を見る" : "查看照片"
-  const heroBadge = locale === "ja" ? "活動メニュー" : "活动菜单"
 
   return (
     <section className="relative min-h-screen overflow-hidden bg-[#fffdf7] px-5 pb-14 pt-28 text-[#171717] grain-overlay">
-      <div className="mx-auto max-w-5xl">
-        <div className="grid gap-6 md:grid-cols-[0.82fr_1.18fr] md:items-end">
-          <div>
+      <Image src="/images/landing/activity-wall-20260520/shibuya-party-01.webp" alt="" fill priority sizes="100vw" className="object-cover opacity-70" />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#fffdf7]/92 via-[#fffdf7]/72 to-[#fffdf7]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(255,255,255,0.92),rgba(255,253,247,0.45)_44%,rgba(255,253,247,0.9)_82%)]" />
+      <div className="relative mx-auto max-w-5xl">
+        <div className="max-w-xl rounded-[1.6rem] border border-white/55 bg-white/70 p-6 shadow-[0_18px_48px_rgba(44,55,35,0.12)] backdrop-blur-md md:p-8">
             <h1 className="font-display text-5xl font-bold tracking-[0.1em] md:text-7xl">{copy.title}</h1>
             <div className="mt-5 flex items-center gap-4 text-[#7fa063]">
               <span className="h-px w-20 bg-[#9eb886]" />
@@ -23,14 +24,6 @@ export async function ScriptsSection() {
               <span className="h-px w-20 bg-[#9eb886]" />
             </div>
             <p className="mt-6 max-w-md whitespace-pre-line text-xl leading-relaxed md:text-2xl">{copy.subtitle}</p>
-          </div>
-          <div className="relative min-h-[250px] overflow-hidden rounded-[1.8rem] border border-[#e5dfd3] bg-white shadow-[0_20px_50px_rgba(44,55,35,0.12)] md:min-h-[380px]">
-            <Image src="/images/landing/activity-wall-20260520/shibuya-party-01.webp" alt="" fill priority sizes="(min-width: 768px) 56vw, 92vw" className="object-cover" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/44 via-transparent to-white/20" />
-            <p className="absolute bottom-5 left-5 rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[#4f6f3e] backdrop-blur">
-              {heroBadge}
-            </p>
-          </div>
         </div>
 
         <div className="mt-8 grid gap-3 sm:grid-cols-2 md:gap-5">

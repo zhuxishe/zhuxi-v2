@@ -51,7 +51,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const messages = await getMessages()
 
   return (
-    <html lang={locale === "ja" ? "ja" : "zh-CN"}>
+    <html lang={locale === "ja" ? "ja" : "zh-CN"} className="scroll-smooth motion-reduce:scroll-auto">
       <body className={`${geist.variable} ${notoSansSc.variable} ${notoSerifSc.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           {children}

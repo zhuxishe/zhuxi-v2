@@ -1,0 +1,58 @@
+.slider {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transform: scale(1.04);
+  animation: hero-photo-fade 24s infinite;
+}
+
+.slide:nth-child(1) {
+  animation-delay: 0s;
+}
+
+.slide:nth-child(2) {
+  animation-delay: 6s;
+}
+
+.slide:nth-child(3) {
+  animation-delay: 12s;
+}
+
+.slide:nth-child(4) {
+  animation-delay: 18s;
+}
+
+@keyframes hero-photo-fade {
+  0%,
+  24% {
+    opacity: 0.82;
+    transform: scale(1);
+  }
+
+  31%,
+  93% {
+    opacity: 0;
+    transform: scale(1.05);
+  }
+
+  100% {
+    opacity: 0.72;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .slide {
+    animation: none;
+  }
+
+  .slide:first-child {
+    opacity: 0.82;
+  }
+}

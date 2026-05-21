@@ -11,22 +11,22 @@ export async function ScriptsSection() {
   const photoCta = locale === "ja" ? "写真を見る" : "查看照片"
 
   return (
-    <section className="relative min-h-screen overflow-hidden bg-[#fffdf7] px-5 pb-14 pt-28 text-[#171717] grain-overlay">
+    <section className="relative min-h-[100svh] overflow-hidden bg-[#fffdf7] px-5 pb-5 pt-24 text-[#171717] grain-overlay">
       <Image src="/images/landing/activity-wall-20260520/shibuya-party-01.webp" alt="" fill priority sizes="100vw" className="object-cover opacity-70" />
       <div className="absolute inset-0 bg-gradient-to-b from-[#fffdf7]/92 via-[#fffdf7]/72 to-[#fffdf7]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(255,255,255,0.92),rgba(255,253,247,0.45)_44%,rgba(255,253,247,0.9)_82%)]" />
-      <div className="relative mx-auto max-w-5xl">
-        <div className="max-w-xl rounded-[1.6rem] border border-white/55 bg-white/70 p-6 shadow-[0_18px_48px_rgba(44,55,35,0.12)] backdrop-blur-md md:p-8">
-            <h1 className="font-display text-5xl font-bold tracking-[0.1em] md:text-7xl">{copy.title}</h1>
-            <div className="mt-5 flex items-center gap-4 text-[#7fa063]">
+      <div className="relative mx-auto flex min-h-[calc(100svh-7rem)] max-w-5xl flex-col justify-center">
+        <div className="max-w-xl rounded-[1.4rem] border border-white/55 bg-white/72 p-5 shadow-[0_18px_48px_rgba(44,55,35,0.12)] backdrop-blur-md md:p-8">
+            <h1 className="font-display text-4xl font-bold tracking-[0.08em] md:text-7xl">{copy.title}</h1>
+            <div className="mt-4 flex items-center gap-4 text-[#7fa063] md:mt-5">
               <span className="h-px w-20 bg-[#9eb886]" />
               <span className="text-xl">✿</span>
               <span className="h-px w-20 bg-[#9eb886]" />
             </div>
-            <p className="mt-6 max-w-md whitespace-pre-line text-xl leading-relaxed md:text-2xl">{copy.subtitle}</p>
+            <p className="mt-4 max-w-md whitespace-pre-line text-lg leading-relaxed md:mt-6 md:text-2xl">{copy.subtitle}</p>
         </div>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 md:gap-5">
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 md:mt-8 md:gap-5">
           <EntryCard
             href="/reviews"
             image="/images/landing/activity-wall-20260520/bbq-01.webp"
@@ -51,14 +51,14 @@ export async function ScriptsSection() {
 
 function EntryCard({ href, image, icon, title, body, cta }: { href: string; image: string; icon: ReactNode; title: string; body: string; cta: string }) {
   return (
-    <Link href={href} className="group relative aspect-[1.25/1] overflow-hidden rounded-[1.5rem] border border-[#e5dfd3] bg-white shadow-[0_16px_42px_rgba(44,55,35,0.12)] transition hover:-translate-y-0.5 sm:aspect-square">
+    <Link href={href} className="group relative h-[10.5rem] overflow-hidden rounded-[1.35rem] border border-[#e5dfd3] bg-white shadow-[0_16px_42px_rgba(44,55,35,0.12)] transition hover:-translate-y-0.5 sm:h-auto sm:aspect-square">
       <Image src={image} alt="" fill sizes="(min-width: 768px) 420px, 50vw" className="object-cover transition duration-700 group-hover:scale-[1.04]" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/68 via-black/18 to-white/10" />
       <div className="absolute inset-x-0 bottom-0 p-4 text-white md:p-6">
-        <span className="mb-4 grid size-12 place-items-center rounded-full bg-white/90 text-[#5f8549]">{icon}</span>
+        <span className="mb-3 grid size-10 place-items-center rounded-full bg-white/90 text-[#5f8549] md:mb-4 md:size-12">{icon}</span>
         <h2 className="font-display text-2xl font-bold md:text-4xl">{title}</h2>
-        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-white/86 md:text-sm">{body}</p>
-        <span className="mt-4 inline-flex items-center gap-1 text-xs font-semibold md:text-sm">
+        <p className="mt-1 line-clamp-1 text-xs leading-relaxed text-white/86 md:mt-2 md:line-clamp-2 md:text-sm">{body}</p>
+        <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold md:mt-4 md:text-sm">
           {cta}
           <ChevronRight className="size-4 transition group-hover:translate-x-0.5" />
         </span>

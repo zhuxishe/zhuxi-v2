@@ -1,10 +1,10 @@
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
-import { Mail, MessageCircle, Sparkles } from "lucide-react"
+import { MessageCircle, Sparkles } from "lucide-react"
+import { publicContactHandle } from "@/lib/public-contact"
 
 export async function LandingContactSection() {
   const t = await getTranslations("home")
-  const email = t("footerEmail")
 
   return (
     <section id="contact" className="relative bg-[#fbf8f1] px-5 py-14 md:py-20">
@@ -23,13 +23,10 @@ export async function LandingContactSection() {
           </div>
 
           <div className="flex flex-col justify-center gap-3">
-            <a
-              href={`mailto:${email}`}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#1E3932] transition hover:-translate-y-0.5"
-            >
-              <Mail className="size-4" />
-              {email}
-            </a>
+            <p className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-[#1E3932]">
+              <MessageCircle className="size-4" />
+              {t("contactHandleLabel")}：{publicContactHandle}
+            </p>
             <Link
               href="/scripts"
               className="inline-flex items-center justify-center gap-2 rounded-full border border-white/20 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10"

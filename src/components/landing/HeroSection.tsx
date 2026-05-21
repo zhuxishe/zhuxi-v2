@@ -1,8 +1,7 @@
-import Image from "next/image"
 import Link from "next/link"
 import { getLocale } from "next-intl/server"
 import { CalendarDays, CircleHelp, Users, Zap } from "lucide-react"
-import { HeroSchoolStats } from "@/components/landing/HeroSchoolStats"
+import { HeroPhotoSlider } from "@/components/landing/HeroPhotoSlider"
 import { landingCopy } from "@/lib/landing-copy"
 
 const cardIcons = [Users, CalendarDays, Zap, CircleHelp] as const
@@ -19,12 +18,12 @@ export async function HeroSection() {
 
   return (
     <section className="relative min-h-[100svh] overflow-hidden bg-[#fffdf7] px-5 pb-5 pt-24 text-[#171717] grain-overlay">
-      <Image src="/images/landing/activity-wall-20260520/founded-01.webp" alt="" fill priority sizes="100vw" className="object-cover opacity-60" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#fffdf7]/92 via-[#fffdf7]/70 to-[#fffdf7]/96" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.92),rgba(255,253,247,0.45)_38%,rgba(255,253,247,0.92)_78%)]" />
-      <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#fffdf7] to-transparent" />
+      <HeroPhotoSlider />
+      <div className="absolute inset-0 bg-gradient-to-b from-[#fffdf7]/86 via-[#fffdf7]/48 to-[#fffdf7]/90" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.86),rgba(255,253,247,0.26)_34%,rgba(255,253,247,0.88)_82%)]" />
+      <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#fffdf7] to-transparent" />
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-7.25rem)] max-w-5xl flex-col justify-center gap-4 md:gap-6">
+      <div className="relative mx-auto flex min-h-[calc(100svh-7.25rem)] max-w-5xl flex-col justify-center gap-5 md:gap-7">
         <div className="text-center">
           <p className="font-display text-2xl font-bold tracking-[0.1em] md:text-5xl">
             {copy.lead}
@@ -38,13 +37,11 @@ export async function HeroSection() {
           </p>
         </div>
 
-        <HeroSchoolStats ja={locale === "ja"} />
-
         <div className="grid grid-cols-2 gap-2.5 md:gap-4">
           {copy.cards.map(([title, desc, href, color], index) => {
             const Icon = cardIcons[index]
             return (
-              <Link key={title} href={href} className={`group relative min-h-24 overflow-hidden rounded-[1.1rem] border-t-4 bg-white/75 p-3 shadow-[0_12px_30px_rgba(43,53,35,0.10)] backdrop-blur-md transition hover:-translate-y-0.5 md:min-h-36 md:p-5 ${colorMap[color]}`}>
+              <Link key={title} href={href} className={`group relative min-h-24 min-w-0 overflow-hidden rounded-[1.1rem] border-t-4 bg-white/75 p-3 shadow-[0_12px_30px_rgba(43,53,35,0.10)] backdrop-blur-md transition hover:-translate-y-0.5 md:min-h-36 md:p-5 ${colorMap[color]}`}>
                 <div className="flex items-start justify-between gap-2">
                   <span className="min-w-0">
                     <span className="block font-display text-base font-bold leading-tight md:text-2xl">{title}</span>

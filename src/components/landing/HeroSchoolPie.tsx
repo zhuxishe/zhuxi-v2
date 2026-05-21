@@ -21,11 +21,11 @@ function chartGradient() {
 
 export function HeroSchoolPie({ ja }: { ja: boolean }) {
   return (
-    <div className="rounded-[1.2rem] border border-white/55 bg-white/76 p-3 shadow-[0_12px_30px_rgba(43,53,35,0.12)] backdrop-blur-md md:p-4">
-      <div className="grid grid-cols-[5.4rem_1fr] items-center gap-3 md:grid-cols-[7rem_1fr] md:gap-5">
-        <div className="relative mx-auto grid size-[4.8rem] place-items-center rounded-full md:size-28" style={{ background: `conic-gradient(${chartGradient()})` }}>
-          <div className="grid size-[3.1rem] place-items-center rounded-full bg-[#fffdf7] text-center shadow-inner md:size-[4.2rem]">
-            <span className="font-display text-xl font-bold leading-none text-[#171717] md:text-2xl">{schools}</span>
+    <div className="rounded-[1.25rem] border border-white/55 bg-white/78 p-3.5 shadow-[0_12px_30px_rgba(43,53,35,0.12)] backdrop-blur-md md:p-4">
+      <div className="grid grid-cols-[5.9rem_1fr] items-center gap-3 md:grid-cols-[7rem_1fr] md:gap-5">
+        <div className="relative mx-auto grid size-[5.35rem] place-items-center rounded-full md:size-28" style={{ background: `conic-gradient(${chartGradient()})` }}>
+          <div className="grid size-[3.45rem] place-items-center rounded-full bg-[#fffdf7] text-center shadow-inner md:size-[4.2rem]">
+            <span className="font-display text-2xl font-bold leading-none text-[#171717] md:text-2xl">{schools}</span>
             <span className="-mt-1 text-[10px] font-semibold text-[#5f8549]">{ja ? "校" : "所"}</span>
           </div>
         </div>

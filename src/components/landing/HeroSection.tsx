@@ -2,6 +2,7 @@ import Link from "next/link"
 import { getLocale } from "next-intl/server"
 import { CalendarDays, CircleHelp, Users, Zap } from "lucide-react"
 import { HeroPhotoSlider } from "@/components/landing/HeroPhotoSlider"
+import { HeroSchoolPie } from "@/components/landing/HeroSchoolPie"
 import { landingCopy } from "@/lib/landing-copy"
 
 const cardIcons = [Users, CalendarDays, Zap, CircleHelp] as const
@@ -23,7 +24,7 @@ export async function HeroSection() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.86),rgba(255,253,247,0.26)_34%,rgba(255,253,247,0.88)_82%)]" />
       <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#fffdf7] to-transparent" />
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-7.25rem)] max-w-5xl flex-col justify-center gap-5 md:gap-7">
+      <div className="relative mx-auto flex min-h-[calc(100svh-7.25rem)] max-w-5xl flex-col justify-center gap-3.5 md:gap-7">
         <div className="text-center">
           <p className="font-display text-2xl font-bold tracking-[0.1em] md:text-5xl">
             {copy.lead}
@@ -36,6 +37,8 @@ export async function HeroSection() {
             {copy.subtitle}
           </p>
         </div>
+
+        <HeroSchoolPie ja={locale === "ja"} />
 
         <div className="grid grid-cols-2 gap-2.5 md:gap-4">
           {copy.cards.map(([title, desc, href, color], index) => {

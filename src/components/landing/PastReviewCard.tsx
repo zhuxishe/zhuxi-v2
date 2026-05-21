@@ -12,7 +12,6 @@ export function PastReviewCard({ review, sourceLabel, photoUnitLabel }: { review
         <header className="lg:sticky lg:top-28 lg:self-start">
           <p className="text-xs font-semibold tracking-[0.14em] text-[#6b8f4e]">{review.event_date}</p>
           <h2 className="mt-2 font-display text-[1.55rem] font-bold leading-tight md:mt-3 md:text-3xl">{review.title}</h2>
-          <p className="mt-2 line-clamp-2 text-sm leading-[1.75] text-[#4c5148] md:mt-3 md:line-clamp-none">{review.summary}</p>
           <p className="mt-4 w-fit rounded-full bg-[#edf4e7] px-3 py-1 text-xs font-semibold text-[#5f8549]">
             {photoCount} {photoUnitLabel}
           </p>

@@ -1,7 +1,7 @@
 {
   "home": {
     "title": "竹渓社",
-    "description": "東京の大学生向けオフライン交流・友達づくりプラットフォーム",
+    "description": "東京の大学生向け対面交流サークル",
     "navHome": "ホーム",
     "navAbout": "参加方法",
   "navScripts": "活動紹介",
@@ -141,7 +141,7 @@
   "pastReviews": {
     "kicker": "過去の活動",
     "title": "活動フォトウォール",
-    "subtitle": "活動ごとに写真を整理しています。雰囲気を見てから参加したい回を選べます。",
+    "subtitle": "",
     "empty": "過去の活動を整理中です",
     "source": "原文を見る",
     "dateFallback": "最近の活動",

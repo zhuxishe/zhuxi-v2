@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { getLocale } from "next-intl/server"
 import { CalendarDays, CircleHelp, Users, Zap } from "lucide-react"
+import { HomeActivityStrip } from "@/components/landing/HomeActivityStrip"
 import { landingCopy } from "@/lib/landing-copy"
 
 const cardIcons = [Users, CalendarDays, Zap, CircleHelp] as const
@@ -16,11 +17,11 @@ export async function HeroSection() {
   const copy = landingCopy(await getLocale()).home
 
   return (
-    <section className="relative overflow-hidden bg-[#fffdf7] px-5 pb-5 pt-20 text-[#171717] grain-overlay">
-      <Image src="/images/landing/activity-wall-20260520/founded-01.webp" alt="" width={1200} height={900} priority className="absolute inset-x-0 top-12 h-56 w-full object-cover opacity-[0.15] blur-[2px]" />
-      <div className="absolute inset-x-0 top-0 h-80 bg-gradient-to-b from-[#fffdf7] via-[#fffdf7]/88 to-[#fffdf7]" />
+    <section className="relative overflow-hidden bg-[#fffdf7] px-5 pb-8 pt-24 text-[#171717] grain-overlay">
+      <div className="absolute left-0 top-28 h-64 w-24 rounded-r-full bg-[#dfeccd]/80 blur-2xl" />
+      <div className="absolute right-0 top-24 h-72 w-28 rounded-l-full bg-[#f6e7a7]/45 blur-2xl" />
       <div className="relative mx-auto max-w-5xl">
-        <div className="pt-2 text-center md:pt-16">
+        <div className="pt-4 text-center md:pt-16">
           <p className="font-display text-2xl font-bold tracking-[0.1em] sm:text-5xl">
             {copy.lead}
           </p>
@@ -33,23 +34,27 @@ export async function HeroSection() {
           </p>
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-3 md:mt-9 md:gap-5">
+        <HomeActivityStrip />
+
+        <div className="mt-6 grid grid-cols-2 gap-3 md:mt-9 md:gap-5">
           {copy.cards.map(([title, desc, href, color], index) => {
             const Icon = cardIcons[index]
             return (
-              <Link key={title} href={href} className="group relative min-h-28 rounded-[1rem] border border-[#e7e2d7] bg-white/94 p-3 shadow-[0_10px_22px_rgba(43,53,35,0.08)] transition hover:-translate-y-0.5 md:min-h-40 md:p-5">
-                <div className="flex items-start gap-2.5 md:gap-3">
-                  <span className={`grid size-10 shrink-0 place-items-center rounded-[0.9rem] md:size-14 ${colorMap[color]}`}>
-                    <Icon className="size-5 stroke-[2.4] md:size-7" />
+              <Link key={title} href={href} className="group relative min-h-32 overflow-hidden rounded-[1.2rem] border border-[#e2dccf] bg-[#fffef9] p-4 shadow-[0_14px_34px_rgba(43,53,35,0.09)] transition hover:-translate-y-0.5 md:min-h-44 md:p-6">
+                <span className={`absolute inset-x-0 top-0 h-1 ${colorMap[color]}`} />
+                <div className="flex items-start justify-between gap-3">
+                  <span className="font-display text-[11px] font-bold tracking-[0.24em] text-[#8a907f]">
+                    0{index + 1}
                   </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-display text-base font-bold md:text-2xl">{title}</span>
-                    <span className="mt-1.5 block whitespace-pre-line text-[11px] leading-relaxed text-[#2f322c] md:text-sm">
-                      {desc}
-                    </span>
+                  <span className="grid size-9 place-items-center rounded-full bg-[#f1f4ea] text-[#5f8549] md:size-11">
+                    <Icon className="size-5 stroke-[2.2] md:size-6" />
                   </span>
                 </div>
-                <span className={`absolute bottom-3 right-3 grid size-11 place-items-center rounded-full text-lg text-white md:size-10 ${color === "gold" ? "bg-[#f4ca55]" : color === "sky" ? "bg-[#6bb7d7]" : color === "pink" ? "bg-[#ef8796]" : "bg-[#6fac55]"} transition group-hover:translate-x-0.5`}>
+                <span className="mt-5 block font-display text-lg font-bold leading-tight md:text-2xl">{title}</span>
+                <span className="mt-2 block whitespace-pre-line text-[12px] leading-relaxed text-[#3c4237] md:text-sm">
+                  {desc}
+                </span>
+                <span className="absolute bottom-3 right-3 grid size-10 place-items-center rounded-full border border-[#dfe7d4] bg-white text-lg text-[#5f8549] transition group-hover:translate-x-0.5 md:bottom-5 md:right-5">
                   ›
                 </span>
               </Link>

@@ -9,21 +9,31 @@ export async function ScriptsSection() {
   const locale = await getLocale()
   const copy = landingCopy(locale).activities
   const photoCta = locale === "ja" ? "写真を見る" : "查看照片"
+  const heroBadge = locale === "ja" ? "活動メニュー" : "活动菜单"
 
   return (
-    <section className="relative min-h-screen overflow-hidden bg-[#fffdf7] px-5 pb-14 pt-24 text-[#171717] grain-overlay">
-      <Image src="/images/landing/activity-wall-20260520/shibuya-party-01.webp" alt="" width={1400} height={900} priority className="absolute right-0 top-0 h-[330px] w-[72%] object-cover opacity-55" />
-      <div className="absolute inset-x-0 top-0 h-[390px] bg-gradient-to-r from-[#fffdf7] via-[#fffdf7]/84 to-transparent" />
-      <div className="relative mx-auto max-w-5xl pt-20">
-        <h1 className="font-display text-5xl font-bold tracking-[0.14em] md:text-7xl">{copy.title}</h1>
-        <div className="mt-5 flex items-center gap-4 text-[#7fa063]">
-          <span className="h-px w-20 bg-[#9eb886]" />
-          <span className="text-xl">✿</span>
-          <span className="h-px w-20 bg-[#9eb886]" />
+    <section className="relative min-h-screen overflow-hidden bg-[#fffdf7] px-5 pb-14 pt-28 text-[#171717] grain-overlay">
+      <div className="mx-auto max-w-5xl">
+        <div className="grid gap-6 md:grid-cols-[0.82fr_1.18fr] md:items-end">
+          <div>
+            <h1 className="font-display text-5xl font-bold tracking-[0.1em] md:text-7xl">{copy.title}</h1>
+            <div className="mt-5 flex items-center gap-4 text-[#7fa063]">
+              <span className="h-px w-20 bg-[#9eb886]" />
+              <span className="text-xl">✿</span>
+              <span className="h-px w-20 bg-[#9eb886]" />
+            </div>
+            <p className="mt-6 max-w-md whitespace-pre-line text-xl leading-relaxed md:text-2xl">{copy.subtitle}</p>
+          </div>
+          <div className="relative min-h-[250px] overflow-hidden rounded-[1.8rem] border border-[#e5dfd3] bg-white shadow-[0_20px_50px_rgba(44,55,35,0.12)] md:min-h-[380px]">
+            <Image src="/images/landing/activity-wall-20260520/shibuya-party-01.webp" alt="" fill priority sizes="(min-width: 768px) 56vw, 92vw" className="object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/44 via-transparent to-white/20" />
+            <p className="absolute bottom-5 left-5 rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[#4f6f3e] backdrop-blur">
+              {heroBadge}
+            </p>
+          </div>
         </div>
-        <p className="mt-6 max-w-md whitespace-pre-line text-xl leading-relaxed md:text-2xl">{copy.subtitle}</p>
 
-        <div className="mt-8 grid grid-cols-2 gap-3 md:gap-5">
+        <div className="mt-8 grid gap-3 sm:grid-cols-2 md:gap-5">
           <EntryCard
             href="/reviews"
             image="/images/landing/activity-wall-20260520/bbq-01.webp"
@@ -48,7 +58,7 @@ export async function ScriptsSection() {
 
 function EntryCard({ href, image, icon, title, body, cta }: { href: string; image: string; icon: ReactNode; title: string; body: string; cta: string }) {
   return (
-    <Link href={href} className="group relative aspect-square overflow-hidden rounded-[1.5rem] border border-[#e5dfd3] bg-white shadow-[0_16px_42px_rgba(44,55,35,0.12)] transition hover:-translate-y-0.5">
+    <Link href={href} className="group relative aspect-[1.25/1] overflow-hidden rounded-[1.5rem] border border-[#e5dfd3] bg-white shadow-[0_16px_42px_rgba(44,55,35,0.12)] transition hover:-translate-y-0.5 sm:aspect-square">
       <Image src={image} alt="" fill sizes="(min-width: 768px) 420px, 50vw" className="object-cover transition duration-700 group-hover:scale-[1.04]" />
       <div className="absolute inset-0 bg-gradient-to-t from-black/68 via-black/18 to-white/10" />
       <div className="absolute inset-x-0 bottom-0 p-4 text-white md:p-6">

@@ -18,12 +18,6 @@ export async function PastReviewsSection() {
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">{t("kicker")}</p>
           <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:mt-4 md:text-5xl">{t("title")}</h1>
           <div className="mt-2 h-2 w-32 rounded-[50%] border-b-[6px] border-[#f3cf55] md:mt-3 md:w-40" />
-          <p className="mt-4 max-w-xl text-sm leading-[1.8] text-[#4c5148] md:mt-5 md:text-base">{t("subtitle")}</p>
-          <div className="mt-4 flex flex-wrap gap-2 text-xs font-semibold text-[#5f8549] md:mt-6">
-            <span className="rounded-full bg-[#edf4e7] px-4 py-2">{t("chipPhotos")}</span>
-            <span className="rounded-full bg-[#fff4c7] px-4 py-2">{t("chipOffline")}</span>
-            <span className="rounded-full bg-[#edf4e7] px-4 py-2">{t("chipFriendly")}</span>
-          </div>
         </div>
 
         {reviews.length === 0 ? (

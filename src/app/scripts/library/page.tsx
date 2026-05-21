@@ -19,9 +19,11 @@ export default async function ScriptLibraryPage() {
           </p>
           <h1 className="mt-4 font-display text-5xl font-bold leading-tight md:text-6xl">{copy.libraryTitle}</h1>
           <div className="mt-3 h-2 w-40 rounded-[50%] border-b-[6px] border-[#f3cf55]" />
-          <p className="mt-5 max-w-xl text-sm leading-[1.9] text-[#4c5148] md:text-base">
-            {copy.librarySubtitle}
-          </p>
+          {copy.librarySubtitle && (
+            <p className="mt-5 max-w-xl text-sm leading-[1.9] text-[#4c5148] md:text-base">
+              {copy.librarySubtitle}
+            </p>
+          )}
         </section>
         <div className="mx-auto max-w-5xl">
           <PublicScriptLibrary showHeader={false} />

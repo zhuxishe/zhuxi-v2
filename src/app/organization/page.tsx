@@ -1,6 +1,5 @@
 import Image from "next/image"
 import { getLocale } from "next-intl/server"
-import { Camera, Drama, MessageCircle, PartyPopper, Sprout, Users } from "lucide-react"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { OrganizationStoryCard } from "@/components/landing/OrganizationStoryCard"
@@ -8,7 +7,6 @@ import { TeamDepartmentGrid } from "@/components/landing/TeamDepartmentGrid"
 import { landingCopy } from "@/lib/landing-copy"
 import { publicContactHandle } from "@/lib/public-contact"
 
-const typeIcons = [Users, Drama, Camera, PartyPopper, MessageCircle] as const
 const gallery = [
   "founded-01.webp",
   "bbq-03.webp",
@@ -25,38 +23,26 @@ export default async function OrganizationPage() {
     <>
       <LandingNav />
       <main className="bg-[#fffdf7] text-[#171717] grain-overlay">
-        <section className="relative overflow-hidden pb-8 pt-24">
-          <Image src="/images/landing/activity-wall-20260520/bbq-03.webp" alt="" width={1400} height={900} priority className="absolute right-0 top-0 h-[360px] w-[70%] object-cover opacity-80" />
-          <div className="absolute inset-x-0 top-0 h-[390px] bg-gradient-to-r from-[#fffdf7] via-[#fffdf7]/84 to-transparent" />
-          <div className="relative mx-auto max-w-5xl px-6 pt-24">
-            <h1 className="font-display text-5xl font-bold tracking-[0.08em] md:text-6xl">{copy.title}</h1>
-            <div className="mt-3 h-3 w-44 rounded-[50%] border-b-[8px] border-[#f3cf55]" />
-            <p className="mt-7 max-w-lg whitespace-pre-line text-xl leading-relaxed">{copy.subtitle}</p>
+        <section className="relative overflow-hidden px-5 pb-8 pt-28 md:pt-36">
+          <div className="mx-auto grid max-w-5xl gap-6 md:grid-cols-[0.9fr_1.1fr] md:items-end">
+            <div className="relative z-10">
+              <p className="text-xs font-semibold tracking-[0.2em] text-[#6b8f4e]">ABOUT ZHUXISHE</p>
+              <h1 className="mt-4 font-display text-5xl font-bold tracking-[0.05em] md:text-6xl">{copy.title}</h1>
+              <div className="mt-3 h-3 w-44 rounded-[50%] border-b-[8px] border-[#f3cf55]" />
+              <p className="mt-7 max-w-lg whitespace-pre-line break-all text-lg leading-[1.9] md:text-xl">{copy.subtitle}</p>
+            </div>
+            <div className="relative min-h-[260px] overflow-hidden rounded-[1.8rem] border border-[#e5dfd3] bg-white shadow-[0_20px_50px_rgba(44,55,35,0.12)] md:min-h-[390px]">
+              <Image src="/images/landing/activity-wall-20260520/bbq-03.webp" alt="" fill priority sizes="(min-width: 768px) 52vw, 92vw" className="object-cover" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/42 via-transparent to-white/18" />
+              <p className="absolute bottom-5 left-5 rounded-full bg-white/88 px-4 py-2 text-xs font-semibold text-[#4f6f3e] backdrop-blur">
+                2025 · Tokyo
+              </p>
+            </div>
           </div>
         </section>
 
         <section className="mx-auto max-w-5xl space-y-6 px-5 pb-14">
           <OrganizationStoryCard />
-
-          <article className="rounded-[1.8rem] border border-[#e5dfd3] bg-white/92 p-6 shadow-[0_16px_42px_rgba(44,55,35,0.08)] md:p-8">
-            <p className="mb-6 inline-flex items-center gap-2 font-semibold"><Sprout className="size-5 text-[#6b9a51]" />我们的理念</p>
-            <div className="grid gap-6 md:grid-cols-[1.05fr_0.95fr] md:items-center">
-              <div>
-                <h2 className="whitespace-pre-line font-display text-2xl font-bold leading-relaxed md:text-4xl">
-                  {copy.belief}
-                </h2>
-                <p className="mt-5 text-sm leading-[1.9] text-[#343a30] md:text-base">{copy.body}</p>
-              </div>
-              <Image src="/images/landing/activity-wall-20260520/daiba-01.webp" alt="" width={1200} height={900} className="aspect-[4/3] w-full rounded-[1.4rem] object-cover" />
-            </div>
-            <div className="mt-7 grid grid-cols-5 gap-2 text-center text-xs md:text-sm">
-              {copy.types.map((label, index) => {
-                const Icon = typeIcons[index]
-                return <div key={label} className="border-l border-[#e6e0d5] first:border-l-0"><Icon className="mx-auto mb-2 size-7 text-[#6b8f4e]" />{label}</div>
-              })}
-            </div>
-          </article>
-
           <TeamDepartmentGrid />
 
           <article className="rounded-[1.8rem] border border-[#e5dfd3] bg-white/92 p-6 shadow-[0_16px_42px_rgba(44,55,35,0.08)] md:p-8">
@@ -73,7 +59,6 @@ export default async function OrganizationPage() {
                 <p className="mt-1 text-xs font-semibold text-[#5f8549]">{publicContactHandle}</p>
               </div>
             </div>
-            <p className="mt-8 text-center font-display text-2xl text-[#5f8549]">“{copy.quote}”</p>
           </article>
         </section>
       </main>

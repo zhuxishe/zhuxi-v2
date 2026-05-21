@@ -12,7 +12,6 @@ const NAV_LINKS = [
   { key: "navHome", href: "/" },
   { key: "navOrganization", href: "/organization" },
   { key: "navScripts", href: "/scripts" },
-  { key: "navReviews", href: "/reviews" },
   { key: "navAbout", href: "/join" },
   { key: "navFaq", href: "/faq" },
 ] as const
@@ -22,8 +21,9 @@ export function LandingNav() {
   const [open, setOpen] = useState(false)
 
   return (
-    <nav className="pointer-events-none fixed left-0 right-0 top-0 z-50 px-5 py-5">
-      <div className="mx-auto flex max-w-5xl items-center justify-between">
+    <nav className="pointer-events-none fixed left-0 right-0 top-0 z-50 px-5 py-3 md:py-5">
+      <div className="absolute inset-0 border-b border-[#e8e2d5]/80 bg-[#fffdf7]/92 shadow-[0_8px_28px_rgba(44,55,35,0.08)] backdrop-blur-xl" />
+      <div className="relative mx-auto flex max-w-5xl items-center justify-between">
         <Link
           href={HOME_SKIP_INTRO_HREF}
           onClick={rememberLandingIntroSeen}

@@ -17,14 +17,13 @@ export function HomeActivityStrip() {
   const stripPhotos = [...photos, ...photos]
 
   return (
-    <section className="bg-[#fffdf7] px-5 pb-10">
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-[1.6rem] border border-[#e5dfd3] bg-white/88 py-5 shadow-[0_14px_34px_rgba(43,53,35,0.08)]">
-        <div className="mb-4 flex items-end justify-between gap-4 px-5">
+    <div className="relative mt-6 w-full min-w-0 overflow-hidden rounded-[1.4rem] border border-[#e5dfd3] bg-white/86 py-4 shadow-[0_14px_34px_rgba(43,53,35,0.08)] md:mt-8 md:rounded-[1.8rem] md:py-5">
+        <div className="mb-3 pr-20 pl-4 md:px-5">
           <div>
             <p className="text-xs font-semibold tracking-[0.18em] text-[#6b8f4e]">PHOTO WALL</p>
             <h2 className="mt-1 font-display text-2xl font-bold">最近的活动照片</h2>
           </div>
-          <Link href="/reviews" className="grid min-h-11 shrink-0 place-items-center rounded-full px-3 text-sm font-semibold text-[#5f8549] transition hover:bg-[#edf4e7]">
+          <Link href="/reviews" className="absolute right-5 top-5 hidden min-h-11 place-items-center rounded-full bg-[#edf4e7] px-3 text-sm font-semibold text-[#5f8549] transition hover:bg-[#e4efd8] md:grid">
             查看全部
           </Link>
         </div>
@@ -40,7 +39,6 @@ export function HomeActivityStrip() {
             ))}
           </div>
         </div>
-      </div>
-    </section>
+    </div>
   )
 }

@@ -48,11 +48,11 @@ export function LandingNav() {
         </Link>
 
         <button
-          className="pointer-events-auto grid size-16 place-items-center rounded-full bg-[#6b9a51] text-white shadow-[0_10px_24px_rgba(65,103,48,0.28)] transition hover:bg-[#5e8d45]"
+          className="pointer-events-auto grid size-12 place-items-center rounded-full text-[#4f7d3c] transition hover:bg-[#edf4e7]"
           onClick={() => setOpen(!open)}
           aria-label="Toggle menu"
         >
-          {open ? <X size={30} /> : <Menu size={32} />}
+          {open ? <X size={28} /> : <Menu size={30} />}
         </button>
       </div>
 

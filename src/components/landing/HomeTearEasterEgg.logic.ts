@@ -6,6 +6,7 @@ type TearElements = {
   tear: HTMLButtonElement
   posterReturn: HTMLButtonElement
   styles: TearStyles
+  onOpen: () => void
 }
 
 const clamp = (value: number) => Math.max(0, Math.min(1, value))
@@ -53,27 +54,16 @@ function assignMotion(root: HTMLElement, styles: TearStyles) {
   })
 }
 
-export function initHomeTearEasterEgg({ root, paper, tear, posterReturn, styles }: TearElements) {
-  const videos = Array.from(root.querySelectorAll("video"))
+export function initHomeTearEasterEgg({ root, paper, tear, posterReturn, styles, onOpen }: TearElements) {
   const state = { progress: 0, dragging: false, suppressClick: false, timer: 0, startX: 0, startY: 0, startProgress: 0 }
   splitText(paper, styles)
 
-  const playPoster = () => {
-    const portrait = window.matchMedia("(max-width: 767px) and (orientation: portrait)").matches
-    videos.forEach((video) => {
-      if (video.dataset.variant !== (portrait ? "portrait" : "landscape")) return video.pause()
-      video.currentTime = 0
-      void video.play()
-    })
-  }
   const setProgress = (value: number) => {
     state.progress = clamp(value)
     const posterAlpha = smoothstep(clamp((state.progress - 0.08) / 0.92))
     root.style.setProperty("--tear-progress", state.progress.toFixed(3))
     root.style.setProperty("--poster-alpha", posterAlpha.toFixed(3))
-    root.style.setProperty("--paper-alpha", (1 - posterAlpha * 0.86).toFixed(3))
     root.classList.toggle(styles.active, state.progress > 0.001)
-    if (state.progress > 0.08) playPoster()
   }
   const settle = (nextOpen: boolean) => {
     window.clearTimeout(state.timer)
@@ -82,10 +72,9 @@ export function initHomeTearEasterEgg({ root, paper, tear, posterReturn, styles 
     if (nextOpen) root.classList.add(styles.active)
     setProgress(nextOpen ? 1 : 0)
     if (nextOpen) {
-      playPoster()
+      onOpen()
       state.timer = window.setTimeout(() => root.classList.add(styles.complete), 780)
     } else {
-      videos.forEach((video) => video.pause())
       window.setTimeout(() => root.classList.remove(styles.active), 640)
     }
   }
@@ -139,6 +128,5 @@ export function initHomeTearEasterEgg({ root, paper, tear, posterReturn, styles 
     posterReturn.removeEventListener("click", onReturn)
     window.removeEventListener("scroll", updateBottom)
     window.removeEventListener("resize", onResize)
-    videos.forEach((video) => video.pause())
   }
 }

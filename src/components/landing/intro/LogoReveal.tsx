@@ -35,11 +35,12 @@ function AnimatedChar({ ch, i, startP, progress, size, font, color, spacing }: {
   )
 }
 
-export function LogoReveal({ progress, centerX, centerY, logoSize }: {
+export function LogoReveal({ progress, centerX, centerY, logoSize, textScale = 1 }: {
   progress: number
   centerX: number
   centerY: number
   logoSize: number
+  textScale?: number
 }) {
   const outlineOp = interpolate(progress, [0.0, 0.20], [0, 1])
   const fillOp = interpolate(progress, [0.15, 0.30], [0, 1])
@@ -97,7 +98,7 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
       }}>
         {titleEn.split('').map((c, i) => (
           <AnimatedChar key={i} ch={c} i={i} startP={0.55} progress={progress}
-            size={52} font={FONT_EN} color={ZX_TEXT} spacing="0.25em" />
+            size={52 * textScale} font={FONT_EN} color={ZX_TEXT} spacing="0.25em" />
         ))}
       </div>
       {/* Chinese title */}
@@ -106,7 +107,7 @@ export function LogoReveal({ progress, centerX, centerY, logoSize }: {
       }}>
         {titleCn.split('').map((c, i) => (
           <AnimatedChar key={i} ch={c} i={i} startP={0.70} progress={progress}
-            size={28} font={FONT_CN} color={ZX_TEXT_MUTED} spacing="0.5em" />
+            size={28 * textScale} font={FONT_CN} color={ZX_TEXT_MUTED} spacing="0.5em" />
         ))}
       </div>
     </div>

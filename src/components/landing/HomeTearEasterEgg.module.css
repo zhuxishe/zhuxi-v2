@@ -1,0 +1,140 @@
+.root {
+  --tear-progress: 0;
+  --poster-alpha: 0;
+  --paper-alpha: 1;
+  position: relative;
+  min-height: 100vh;
+  background: #fffdf7;
+}
+
+.poster {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  background: #f7f3eb;
+  opacity: var(--poster-alpha);
+  pointer-events: none;
+  transition: opacity 0.7s ease;
+}
+
+.poster video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.portrait {
+  display: none;
+}
+
+.paper {
+  position: relative;
+  z-index: 1;
+  opacity: var(--paper-alpha);
+  transition: opacity 0.72s ease;
+}
+
+.tear {
+  position: fixed;
+  left: 22px;
+  bottom: 18px;
+  z-index: 70;
+  width: 86px;
+  height: 64px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  opacity: 0;
+  cursor: grab;
+  transition: opacity 0.24s ease;
+}
+
+.tear path {
+  fill: none;
+  stroke: rgba(16, 20, 24, 0.46);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 6 8;
+}
+
+.atBottom .tear,
+.active .tear {
+  opacity: 1;
+}
+
+.dragging .tear {
+  cursor: grabbing;
+}
+
+.tearText {
+  display: inline;
+  transform:
+    translate3d(calc(var(--tear-progress) * var(--tear-x, 0px)), calc(var(--tear-progress) * var(--tear-y, 0px)), 0)
+    rotate(calc(var(--tear-progress) * var(--tear-r, 0deg)));
+  opacity: calc(1 - (var(--tear-progress) * 1.08));
+  filter: blur(calc(var(--tear-progress) * 0.45px));
+  transition:
+    transform 0.92s cubic-bezier(.16, .84, .18, 1),
+    opacity 0.72s ease,
+    filter 0.72s ease;
+  transition-delay: calc(var(--tear-delay, 0) * 1ms);
+}
+
+.active .tearText {
+  display: inline-block;
+}
+
+.dragging .tearText {
+  transition: none;
+}
+
+.complete .paper {
+  visibility: hidden;
+  opacity: 0;
+}
+
+.complete .tear {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.posterReturn {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  z-index: 80;
+  transform: translateX(-50%) translateY(10px);
+  border: 1px solid rgba(45, 80, 22, 0.18);
+  border-radius: 999px;
+  background: rgba(255, 253, 247, 0.92);
+  padding: 10px 18px;
+  color: #2d5016;
+  font-size: 14px;
+  font-weight: 700;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  box-shadow: 0 12px 36px rgba(44, 55, 35, 0.16);
+  backdrop-filter: blur(14px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.complete .posterReturn {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateX(-50%) translateY(0);
+}
+
+@media (max-width: 767px) and (orientation: portrait) {
+  .landscape {
+    display: none;
+  }
+
+  .portrait {
+    display: block;
+  }
+}

@@ -18,18 +18,18 @@ export async function HeroSection() {
   const copy = landingCopy(locale).home
 
   return (
-    <section className="relative min-h-[100svh] overflow-hidden bg-[#fffdf7] px-5 pb-5 pt-24 text-[#171717] grain-overlay">
+    <section className="relative min-h-[100svh] overflow-hidden bg-[#fffdf7] px-4 pb-4 pt-22 text-[#171717] grain-overlay md:px-5 md:pt-24">
       <HeroPhotoSlider />
       <div className="absolute inset-0 bg-gradient-to-b from-[#fffdf7]/86 via-[#fffdf7]/48 to-[#fffdf7]/90" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.86),rgba(255,253,247,0.26)_34%,rgba(255,253,247,0.88)_82%)]" />
       <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#fffdf7] to-transparent" />
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-7.25rem)] max-w-5xl flex-col justify-between gap-3 py-4 md:justify-center md:gap-7 md:py-0">
+      <div className="relative mx-auto flex min-h-[calc(100svh-6.75rem)] max-w-5xl flex-col justify-between gap-2.5 py-3 md:justify-center md:gap-7 md:py-0">
         <div className="text-center">
-          <p className="font-display text-2xl font-bold tracking-[0.1em] md:text-5xl">
+          <p className="font-display text-[2rem] font-bold tracking-[0.08em] md:text-5xl">
             {copy.lead}
           </p>
-          <h1 className="mt-1 font-display text-[3.05rem] font-bold leading-none tracking-[0.04em] text-[#5d8b43] md:text-7xl">
+          <h1 className="mt-1 font-display text-[2.9rem] font-bold leading-[0.98] tracking-[0.02em] text-[#5d8b43] md:text-7xl">
             {copy.title}
           </h1>
           <div className="mx-auto mt-1 h-2.5 w-40 rounded-[50%] border-b-[6px] border-[#f5d35a]" />
@@ -38,23 +38,21 @@ export async function HeroSection() {
           </p>
         </div>
 
-        <div className="grid grid-cols-2 gap-2.5 md:gap-4">
+        <div className="grid grid-cols-2 gap-2 md:gap-4">
           {copy.cards.map(([title, desc, href, color], index) => {
             const Icon = cardIcons[index]
             return (
-              <Link key={title} href={href} className={`group relative min-h-[6.55rem] min-w-0 overflow-hidden rounded-[1.15rem] border-t-4 bg-white/78 p-3.5 shadow-[0_12px_30px_rgba(43,53,35,0.10)] backdrop-blur-md transition hover:-translate-y-0.5 md:min-h-36 md:p-5 ${colorMap[color]}`}>
+              <Link key={title} href={href} className={`group relative min-h-[4.55rem] min-w-0 overflow-hidden rounded-[1rem] border-t-4 bg-white/78 p-3 shadow-[0_12px_30px_rgba(43,53,35,0.10)] backdrop-blur-md transition hover:-translate-y-0.5 md:min-h-30 md:p-5 ${colorMap[color]}`}>
                 <div className="flex items-start justify-between gap-2">
                   <span className="min-w-0">
                     <span className="block font-display text-base font-bold leading-tight md:text-2xl">{title}</span>
-                    <span className="mt-1.5 block whitespace-pre-line text-[11px] leading-relaxed text-[#343a30] md:text-sm">
-                      {desc}
-                    </span>
+                    {desc && <span className="mt-1.5 block whitespace-pre-line text-[11px] leading-relaxed text-[#343a30] md:text-sm">{desc}</span>}
                   </span>
                   <span className="grid size-8 shrink-0 place-items-center rounded-full bg-[#f1f4ea] text-[#5f8549] md:size-10">
                     <Icon className="size-5 stroke-[2.2] md:size-6" />
                   </span>
                 </div>
-                <span className="absolute bottom-2.5 right-2.5 grid size-8 place-items-center rounded-full border border-[#dfe7d4] bg-white/80 text-base text-[#5f8549] transition group-hover:translate-x-0.5 md:bottom-4 md:right-4 md:size-9">
+                <span className="absolute bottom-2 right-2 grid size-7 place-items-center rounded-full border border-[#dfe7d4] bg-white/80 text-base text-[#5f8549] transition group-hover:translate-x-0.5 md:bottom-4 md:right-4 md:size-9">
                   ›
                 </span>
               </Link>

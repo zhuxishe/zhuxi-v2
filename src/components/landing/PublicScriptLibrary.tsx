@@ -11,7 +11,9 @@ import { rewriteStorageUrl } from "@/lib/storage-url"
 export async function PublicScriptLibrary({ showHeader = true }: { showHeader?: boolean }) {
   const locale = await getLocale()
   const copy = landingCopy(locale).activities
-  const scripts = (await fetchPublishedScripts().catch(() => [])).slice(0, 8)
+  const scripts = (await fetchPublishedScripts().catch(() => []))
+    .filter((script) => !/飞镖|飛鏢|風個挖掘|探索同好會|1207/i.test(script.title))
+    .slice(0, 8)
 
   return (
     <section id="script-library" className="scroll-mt-24 rounded-[1.8rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_16px_42px_rgba(44,55,35,0.10)] md:p-8">

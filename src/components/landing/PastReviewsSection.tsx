@@ -1,5 +1,6 @@
 import { getLocale, getTranslations } from "next-intl/server"
-import { Images } from "lucide-react"
+import Link from "next/link"
+import { ArrowLeft, Images } from "lucide-react"
 import { PastReviewCard } from "@/components/landing/PastReviewCard"
 import { PastReviewsQuickNav } from "@/components/landing/PastReviewsQuickNav"
 import { getLandingEventReviews } from "@/lib/landing-activity-photos"
@@ -14,6 +15,16 @@ export async function PastReviewsSection() {
   return (
     <section className="relative min-h-screen bg-[#fffdf7] px-5 pb-16 pt-24 text-[#171717] grain-overlay md:pb-20 md:pt-32">
       <div className="container mx-auto max-w-6xl">
+        <Link href="/scripts" className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#5f8549]">
+          <ArrowLeft className="size-4" />
+          返回活动介绍
+        </Link>
+        <div className="mb-5 rounded-[1.4rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_12px_30px_rgba(44,55,35,0.08)] md:p-7">
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">活动介绍</p>
+          <p className="mt-3 text-sm leading-[1.9] text-[#4c5148] md:text-base">
+            竹溪社将定期（每周一次室外多人活动+每月一次大型活动）为玩家提供丰富的多人社交平台，无论你是i人还是e人均可找到自己舒服的社交节奏并享受友善沟通，希望大家都可以在欢声笑语中找到彼此最合适的伙伴！
+          </p>
+        </div>
         <div className="mb-5 rounded-[1.6rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_16px_42px_rgba(44,55,35,0.10)] md:mb-9 md:rounded-[2rem] md:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">{t("kicker")}</p>
           <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:mt-4 md:text-5xl">{t("title")}</h1>

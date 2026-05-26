@@ -25,11 +25,11 @@
 
 .tear {
   position: fixed;
-  left: 22px;
-  bottom: 18px;
+  left: 20px;
+  bottom: 16px;
   z-index: 70;
-  width: 86px;
-  height: 64px;
+  width: 58px;
+  height: 44px;
   padding: 0;
   border: 0;
   background: transparent;
@@ -41,9 +41,9 @@
 .tear path {
   fill: none;
   stroke: rgba(16, 20, 24, 0.46);
-  stroke-width: 2.2;
+  stroke-width: 2;
   stroke-linecap: round;
-  stroke-dasharray: 6 8;
+  stroke-dasharray: 4 6;
 }
 
 .atBottom .tear,

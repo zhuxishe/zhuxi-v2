@@ -18,7 +18,7 @@ function splitText(paper: HTMLElement, styles: TearStyles) {
     acceptNode(node) {
       if (!node.nodeValue?.trim()) return NodeFilter.FILTER_REJECT
       const parent = node.parentElement
-      return !parent || parent.closest("nav, footer, a, button, svg, script, style, noscript, [data-no-tear]")
+      return !parent || parent.closest("nav, footer, button, svg, script, style, noscript, [data-no-tear]")
         ? NodeFilter.FILTER_REJECT
         : NodeFilter.FILTER_ACCEPT
     },

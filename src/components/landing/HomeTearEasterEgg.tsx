@@ -36,7 +36,7 @@ export function HomeTearEasterEgg({ children }: { children: ReactNode }) {
       </div>
       <div ref={paperRef} className={styles.paper} data-page-paper>{children}</div>
       <button ref={tearRef} className={styles.tear} type="button" aria-label="从左下角撕开页面" data-no-tear>
-        <svg viewBox="0 0 82 62" aria-hidden="true"><path d="M5 58 C 18 38, 33 51, 45 32 S 68 14, 78 5" /></svg>
+        <svg viewBox="0 0 58 44" aria-hidden="true"><path d="M5 39 C 15 26, 25 35, 33 22 S 47 12, 54 5" /></svg>
       </button>
       <button ref={returnRef} className={styles.posterReturn} type="button" data-no-tear>返回主页</button>
     </div>

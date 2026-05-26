@@ -5,7 +5,7 @@ export function landingCopy(locale: string) {
 
 const zhCopy = {
   home: {
-    lead: "在东京，",
+    lead: "在东京",
     title: "结交最适合的伙伴",
     subtitle: "找回真实社交的温度，只为遇见志同道合的真朋友。",
     cards: [

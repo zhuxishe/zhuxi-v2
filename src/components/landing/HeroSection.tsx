@@ -38,6 +38,8 @@ export async function HeroSection() {
           </p>
         </div>
 
+        <HeroSchoolPie ja={locale === "ja"} />
+
         <div className="grid grid-cols-2 gap-2 md:gap-4">
           {copy.cards.map(([title, desc, href, color], index) => {
             const Icon = cardIcons[index]
@@ -57,7 +59,6 @@ export async function HeroSection() {
           })}
         </div>
 
-        <HeroSchoolPie ja={locale === "ja"} />
       </div>
     </section>
   )

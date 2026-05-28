@@ -3,18 +3,29 @@ import Link from "next/link"
 import { ExternalLink } from "lucide-react"
 import type { PastEventReviewPublic } from "@/lib/queries/past-event-reviews"
 
-export function PastReviewCard({ review, sourceLabel, photoUnitLabel }: { review: PastEventReviewPublic; sourceLabel: string; photoUnitLabel: string }) {
+type PastReviewCardProps = {
+  review: PastEventReviewPublic
+  sourceLabel: string
+  photoUnitLabel: string
+  framed?: boolean
+  showPhotoCount?: boolean
+}
+
+export function PastReviewCard({ review, sourceLabel, photoUnitLabel, framed = true, showPhotoCount = true }: PastReviewCardProps) {
   const photoCount = 1 + review.gallery_urls.length
+  const frameClass = framed
+    ? "rounded-[1.6rem] border border-[#e5dfd3] bg-white/90 p-4 shadow-[0_14px_34px_rgba(43,53,35,0.08)] md:p-6"
+    : "border-t border-[#e5dfd3] pt-5 first:border-t-0 first:pt-0"
 
   return (
-    <article id={`review-${review.id}`} className="scroll-mt-28 rounded-[1.6rem] border border-[#e5dfd3] bg-white/90 p-4 shadow-[0_14px_34px_rgba(43,53,35,0.08)] md:p-6">
+    <article id={`review-${review.id}`} className={`scroll-mt-28 ${frameClass}`}>
       <div className="grid gap-5 lg:grid-cols-[15rem_1fr]">
         <header className="lg:sticky lg:top-28 lg:self-start">
           <p className="text-xs font-semibold tracking-[0.14em] text-[#6b8f4e]">{review.event_date}</p>
           <h2 className="mt-2 font-display text-[1.55rem] font-bold leading-tight md:mt-3 md:text-3xl">{review.title}</h2>
-          <p className="mt-4 w-fit rounded-full bg-[#edf4e7] px-3 py-1 text-xs font-semibold text-[#5f8549]">
+          {showPhotoCount && <p className="mt-4 w-fit rounded-full bg-[#edf4e7] px-3 py-1 text-xs font-semibold text-[#5f8549]">
             {photoCount} {photoUnitLabel}
-          </p>
+          </p>}
           {review.source_url && (
             <Link href={review.source_url} target="_blank" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-bamboo">
               {sourceLabel}

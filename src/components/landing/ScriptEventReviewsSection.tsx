@@ -15,9 +15,9 @@ export async function ScriptEventReviewsSection() {
       <h2 className="mt-2 font-display text-3xl font-bold leading-tight md:text-4xl">
         {locale === "ja" ? "二人・複数人企画" : "双人/多人剧本"}
       </h2>
-      <div className="mt-5 space-y-5">
+      <div className="mt-5 space-y-7">
         {reviews.map((review) => (
-          <PastReviewCard key={review.id} review={review} sourceLabel={t("source")} photoUnitLabel={t("photoUnit")} />
+          <PastReviewCard key={review.id} review={review} sourceLabel={t("source")} photoUnitLabel={t("photoUnit")} framed={false} showPhotoCount={false} />
         ))}
       </div>
     </section>

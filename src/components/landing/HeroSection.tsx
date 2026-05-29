@@ -18,13 +18,13 @@ export async function HeroSection() {
   const copy = landingCopy(locale).home
 
   return (
-    <section className="relative min-h-[100svh] overflow-hidden bg-[#fffdf7] px-4 pb-4 pt-22 text-[#171717] grain-overlay md:px-5 md:pt-24">
+    <section className="relative overflow-hidden bg-[#fffdf7] px-4 pb-4 pt-22 text-[#171717] grain-overlay md:min-h-[100svh] md:px-5 md:pt-24">
       <HeroPhotoSlider />
       <div className="absolute inset-0 bg-gradient-to-b from-[#fffdf7]/86 via-[#fffdf7]/48 to-[#fffdf7]/90" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.86),rgba(255,253,247,0.26)_34%,rgba(255,253,247,0.88)_82%)]" />
       <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#fffdf7] to-transparent" />
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-6.75rem)] max-w-5xl flex-col justify-start gap-4 py-2 md:justify-center md:gap-7 md:py-0">
+      <div className="relative mx-auto flex max-w-5xl flex-col justify-start gap-4 py-2 md:min-h-[calc(100svh-6.75rem)] md:justify-center md:gap-7 md:py-0">
         <div className="text-center">
           <p className="font-display text-[2rem] font-bold tracking-[0.08em] md:text-5xl">
             {copy.lead}

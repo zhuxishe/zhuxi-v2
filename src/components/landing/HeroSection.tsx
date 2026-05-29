@@ -24,7 +24,7 @@ export async function HeroSection() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_24%,rgba(255,255,255,0.86),rgba(255,253,247,0.26)_34%,rgba(255,253,247,0.88)_82%)]" />
       <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-[#fffdf7] to-transparent" />
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-6.75rem)] max-w-5xl flex-col justify-between gap-2.5 py-3 md:justify-center md:gap-7 md:py-0">
+      <div className="relative mx-auto flex min-h-[calc(100svh-6.75rem)] max-w-5xl flex-col justify-start gap-4 py-2 md:justify-center md:gap-7 md:py-0">
         <div className="text-center">
           <p className="font-display text-[2rem] font-bold tracking-[0.08em] md:text-5xl">
             {copy.lead}
@@ -58,7 +58,6 @@ export async function HeroSection() {
             )
           })}
         </div>
-
       </div>
     </section>
   )

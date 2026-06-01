@@ -12,7 +12,7 @@ export function TeamDepartmentGrid() {
         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">Team</p>
         <h2 className="mt-2 font-display text-3xl font-bold">团队介绍</h2>
         <p className="mt-3 text-sm leading-[1.9] text-[#4c5148]">
-          Stuff在读于东京各大校园，我们秉持着同样的理念与价值观，努力让人与人之间的联结变得更加通畅。
+          社团起源于东京各大学校，Stuff均为在读大学生或硕/博研究生，我们秉持着同样的理念与价值观，努力让人与人之间的联结变得更加通畅。
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

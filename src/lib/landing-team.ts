@@ -14,7 +14,7 @@ export type TeamDepartment = {
 
 export const teamLeads: TeamMember[] = [
   { name: "Joanna", role: "社长", school: "东京理科大学", major: "工学部" },
-  { name: "Kane", role: "发起人", school: "早稻田大学", major: "机械科学" },
+  { name: "Kane", role: "发起人", school: "早稻田大学（毕业）", major: "机械科学" },
 ]
 
 export const teamDepartments: TeamDepartment[] = [

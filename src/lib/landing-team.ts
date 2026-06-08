@@ -23,11 +23,11 @@ export const teamDepartments: TeamDepartment[] = [
     name: "活动部",
     intro: "通过组织团建活动，为大家提供接触更多朋友的机会。",
     members: [
-      { name: "BIGJO", role: "活动部", school: "东京大学", major: "新领域" },
+      { name: "BIGJO", role: "活动部", school: "东京大学", major: "新领域创成研究科" },
       { name: "Alice", role: "活动部", school: "上智大学", major: "经济学科" },
       { name: "Eliza", role: "活动部", school: "早稻田大学", major: "国际教养" },
       { name: "Aimon", role: "活动部", school: "青岛农业大学", major: "数字媒体艺术" },
-      { name: ". . .", role: "活动部", school: "东京理科大学", major: "机械学部" },
+      { name: "Kakou", role: "活动部", school: "东京理科大学", major: "创域理工学部" },
     ],
   },
   {

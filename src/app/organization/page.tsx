@@ -9,6 +9,7 @@ import { publicContactHandle } from "@/lib/public-contact"
 
 export default async function OrganizationPage() {
   const copy = landingCopy(await getLocale()).about
+  const subtitleParagraphs = copy.subtitle.split("\n").filter(Boolean)
 
   return (
     <>
@@ -23,7 +24,11 @@ export default async function OrganizationPage() {
               <p className="text-xs font-semibold tracking-[0.2em] text-[#6b8f4e]">ABOUT ZHUXISHE</p>
               <h1 className="mt-2 font-display text-4xl font-bold tracking-[0.04em] md:text-5xl">{copy.title}</h1>
               <div className="mt-2 h-2 w-36 rounded-[50%] border-b-[6px] border-[#f3cf55]" />
-              <p className="mt-4 max-w-lg text-sm leading-[1.85] text-[#343a30] md:text-base">{copy.subtitle}</p>
+              <div className="mt-4 max-w-lg space-y-2 text-sm leading-[1.85] text-[#343a30] md:text-base">
+                {subtitleParagraphs.map((paragraph) => (
+                  <p key={paragraph}>{paragraph}</p>
+                ))}
+              </div>
             </div>
           </div>
         </section>

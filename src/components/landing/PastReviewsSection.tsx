@@ -30,12 +30,6 @@ export async function PastReviewsSection() {
             </p>
           </div>
         </div>
-        <div className="mb-5 rounded-[1.6rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_16px_42px_rgba(44,55,35,0.10)] md:mb-9 md:rounded-[2rem] md:p-10">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">{t("kicker")}</p>
-          <h1 className="mt-3 font-display text-3xl font-bold leading-tight md:mt-4 md:text-5xl">{t("title")}</h1>
-          <div className="mt-2 h-2 w-32 rounded-[50%] border-b-[6px] border-[#f3cf55] md:mt-3 md:w-40" />
-        </div>
-
         {reviews.length === 0 ? (
           <div className="landing-card bg-white p-10 text-center">
             <Images className="mx-auto mb-4 size-9 text-bamboo" />

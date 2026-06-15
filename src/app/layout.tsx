@@ -21,7 +21,7 @@ const notoSerifSc = Noto_Serif_SC({
 
 export const metadata: Metadata = {
   title: "竹溪社",
-  description: "竹溪社 — 在日华人线下社交活动平台",
+  description: "竹溪社 — 在日大学生的跨校活动社群：在东京校园，探索新的相遇方式",
   applicationName: "竹溪社",
   manifest: "/manifest.webmanifest",
   appleWebApp: {

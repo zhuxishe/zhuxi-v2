@@ -17,7 +17,7 @@ export async function PastReviewsSection() {
       <div className="container mx-auto max-w-6xl">
         <Link href="/scripts" className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#5f8549]">
           <ArrowLeft className="size-4" />
-          返回活动介绍
+          返回
         </Link>
         <div className="mb-5 rounded-[1.4rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_12px_30px_rgba(44,55,35,0.08)] md:p-7">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">活动介绍</p>

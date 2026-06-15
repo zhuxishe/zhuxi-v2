@@ -19,7 +19,7 @@ export default async function ScriptLibraryPage() {
         <div className="mx-auto max-w-5xl">
           <Link href="/scripts" className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-[#5f8549]">
             <ArrowLeft className="size-4" />
-            返回活动介绍
+            返回
           </Link>
         </div>
         <section className="mx-auto mb-5 max-w-5xl rounded-[1.5rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_12px_30px_rgba(44,55,35,0.08)] md:p-7">

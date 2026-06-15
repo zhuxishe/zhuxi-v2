@@ -36,18 +36,6 @@ export default async function ScriptLibraryPage() {
             </p>
           </div>
         </section>
-        <section className="mx-auto mb-8 max-w-5xl rounded-[1.5rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_16px_42px_rgba(44,55,35,0.10)] md:p-8">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">
-            {copy.scriptTeaserTitle}
-          </p>
-          <h1 className="mt-3 font-display text-4xl font-bold leading-tight md:text-6xl">{copy.libraryTitle}</h1>
-          <div className="mt-3 h-2 w-40 rounded-[50%] border-b-[6px] border-[#f3cf55]" />
-          {copy.librarySubtitle && (
-            <p className="mt-5 max-w-xl text-sm leading-[1.9] text-[#4c5148] md:text-base">
-              {copy.librarySubtitle}
-            </p>
-          )}
-        </section>
         <div className="mx-auto max-w-5xl">
           <ScriptEventReviewsSection />
           <PublicScriptLibrary showHeader={false} />

@@ -13,8 +13,9 @@ export async function ScriptEventReviewsSection() {
         {locale === "ja" ? "Scenario Events" : "双人/多人剧本"}
       </p>
       <h2 className="mt-2 font-display text-3xl font-bold leading-tight md:text-4xl">
-        {locale === "ja" ? "二人・複数人企画" : "双人/多人剧本"}
+        {locale === "ja" ? "公開シナリオ一覧" : "公开剧本库"}
       </h2>
+      <div className="mt-3 h-2 w-40 rounded-[50%] border-b-[6px] border-[#f3cf55]" />
       <div className="mt-5 space-y-7">
         {reviews.map((review) => (
           <PastReviewCard key={review.id} review={review} sourceLabel={t("source")} photoUnitLabel={t("photoUnit")} framed={false} showPhotoCount={false} />

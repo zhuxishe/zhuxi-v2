@@ -24,7 +24,7 @@ export async function ScriptsSection() {
               <span className="text-xl">✿</span>
               <span className="h-px w-20 bg-[#9eb886]" />
             </div>
-            <div className="mt-2 max-w-md space-y-0 text-sm leading-[1.7] md:mt-3 md:text-lg">
+            <div className="mt-2 max-w-md space-y-0 text-sm leading-[1.7] text-[#4c5148] md:mt-3 md:text-lg">
               {subtitleLines.map((line) => (
                 <p key={line}>{renderActivityIntroText(line)}</p>
               ))}

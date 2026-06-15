@@ -21,9 +21,14 @@ export async function PastReviewsSection() {
         </Link>
         <div className="mb-5 rounded-[1.4rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_12px_30px_rgba(44,55,35,0.08)] md:p-7">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">活动介绍</p>
-          <p className="mt-3 text-sm leading-[1.9] text-[#4c5148] md:text-base">
-            竹溪社将定期（每周一次室外多人活动+每月一次大型活动）为玩家提供丰富的多人社交平台，无论你是i人还是e人均可找到自己舒服的社交节奏并享受友善沟通，希望大家都可以在欢声笑语中找到彼此最合适的伙伴！
-          </p>
+          <div className="mt-3 space-y-2 text-sm leading-[1.9] text-[#4c5148] md:text-base">
+            <p>
+              大型活动是竹溪社面向更多成员开放的线下社交场景，形式包括欢迎会、桌游派对、BBQ、城市出游、节日聚会、户外团建和主题派对等。相比单纯把大家聚在一起聊天，我们更重视“在现场更多元交流”：通过自由分组、共同游戏、团队任务和工作人员引导，让每一位同学都可以自然的融入其中。
+            </p>
+            <p>
+              竹溪社将定期举办（每周一次室外多人活动+每月一次大型活动）各类“大型活动”，适合想认识更多跨校同学、体验社群氛围、寻找固定玩伴或拓展东京生活圈的成员。推荐把它当作进入竹溪社的第一扇门：在热闹但有组织的场景里认识大家，再根据兴趣或相处节奏，继续参加之后的剧本活动、匹配活动或小规模组局。
+            </p>
+          </div>
         </div>
         <div className="mb-5 rounded-[1.6rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_16px_42px_rgba(44,55,35,0.10)] md:mb-9 md:rounded-[2rem] md:p-10">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">{t("kicker")}</p>

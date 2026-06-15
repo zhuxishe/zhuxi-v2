@@ -23,7 +23,7 @@ export default async function ScriptLibraryPage() {
           </Link>
         </div>
         <section className="mx-auto mb-5 max-w-5xl rounded-[1.5rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_12px_30px_rgba(44,55,35,0.08)] md:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">活动介绍</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">社交剧本介绍</p>
           <div className="mt-3 space-y-2 text-sm leading-[1.9] text-[#4c5148] md:text-base">
             <p>
               社交剧本类活动是竹溪社更具特色的小规模社交形式。区别于传统意义上的剧本杀，我们进行了大量的原创制作，并融入了各类双人/多人剧本、城市探索、手作体验、主题任务、桌游推理、沉浸式互动和轻博弈玩法。我们会提前把“去哪儿、做什么、聊什么、如何推进关系”放进活动结构里，让陌生的你我也不必硬找话题，在过程中自然的熟悉彼此。

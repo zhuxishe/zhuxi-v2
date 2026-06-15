@@ -20,7 +20,7 @@ export async function PastReviewsSection() {
           返回
         </Link>
         <div className="mb-5 rounded-[1.4rem] border border-[#e5dfd3] bg-white/88 p-5 shadow-[0_12px_30px_rgba(44,55,35,0.08)] md:p-7">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">活动介绍</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#6b8f4e]">大型活动介绍</p>
           <div className="mt-3 space-y-2 text-sm leading-[1.9] text-[#4c5148] md:text-base">
             <p>
               大型活动是竹溪社面向更多成员开放的线下社交场景，形式包括欢迎会、桌游派对、BBQ、城市出游、节日聚会、户外团建和主题派对等。相比单纯把大家聚在一起聊天，我们更重视“在现场更多元交流”：通过自由分组、共同游戏、团队任务和工作人员引导，让每一位同学都可以自然的融入其中。

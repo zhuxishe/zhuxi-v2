@@ -16,14 +16,14 @@ export async function ScriptsSection() {
       <div className="absolute inset-0 bg-gradient-to-b from-[#fffdf7]/92 via-[#fffdf7]/72 to-[#fffdf7]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_18%,rgba(255,255,255,0.92),rgba(255,253,247,0.45)_44%,rgba(255,253,247,0.9)_82%)]" />
       <div className="relative mx-auto flex min-h-[calc(100svh-6.5rem)] max-w-5xl flex-col justify-center">
-        <div className="max-w-xl rounded-[1.2rem] border border-white/55 bg-white/72 p-4 shadow-[0_18px_48px_rgba(44,55,35,0.12)] backdrop-blur-md md:p-7">
+        <div className="max-w-xl rounded-[1.2rem] border border-white/55 bg-white/72 p-4 shadow-[0_18px_48px_rgba(44,55,35,0.12)] backdrop-blur-md md:p-6">
             <h1 className="font-display text-4xl font-bold tracking-[0.08em] md:text-6xl">{copy.title}</h1>
-            <div className="mt-3 flex items-center gap-4 text-[#7fa063] md:mt-5">
+            <div className="mt-2 flex items-center gap-4 text-[#7fa063] md:mt-3">
               <span className="h-px w-20 bg-[#9eb886]" />
               <span className="text-xl">✿</span>
               <span className="h-px w-20 bg-[#9eb886]" />
             </div>
-            <p className="mt-3 max-w-md text-sm leading-[1.85] md:mt-5 md:text-lg">{copy.subtitle}</p>
+            <p className="mt-2 max-w-md text-sm leading-[1.7] md:mt-3 md:text-lg">{copy.subtitle}</p>
         </div>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2 md:mt-7 md:gap-5">

@@ -128,6 +128,14 @@ const events = [
     title: ["Kpop 睡衣派对", "Kpopパジャマパーティー"],
     summary: ["猜歌、宾果、零食和聊天，给 2025 年收个轻松的尾。", "曲当て、ビンゴ、お菓子と会話で、2025年を締めくくりました。"],
   },
+  {
+    id: "cat-mouse-game",
+    slug: "cat-mouse-game",
+    count: 1, category: "large",
+    date: "2026-06-13",
+    title: ["猫鼠游戏", "猫とネズミゲーム"],
+    summary: ["代代木公园里的神秘追捕，坚持到最后的人制胜。", "代々木公園でのミステリアスな追跡ゲーム。最後まで残った人が勝利。"],
+  },
 ] as const
 
 export function getLandingEventReviews(locale: string, category = "large"): PastEventReviewPublic[] {

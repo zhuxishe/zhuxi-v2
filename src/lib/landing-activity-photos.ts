@@ -65,14 +65,6 @@ const events = [
     summary: ["手绘、猫咖、复古街道，适合喜欢小物和散步的人。", "絵付け、猫カフェ、レトロな街歩きを楽しむ回です。"],
   },
   {
-    id: "showa-park",
-    slug: "showa",
-    count: 9, category: "script",
-    date: "2025-07-10",
-    title: ["双人/多人本：昭和纪念公园", "二人・複数人企画：昭和記念公園"],
-    summary: ["自行车、飞盘、花火和点灯，户外活动可以很松弛。", "自転車、フリスビー、花火、ライトアップを楽しむ屋外企画です。"],
-  },
-  {
     id: "boardgame-party",
     slug: "boardgame",
     count: 6, category: "large",

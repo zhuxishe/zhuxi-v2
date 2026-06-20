@@ -16,6 +16,7 @@ function createRequest(url: string, headers: Record<string, string> = {}) {
 describe("getCanonicalRedirectUrl", () => {
   it("redirects vercel hosts to zhuxishe.jp", () => {
     vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("VERCEL_ENV", "production")
     expect(
       getCanonicalRedirectUrl(
         createRequest("https://zhuxi-v2.vercel.app/app?foo=1", {
@@ -26,8 +27,22 @@ describe("getCanonicalRedirectUrl", () => {
     vi.unstubAllEnvs()
   })
 
+  it("does not redirect vercel preview deployments", () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("VERCEL_ENV", "preview")
+    expect(
+      getCanonicalRedirectUrl(
+        createRequest("https://zhuxi-v2-git-branch.vercel.app/scripts", {
+          "x-forwarded-host": "zhuxi-v2-git-branch.vercel.app",
+        })
+      )
+    ).toBeNull()
+    vi.unstubAllEnvs()
+  })
+
   it("redirects www.zhuxishe.jp to zhuxishe.jp", () => {
     vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("VERCEL_ENV", "production")
     expect(
       getCanonicalRedirectUrl(
         createRequest("https://www.zhuxishe.jp/login", {

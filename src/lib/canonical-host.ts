@@ -11,6 +11,7 @@ function getRequestHost(request: NextRequest) {
 
 export function getCanonicalRedirectUrl(request: NextRequest) {
   if (process.env.NODE_ENV === "development") return null
+  if (process.env.VERCEL_ENV === "preview") return null
 
   const canonical = new URL(getPublicSiteUrl())
   const requestUrl = new URL(request.url)

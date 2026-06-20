@@ -85,7 +85,7 @@ export async function ScriptsSection() {
           <div className="mt-4 max-w-2xl space-y-3 text-base leading-[1.75] text-[#3c4636] md:text-lg">
             <p>{renderHighlightedText(copy.introLead, locale === "ja" ? ["オリジナル交流活動"] : ["原创社交活动"])}</p>
             <p>
-              {renderHighlightedText(copy.introDetail, locale === "ja" ? ["初対面の緊張"] : ["降低初次见面的压力"])}
+              {renderHighlightedText(copy.introDetail, locale === "ja" ? ["初対面の緊張"] : ["活动前", "活动中", "活动后", "避免初次见面时的尴尬与压力。"])}
             </p>
           </div>
         </div>
@@ -105,7 +105,7 @@ export async function ScriptsSection() {
         </div>
 
         <p className="mx-auto mt-12 max-w-2xl text-center font-display text-base leading-[2] text-[#4c5148] md:text-lg">
-          {renderHighlightedText(copy.closing, locale === "ja" ? ["自分に合う参加の仕方"] : ["找到适合自己的参与方式"])}
+          {renderHighlightedText(copy.closing, locale === "ja" ? ["自分に合う参加の仕方"] : ["找到更适合自己的参与方式。"])}
         </p>
       </div>
     </section>

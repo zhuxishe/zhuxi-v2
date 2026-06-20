@@ -25,7 +25,7 @@ export async function ScriptsSection() {
   const categories: CategoryCardProps[] = [
     {
       href: "/reviews",
-      image: "/images/landing/activity-wall-20260520/daiba-03.webp",
+      image: "/images/landing/activity-wall-20260520/bbq-01.webp",
       index: 1,
       title: copy.photoTitle,
       titleEn: copy.photoTitleEn,
@@ -68,29 +68,28 @@ export async function ScriptsSection() {
 
       <div className="relative mx-auto max-w-5xl">
         <div className="max-w-3xl">
-          <p className="text-xs font-bold tracking-[0.32em] text-[#7fa063] md:text-sm">{copy.eyebrow}</p>
-          <h1 className="mt-3 font-display text-5xl font-bold leading-none tracking-[0.07em] text-[#1d2419] md:text-7xl">
+          <h1 className="font-display text-5xl font-bold leading-none tracking-[0.07em] text-[#1d2419] md:text-7xl">
             {copy.title}
           </h1>
-          <div className="mt-5 flex items-center gap-4 text-[#7fa063]">
-            <span className="h-px w-16 bg-gradient-to-r from-transparent to-[#9eb886]" />
-            <Leaf className="size-5 rotate-45" />
-            <span className="h-px w-16 bg-gradient-to-r from-[#9eb886] to-transparent" />
+          <div className="mt-3 flex items-center gap-3 text-[#7fa063]">
+            <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#9eb886]" />
+            <Leaf className="size-4 rotate-45" />
+            <span className="h-px w-10 bg-gradient-to-r from-[#9eb886] to-transparent" />
           </div>
-          <div className="mt-6 max-w-2xl space-y-4 font-display text-base leading-[1.95] text-[#3c4636] md:text-xl">
+          <div className="mt-4 max-w-2xl space-y-3 text-base leading-[1.75] text-[#3c4636] md:text-lg">
             <p>{renderHighlightedText(copy.introLead, locale === "ja" ? ["オリジナル交流活動"] : ["原创社交活动"])}</p>
-            <p className="font-sans text-sm leading-[1.9] text-[#4c5148] md:text-base">
+            <p>
               {renderHighlightedText(copy.introDetail, locale === "ja" ? ["初対面の緊張"] : ["降低初次见面的压力"])}
             </p>
           </div>
         </div>
 
-        <div className="mt-10 flex flex-wrap items-baseline gap-x-4 gap-y-2">
-          <div className="flex items-center gap-2">
+        <div className="mt-8 flex items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2">
             <Leaf className="size-5 text-[#5f8549]" />
             <h2 className="text-lg font-bold tracking-[0.08em] text-[#1d2419] md:text-xl">{copy.categoryTitle}</h2>
           </div>
-          <p className="text-sm text-[#6b7163]">{copy.categoryHint}</p>
+          <p className="min-w-0 text-sm leading-none text-[#6b7163]">{copy.categoryHint}</p>
         </div>
 
         <div className="mt-5 grid gap-6 lg:grid-cols-2">
@@ -141,7 +140,7 @@ function CategoryCard({ href, image, index, title, titleEn, focus, tags, body, c
           className="object-cover transition duration-700 group-hover:scale-[1.04]"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#0f150b]/78 via-[#0f150b]/16 to-[#0f150b]/24" />
-        <span className="absolute left-5 top-5 grid size-11 place-items-center rounded-full border border-white/65 bg-[#141c10]/42 font-display text-lg font-bold text-white backdrop-blur-sm">
+        <span className="absolute left-3 top-3 grid size-9 place-items-center rounded-full border border-white/65 bg-[#141c10]/42 font-display text-base font-bold text-white backdrop-blur-sm md:left-4 md:top-4">
           {index}
         </span>
         <div className="absolute bottom-5 left-5 text-white">

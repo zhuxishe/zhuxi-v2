@@ -41,14 +41,6 @@ const events = [
     summary: ["室内游乐、海边散步、城市夜景，一天有很多停靠点。", "屋内遊び、海辺の散歩、夜景まで楽しめる街歩きです。"],
   },
   {
-    id: "tokyo-tower",
-    slug: "tokyo-tower",
-    count: 1, category: "large",
-    date: "2025-07-09",
-    title: ["落日余晖下的东京塔", "夕暮れの東京タワー"],
-    summary: ["城市里的短暂停靠，也可以成为一次活动的记忆。", "街の中の短い寄り道も、活動の思い出になります。"],
-  },
-  {
     id: "disney-trip",
     slug: "disney",
     count: 9, category: "large",

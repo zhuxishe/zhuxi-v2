@@ -52,6 +52,8 @@ export async function ScriptsSection() {
       cta: copy.scriptTeaserCta,
       variant: "solid",
       Icon: Sparkles,
+      wideBody: true,
+      singleLineFocus: locale !== "ja",
     },
   ]
 

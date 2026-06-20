@@ -45,7 +45,7 @@ const zhCopy = {
     scriptTeaserTitleEn: "Social Scripts",
     scriptTeaserSubtitle: "小范围、有主题，慢慢熟悉彼此",
     scriptTeaserBody: "更想在小范围里慢慢靠近？以主题与任务为线索，在推理、角色扮演和桌游中自然破冰，慢热的人也能轻松融入，留下一起复盘的回忆。",
-    scriptTeaserTags: ["剧本杀", "桌游", "推理", "沉浸"],
+    scriptTeaserTags: ["剧本", "桌游", "推理", "沉浸"],
     scriptTeaserCta: "进入剧本库",
     closing: "外向或慢热，想找固定搭子，还是只想从一场周末活动开始拓展生活圈，你都能在竹溪社，找到适合自己的参与方式。",
     note: "",

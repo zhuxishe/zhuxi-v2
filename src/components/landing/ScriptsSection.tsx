@@ -17,6 +17,8 @@ type CategoryCardProps = {
   cta: string
   variant: "ghost" | "solid"
   Icon: ComponentType<{ className?: string }>
+  wideBody?: boolean
+  singleLineFocus?: boolean
 }
 
 export async function ScriptsSection() {
@@ -35,6 +37,8 @@ export async function ScriptsSection() {
       cta: copy.photoCta,
       variant: "ghost",
       Icon: MapPin,
+      wideBody: true,
+      singleLineFocus: locale !== "ja",
     },
     {
       href: "/scripts/library",
@@ -121,10 +125,22 @@ function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
 }
 
-function CategoryCard({ href, image, index, title, titleEn, focus, tags, body, cta, variant, Icon }: CategoryCardProps) {
-  const buttonClass = variant === "solid"
+function CategoryCard({ href, image, index, title, titleEn, focus, tags, body, cta, variant, Icon, wideBody = false, singleLineFocus = false }: CategoryCardProps) {
+  const buttonColorClass = variant === "solid"
     ? "bg-[#5f8549] text-white shadow-[0_10px_22px_rgba(79,125,60,0.28)] hover:bg-[#4f7d3c]"
     : "border border-[#9eb886] bg-[#eef4e7]/60 text-[#4f7d3c] hover:bg-[#eef4e7]"
+  const bodyClass = wideBody ? "px-4 py-5 sm:px-5 md:p-7" : "p-6 md:p-7"
+  const focusClass = wideBody
+    ? "flex items-center gap-2 text-[14px] font-bold leading-snug text-[#4f7d3c] sm:text-base"
+    : "flex items-start gap-3 text-base font-bold leading-relaxed text-[#4f7d3c]"
+  const iconClass = wideBody ? "size-4 flex-none" : "mt-1 size-5 flex-none"
+  const tagsClass = wideBody ? "mt-4 flex flex-nowrap gap-1.5" : "mt-4 flex flex-wrap gap-2"
+  const tagClass = wideBody
+    ? "rounded-full bg-[#eef4e7] px-3 py-1.5 text-[13px] font-semibold text-[#4f7d3c]"
+    : "rounded-full bg-[#eef4e7] px-4 py-1.5 text-sm font-semibold text-[#4f7d3c]"
+  const bodyTextClass = wideBody ? "mt-4 text-sm leading-[1.85] text-[#4c5148] md:text-base" : "mt-4 text-sm leading-[1.9] text-[#4c5148] md:text-base"
+  const buttonWrapClass = wideBody ? "mt-4 flex justify-end" : "mt-6"
+  const buttonSizeClass = wideBody ? "px-4 py-2.5" : "px-5 py-3"
 
   return (
     <Link
@@ -149,23 +165,25 @@ function CategoryCard({ href, image, index, title, titleEn, focus, tags, body, c
         </div>
       </div>
 
-      <div className="p-6 md:p-7">
-        <div className="flex items-start gap-3 text-base font-bold leading-relaxed text-[#4f7d3c]">
-          <Icon className="mt-1 size-5 flex-none" />
-          <span>{focus}</span>
+      <div className={bodyClass}>
+        <div className={focusClass}>
+          <Icon className={iconClass} />
+          <span className={singleLineFocus ? "whitespace-nowrap" : undefined}>{focus}</span>
         </div>
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className={tagsClass}>
           {tags.map((tag) => (
-            <span key={tag} className="rounded-full bg-[#eef4e7] px-4 py-1.5 text-sm font-semibold text-[#4f7d3c]">
+            <span key={tag} className={tagClass}>
               {tag}
             </span>
           ))}
         </div>
-        <p className="mt-4 text-sm leading-[1.9] text-[#4c5148] md:text-base">{body}</p>
-        <span className={`mt-6 inline-flex items-center gap-2 rounded-full px-5 py-3 text-sm font-bold transition ${buttonClass}`}>
-          {cta}
-          <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
-        </span>
+        <p className={bodyTextClass}>{body}</p>
+        <div className={buttonWrapClass}>
+          <span className={`inline-flex items-center gap-2 rounded-full ${buttonSizeClass} text-sm font-bold transition ${buttonColorClass}`}>
+            {cta}
+            <ArrowRight className="size-4 transition group-hover:translate-x-0.5" />
+          </span>
+        </div>
       </div>
     </Link>
   )

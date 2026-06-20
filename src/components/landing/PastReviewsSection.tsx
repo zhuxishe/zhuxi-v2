@@ -4,13 +4,28 @@ import { ArrowLeft, Images } from "lucide-react"
 import { PastReviewCard } from "@/components/landing/PastReviewCard"
 import { PastReviewsQuickNav } from "@/components/landing/PastReviewsQuickNav"
 import { getLandingEventReviews } from "@/lib/landing-activity-photos"
-import { fetchPublishedPastEventReviews } from "@/lib/queries/past-event-reviews"
+import { fetchPublishedPastEventReviews, type PastEventReviewPublic } from "@/lib/queries/past-event-reviews"
+
+function sortReviewsByNewestFirst(reviews: PastEventReviewPublic[]): PastEventReviewPublic[] {
+  return reviews
+    .map((review, index) => ({ review, index }))
+    .sort((a, b) => {
+      const dateA = a.review.event_date
+      const dateB = b.review.event_date
+
+      if (dateA && dateB && dateA !== dateB) return dateB.localeCompare(dateA)
+      if (dateA && !dateB) return -1
+      if (!dateA && dateB) return 1
+      return a.index - b.index
+    })
+    .map(({ review }) => review)
+}
 
 export async function PastReviewsSection() {
   const t = await getTranslations("pastReviews")
   const landingEventReviews = getLandingEventReviews(await getLocale())
   const dbReviews = await fetchPublishedPastEventReviews()
-  const reviews = [...landingEventReviews, ...dbReviews]
+  const reviews = sortReviewsByNewestFirst([...landingEventReviews, ...dbReviews])
 
   return (
     <section className="relative min-h-screen bg-[#fffdf7] px-5 pb-16 pt-24 text-[#171717] grain-overlay md:pb-20 md:pt-32">

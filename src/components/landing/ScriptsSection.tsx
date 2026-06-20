@@ -74,7 +74,7 @@ export async function ScriptsSection() {
 
       <div className="relative mx-auto max-w-5xl">
         <div className="max-w-3xl">
-          <h1 className="font-display text-5xl font-bold leading-none tracking-[0.07em] text-[#1d2419] md:text-7xl">
+          <h1 className="font-display text-3xl font-bold leading-tight tracking-[0.05em] text-[#1d2419] md:text-4xl">
             {copy.title}
           </h1>
           <div className="mt-3 flex items-center gap-3 text-[#7fa063]">

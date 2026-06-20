@@ -41,7 +41,7 @@ export async function PastReviewsSection() {
             <PastReviewsQuickNav reviews={reviews} />
             <div className="space-y-5">
               {reviews.map((review) => (
-                <PastReviewCard key={review.id} review={review} sourceLabel={t("source")} photoUnitLabel={t("photoUnit")} />
+                <PastReviewCard key={review.id} review={review} sourceLabel={t("source")} photoUnitLabel={t("photoUnit")} showPhotoCount={false} />
               ))}
             </div>
           </>

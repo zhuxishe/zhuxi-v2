@@ -19,7 +19,11 @@ export interface PastEventReview {
 export type PastEventReviewPublic = Pick<
   PastEventReview,
   "id" | "title" | "summary" | "cover_url" | "gallery_urls" | "source_url" | "event_date"
->
+> & {
+  cover_layout?: "poster"
+  cover_width?: number
+  cover_height?: number
+}
 
 export interface PastEventReviewAdminState {
   reviews: PastEventReview[]

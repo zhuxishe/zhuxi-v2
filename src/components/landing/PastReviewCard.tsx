@@ -13,6 +13,12 @@ type PastReviewCardProps = {
 
 export function PastReviewCard({ review, sourceLabel, photoUnitLabel, framed = true, showPhotoCount = true }: PastReviewCardProps) {
   const photoCount = 1 + review.gallery_urls.length
+  const isPosterCover = review.cover_layout === "poster"
+  const coverWidth = review.cover_width ?? 1200
+  const coverHeight = review.cover_height ?? 900
+  const coverClass = isPosterCover
+    ? "mb-3 h-auto w-full rounded-[1.1rem] bg-[#f4f0e8] object-contain shadow-[0_8px_20px_rgba(43,53,35,0.10)]"
+    : "mb-3 aspect-[4/3] w-full rounded-[1.1rem] bg-[#f4f0e8] object-cover shadow-[0_8px_20px_rgba(43,53,35,0.10)]"
   const frameClass = framed
     ? "rounded-[1.6rem] border border-[#e5dfd3] bg-white/90 p-4 shadow-[0_14px_34px_rgba(43,53,35,0.08)] md:p-6"
     : "border-t border-[#e5dfd3] pt-5 first:border-t-0 first:pt-0"
@@ -37,10 +43,10 @@ export function PastReviewCard({ review, sourceLabel, photoUnitLabel, framed = t
           <Image
             src={review.cover_url}
             alt={review.title}
-            width={1200}
-            height={900}
+            width={coverWidth}
+            height={coverHeight}
             sizes="(min-width: 1024px) 760px, 92vw"
-            className="mb-3 aspect-[4/3] w-full rounded-[1.1rem] bg-[#f4f0e8] object-cover shadow-[0_8px_20px_rgba(43,53,35,0.10)]"
+            className={coverClass}
           />
           <div className="columns-2 gap-3 md:columns-3">
           {review.gallery_urls.map((url, index) => (

@@ -132,6 +132,9 @@ const events = [
     id: "cat-mouse-game",
     slug: "cat-mouse-game",
     count: 1, category: "large",
+    coverLayout: "poster",
+    coverWidth: 1079,
+    coverHeight: 1440,
     date: "2026-06-13",
     title: ["猫鼠游戏", "猫とネズミゲーム"],
     summary: ["代代木公园里的神秘追捕，坚持到最后的人制胜。", "代々木公園でのミステリアスな追跡ゲーム。最後まで残った人が勝利。"],
@@ -140,6 +143,9 @@ const events = [
     id: "red-packet-luck-battle",
     slug: "red-packet-luck-battle",
     count: 1, category: "large",
+    coverLayout: "poster",
+    coverWidth: 1587,
+    coverHeight: 2245,
     date: "2026-06-20",
     title: ["红包欧皇争夺战", "紅包・豪運王争奪戦"],
     summary: ["与新朋友一起闯关趣味游戏，征揽红包，争做终极欧皇！", "新しい友人と一緒にミニゲームに挑戦し、紅包を集めて究極の豪運王を目指します。"],
@@ -148,6 +154,9 @@ const events = [
     id: "moonlit-wolf-feast",
     slug: "moonlit-wolf-feast",
     count: 1, category: "large",
+    coverLayout: "poster",
+    coverWidth: 1024,
+    coverHeight: 1536,
     date: "2026-05-31",
     title: ["月夜狼宴", "月夜の人狼宴"],
     summary: ["上野御徒町狼人杀。今夜，谎言与推理同时开始，争夺终极狼王。", "上野御徒町での人狼ゲーム。今夜、嘘と推理が同時に始まり、究極の狼王を競います。"],
@@ -156,6 +165,9 @@ const events = [
     id: "fuji-q-adventure",
     slug: "fuji-q-adventure",
     count: 1, category: "large",
+    coverLayout: "poster",
+    coverWidth: 1079,
+    coverHeight: 1527,
     date: "2026-05-23",
     title: ["富士急绝叫冒险日", "富士急絶叫アドベンチャーデー"],
     summary: ["这是一次结合游乐园挑战、团队互动和轻社交的周末特别活动，一起边尖叫边快速拉近距离！", "遊園地チャレンジ、チーム交流、ライトな社交を組み合わせた週末特別企画。叫びながら一気に距離を縮めます。"],
@@ -164,6 +176,9 @@ const events = [
     id: "komatsuzawa-farm",
     slug: "komatsuzawa-farm",
     count: 1, category: "large",
+    coverLayout: "poster",
+    coverWidth: 1440,
+    coverHeight: 2038,
     date: "2026-05-16",
     title: ["小松泽农园团建", "小松沢農園チーム活動"],
     summary: ["城市太吵，农场刚好。这个周末，和竹溪社成员去小松泽农园过一天慢下来的田园生活吧。", "都会の喧騒を離れて農園へ。この週末、竹渓社のメンバーと小松沢農園でゆっくりした田園の一日を過ごします。"],
@@ -172,6 +187,9 @@ const events = [
     id: "shinjuku-gyoen-color-picnic",
     slug: "shinjuku-gyoen-color-picnic",
     count: 1, category: "large",
+    coverLayout: "poster",
+    coverWidth: 1587,
+    coverHeight: 2245,
     date: "2026-04-25",
     title: ["新宿御苑·色彩挑战野餐", "新宿御苑・カラーチャレンジピクニック"],
     summary: ["这是一次结合野餐、游戏和轻社交的户外活动，让大家在春天的草地上轻松认识彼此。", "ピクニック、ゲーム、ライトな交流を組み合わせた屋外企画。春の芝生で気軽にお互いを知れる一日です。"],
@@ -180,6 +198,9 @@ const events = [
     id: "spring-2026-welcome-party",
     slug: "spring-2026-welcome-party",
     count: 1, category: "large",
+    coverLayout: "poster",
+    coverWidth: 1079,
+    coverHeight: 1527,
     date: "2026-04-25",
     title: ["2026春学期迎新轰趴", "2026春学期ウェルカムホームパーティー"],
     summary: ["竹溪社所有玩家26年春学期第一次线下见面的活动，一场让大家轻松相识、自然熟络的聚会。无论你是社交新手还是游戏高手，都能在这里找到同频的伙伴。", "竹渓社メンバーが2026年春学期に初めてオフラインで集まる会。自然に打ち解け、同じ温度感の仲間を見つけられるパーティーです。"],
@@ -190,6 +211,9 @@ export function getLandingEventReviews(locale: string, category = "large"): Past
   const index = locale === "ja" ? 1 : 0
   return events.filter((event) => event.category === category).map((event) => {
     const photos = seq(event.slug, event.count)
+    const coverMeta = "coverLayout" in event
+      ? { cover_layout: event.coverLayout, cover_width: event.coverWidth, cover_height: event.coverHeight }
+      : {}
     return {
       id: event.id,
       title: event.title[index],
@@ -198,6 +222,7 @@ export function getLandingEventReviews(locale: string, category = "large"): Past
       cover_url: photos[0],
       gallery_urls: photos.slice(1),
       source_url: null,
+      ...coverMeta,
     }
   })
 }

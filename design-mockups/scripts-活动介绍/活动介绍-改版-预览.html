@@ -1,0 +1,243 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --washi:#fffdf7; --ink:#1d2419; --ink-soft:#4c5148; --ink-mute:#6b7163;
+    --bamboo:#5f8549; --bamboo-d:#4f7d3c; --bamboo-l:#7fa063; --line:#9eb886;
+    --chip:#eef4e7; --serif:"Noto Serif CJK SC","Noto Serif SC",serif;
+    --sans:"Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:var(--sans);
+    background:radial-gradient(120% 90% at 50% 0%,#f4efe4 0%,#e9e3d6 60%,#e2dccd 100%);
+    display:flex;justify-content:center;
+    padding:46px 40px 56px;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- phone screen ---------- */
+  .phone{
+    width:390px;border-radius:44px;overflow:hidden;position:relative;
+    background:var(--washi);
+    box-shadow:0 2px 0 rgba(255,255,255,.6) inset,
+               0 34px 80px -20px rgba(40,52,30,.45),
+               0 12px 30px -12px rgba(40,52,30,.3);
+    border:1px solid rgba(255,255,255,.6);
+  }
+
+  /* status bar */
+  .statusbar{
+    height:48px;display:flex;align-items:center;justify-content:space-between;
+    padding:0 28px 0 32px;position:relative;z-index:30;
+    color:var(--ink);font-weight:600;font-size:15px;letter-spacing:.02em;
+  }
+  .statusbar .time{font-variant-numeric:tabular-nums}
+  .statusbar .sysicons{display:flex;align-items:center;gap:7px}
+
+  /* nav */
+  nav{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:6px 22px 14px;position:relative;z-index:30;
+  }
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:40px;height:40px;flex:none}
+  .brand .name{font-family:var(--serif);font-weight:700;font-size:21px;letter-spacing:.08em;color:#161616;line-height:1}
+  .brand .sub{display:block;margin-top:3px;font-size:8.5px;font-weight:700;letter-spacing:.42em;color:rgba(22,22,22,.62)}
+  .menu{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:var(--bamboo-d)}
+
+  /* ---------- hero / section ---------- */
+  .hero{position:relative;overflow:hidden;padding:6px 22px 30px}
+  .hero .bg{position:absolute;inset:0;width:100%;height:46%;object-fit:cover;opacity:.42}
+  .hero .wash{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,253,247,.82) 0%,rgba(255,253,247,.58) 22%,rgba(255,253,247,.9) 40%,var(--washi) 52%)}
+  .hero .glow{position:absolute;inset:0;background:radial-gradient(circle at 26% 14%,rgba(255,255,255,.9),rgba(255,253,247,.35) 46%,rgba(255,253,247,.85) 84%)}
+  .hero .grain{position:absolute;inset:0;pointer-events:none;opacity:.04;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:170px}
+  .inner{position:relative;z-index:2}
+
+  /* intro */
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.34em;color:var(--bamboo-l);padding-left:3px}
+  h1{font-family:var(--serif);font-weight:700;font-size:42px;letter-spacing:.07em;color:var(--ink);margin-top:10px;line-height:1.05}
+  .floral{display:flex;align-items:center;gap:13px;margin:15px 0 16px;color:var(--bamboo-l)}
+  .floral .ln{height:1px;width:54px;background:linear-gradient(90deg,transparent,var(--line))}
+  .floral .ln.r{background:linear-gradient(90deg,var(--line),transparent)}
+  .floral .star{font-size:17px;line-height:1}
+  .lead{font-family:var(--serif);font-size:16.5px;line-height:2;color:#3c4636;letter-spacing:.01em;max-width:300px}
+  .lead b{font-weight:700;color:var(--bamboo-d)}
+
+  /* block label */
+  .block-label{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:700;letter-spacing:.16em;color:var(--ink);}
+  .block-label .leaf{width:15px;height:15px;color:var(--bamboo)}
+
+  /* rhythm card */
+  .card{
+    background:rgba(255,255,255,.74);backdrop-filter:blur(10px);
+    border:1px solid rgba(255,255,255,.7);border-radius:22px;
+    box-shadow:0 18px 46px rgba(44,55,35,.13);
+  }
+  .rhythm{margin-top:26px;padding:20px 18px 8px}
+  .rhythm .block-label{padding:0 2px 4px}
+  .timeline{position:relative;margin-top:6px}
+  .timeline::before{content:"";position:absolute;left:20px;top:30px;bottom:34px;width:2px;
+    background:linear-gradient(180deg,var(--bamboo-l),rgba(158,184,134,.35))}
+  .step{display:flex;align-items:center;gap:14px;padding:13px 2px}
+  .badge{flex:none;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;
+    font-family:var(--serif);font-weight:700;font-size:17px;color:#fff;position:relative;z-index:2;
+    background:linear-gradient(150deg,#79a45e,#5f8549);
+    box-shadow:0 5px 13px rgba(79,125,60,.32),0 0 0 4px var(--washi)}
+  .step-main{flex:1;min-width:0}
+  .step-title{font-size:14.5px;font-weight:700;color:var(--ink);letter-spacing:.02em}
+  .step-desc{font-size:12.5px;color:var(--ink-soft);line-height:1.55;margin-top:3px}
+  .step-ico{flex:none;width:42px;height:42px;border-radius:13px;display:grid;place-items:center;
+    background:var(--chip);color:var(--bamboo-d)}
+
+  /* type cards */
+  .types{margin-top:30px}
+  .type-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:14px}
+  .type-card{position:relative;border-radius:20px;overflow:hidden;aspect-ratio:5/6;display:block;
+    border:1px solid rgba(229,223,211,.8);box-shadow:0 14px 34px rgba(44,55,35,.16);text-decoration:none}
+  .type-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .type-card .shade{position:absolute;inset:0;background:linear-gradient(to top,rgba(18,24,14,.82) 4%,rgba(18,24,14,.18) 48%,rgba(255,255,255,.06))}
+  .type-card .body{position:absolute;left:0;right:0;bottom:0;padding:14px 13px 15px;color:#fff}
+  .type-card .ic{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.92);color:var(--bamboo-d);display:grid;place-items:center;margin-bottom:9px}
+  .type-card h3{font-family:var(--serif);font-weight:700;font-size:20px;letter-spacing:.04em;line-height:1}
+  .type-card .tags{margin-top:6px;font-size:11px;color:rgba(255,255,255,.9);letter-spacing:.04em}
+  .type-card .cta{margin-top:9px;display:inline-flex;align-items:center;gap:4px;font-size:11.5px;font-weight:700}
+  .type-card .num{position:absolute;top:11px;right:13px;font-family:var(--serif);font-size:13px;font-weight:700;color:#fff;
+    width:25px;height:25px;border:1.3px solid rgba(255,255,255,.78);border-radius:50%;display:grid;place-items:center;
+    background:rgba(22,30,16,.32);backdrop-filter:blur(3px)}
+
+  /* closing */
+  .closing{margin:28px 6px 4px;text-align:center;font-family:var(--serif);font-size:14.5px;line-height:1.95;color:var(--ink-soft)}
+  .closing b{color:var(--bamboo-d);font-weight:700}
+  .closing .dash{color:var(--line);margin:0 2px}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <!-- status bar -->
+    <div class="statusbar">
+      <span class="time">9:41</span>
+      <span class="sysicons">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x="0" y="7" width="3" height="5" rx="1" fill="#1d2419"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#1d2419"/><rect x="10" y="1.5" width="3" height="10.5" rx="1" fill="#1d2419"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#1d2419" opacity=".35"/></svg>
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><path d="M8.5 11.2 1 3.6a10.6 10.6 0 0 1 15 0L8.5 11.2Z" stroke="#1d2419" stroke-width="1.4" fill="none" stroke-linejoin="round"/><circle cx="8.5" cy="9.4" r="1.3" fill="#1d2419"/></svg>
+        <svg width="26" height="13" viewBox="0 0 26 13" fill="none"><rect x="1" y="1" width="21" height="11" rx="3" stroke="#1d2419" stroke-width="1.3"/><rect x="3" y="3" width="16" height="7" rx="1.5" fill="#1d2419"/><rect x="23" y="4" width="2" height="5" rx="1" fill="#1d2419"/></svg>
+      </span>
+    </div>
+
+    <!-- nav -->
+    <nav>
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 44 44" fill="none">
+          <circle cx="22" cy="22" r="21" fill="#f1f6ec" stroke="#cfe0bf" stroke-width="1"/>
+          <path d="M22 9c-5 4-7 9-7 14 0 6 3 10 7 12 4-2 7-6 7-12 0-5-2-10-7-14Z" fill="#6b9a51"/>
+          <path d="M22 13v20" stroke="#3f5c2e" stroke-width="1.3" opacity=".6"/>
+          <path d="M22 19c-2.4-1-4-2.6-5-4.6M22 25c2.6-.8 4.4-2.4 5.4-4.6M22 30c-2.2-.8-3.8-2.2-4.8-4" stroke="#3f5c2e" stroke-width="1.2" opacity=".55" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span class="name">竹溪社<span class="sub">ZHUXISHE</span></span>
+      </div>
+      <div class="menu">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg>
+      </div>
+    </nav>
+
+    <!-- section -->
+    <section class="hero">
+      <img class="bg" src="/images/landing/activity-wall-20260520/shibuya-party-01.webp" alt="">
+      <div class="wash"></div>
+      <div class="glow"></div>
+      <div class="grain"></div>
+
+      <div class="inner">
+        <!-- intro -->
+        <p class="eyebrow">东京 · 跨校学生社交圈</p>
+        <h1>活动介绍</h1>
+        <div class="floral"><span class="ln"></span><span class="star">✿</span><span class="ln r"></span></div>
+        <p class="lead">竹溪社汇聚<b>原创社交活动</b>，<br>把线下聚会、城市探索、剧本桌游，<br>与跨校社群连成一个圈。</p>
+
+        <!-- rhythm: before / during / after -->
+        <div class="card rhythm">
+          <div class="block-label">
+            <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13c0-6 7-9 16-9 0 9-3 16-9 16Z"/><path d="M4 20c2-4 5-6 9-7"/></svg>
+            让初次见面，不再尴尬
+          </div>
+          <div class="timeline">
+            <div class="step">
+              <span class="badge">1</span>
+              <div class="step-main">
+                <div class="step-title">活动前</div>
+                <div class="step-desc">人数、地点、预算、流程，提前讲清楚。</div>
+              </div>
+              <span class="step-ico">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="8" y="3" width="8" height="4" rx="1.4"/><path d="M9 5H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-3"/><path d="M8 12h8M8 16h5"/></svg>
+              </span>
+            </div>
+            <div class="step">
+              <span class="badge">2</span>
+              <div class="step-main">
+                <div class="step-title">活动中</div>
+                <div class="step-desc">分组、任务和游戏，自然制造话题。</div>
+              </div>
+              <span class="step-ico">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3"/><path d="M3.5 20a5.5 5.5 0 0 1 11 0"/><circle cx="17" cy="9.5" r="2.4"/><path d="M15 14.5a4.6 4.6 0 0 1 5.5 4"/></svg>
+              </span>
+            </div>
+            <div class="step">
+              <span class="badge">3</span>
+              <div class="step-main">
+                <div class="step-title">活动后</div>
+                <div class="step-desc">继续认识、再次组局，留下回响。</div>
+              </div>
+              <span class="step-ico">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M17 2l3 3-3 3"/><path d="M20 5H9a5 5 0 0 0-5 5v1"/><path d="M7 22l-3-3 3-3"/><path d="M4 19h11a5 5 0 0 0 5-5v-1"/></svg>
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- two types -->
+        <div class="types">
+          <div class="block-label">
+            <svg class="leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13c0-6 7-9 16-9 0 9-3 16-9 16Z"/><path d="M4 20c2-4 5-6 9-7"/></svg>
+            目前主要有两类活动
+          </div>
+          <div class="type-grid">
+            <a class="type-card">
+              <img src="/images/landing/activity-wall-20260520/daiba-03.webp" alt="">
+              <div class="shade"></div>
+              <span class="num">1</span>
+              <div class="body">
+                <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 10h18M8 2v4M16 2v4"/></svg></span>
+                <h3>大型活动</h3>
+                <div class="tags">旅行 · 聚餐 · 户外</div>
+                <span class="cta">查看照片
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </span>
+              </div>
+            </a>
+            <a class="type-card">
+              <img src="/images/landing/activity-wall-20260520/boardgame-01.webp" alt="">
+              <div class="shade"></div>
+              <span class="num">2</span>
+              <div class="body">
+                <span class="ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2.5 5.2C5.5 3.8 8.5 3.8 11.5 5.2v14C8.5 17.8 5.5 17.8 2.5 19.2Z"/><path d="M21.5 5.2C18.5 3.8 15.5 3.8 12.5 5.2v14c3-1.4 6-1.4 9 0Z"/></svg></span>
+                <h3>社交剧本类</h3>
+                <div class="tags">剧本杀 · 桌游 · 推理</div>
+                <span class="cta">进入剧本库
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </span>
+              </div>
+            </a>
+          </div>
+        </div>
+
+        <!-- closing -->
+        <p class="closing">外向或慢热，想找固定搭子，<br>还是只想拓展生活圈<span class="dash"> —— </span><br><b>都能在这里，找到适合自己的方式。</b></p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

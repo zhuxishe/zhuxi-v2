@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root{
+    --washi:#fffdf7; --ink:#1d2419; --ink-soft:#4c5148; --ink-mute:#6b7163;
+    --bamboo:#5f8549; --bamboo-d:#4f7d3c; --bamboo-l:#7fa063; --line:#9eb886;
+    --chip:#eef4e7; --serif:"Noto Serif CJK SC","Noto Serif SC",serif;
+    --sans:"Noto Sans CJK SC","Noto Sans SC",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);
+    background:radial-gradient(120% 90% at 50% 0%,#f4efe4 0%,#e9e3d6 60%,#e2dccd 100%);
+    display:flex;justify-content:center;padding:46px 40px 56px;-webkit-font-smoothing:antialiased}
+  .phone{width:390px;border-radius:44px;overflow:hidden;position:relative;background:var(--washi);
+    box-shadow:0 2px 0 rgba(255,255,255,.6) inset,0 34px 80px -20px rgba(40,52,30,.45),0 12px 30px -12px rgba(40,52,30,.3);
+    border:1px solid rgba(255,255,255,.6)}
+  .statusbar{height:48px;display:flex;align-items:center;justify-content:space-between;padding:0 28px 0 32px;
+    position:relative;z-index:30;color:var(--ink);font-weight:600;font-size:15px}
+  .statusbar .sysicons{display:flex;align-items:center;gap:7px}
+  nav{display:flex;align-items:center;justify-content:space-between;padding:6px 22px 14px;position:relative;z-index:30}
+  .brand{display:flex;align-items:center;gap:11px}
+  .logo{width:40px;height:40px;flex:none}
+  .brand .name{font-family:var(--serif);font-weight:700;font-size:21px;letter-spacing:.08em;color:#161616;line-height:1}
+  .brand .sub{display:block;margin-top:3px;font-size:8.5px;font-weight:700;letter-spacing:.42em;color:rgba(22,22,22,.62)}
+  .menu{width:42px;height:42px;border-radius:50%;display:grid;place-items:center;color:var(--bamboo-d)}
+
+  .hero{position:relative;overflow:hidden;padding:6px 22px 30px}
+  .hero .bg{position:absolute;inset:0;width:100%;height:34%;object-fit:cover;opacity:.4}
+  .hero .wash{position:absolute;inset:0;background:linear-gradient(180deg,rgba(255,253,247,.8) 0%,rgba(255,253,247,.55) 16%,rgba(255,253,247,.92) 30%,var(--washi) 40%)}
+  .hero .glow{position:absolute;inset:0;background:radial-gradient(circle at 26% 12%,rgba(255,255,255,.9),rgba(255,253,247,.35) 42%,rgba(255,253,247,.85) 80%)}
+  .hero .grain{position:absolute;inset:0;pointer-events:none;opacity:.04;
+    background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");background-size:170px}
+  .inner{position:relative;z-index:2}
+
+  /* intro */
+  .eyebrow{font-size:11px;font-weight:700;letter-spacing:.34em;color:var(--bamboo-l);padding-left:3px}
+  h1{font-family:var(--serif);font-weight:700;font-size:40px;letter-spacing:.07em;color:var(--ink);margin-top:10px;line-height:1.05}
+  .floral{display:flex;align-items:center;gap:13px;margin:14px 0 15px;color:var(--bamboo-l)}
+  .floral .ln{height:1px;width:48px;background:linear-gradient(90deg,transparent,var(--line))}
+  .floral .ln.r{background:linear-gradient(90deg,var(--line),transparent)}
+  .floral .star{font-size:17px;line-height:1}
+  .lead{font-family:var(--serif);font-size:15px;line-height:1.95;color:#3c4636;letter-spacing:.01em}
+  .lead b{font-weight:700;color:var(--bamboo-d)}
+  .lead .l2{display:block;margin-top:7px;font-family:var(--sans);font-size:13px;line-height:1.85;color:var(--ink-soft);font-weight:400}
+
+  /* section label */
+  .seclabel{display:flex;align-items:baseline;gap:10px;margin:26px 2px 4px}
+  .seclabel .lf{width:15px;height:15px;color:var(--bamboo);align-self:center}
+  .seclabel .t{font-size:16px;font-weight:700;letter-spacing:.08em;color:var(--ink)}
+  .seclabel .hint{font-size:11.5px;color:var(--ink-mute);letter-spacing:.02em}
+
+  /* category cards (centerpiece) */
+  .cat{background:rgba(255,255,255,.92);border:1px solid rgba(231,225,212,.9);border-radius:24px;overflow:hidden;
+    box-shadow:0 20px 50px rgba(44,55,35,.15);margin-top:16px}
+  .cat-banner{position:relative;height:154px}
+  .cat-banner img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+  .cat-banner .grad{position:absolute;inset:0;background:linear-gradient(to top,rgba(15,21,11,.78) 2%,rgba(15,21,11,.12) 46%,rgba(15,21,11,.25))}
+  .cat-no{position:absolute;top:13px;left:14px;width:30px;height:30px;border-radius:50%;display:grid;place-items:center;
+    font-family:var(--serif);font-weight:700;font-size:15px;color:#fff;background:rgba(20,28,16,.4);border:1.3px solid rgba(255,255,255,.6);backdrop-filter:blur(3px)}
+  .cat-tt{position:absolute;left:16px;bottom:13px;color:#fff}
+  .cat-tt h3{font-family:var(--serif);font-weight:700;font-size:25px;letter-spacing:.05em;line-height:1}
+  .cat-tt .en{display:block;margin-top:6px;font-size:9.5px;font-weight:700;letter-spacing:.34em;color:rgba(255,255,255,.82)}
+  .cat-body{padding:15px 17px 17px}
+  .cat-line{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:700;color:var(--bamboo-d);letter-spacing:.01em}
+  .cat-line .pin{width:14px;height:14px;flex:none}
+  .chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:11px}
+  .chips span{font-size:11px;font-weight:600;color:var(--bamboo-d);background:var(--chip);border-radius:999px;padding:4px 11px;letter-spacing:.02em}
+  .cat-desc{margin-top:12px;font-size:13px;line-height:1.78;color:var(--ink-soft)}
+  .cat-foot{margin-top:15px}
+  .btn{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;letter-spacing:.03em;border-radius:999px;padding:9px 17px;text-decoration:none}
+  .btn.ghost{color:var(--bamboo-d);border:1.4px solid rgba(95,133,73,.5);background:rgba(238,244,231,.5)}
+  .btn.solid{color:#fff;background:linear-gradient(150deg,#6f9e55,#5a8045);box-shadow:0 9px 20px rgba(79,125,60,.3)}
+
+  /* closing */
+  .closing{margin:26px 8px 4px;text-align:center;font-family:var(--serif);font-size:14px;line-height:1.95;color:var(--ink-soft)}
+  .closing b{color:var(--bamboo-d);font-weight:700}
+  .closing .dash{color:var(--line)}
+</style>
+</head>
+<body>
+  <div class="phone">
+    <div class="statusbar">
+      <span>9:41</span>
+      <span class="sysicons">
+        <svg width="18" height="12" viewBox="0 0 18 12" fill="none"><rect x="0" y="7" width="3" height="5" rx="1" fill="#1d2419"/><rect x="5" y="4" width="3" height="8" rx="1" fill="#1d2419"/><rect x="10" y="1.5" width="3" height="10.5" rx="1" fill="#1d2419"/><rect x="15" y="0" width="3" height="12" rx="1" fill="#1d2419" opacity=".35"/></svg>
+        <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><path d="M8.5 11.2 1 3.6a10.6 10.6 0 0 1 15 0L8.5 11.2Z" stroke="#1d2419" stroke-width="1.4" fill="none" stroke-linejoin="round"/><circle cx="8.5" cy="9.4" r="1.3" fill="#1d2419"/></svg>
+        <svg width="26" height="13" viewBox="0 0 26 13" fill="none"><rect x="1" y="1" width="21" height="11" rx="3" stroke="#1d2419" stroke-width="1.3"/><rect x="3" y="3" width="16" height="7" rx="1.5" fill="#1d2419"/><rect x="23" y="4" width="2" height="5" rx="1" fill="#1d2419"/></svg>
+      </span>
+    </div>
+    <nav>
+      <div class="brand">
+        <svg class="logo" viewBox="0 0 44 44" fill="none">
+          <circle cx="22" cy="22" r="21" fill="#f1f6ec" stroke="#cfe0bf" stroke-width="1"/>
+          <path d="M22 9c-5 4-7 9-7 14 0 6 3 10 7 12 4-2 7-6 7-12 0-5-2-10-7-14Z" fill="#6b9a51"/>
+          <path d="M22 13v20" stroke="#3f5c2e" stroke-width="1.3" opacity=".6"/>
+          <path d="M22 19c-2.4-1-4-2.6-5-4.6M22 25c2.6-.8 4.4-2.4 5.4-4.6M22 30c-2.2-.8-3.8-2.2-4.8-4" stroke="#3f5c2e" stroke-width="1.2" opacity=".55" fill="none" stroke-linecap="round"/>
+        </svg>
+        <span class="name">竹溪社<span class="sub">ZHUXISHE</span></span>
+      </div>
+      <div class="menu"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7h18M3 12h18M3 17h18"/></svg></div>
+    </nav>
+
+    <section class="hero">
+      <img class="bg" src="/images/landing/activity-wall-20260520/shibuya-party-01.webp" alt="">
+      <div class="wash"></div><div class="glow"></div><div class="grain"></div>
+      <div class="inner">
+        <p class="eyebrow">东京 · 跨校学生社交圈</p>
+        <h1>活动介绍</h1>
+        <div class="floral"><span class="ln"></span><span class="star">✿</span><span class="ln r"></span></div>
+        <p class="lead">竹溪社汇聚众多<b>原创社交活动</b>，把线下聚会、城市探索、剧本桌游与跨校社群连在一起。
+          <span class="l2">从活动前的人数、地点与预算说明，到活动中的破冰共玩，再到活动后的继续组局，我们一路<b style="font-family:var(--serif)">降低初次见面的压力</b>。</span>
+        </p>
+
+        <div class="seclabel">
+          <svg class="lf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 20A7 7 0 0 1 4 13c0-6 7-9 16-9 0 9-3 16-9 16Z"/><path d="M4 20c2-4 5-6 9-7"/></svg>
+          <span class="t">两大活动类目</span>
+          <span class="hint">任选你的入场方式</span>
+        </div>
+
+        <!-- Category 1 -->
+        <div class="cat">
+          <div class="cat-banner">
+            <img src="/images/landing/activity-wall-20260520/daiba-03.webp" alt="">
+            <div class="grad"></div>
+            <span class="cat-no">1</span>
+            <div class="cat-tt"><h3>大型活动</h3><span class="en">LARGE EVENTS</span></div>
+          </div>
+          <div class="cat-body">
+            <div class="cat-line">
+              <svg class="pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="2.6"/></svg>
+              一次认识更多同学，沉浸热闹的社群氛围
+            </div>
+            <div class="chips"><span>旅行</span><span>聚餐</span><span>户外</span><span>节日</span><span>团建</span></div>
+            <p class="cat-desc">想一次认识更多人、体验多人游戏、感受社群的热闹？我们把城市变成舞台——从周末出游、露天聚餐到节日派对，热闹好玩，也最容易遇见同频的人。</p>
+            <div class="cat-foot">
+              <a class="btn ghost">查看活动照片
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <!-- Category 2 -->
+        <div class="cat">
+          <div class="cat-banner">
+            <img src="/images/landing/activity-wall-20260520/boardgame-01.webp" alt="">
+            <div class="grad"></div>
+            <span class="cat-no">2</span>
+            <div class="cat-tt"><h3>社交剧本类</h3><span class="en">SOCIAL SCRIPTS</span></div>
+          </div>
+          <div class="cat-body">
+            <div class="cat-line">
+              <svg class="pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+              小范围、有主题，慢慢熟悉彼此
+            </div>
+            <div class="chips"><span>剧本杀</span><span>桌游</span><span>推理</span><span>沉浸</span></div>
+            <p class="cat-desc">更想在小范围里慢慢靠近？以主题与任务为线索，在推理、角色扮演和桌游中自然破冰，慢热的人也能轻松融入，留下一起复盘的回忆。</p>
+            <div class="cat-foot">
+              <a class="btn solid">进入剧本库
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+              </a>
+            </div>
+          </div>
+        </div>
+
+        <p class="closing">外向或慢热，想找固定搭子，<br>还是只想从一场周末活动开始拓展生活圈，<br><span class="dash">——</span> 你都能在竹溪社，<b>找到适合自己的参与方式</b>。</p>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

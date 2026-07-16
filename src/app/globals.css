@@ -24,6 +24,29 @@
   --border: oklch(0.92 0.01 58);
   --input: oklch(0.92 0.01 58);
   --ring: oklch(0.45 0.08 155);
+
+  /* Extended palette values stay unchanged globally. Player App overrides
+     these source variables locally so the public site and admin keep their
+     existing visual language. */
+  --bamboo: oklch(0.52 0.10 150);
+  --bamboo-light: oklch(0.92 0.04 150);
+  --bamboo-muted: oklch(0.96 0.02 150);
+  --ink: oklch(0.22 0.01 50);
+  --ink-light: oklch(0.46 0.015 55);
+  --coral: oklch(0.70 0.14 25);
+  --coral-light: oklch(0.93 0.04 25);
+  --sakura: oklch(0.76 0.09 350);
+  --sakura-light: oklch(0.94 0.035 350);
+  --sakura-muted: oklch(0.96 0.02 350);
+  --sky: oklch(0.72 0.10 230);
+  --sky-light: oklch(0.93 0.035 230);
+  --gold: oklch(0.72 0.12 70);
+  --gold-light: oklch(0.92 0.05 70);
+  --gold-muted: oklch(0.96 0.025 70);
+  --lavender: oklch(0.70 0.10 290);
+  --lavender-light: oklch(0.93 0.035 290);
+  --washi: oklch(0.975 0.007 60);
+  --washi-dark: oklch(0.95 0.01 58);
 }
 
 .dark {
@@ -74,25 +97,25 @@
   --font-display: var(--font-noto-serif-sc), var(--font-noto-sans-sc), "Noto Serif JP", serif;
 
   /* Extended palette — 侘寂竹林 */
-  --color-bamboo: oklch(0.52 0.10 150);
-  --color-bamboo-light: oklch(0.92 0.04 150);
-  --color-bamboo-muted: oklch(0.96 0.02 150);
-  --color-ink: oklch(0.22 0.01 50);
-  --color-ink-light: oklch(0.46 0.015 55);
-  --color-coral: oklch(0.70 0.14 25);
-  --color-coral-light: oklch(0.93 0.04 25);
-  --color-sakura: oklch(0.76 0.09 350);
-  --color-sakura-light: oklch(0.94 0.035 350);
-  --color-sakura-muted: oklch(0.96 0.02 350);
-  --color-sky: oklch(0.72 0.10 230);
-  --color-sky-light: oklch(0.93 0.035 230);
-  --color-gold: oklch(0.72 0.12 70);
-  --color-gold-light: oklch(0.92 0.05 70);
-  --color-gold-muted: oklch(0.96 0.025 70);
-  --color-lavender: oklch(0.70 0.10 290);
-  --color-lavender-light: oklch(0.93 0.035 290);
-  --color-washi: oklch(0.975 0.007 60);
-  --color-washi-dark: oklch(0.95 0.01 58);
+  --color-bamboo: var(--bamboo);
+  --color-bamboo-light: var(--bamboo-light);
+  --color-bamboo-muted: var(--bamboo-muted);
+  --color-ink: var(--ink);
+  --color-ink-light: var(--ink-light);
+  --color-coral: var(--coral);
+  --color-coral-light: var(--coral-light);
+  --color-sakura: var(--sakura);
+  --color-sakura-light: var(--sakura-light);
+  --color-sakura-muted: var(--sakura-muted);
+  --color-sky: var(--sky);
+  --color-sky-light: var(--sky-light);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-muted: var(--gold-muted);
+  --color-lavender: var(--lavender);
+  --color-lavender-light: var(--lavender-light);
+  --color-washi: var(--washi);
+  --color-washi-dark: var(--washi-dark);
 }
 
 * { box-sizing: border-box; }
@@ -276,3 +299,99 @@ body {
   50% { transform: translateY(6px); }
 }
 .animate-bounce-down { animation: bounce-down 2s ease-in-out infinite; }
+
+/* ═══════════════════════════════════════
+   Player App — Bamboo Grove
+
+   Scoped to /app/* through src/app/app/layout.tsx. Keep this theme local:
+   the public site, admin, mini-program, and launch splash retain their own
+   palettes and behavior.
+   ═══════════════════════════════════════ */
+
+.player-app-theme {
+  color-scheme: light;
+
+  --background: #f6f7f1;
+  --foreground: #253228;
+  --card: #ffffff;
+  --card-foreground: #253228;
+  --popover: #ffffff;
+  --popover-foreground: #253228;
+  --primary: #3d6648;
+  --primary-foreground: #ffffff;
+  --secondary: #eef3ed;
+  --secondary-foreground: #3d6648;
+  --muted: #f1f4ef;
+  --muted-foreground: #647066;
+  --accent: #e8f3e9;
+  --accent-foreground: #315c3d;
+  --border: #e0e7de;
+  --input: #7f8c81;
+  --ring: #3d6648;
+
+  --bamboo: #527858;
+  --bamboo-light: #dcebdc;
+  --bamboo-muted: #e8f3e9;
+  --ink: #1f3a2a;
+  --ink-light: #647066;
+  --coral: #466d50;
+  --coral-light: #e3eee4;
+  --sakura: #3d6648;
+  --sakura-light: #e8f3e9;
+  --sakura-muted: #f0f5ef;
+  --sky: #5c7e64;
+  --sky-light: #eaf2e9;
+  --gold: #6f8b6d;
+  --gold-light: #eaf0e7;
+  --gold-muted: #f2f5ef;
+  --lavender: #66836b;
+  --lavender-light: #e8f0e7;
+  --washi: #f6f7f1;
+  --washi-dark: #eef3ed;
+
+  color: var(--foreground);
+  background-color: var(--background);
+}
+
+.player-app-theme .shadow-soft {
+  border-color: var(--border);
+  box-shadow:
+    0 1px 2px rgb(37 50 40 / 4%),
+    0 5px 18px rgb(49 92 61 / 7%);
+}
+
+.player-app-theme .shadow-soft-lg {
+  border-color: #d8e2d7;
+  box-shadow:
+    0 2px 6px rgb(37 50 40 / 5%),
+    0 12px 32px rgb(49 92 61 / 11%);
+}
+
+.player-app-theme .player-top-header {
+  background: rgb(247 248 242 / 94%);
+  box-shadow: 0 1px 4px rgb(49 92 61 / 5%);
+}
+
+.player-app-theme .player-bottom-nav,
+.player-app-theme .player-app-action-bar {
+  background: rgb(255 255 255 / 94%);
+  border-color: var(--border);
+  box-shadow: 0 -4px 18px rgb(49 92 61 / 8%);
+}
+
+.player-app-theme .player-home-hero,
+.player-app-theme .player-profile-hero {
+  color: #ffffff;
+  background: linear-gradient(145deg, #315c3d 0%, #3f694a 52%, #527858 100%);
+  box-shadow: 0 10px 28px rgb(49 92 61 / 18%);
+}
+
+.player-app-theme .player-home-hero .text-primary,
+.player-app-theme .player-home-hero .text-muted-foreground,
+.player-app-theme .player-profile-hero .text-muted-foreground {
+  color: #ffffff;
+}
+
+.player-app-theme .gradient-sakura {
+  background: linear-gradient(145deg, #ffffff 0%, #f8faf5 55%, #e8f3e9 100%);
+}

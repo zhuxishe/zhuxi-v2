@@ -108,7 +108,7 @@ function buildTagList(partner: PartnerProfile, labels: Labels, locale: string): 
   const l = (tag: string) => localizeTag(tag, locale)
 
   if (partner.hobbyTags.length > 0) {
-    groups.push({ label: labels.interests, tags: partner.hobbyTags.slice(0, 5).map(l), variant: "info" })
+    groups.push({ label: labels.interests, tags: partner.hobbyTags.slice(0, 5).map(l), variant: "secondary" })
   }
 
   const socialTags = [...partner.expressionStyleTags, ...partner.groupRoleTags]

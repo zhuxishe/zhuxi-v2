@@ -134,7 +134,7 @@ function TagSection({ genreTags, themeTags, locale }: { genreTags?: string[]; th
   return (
     <div className="flex flex-wrap gap-1.5">
       {genreTags?.map((g) => <TagBadge key={g} label={localizeTag(g, locale)} />)}
-      {themeTags?.map((g) => <TagBadge key={g} label={localizeTag(g, locale)} variant="info" />)}
+      {themeTags?.map((g) => <TagBadge key={g} label={localizeTag(g, locale)} variant="secondary" />)}
     </div>
   )
 }

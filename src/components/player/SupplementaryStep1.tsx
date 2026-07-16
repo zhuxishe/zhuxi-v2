@@ -36,7 +36,7 @@ export function SupplementaryStep1({ data, setField }: Props) {
         <StationSearchSelect
           value={data.nearest_station}
           onChange={(v) => setField("nearest_station", v)}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm outline-none focus:border-primary transition-colors"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2.5 text-sm outline-none focus:border-primary transition-colors"
         />
       </div>
 

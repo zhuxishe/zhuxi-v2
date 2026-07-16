@@ -137,7 +137,7 @@ export function QuizResult({ scores, personalityType, dimensions: dimConfig, typ
         </div>
 
         {/* Watermark */}
-        <p className="text-center text-[10px] text-muted-foreground/50 pt-1">竹溪社 ZSP-15</p>
+        <p className="pt-1 text-center text-[10px] text-muted-foreground">竹溪社 ZSP-15</p>
       </div>
 
       {/* Action buttons */}

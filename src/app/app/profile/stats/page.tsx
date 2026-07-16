@@ -15,8 +15,8 @@ export default async function PlayerStatsPage() {
 
       <div className="grid grid-cols-3 gap-3">
         <StatBox icon={Activity} label={t("activities")} value={stats?.activity_count ?? 0} color="text-primary" />
-        <StatBox icon={Star} label={t("reviews")} value={stats?.review_count ?? 0} color="text-yellow-500" />
-        <StatBox icon={ThumbsUp} label={t("avgScore")} value={stats?.avg_review_score?.toFixed(1) ?? "-"} color="text-green-500" />
+        <StatBox icon={Star} label={t("reviews")} value={stats?.review_count ?? 0} color="text-bamboo" />
+        <StatBox icon={ThumbsUp} label={t("avgScore")} value={stats?.avg_review_score?.toFixed(1) ?? "-"} color="text-primary" />
       </div>
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-3">

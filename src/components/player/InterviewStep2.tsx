@@ -20,7 +20,7 @@ const DEGREE_OPTIONS = [
 const YEAR_OPTIONS = Array.from({ length: 10 }, (_, i) => String(2020 + i))
 
 const inputClass =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
+  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition-colors"
 
 export function InterviewStep2({ data, onChange }: Props) {
   const t = useTranslations("interview")

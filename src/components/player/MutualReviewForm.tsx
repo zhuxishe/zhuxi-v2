@@ -90,7 +90,7 @@ export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchRes
         </div>
         <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2}
           placeholder={t("commentPlaceholder")}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}

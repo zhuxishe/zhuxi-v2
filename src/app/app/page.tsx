@@ -42,7 +42,7 @@ export default async function PlayerHomePage() {
 
   return (
     <div className="space-y-5 p-4 pb-6">
-      <div className="animate-fade-in-up rounded-xl bg-bamboo-muted p-4">
+      <div className="player-home-hero animate-fade-in-up rounded-xl bg-bamboo-muted p-4">
         <p className="text-xs font-semibold text-primary">{t("kicker")}</p>
         <h1 className="heading-display mt-2 text-2xl">{t("welcome", { name: approvedPlayer.name })}</h1>
         <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>

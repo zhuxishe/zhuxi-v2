@@ -88,7 +88,15 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
               }`}
             >
               <p className="text-sm font-semibold">{t(`gameType.${key}.label`)}</p>
-              <p className="text-[10px] text-muted-foreground mt-0.5">{t(`gameType.${key}.desc`)}</p>
+              <p
+                className={`mt-0.5 text-[10px] ${
+                  gameType === GAME_TYPE_VALUES[i]
+                    ? "text-primary-foreground/90"
+                    : "text-muted-foreground"
+                }`}
+              >
+                {t(`gameType.${key}.desc`)}
+              </p>
             </button>
           ))}
         </div>
@@ -167,13 +175,13 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
           onChange={(e) => setMessage(e.target.value)}
           placeholder={t("message.placeholder")}
           rows={3}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          className="w-full rounded-lg border border-input bg-background px-3 py-2 text-sm outline-none focus:border-primary"
         />
       </section>
 
       {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
-      <div className="fixed bottom-16 left-0 right-0 z-40 bg-background/90 backdrop-blur-md shadow-[0_-2px_12px_oklch(0.18_0.02_45/6%)] p-4">
+      <div className="player-app-action-bar fixed bottom-16 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur-md p-4">
         <Button onClick={handleSubmit} disabled={submitting || totalSlots === 0} className="w-full">
           {submitting ? t("submitting") : existing ? t("update") : t("submit")}
         </Button>

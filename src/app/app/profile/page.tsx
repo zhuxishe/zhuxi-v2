@@ -23,7 +23,7 @@ export default async function ProfilePage() {
     <div className="p-6 space-y-4">
       <h1 className="heading-display text-2xl">{t("title")}</h1>
 
-      <div className="rounded-xl bg-card p-4 shadow-soft space-y-2">
+      <div className="player-profile-hero rounded-xl bg-card p-4 shadow-soft space-y-2">
         <p className="text-sm"><span className="text-muted-foreground">{t("name")}:</span> {player.name}</p>
         <p className="text-sm"><span className="text-muted-foreground">{t("email")}:</span> {member?.email ?? "-"}</p>
         <p className="text-sm"><span className="text-muted-foreground">{t("number")}:</span> {player.memberNumber ?? "-"}</p>

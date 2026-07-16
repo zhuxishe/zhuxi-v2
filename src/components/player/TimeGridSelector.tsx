@@ -118,7 +118,7 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
                 onClick={() => toggleAllDay(date)}
                 className={`h-8 rounded-md text-[10px] font-medium transition-all ${
                   allSelected
-                    ? "bg-primary/80 text-primary-foreground"
+                    ? "bg-primary text-primary-foreground"
                     : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
                 }`}
               >
@@ -134,7 +134,7 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
         {t.rich("stats", {
           slots: totalSlots,
           days: totalDays,
-          b: (chunks) => <span className="font-semibold text-gold">{chunks}</span>,
+          b: (chunks) => <span className="font-semibold text-primary">{chunks}</span>,
         })}
       </p>
     </div>

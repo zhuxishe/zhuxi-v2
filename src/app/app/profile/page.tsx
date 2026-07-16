@@ -32,6 +32,10 @@ export default async function ProfilePage() {
       <LineBindingCard lineUserId={member?.line_user_id ?? null} />
 
       <div className="space-y-2">
+        <Link href="/app/profile/community" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
+          <p className="text-sm font-medium">{t("community")}</p>
+          <p className="text-xs text-muted-foreground">{t("communityHint")}</p>
+        </Link>
         <Link href="/app/profile/supplementary" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
           <p className="text-sm font-medium">{t("editSupplementary")}</p>
           <p className="text-xs text-muted-foreground">{t("editSupplementaryHint")}</p>

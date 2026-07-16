@@ -184,9 +184,10 @@
   },
   "nav": {
     "home": "ホーム",
-    "profile": "プロフィール",
+    "scripts": "活動",
     "matches": "マッチング",
-  "scripts": "活動"
+    "community": "コミュニティ",
+    "profile": "マイページ"
   },
   "login": {
     "title": "竹渓社",

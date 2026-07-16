@@ -3,15 +3,28 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useTranslations } from "next-intl"
-import { Home, User, Users, BookOpen } from "lucide-react"
+import { CalendarDays, Home, MessageSquareText, Sparkles, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const NAV_ITEMS = [
   { href: "/app", icon: Home, tKey: "home" },
+  { href: "/app/scripts", icon: CalendarDays, tKey: "scripts" },
+  { href: "/app/matches", icon: Sparkles, tKey: "matches" },
+  { href: "/app/community", icon: MessageSquareText, tKey: "community" },
   { href: "/app/profile", icon: User, tKey: "profile" },
-  { href: "/app/matches", icon: Users, tKey: "matches" },
-  { href: "/app/scripts", icon: BookOpen, tKey: "scripts" },
 ] as const
+
+function isPathWithin(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function isNavItemActive(pathname: string, href: (typeof NAV_ITEMS)[number]["href"]) {
+  if (href === "/app") return pathname === "/app"
+  if (href === "/app/matches") {
+    return isPathWithin(pathname, "/app/matches") || isPathWithin(pathname, "/app/matching")
+  }
+  return isPathWithin(pathname, href)
+}
 
 interface Props {
   playerName: string
@@ -23,9 +36,9 @@ export function PlayerBottomNav({ playerName: _playerName }: Props) {
 
   return (
     <nav aria-label="main navigation" className="player-bottom-nav fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-lg items-center justify-around pb-[env(safe-area-inset-bottom)] pt-1.5 pb-2">
+      <div className="mx-auto grid w-full max-w-md grid-cols-5 items-end pb-[calc(0.5rem+env(safe-area-inset-bottom))] pt-1.5">
         {NAV_ITEMS.map(({ href, icon: Icon, tKey }) => {
-          const active = href === "/app" ? pathname === "/app" : pathname?.startsWith(href)
+          const active = isNavItemActive(pathname, href)
           return (
             <Link
               key={href}
@@ -33,15 +46,21 @@ export function PlayerBottomNav({ playerName: _playerName }: Props) {
               aria-label={t(tKey)}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex flex-col items-center gap-0.5 px-4 py-2 text-[11px] tracking-wide transition-colors",
+                "flex min-w-0 flex-col items-center gap-0.5 px-0.5 py-1 text-[10px] tracking-normal transition-colors min-[390px]:text-[11px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset",
                 active ? "text-primary" : "text-muted-foreground"
               )}
             >
-              <Icon className="size-[22px]" strokeWidth={active ? 2 : 1.5} />
-              <span className="font-medium">{t(tKey)}</span>
-              {active && (
-                <span className="absolute top-0.5 left-1/2 -translate-x-1/2 h-[3px] w-5 rounded-full bg-sakura" />
-              )}
+              <span
+                className={cn(
+                  "grid size-9 place-items-center rounded-full transition-colors",
+                  active && "bg-primary/10"
+                )}
+              >
+                <Icon className="size-[22px]" strokeWidth={active ? 2 : 1.5} />
+              </span>
+              <span className={cn("max-w-full truncate", active ? "font-semibold" : "font-medium")}>
+                {t(tKey)}
+              </span>
             </Link>
           )
         })}

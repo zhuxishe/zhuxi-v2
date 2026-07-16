@@ -184,9 +184,10 @@
   },
   "nav": {
     "home": "首页",
-    "profile": "个人资料",
+    "scripts": "活动",
     "matches": "匹配",
-    "scripts": "活动"
+    "community": "社区",
+    "profile": "我的"
   },
   "login": {
     "title": "竹溪社",

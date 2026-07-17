@@ -1223,6 +1223,35 @@ export type Database = {
           },
         ]
       }
+      player_activity_settings: {
+        Row: {
+          id: number
+          social_home_limit: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: number
+          social_home_limit?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: number
+          social_home_limit?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_activity_settings_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       script_play_records: {
         Row: {
           activity_id: string | null
@@ -1296,6 +1325,7 @@ export type Database = {
           id: string
           is_featured: boolean
           is_published: boolean
+          is_social_script: boolean
           language: string | null
           location: string | null
           page_count: number | null
@@ -1304,8 +1334,12 @@ export type Database = {
           play_count: number
           player_count_max: number | null
           player_count_min: number | null
+          player_activity_order: number
+          pin_in_social_library: boolean
           roles: Json | null
           script_type: string | null
+          show_on_player_activity: boolean
+          social_library_order: number
           theme_tags: string[]
           title: string
           title_ja: string | null
@@ -1326,6 +1360,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_published?: boolean
+          is_social_script?: boolean
           language?: string | null
           location?: string | null
           page_count?: number | null
@@ -1334,8 +1369,12 @@ export type Database = {
           play_count?: number
           player_count_max?: number | null
           player_count_min?: number | null
+          player_activity_order?: number
+          pin_in_social_library?: boolean
           roles?: Json | null
           script_type?: string | null
+          show_on_player_activity?: boolean
+          social_library_order?: number
           theme_tags?: string[]
           title: string
           title_ja?: string | null
@@ -1356,6 +1395,7 @@ export type Database = {
           id?: string
           is_featured?: boolean
           is_published?: boolean
+          is_social_script?: boolean
           language?: string | null
           location?: string | null
           page_count?: number | null
@@ -1364,8 +1404,12 @@ export type Database = {
           play_count?: number
           player_count_max?: number | null
           player_count_min?: number | null
+          player_activity_order?: number
+          pin_in_social_library?: boolean
           roles?: Json | null
           script_type?: string | null
+          show_on_player_activity?: boolean
+          social_library_order?: number
           theme_tags?: string[]
           title?: string
           title_ja?: string | null
@@ -1384,42 +1428,102 @@ export type Database = {
       }
       past_event_reviews: {
         Row: {
+          capacity_note: string | null
+          capacity_note_ja: string | null
+          content: string | null
+          content_ja: string | null
           cover_url: string
           created_at: string
+          end_at: string | null
           event_date: string | null
+          fee_note: string | null
+          fee_note_ja: string | null
           gallery_urls: Json
           id: string
           is_published: boolean
+          location: string | null
+          location_ja: string | null
+          pin_in_player_library: boolean
+          player_home_order: number
+          player_library_order: number
+          registration_url: string | null
+          show_on_player_home: boolean
           sort_order: number
+          source_key: string | null
           source_url: string | null
+          start_at: string | null
+          status: string
           summary: string
+          summary_ja: string | null
+          tags: string[]
           title: string
+          title_ja: string | null
           updated_at: string
         }
         Insert: {
+          capacity_note?: string | null
+          capacity_note_ja?: string | null
+          content?: string | null
+          content_ja?: string | null
           cover_url: string
           created_at?: string
+          end_at?: string | null
           event_date?: string | null
+          fee_note?: string | null
+          fee_note_ja?: string | null
           gallery_urls?: Json
           id?: string
           is_published?: boolean
+          location?: string | null
+          location_ja?: string | null
+          pin_in_player_library?: boolean
+          player_home_order?: number
+          player_library_order?: number
+          registration_url?: string | null
+          show_on_player_home?: boolean
           sort_order?: number
+          source_key?: string | null
           source_url?: string | null
+          start_at?: string | null
+          status?: string
           summary: string
+          summary_ja?: string | null
+          tags?: string[]
           title: string
+          title_ja?: string | null
           updated_at?: string
         }
         Update: {
+          capacity_note?: string | null
+          capacity_note_ja?: string | null
+          content?: string | null
+          content_ja?: string | null
           cover_url?: string
           created_at?: string
+          end_at?: string | null
           event_date?: string | null
+          fee_note?: string | null
+          fee_note_ja?: string | null
           gallery_urls?: Json
           id?: string
           is_published?: boolean
+          location?: string | null
+          location_ja?: string | null
+          pin_in_player_library?: boolean
+          player_home_order?: number
+          player_library_order?: number
+          registration_url?: string | null
+          show_on_player_home?: boolean
           sort_order?: number
+          source_key?: string | null
           source_url?: string | null
+          start_at?: string | null
+          status?: string
           summary?: string
+          summary_ja?: string | null
+          tags?: string[]
           title?: string
+          title_ja?: string | null
           updated_at?: string
         }
         Relationships: []

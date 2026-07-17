@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { SingleSelect } from "@/components/shared/SingleSelect"
 import { ScriptContentFields } from "@/components/admin/ScriptContentFields"
+import { ScriptActivityPlacementFields } from "@/components/admin/ScriptActivityPlacementFields"
 import { TextInput, NumInput } from "@/components/admin/FormInputs"
 import type { ScriptRole } from "@/components/admin/ScriptRoleEditor"
 import {
@@ -32,6 +33,11 @@ export function ScriptUploadForm() {
   const [warnings, setWarnings] = useState<string[]>([])
   const [roles, setRoles] = useState<ScriptRole[]>([])
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [isSocialScript, setIsSocialScript] = useState(false)
+  const [showOnPlayerActivity, setShowOnPlayerActivity] = useState(false)
+  const [playerActivityOrder, setPlayerActivityOrder] = useState(0)
+  const [pinInSocialLibrary, setPinInSocialLibrary] = useState(false)
+  const [socialLibraryOrder, setSocialLibraryOrder] = useState(0)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -50,6 +56,11 @@ export function ScriptUploadForm() {
       genre_tags: genreTags, theme_tags: themeTags,
       content_html: contentHtml, warnings, roles,
       is_published: false,
+      is_social_script: isSocialScript,
+      show_on_player_activity: isSocialScript && showOnPlayerActivity,
+      player_activity_order: playerActivityOrder,
+      pin_in_social_library: isSocialScript && pinInSocialLibrary,
+      social_library_order: socialLibraryOrder,
     })
 
     if (result.error) { setSubmitting(false); setError(result.error); return }
@@ -119,6 +130,19 @@ export function ScriptUploadForm() {
         warnings={warnings} onWarningsChange={setWarnings}
         roles={roles} onRolesChange={setRoles}
         coverUrl={null} onCoverUpload={setCoverFile}
+      />
+
+      <ScriptActivityPlacementFields
+        isSocialScript={isSocialScript}
+        onIsSocialScriptChange={setIsSocialScript}
+        showOnPlayerActivity={showOnPlayerActivity}
+        onShowOnPlayerActivityChange={setShowOnPlayerActivity}
+        playerActivityOrder={playerActivityOrder}
+        onPlayerActivityOrderChange={setPlayerActivityOrder}
+        pinInSocialLibrary={pinInSocialLibrary}
+        onPinInSocialLibraryChange={setPinInSocialLibrary}
+        socialLibraryOrder={socialLibraryOrder}
+        onSocialLibraryOrderChange={setSocialLibraryOrder}
       />
 
       {error && <p className="text-sm text-destructive">{error}</p>}

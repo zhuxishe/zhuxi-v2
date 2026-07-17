@@ -2,7 +2,9 @@ import Link from "next/link"
 import Image from "next/image"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchAdminScripts } from "@/lib/queries/scripts"
+import { fetchPlayerActivitySettingsAdminState } from "@/lib/queries/admin-player-activity"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
+import { PlayerActivitySettingsForm } from "@/components/admin/PlayerActivitySettingsForm"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Pagination } from "@/components/shared/Pagination"
@@ -17,12 +19,23 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
   const admin = await requireAdmin()
   const params = await searchParams
   const page = params.page ? Math.max(1, parseInt(params.page)) : 1
-  const { scripts, total } = await fetchAdminScripts({ page })
+  const [{ scripts, total }, settingsState] = await Promise.all([
+    fetchAdminScripts({ page }),
+    fetchPlayerActivitySettingsAdminState(),
+  ])
 
   return (
     <div>
       <AdminTopBar admin={admin} title="剧本管理" />
       <div className="p-6 space-y-4">
+        {settingsState.setupRequired ? (
+          <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800">
+            数据库尚未应用 Player Activity V1 迁移，暂时不能配置 Player 活动首页。
+          </div>
+        ) : (
+          <PlayerActivitySettingsForm initialLimit={settingsState.settings?.social_home_limit ?? 5} />
+        )}
+
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">共 {total} 个剧本</p>
           <Link href="/admin/scripts/new">
@@ -64,6 +77,11 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
                       <span className="text-primary">精选活动</span>
                     </>
                   )}
+                </div>
+                <div className="flex flex-wrap gap-1.5 text-[11px]">
+                  {s.is_social_script && <span className="rounded-full bg-primary/10 px-2 py-0.5 text-primary">社交剧本</span>}
+                  {s.show_on_player_activity && <span className="rounded-full bg-blue-500/10 px-2 py-0.5 text-blue-600">活动首页</span>}
+                  {s.pin_in_social_library && <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-amber-700">剧本库置顶</span>}
                 </div>
               </Link>
             ))}

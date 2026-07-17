@@ -25,6 +25,11 @@ interface ScriptInput {
   warnings: string[]
   roles: RoleInput[]
   is_published: boolean
+  is_social_script: boolean
+  show_on_player_activity: boolean
+  player_activity_order: number
+  pin_in_social_library: boolean
+  social_library_order: number
 }
 
 export async function createScript(input: ScriptInput) {
@@ -39,8 +44,15 @@ export async function createScript(input: ScriptInput) {
   if (input.player_count_min < 1) return { error: "最少人数不能小于 1" }
   if (input.player_count_max < input.player_count_min) return { error: "最多人数不能小于最少人数" }
   if (input.duration_minutes < 1) return { error: "时长不能小于 1 分钟" }
+  if (!Number.isInteger(input.player_activity_order) || Math.abs(input.player_activity_order) > 999_999) {
+    return { error: "活动父菜单排序必须是 -999999 到 999999 之间的整数" }
+  }
+  if (!Number.isInteger(input.social_library_order) || Math.abs(input.social_library_order) > 999_999) {
+    return { error: "社交剧本库排序必须是 -999999 到 999999 之间的整数" }
+  }
 
   const supabase = await createClient()
+  const isSocialScript = Boolean(input.is_social_script)
 
   const { data, error } = await supabase
     .from("scripts")
@@ -59,6 +71,11 @@ export async function createScript(input: ScriptInput) {
       warnings: input.warnings,
       roles: input.roles as unknown as import("@/types/database.types").Json,
       is_published: input.is_published,
+      is_social_script: isSocialScript,
+      show_on_player_activity: isSocialScript && input.show_on_player_activity,
+      player_activity_order: input.player_activity_order,
+      pin_in_social_library: isSocialScript && input.pin_in_social_library,
+      social_library_order: input.social_library_order,
       created_by: admin.id,
     })
     .select("id")

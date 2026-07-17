@@ -3,29 +3,24 @@ import Link from "next/link"
 import { ArrowLeft, Images } from "lucide-react"
 import { PastReviewCard } from "@/components/landing/PastReviewCard"
 import { PastReviewsQuickNav } from "@/components/landing/PastReviewsQuickNav"
-import { getLandingEventReviews } from "@/lib/landing-activity-photos"
-import { fetchPublishedPastEventReviews, type PastEventReviewPublic } from "@/lib/queries/past-event-reviews"
-
-function sortReviewsByNewestFirst(reviews: PastEventReviewPublic[]): PastEventReviewPublic[] {
-  return reviews
-    .map((review, index) => ({ review, index }))
-    .sort((a, b) => {
-      const dateA = a.review.event_date
-      const dateB = b.review.event_date
-
-      if (dateA && dateB && dateA !== dateB) return dateB.localeCompare(dateA)
-      if (dateA && !dateB) return -1
-      if (!dateA && dateB) return 1
-      return a.index - b.index
-    })
-    .map(({ review }) => review)
-}
+import { getLandingEventReviews, getLandingEventReviewSourceKeys } from "@/lib/landing-activity-photos"
+import { mergeLandingEventReviews } from "@/lib/landing-event-reviews"
+import { fetchPublishedPastEventReviewsState } from "@/lib/queries/past-event-reviews"
 
 export async function PastReviewsSection() {
+  const locale = await getLocale()
   const t = await getTranslations("pastReviews")
-  const landingEventReviews = getLandingEventReviews(await getLocale())
-  const dbReviews = await fetchPublishedPastEventReviews()
-  const reviews = sortReviewsByNewestFirst([...landingEventReviews, ...dbReviews])
+  const landingEventReviews = getLandingEventReviews(locale)
+  const dbState = await fetchPublishedPastEventReviewsState(locale)
+  const reviews = mergeLandingEventReviews(
+    landingEventReviews,
+    dbState.reviews,
+    getLandingEventReviewSourceKeys(),
+    // The public website keeps its established static catalogue as the
+    // baseline. Published database rows may update or add cards, but Player
+    // Activity administration must not silently remove legacy website cards.
+    false,
+  )
 
   return (
     <section className="relative min-h-screen bg-[#fffdf7] px-5 pb-16 pt-24 text-[#171717] grain-overlay md:pb-20 md:pt-32">

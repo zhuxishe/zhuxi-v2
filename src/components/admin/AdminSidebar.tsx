@@ -23,7 +23,7 @@ const NAV_GROUPS = [
     label: "内容",
     items: [
       { href: "/admin/scripts", label: "剧本管理", icon: BookOpen },
-      { href: "/admin/reviews", label: "往期回顾", icon: Images },
+      { href: "/admin/reviews", label: "大型活动", icon: Images },
       { href: "/admin/community", label: "社区管理", icon: MessagesSquare },
       { href: "/admin/staff", label: "Staff 管理", icon: UserRound },
       { href: "/admin/testimonials", label: "评论管理", icon: MessageCircle },

@@ -1,36 +1,65 @@
+import { getLocale, getTranslations } from "next-intl/server"
 import { requirePlayer } from "@/lib/auth/player"
-import { fetchPublishedScripts } from "@/lib/queries/scripts"
-import { getTranslations } from "next-intl/server"
-import { ScriptCard } from "@/components/player/ScriptCard"
-import { ScriptGenreFilter } from "@/components/player/ScriptGenreFilter"
-import { EmptyState } from "@/components/shared/EmptyState"
-import { BookOpen } from "lucide-react"
+import { fetchPlayerActivityHub } from "@/lib/player-activity/queries"
+import { ActivityPageIntro } from "@/components/player/activity/ActivityPageIntro"
+import { ActivitySectionHeader } from "@/components/player/activity/ActivitySectionHeader"
+import { LargeActivityCard } from "@/components/player/activity/LargeActivityCard"
+import { ScriptLibraryEntry } from "@/components/player/activity/ScriptLibraryEntry"
+import { SocialScriptShelf } from "@/components/player/activity/SocialScriptCards"
 
-interface Props {
-  searchParams: Promise<{ q?: string; genre?: string }>
-}
-
-export default async function PlayerScriptsPage({ searchParams }: Props) {
+export default async function PlayerActivityPage() {
   await requirePlayer()
-  const t = await getTranslations("scripts")
-  const { q, genre } = await searchParams
-  const scripts = await fetchPublishedScripts(q, genre)
+  const [locale, t] = await Promise.all([
+    getLocale(),
+    getTranslations("activity"),
+  ])
+  const data = await fetchPlayerActivityHub(locale)
+  const cardLabels = {
+    upcoming: t("badges.upcoming"),
+    latest: t("badges.latest"),
+    cancelled: t("badges.cancelled"),
+    datePending: t("datePending"),
+    locationPending: t("locationPending"),
+  }
 
   return (
-    <div className="p-4 space-y-4">
-      <h1 className="heading-display text-2xl">{t("title")}</h1>
+    <div className="space-y-3.5 px-4 pb-4 pt-2.5">
+      <ActivityPageIntro title={t("title")} description={t("subtitle")} />
 
-      <ScriptGenreFilter currentGenre={genre ?? ""} />
+      <section>
+        <ActivitySectionHeader title={t("largeTitle")} href="/app/scripts/large" actionLabel={t("viewAll")} />
+        {data.largeActivities.length > 0 ? (
+          <div className="space-y-2.5">
+            {data.largeActivities.map((activity, index) => (
+              <LargeActivityCard
+                key={activity.id}
+                activity={activity}
+                labels={cardLabels}
+                locale={locale}
+                compact
+                priority={index === 0}
+              />
+            ))}
+          </div>
+        ) : (
+          <ActivityEmptyState label={t("emptyLarge")} />
+        )}
+      </section>
 
-      {scripts.length === 0 ? (
-        <EmptyState icon={BookOpen} title={t("emptyTitle")} description={t("emptyDescription")} />
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
-          {scripts.map((s) => (
-            <ScriptCard key={s.id} script={s} />
-          ))}
-        </div>
-      )}
+      <section>
+        <ActivitySectionHeader title={t("socialTitle")} href="/app/scripts/social" actionLabel={t("viewAll")} />
+        <SocialScriptShelf scripts={data.socialScripts} locale={locale} emptyLabel={t("emptySocial")} />
+      </section>
+
+      <ScriptLibraryEntry title={t("libraryTitle")} description={t("libraryDescription")} />
+    </div>
+  )
+}
+
+function ActivityEmptyState({ label }: { label: string }) {
+  return (
+    <div className="rounded-[22px] border border-border bg-card px-5 py-10 text-center text-sm text-muted-foreground shadow-soft">
+      {label}
     </div>
   )
 }

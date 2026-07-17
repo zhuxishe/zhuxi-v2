@@ -25,6 +25,11 @@ const ALLOWED_FIELDS = [
   "location",
   "roles",
   "warnings",
+  "is_social_script",
+  "show_on_player_activity",
+  "player_activity_order",
+  "pin_in_social_library",
+  "social_library_order",
 ] as const
 
 type UpdateData = Record<string, string | number | boolean | string[] | Json | null>
@@ -39,6 +44,14 @@ export async function updateScript(scriptId: string, data: UpdateData) {
   if (min !== undefined && min < 1) return { error: "最少人数不能小于 1" }
   if (min !== undefined && max !== undefined && max < min) return { error: "最多人数不能小于最少人数" }
   if (dur !== undefined && dur < 1) return { error: "时长不能小于 1 分钟" }
+  const playerActivityOrder = data.player_activity_order as number | undefined
+  const socialLibraryOrder = data.social_library_order as number | undefined
+  if (playerActivityOrder !== undefined && (!Number.isInteger(playerActivityOrder) || Math.abs(playerActivityOrder) > 999_999)) {
+    return { error: "活动父菜单排序必须是 -999999 到 999999 之间的整数" }
+  }
+  if (socialLibraryOrder !== undefined && (!Number.isInteger(socialLibraryOrder) || Math.abs(socialLibraryOrder) > 999_999)) {
+    return { error: "社交剧本库排序必须是 -999999 到 999999 之间的整数" }
+  }
 
   const supabase = await createClient()
 
@@ -48,6 +61,11 @@ export async function updateScript(scriptId: string, data: UpdateData) {
     if ((ALLOWED_FIELDS as readonly string[]).includes(key)) {
       filtered[key] = data[key]
     }
+  }
+
+  if (filtered.is_social_script === false) {
+    filtered.show_on_player_activity = false
+    filtered.pin_in_social_library = false
   }
 
   // roles 需要转换为 Json 类型
@@ -68,6 +86,7 @@ export async function updateScript(scriptId: string, data: UpdateData) {
   }
   revalidatePath("/admin/scripts")
   revalidatePath(`/admin/scripts/${scriptId}`)
+  revalidatePath("/app/scripts")
   return { success: true }
 }
 

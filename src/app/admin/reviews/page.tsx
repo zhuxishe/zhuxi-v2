@@ -12,23 +12,24 @@ export default async function AdminReviewsPage() {
 
   return (
     <div>
-      <AdminTopBar admin={admin} title="往期回顾" />
+      <AdminTopBar admin={admin} title="大型活动" />
       <div className="p-6 space-y-6">
         <div className="rounded-xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-foreground/10">
-          用来维护公开页“往期回顾”。封面图建议使用已上传到 Supabase Storage 的图片 URL。
+          统一维护大型活动资料。Player App 的状态、首页展示与活动库置顶可独立配置；官网往期回顾只有在单独勾选后才会更新。
         </div>
         {setupRequired ? (
           <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800">
-            数据库还没有 <code>past_event_reviews</code> 表。请先应用
-            <code className="mx-1">supabase/migrations/037_past_event_reviews.sql</code>。
+            数据库尚未应用 Player Activity V1 migration（<code>20260717133954</code>），升级前已暂停大型活动编辑。
           </div>
         ) : (
-          <ReviewForm />
-        )}
-        {reviews.length === 0 ? (
-          <EmptyState icon={Images} title="暂无往期回顾" description="添加第一条活动图文" />
-        ) : (
-          <ReviewList reviews={reviews} />
+          <>
+            <ReviewForm />
+            {reviews.length === 0 ? (
+              <EmptyState icon={Images} title="暂无大型活动" description="添加第一个大型活动" />
+            ) : (
+              <ReviewList reviews={reviews} />
+            )}
+          </>
         )}
       </div>
     </div>

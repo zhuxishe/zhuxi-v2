@@ -7,6 +7,7 @@ import { uploadScriptCover } from "@/app/admin/scripts/new/upload-actions"
 import { Button } from "@/components/ui/button"
 import { ScriptEditBasicFields } from "@/components/admin/ScriptEditBasicFields"
 import { ScriptContentFields } from "@/components/admin/ScriptContentFields"
+import { ScriptActivityPlacementFields } from "@/components/admin/ScriptActivityPlacementFields"
 import type { ScriptRole } from "@/components/admin/ScriptRoleEditor"
 
 export interface ScriptData {
@@ -31,6 +32,11 @@ export interface ScriptData {
   is_featured: boolean | null
   budget: string | null
   location: string | null
+  is_social_script: boolean | null
+  show_on_player_activity: boolean | null
+  player_activity_order: number | null
+  pin_in_social_library: boolean | null
+  social_library_order: number | null
 }
 
 export function ScriptEditForm({ script }: { script: ScriptData }) {
@@ -51,6 +57,11 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
   const [budget, setBudget] = useState(script.budget ?? "")
   const [location, setLocation] = useState(script.location ?? "")
   const [isFeatured, setIsFeatured] = useState(script.is_featured ?? false)
+  const [isSocialScript, setIsSocialScript] = useState(script.is_social_script ?? false)
+  const [showOnPlayerActivity, setShowOnPlayerActivity] = useState(script.show_on_player_activity ?? false)
+  const [playerActivityOrder, setPlayerActivityOrder] = useState(script.player_activity_order ?? 0)
+  const [pinInSocialLibrary, setPinInSocialLibrary] = useState(script.pin_in_social_library ?? false)
+  const [socialLibraryOrder, setSocialLibraryOrder] = useState(script.social_library_order ?? 0)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [pageImages, setPageImages] = useState<string[] | null>(script.page_images)
   const [submitting, setSubmitting] = useState(false)
@@ -72,6 +83,11 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
       content_html: contentHtml, warnings, roles: JSON.parse(JSON.stringify(roles)),
       is_published: script.is_published ?? false, is_featured: isFeatured,
       budget: budget || null, location: location || null,
+      is_social_script: isSocialScript,
+      show_on_player_activity: isSocialScript && showOnPlayerActivity,
+      player_activity_order: playerActivityOrder,
+      pin_in_social_library: isSocialScript && pinInSocialLibrary,
+      social_library_order: socialLibraryOrder,
     })
 
     if (result.error) { setSubmitting(false); setError(result.error); return }
@@ -117,6 +133,18 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
         scriptId={script.id}
         existingPages={pageImages}
         onConverted={setPageImages}
+      />
+      <ScriptActivityPlacementFields
+        isSocialScript={isSocialScript}
+        onIsSocialScriptChange={setIsSocialScript}
+        showOnPlayerActivity={showOnPlayerActivity}
+        onShowOnPlayerActivityChange={setShowOnPlayerActivity}
+        playerActivityOrder={playerActivityOrder}
+        onPlayerActivityOrderChange={setPlayerActivityOrder}
+        pinInSocialLibrary={pinInSocialLibrary}
+        onPinInSocialLibraryChange={setPinInSocialLibrary}
+        socialLibraryOrder={socialLibraryOrder}
+        onSocialLibraryOrderChange={setSocialLibraryOrder}
       />
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-3">

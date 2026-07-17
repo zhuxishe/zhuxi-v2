@@ -211,4 +211,12 @@ export function getLandingEventReviews(locale: string, category = "large"): Past
   })
 }
 
+export function getLandingEventReviewSourceKeys(category = "large"): Readonly<Record<string, readonly string[]>> {
+  return Object.fromEntries(
+    events
+      .filter((event) => event.category === category)
+      .map((event) => [event.id, [...new Set([event.id, event.slug])]]),
+  )
+}
+
 export const getLandingScriptEventReviews = (locale: string): PastEventReviewPublic[] => getLandingEventReviews(locale, "script")

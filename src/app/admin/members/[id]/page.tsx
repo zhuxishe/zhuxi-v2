@@ -1,11 +1,13 @@
 import Link from "next/link"
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
+import { fetchAdminMemberProfileMetrics } from "@/lib/profile/queries"
 import { fetchMemberDetail } from "@/lib/queries/members"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MemberStatusBadge } from "@/components/admin/MemberStatusBadge"
 import { MemberStatusActions } from "@/components/admin/MemberStatusActions"
 import { MemberDetailCard } from "@/components/admin/MemberDetailCard"
+import { MemberProfileMetricsCard } from "@/components/admin/MemberProfileMetricsCard"
 import { MemberDeleteButton } from "@/components/admin/MemberDeleteButton"
 import { Button } from "@/components/ui/button"
 import { ClipboardList, Pencil } from "lucide-react"
@@ -18,11 +20,15 @@ export default async function MemberDetailPage({ params }: Props) {
   const admin = await requireAdmin()
   const { id } = await params
 
-  let member
-  try {
-    member = await fetchMemberDetail(id)
-  } catch {
-    notFound()
+  const [memberResult, profileMetricsResult] = await Promise.allSettled([
+    fetchMemberDetail(id),
+    fetchAdminMemberProfileMetrics(id),
+  ])
+  if (memberResult.status === "rejected") notFound()
+  const member = memberResult.value
+  const profileMetrics = profileMetricsResult.status === "fulfilled" ? profileMetricsResult.value : null
+  if (profileMetricsResult.status === "rejected") {
+    console.error("[MemberDetailPage] profile metrics unavailable", profileMetricsResult.reason)
   }
 
   const identity = member.member_identity
@@ -59,6 +65,26 @@ export default async function MemberDetailPage({ params }: Props) {
           <MemberStatusActions memberId={id} currentStatus={member.status} />
           <MemberDeleteButton memberId={id} memberName={identity?.full_name ?? "未知"} />
         </div>
+
+        {profileMetrics ? (
+          <MemberProfileMetricsCard
+            key={profileMetrics.updatedAt}
+            metrics={profileMetrics}
+            member={{
+              id: member.id,
+              email: member.email,
+              memberNumber: member.member_number,
+              fullName: identity?.full_name ?? "未知成员",
+              nickname: identity?.nickname ?? null,
+              schoolName: identity?.school_name ?? null,
+            }}
+          />
+        ) : (
+          <section role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-5 text-amber-900">
+            <h3 className="font-semibold">运营指标暂时无法读取</h3>
+            <p className="mt-1 text-sm leading-6">成员的基本信息、面试、补充资料和性格信息仍可正常查看。请确认个人主页数据迁移已应用后刷新本页。</p>
+          </section>
+        )}
 
         <MemberDetailCard member={member} identity={identity} />
       </div>

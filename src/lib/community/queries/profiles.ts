@@ -1,6 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchCommunityMemberProfileMetrics } from "@/lib/profile/queries"
 import { fetchCommunityPosts } from "./posts"
 import type { CommunityPost, CommunityProfile } from "@/lib/community/types"
+import type { CommunityMemberProfileMetrics } from "@/lib/profile/types"
 
 interface ProfileRow {
   id: string
@@ -16,6 +18,7 @@ export async function fetchCommunityPublicProfile(options: {
   viewerMemberId: string
 }): Promise<{
   profile: CommunityProfile
+  metrics: CommunityMemberProfileMetrics
   treeholes: CommunityPost[]
   photos: CommunityPost[]
 } | null> {
@@ -45,7 +48,8 @@ export async function fetchCommunityPublicProfile(options: {
     presetAvatar: data.preset_avatar,
     joinedAt: data.joined_at,
   }
-  const [treeholes, photos] = await Promise.all([
+  const [metrics, treeholes, photos] = await Promise.all([
+    fetchCommunityMemberProfileMetrics(data.id),
     fetchCommunityPosts({
       memberId: options.viewerMemberId,
       postType: "treehole",
@@ -59,5 +63,6 @@ export async function fetchCommunityPublicProfile(options: {
       authorProfileId: data.id,
     }),
   ])
-  return { profile, treeholes, photos }
+  if (!metrics) return null
+  return { profile, metrics, treeholes, photos }
 }

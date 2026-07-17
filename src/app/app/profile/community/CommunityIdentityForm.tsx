@@ -1,17 +1,19 @@
 "use client"
 
 import Image from "next/image"
-import { useActionState, useEffect, useId, useState } from "react"
+import { useActionState, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { Droplets, Leaf, Sprout, Upload, UserRound } from "lucide-react"
+import { Droplets, Leaf, Sprout, UserRound } from "lucide-react"
 import { saveCommunityProfileAction } from "./actions"
 import { communityAvatarUrl } from "@/lib/community/media"
+import { COMMUNITY_AVATAR_BUCKET } from "@/lib/community/constants"
 import type { CommunityActionState, CommunityProfile } from "@/lib/community/types"
 
 const INITIAL_STATE: CommunityActionState = {}
 
 interface CommunityIdentityFormProps {
   profile: CommunityProfile | null
+  personalAvatarPath: string | null
   returnTo?: string
   locale: "zh" | "ja"
 }
@@ -22,16 +24,20 @@ const PRESETS = [
   { value: "leaf", Icon: Leaf },
 ] as const
 
-export function CommunityIdentityForm({ profile, returnTo, locale }: CommunityIdentityFormProps) {
+export function CommunityIdentityForm({ profile, personalAvatarPath, returnTo, locale }: CommunityIdentityFormProps) {
   const router = useRouter()
-  const inputId = useId()
   const [state, action, pending] = useActionState(saveCommunityProfileAction, INITIAL_STATE)
-  const [avatarKind, setAvatarKind] = useState(profile?.avatarKind ?? "default")
+  const storedAvatarKind = profile?.avatarKind === "upload" ? "personal" : profile?.avatarKind ?? "default"
+  const [avatarKind, setAvatarKind] = useState(
+    storedAvatarKind === "personal" && !personalAvatarPath ? "default" : storedAvatarKind,
+  )
   const [presetAvatar, setPresetAvatar] = useState(profile?.presetAvatar ?? "bamboo")
-  const [avatarPath, setAvatarPath] = useState(profile?.avatarPath ?? "")
-  const [preview, setPreview] = useState(communityAvatarUrl(profile))
-  const [uploading, setUploading] = useState(false)
-  const [uploadError, setUploadError] = useState("")
+  const personalAvatarUrl = personalAvatarPath
+    ? `/api/community/media?${new URLSearchParams({ bucket: COMMUNITY_AVATAR_BUCKET, path: personalAvatarPath }).toString()}`
+    : null
+  const currentAvatarUrl = avatarKind === "personal"
+    ? personalAvatarUrl
+    : communityAvatarUrl(profile)
 
   useEffect(() => {
     if (!state.success) return
@@ -39,44 +45,23 @@ export function CommunityIdentityForm({ profile, returnTo, locale }: CommunityId
     else router.refresh()
   }, [returnTo, router, state.success])
 
-  async function uploadAvatar(file: File) {
-    setUploading(true)
-    setUploadError("")
-    const formData = new FormData()
-    formData.set("kind", "avatar")
-    formData.set("file", file)
-    try {
-      const response = await fetch("/api/community/uploads", { method: "POST", body: formData })
-      const result = await response.json() as { storagePath?: string; error?: string }
-      if (!response.ok || !result.storagePath) throw new Error(result.error || "上传失败")
-      setAvatarPath(result.storagePath)
-      setAvatarKind("upload")
-      setPreview(URL.createObjectURL(file))
-    } catch (error) {
-      setUploadError(error instanceof Error ? error.message : "上传失败")
-    } finally {
-      setUploading(false)
-    }
-  }
-
   const PresetIcon = PRESETS.find((item) => item.value === presetAvatar)?.Icon
 
   return (
     <form action={action} className="space-y-4 rounded-2xl bg-card p-4 shadow-soft">
       <input type="hidden" name="avatarKind" value={avatarKind} />
       <input type="hidden" name="presetAvatar" value={presetAvatar} />
-      <input type="hidden" name="avatarPath" value={avatarPath} />
       <div className="flex items-center gap-3">
         <div className="relative grid size-16 shrink-0 place-items-center overflow-hidden rounded-full bg-primary/10 text-primary">
-          {avatarKind === "upload" && preview ? (
-            <Image src={preview} alt="" fill unoptimized className="object-cover" sizes="64px" />
+          {avatarKind === "personal" && currentAvatarUrl ? (
+            <Image src={currentAvatarUrl} alt="" fill unoptimized className="object-cover" sizes="64px" />
           ) : avatarKind === "preset" && PresetIcon ? (
             <PresetIcon className="size-7" />
           ) : <UserRound className="size-7" />}
         </div>
         <div className="min-w-0 flex-1">
           <label htmlFor="community-nickname" className="mb-1 block text-xs font-medium text-muted-foreground">
-            {locale === "ja" ? "ニックネーム" : "社区昵称"}
+            {locale === "ja" ? "ニックネーム" : "昵称"}
           </label>
           <input
             id="community-nickname"
@@ -102,27 +87,31 @@ export function CommunityIdentityForm({ profile, returnTo, locale }: CommunityId
               <Icon className="size-5" />
             </button>
           ))}
-          <label htmlFor={inputId} className={`grid aspect-square cursor-pointer place-items-center rounded-xl border ${avatarKind === "upload" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}>
-            <Upload className="size-5" />
-          </label>
-          <input
-            id={inputId}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif"
-            className="sr-only"
-            onChange={(event) => {
-              const file = event.target.files?.[0]
-              if (file) void uploadAvatar(file)
-              event.target.value = ""
-            }}
-          />
+          <button
+            type="button"
+            onClick={() => setAvatarKind("personal")}
+            disabled={!personalAvatarUrl}
+            className={`relative grid aspect-square place-items-center overflow-hidden rounded-xl border disabled:cursor-not-allowed disabled:opacity-35 ${avatarKind === "personal" ? "border-primary bg-primary/10 text-primary" : "border-border"}`}
+            aria-label={locale === "ja" ? "個人プロフィール画像を使用" : "使用个人资料头像"}
+          >
+            {personalAvatarUrl ? (
+              <Image src={personalAvatarUrl} alt="" fill unoptimized className="object-cover" sizes="64px" />
+            ) : (
+              <UserRound className="size-5" />
+            )}
+          </button>
         </div>
+        <p className="mt-2 text-xs text-muted-foreground">
+          {personalAvatarUrl
+            ? (locale === "ja" ? "右端は個人プロフィール画像です。変更すると自動で同期されます。" : "最右侧使用个人资料头像，今后更换会自动同步。")
+            : (locale === "ja" ? "個人プロフィール画像を設定すると、右端から選べます。" : "设置个人资料头像后，即可选择最右侧头像。")}
+        </p>
       </fieldset>
 
-      {(state.error || uploadError) && <p role="alert" className="text-sm text-destructive">{state.error || uploadError}</p>}
+      {state.error && <p role="alert" className="text-sm text-destructive">{state.error}</p>}
       {state.success && <p role="status" className="text-sm text-primary">{locale === "ja" ? "保存しました" : "社区身份已保存"}</p>}
-      <button type="submit" disabled={pending || uploading} className="min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-        {pending || uploading ? (locale === "ja" ? "保存中…" : "保存中……") : (locale === "ja" ? "プロフィールを保存" : "保存社区身份")}
+      <button type="submit" disabled={pending} className="min-h-11 w-full rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground disabled:opacity-50">
+        {pending ? (locale === "ja" ? "保存中…" : "保存中……") : (locale === "ja" ? "プロフィールを保存" : "保存社区身份")}
       </button>
     </form>
   )

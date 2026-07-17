@@ -1,63 +1,87 @@
-import { requirePlayer } from "@/lib/auth/player"
-import { createClient } from "@/lib/supabase/server"
+import { CheckCircle2 } from "lucide-react"
 import { getTranslations } from "next-intl/server"
-import { LineBindingCard } from "@/components/player/LineBindingCard"
-import { signOut } from "@/app/login/actions"
-import { Button } from "@/components/ui/button"
-import { LocaleSwitcher } from "@/components/LocaleSwitcher"
-import Link from "next/link"
+import { fetchMyProfileSummary } from "@/lib/profile/queries"
+import { ProfileMenuCard } from "@/components/player/profile/ProfileMenuCard"
+import { ProfileSettingsCard } from "@/components/player/profile/ProfileSettingsCard"
+import { ProfileSummaryCard } from "@/components/player/profile/ProfileSummaryCard"
 
-export default async function ProfilePage() {
-  const player = await requirePlayer()
-  const t = await getTranslations("profile")
-  const tQuiz = await getTranslations("quiz")
-  const supabase = await createClient()
+interface ProfilePageProps {
+  searchParams: Promise<{ profile_updated?: string }>
+}
 
-  const { data: member } = await supabase
-    .from("members")
-    .select("line_user_id, email")
-    .eq("id", player.memberId)
-    .single()
+export default async function ProfilePage({ searchParams }: ProfilePageProps) {
+  const [profile, t, params] = await Promise.all([
+    fetchMyProfileSummary(),
+    getTranslations("profile"),
+    searchParams,
+  ])
+
+  const personalStatus = profile.identityComplete
+    ? t("status.profileComplete")
+    : t("status.profilePending")
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="heading-display text-2xl">{t("title")}</h1>
+    <div className="space-y-3 px-4 pb-7 pt-3">
+      <h1 className="heading-display text-[2rem] font-semibold leading-tight tracking-tight">{t("title")}</h1>
 
-      <div className="player-profile-hero rounded-xl bg-card p-4 shadow-soft space-y-2">
-        <p className="text-sm"><span className="text-muted-foreground">{t("name")}:</span> {player.name}</p>
-        <p className="text-sm"><span className="text-muted-foreground">{t("email")}:</span> {member?.email ?? "-"}</p>
-        <p className="text-sm"><span className="text-muted-foreground">{t("number")}:</span> {player.memberNumber ?? "-"}</p>
-      </div>
+      {params.profile_updated === "1" && (
+        <div role="status" className="flex min-h-11 items-center gap-2 rounded-xl bg-primary/10 px-3 text-sm font-medium text-primary">
+          <CheckCircle2 className="size-4 shrink-0" aria-hidden="true" />
+          <span>{t("updated")}</span>
+        </div>
+      )}
 
-      <LineBindingCard lineUserId={member?.line_user_id ?? null} />
+      <ProfileSummaryCard
+        avatarUrl={profile.personalAvatarUrl}
+        nickname={profile.nickname}
+        fullName={profile.fullName}
+        schoolName={profile.schoolName}
+        memberNumber={profile.memberNumber}
+        levelLabel={t(`levels.${profile.level}`)}
+        matchScore={profile.compatibilityScore}
+        activityCount={profile.activityCount}
+        labels={{
+          membership: t("membership"),
+          nicknameUnset: t("nicknameUnset"),
+          schoolUnset: t("schoolUnset"),
+          memberNumber: t("number"),
+          memberNumberPending: t("memberNumberPending"),
+          level: t("level"),
+          matchScore: t("matchScore"),
+          activities: t("activities"),
+          matchScorePending: t("matchScorePending"),
+          activityUnit: t("activityUnit"),
+          editProfile: t("editProfileAria"),
+        }}
+      />
 
-      <div className="space-y-2">
-        <Link href="/app/profile/community" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
-          <p className="text-sm font-medium">{t("community")}</p>
-          <p className="text-xs text-muted-foreground">{t("communityHint")}</p>
-        </Link>
-        <Link href="/app/profile/supplementary" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
-          <p className="text-sm font-medium">{t("editSupplementary")}</p>
-          <p className="text-xs text-muted-foreground">{t("editSupplementaryHint")}</p>
-        </Link>
-        <Link href="/app/profile/personality" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
-          <p className="text-sm font-medium">{t("editPersonality")}</p>
-          <p className="text-xs text-muted-foreground">{t("editPersonalityHint")}</p>
-        </Link>
-        <Link href="/app/profile/quiz" className="group block rounded-xl bg-card p-4 shadow-soft hover:shadow-soft-lg transition-all">
-          <p className="text-sm font-medium">{tQuiz("profileTitle")}</p>
-          <p className="text-xs text-muted-foreground">{tQuiz("profileHint")}</p>
-        </Link>
-      </div>
+      <ProfileMenuCard
+        labels={{
+          personalProfile: t("menu.personalProfile"),
+          communityManagement: t("menu.communityManagement"),
+          supplementary: t("menu.supplementary"),
+          personalitySelf: t("menu.personalitySelf"),
+          personalityTest: t("menu.personalityTest"),
+        }}
+        statuses={{
+          personalProfile: personalStatus,
+          community: profile.communityProfileId ? t("status.communitySet") : t("status.communityUnset"),
+          supplementary: profile.supplementaryComplete ? t("status.completed") : t("status.supplementaryPending"),
+          personality: profile.personalityComplete ? t("status.completed") : t("status.personalityPending"),
+          quiz: profile.quizComplete ? t("status.completed") : t("status.quizPending"),
+        }}
+      />
 
-      <div className="flex items-center justify-between rounded-xl bg-card p-4 shadow-soft">
-        <span className="text-sm font-medium">{t("language")}</span>
-        <LocaleSwitcher />
-      </div>
-
-      <form action={signOut}>
-        <Button type="submit" variant="outline" className="w-full text-destructive">{t("logout")}</Button>
-      </form>
+      <ProfileSettingsCard
+        lineUserId={profile.lineUserId}
+        labels={{
+          language: t("language"),
+          languageZh: t("languageZh"),
+          languageJa: t("languageJa"),
+          logout: t("logout"),
+          logoutConfirm: t("logoutConfirm"),
+        }}
+      />
     </div>
   )
 }

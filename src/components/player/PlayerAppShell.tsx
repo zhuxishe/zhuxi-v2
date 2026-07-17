@@ -15,7 +15,8 @@ interface PlayerAppShellProps {
 }
 
 function isFocusedComposer(pathname: string) {
-  return pathname === "/app/community/treehole/new"
+  return pathname === "/app/profile/edit"
+    || pathname === "/app/community/treehole/new"
     || pathname === "/app/community/photos/new"
     || /^\/app\/community\/(treehole|photos)\/[^/]+\/edit$/.test(pathname)
 }

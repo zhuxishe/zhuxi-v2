@@ -183,13 +183,13 @@ function snapshotProfile(value: unknown): CommunityReport["target_profile"] {
   const nickname = asString(profile.nickname)
   const avatarKind = asString(profile.avatar_kind)
   const joinedAt = asString(profile.joined_at)
-  if (!id || !nickname || !joinedAt || !["default", "preset", "upload"].includes(avatarKind ?? "")) {
+  if (!id || !nickname || !joinedAt || !["default", "preset", "upload", "personal"].includes(avatarKind ?? "")) {
     return null
   }
   return {
     id,
     nickname,
-    avatarKind: avatarKind as "default" | "preset" | "upload",
+    avatarKind: avatarKind as "default" | "preset" | "upload" | "personal",
     avatarPath: asString(profile.avatar_path),
     presetAvatar: asString(profile.preset_avatar),
     joinedAt,
@@ -275,7 +275,7 @@ async function hydrateCommunityReports(rows: RawCommunityReport[]): Promise<Comm
     const profile = row.reported_profile_id ? profiles.get(row.reported_profile_id) as {
       id: string
       nickname: string
-      avatar_kind: "default" | "preset" | "upload"
+      avatar_kind: "default" | "preset" | "upload" | "personal"
       avatar_path: string | null
       preset_avatar: string | null
       joined_at: string

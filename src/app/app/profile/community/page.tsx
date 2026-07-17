@@ -4,6 +4,7 @@ import { ArrowLeft, Bell } from "lucide-react"
 import { requireCommunityAccess } from "@/lib/auth/community"
 import { normalizeCommunityLocale } from "@/lib/community/localize"
 import { fetchCommunitySelfData } from "@/lib/community/queries/me"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { CommunityIdentityForm } from "./CommunityIdentityForm"
 import { CommunitySelfLists } from "./CommunitySelfLists"
 import { NotificationPreferencesForm } from "./NotificationPreferencesForm"
@@ -19,7 +20,15 @@ export default async function MyCommunityPage({ searchParams }: PageProps) {
     getLocale(),
   ])
   const locale = normalizeCommunityLocale(rawLocale)
-  const data = await fetchCommunitySelfData(context.memberId)
+  const [data, identityResult] = await Promise.all([
+    fetchCommunitySelfData(context.memberId),
+    createAdminClient()
+      .from("member_identity")
+      .select("personal_avatar_path")
+      .eq("member_id", context.memberId)
+      .maybeSingle<{ personal_avatar_path: string | null }>(),
+  ])
+  const personalAvatarPath = identityResult.error ? null : identityResult.data?.personal_avatar_path ?? null
 
   return (
     <div className="space-y-5 px-4 py-5">
@@ -33,10 +42,10 @@ export default async function MyCommunityPage({ searchParams }: PageProps) {
 
       {setup === "1" && !context.profile && (
         <p className="rounded-xl bg-primary/10 px-3 py-2 text-sm text-primary">
-          {locale === "ja" ? "投稿やコメントの前にニックネームを設定してください。" : "发布或评论前，请先设置社区昵称。"}
+          {locale === "ja" ? "投稿やコメントの前にニックネームを設定してください。" : "发布或评论前，请先设置昵称。"}
         </p>
       )}
-      <CommunityIdentityForm profile={context.profile} returnTo={returnTo} locale={locale} />
+      <CommunityIdentityForm profile={context.profile} personalAvatarPath={personalAvatarPath} returnTo={returnTo} locale={locale} />
 
       <CommunitySelfLists data={data} locale={locale} />
 

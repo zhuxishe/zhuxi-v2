@@ -45,6 +45,7 @@ export function MemberDetailCard({ member, identity }: Props) {
   const lang = Array.isArray(member.member_language) ? member.member_language[0] : member.member_language
   const interests = Array.isArray(member.member_interests) ? member.member_interests[0] : member.member_interests
   const personality = Array.isArray(member.member_personality) ? member.member_personality[0] : member.member_personality
+  const quizResult = Array.isArray(member.personality_quiz_results) ? member.personality_quiz_results[0] : member.personality_quiz_results
   const bounds = Array.isArray(member.member_boundaries) ? member.member_boundaries[0] : member.member_boundaries
   const verification = Array.isArray(member.member_verification) ? member.member_verification[0] : member.member_verification
 
@@ -145,7 +146,45 @@ export function MemberDetailCard({ member, identity }: Props) {
         )}
       </div>
 
-      {/* 5. 个人边界 */}
+      {/* 5. 社交人格测试 */}
+      <div className="p-5 space-y-3">
+        <SectionHeader title="社交人格测试（ZSP-15）" color="violet" />
+        {!quizResult ? <p className="text-sm text-muted-foreground">未完成测试</p> : (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-xs text-muted-foreground">人格类型</p>
+                <p className="mt-1 text-lg font-semibold">{quizResult.personality_type ?? "未生成"}</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                完成于 {new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(quizResult.completed_at))}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-5">
+              {[
+                { key: "E", label: "社交能量", value: quizResult.score_e },
+                { key: "A", label: "社交温度", value: quizResult.score_a },
+                { key: "O", label: "探索倾向", value: quizResult.score_o },
+                { key: "C", label: "行动节奏", value: quizResult.score_c },
+                { key: "N", label: "情绪敏感度", value: quizResult.score_n },
+              ].map((dimension) => (
+                <div key={dimension.key} className="rounded-lg border border-border/80 bg-muted/25 p-3">
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-muted-foreground">{dimension.label}</span>
+                    <span className="font-semibold">{dimension.value}</span>
+                  </div>
+                  <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted" role="meter" aria-label={dimension.label} aria-valuemin={0} aria-valuemax={100} aria-valuenow={dimension.value}>
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${Math.max(0, Math.min(100, dimension.value))}%` }} />
+                  </div>
+                </div>
+              ))}
+            </div>
+            <p className="text-xs leading-5 text-muted-foreground">分数范围为 0–100；“情绪敏感度”越高，表示对情绪与外界变化越敏锐。</p>
+          </div>
+        )}
+      </div>
+
+      {/* 6. 个人边界 */}
       <div className="p-5 space-y-3">
         <SectionHeader title="个人边界" color="rose" />
         {!bounds ? <p className="text-sm text-muted-foreground">未填写</p> : (
@@ -159,7 +198,7 @@ export function MemberDetailCard({ member, identity }: Props) {
         )}
       </div>
 
-      {/* 6. 验证状态 */}
+      {/* 7. 验证状态 */}
       <div className="p-5 space-y-3">
         <SectionHeader title="验证状态" color="primary" />
         {!verification ? <p className="text-sm text-muted-foreground">未验证</p> : (

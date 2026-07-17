@@ -87,6 +87,7 @@ export async function fetchMemberDetail(id: string): Promise<MemberDetail> {
       member_language (*),
       member_interests (*),
       member_personality (*),
+      personality_quiz_results (*),
       member_boundaries (*),
       member_verification (*)
     `)

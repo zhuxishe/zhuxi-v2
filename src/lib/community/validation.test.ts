@@ -7,6 +7,7 @@ describe("community validation", () => {
     expect(validateNickname("竹")).toMatch(/2/)
     expect(validateNickname("竹溪会员")).toBeNull()
     expect(validateNickname("管理员")).not.toBeNull()
+    expect(validateNickname("ａｄｍｉｎ")).not.toBeNull()
     expect(validateNickname("a".repeat(21))).toMatch(/20/)
   })
 

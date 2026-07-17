@@ -37,7 +37,9 @@ export function CommunityAvatar({
   className,
 }: CommunityAvatarProps) {
   const styles = SIZE_CLASSES[size]
-  const uploadedImageUrl = profile?.avatarKind === "upload" ? communityAvatarUrl(profile, audience) : null
+  const uploadedImageUrl = profile && (profile.avatarKind === "upload" || profile.avatarKind === "personal")
+    ? communityAvatarUrl(profile, audience)
+    : null
 
   return (
     <span

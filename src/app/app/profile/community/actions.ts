@@ -16,25 +16,23 @@ export async function saveCommunityProfileAction(
   formData: FormData,
 ): Promise<CommunityActionState> {
   await requireCommunityAccess()
-  const nickname = value(formData, "nickname")
+  const nickname = value(formData, "nickname").normalize("NFKC").trim()
   const invalid = validateNickname(nickname)
   if (invalid) return { error: invalid, fieldErrors: { nickname: invalid } }
 
   const avatarKind = value(formData, "avatarKind")
-  const avatarPath = value(formData, "avatarPath") || null
   const presetAvatar = value(formData, "presetAvatar") || null
-  if (!new Set(["default", "preset", "upload"]).has(avatarKind)) {
+  if (!new Set(["default", "preset", "personal"]).has(avatarKind)) {
     return { error: "请选择社区头像" }
   }
   if (avatarKind === "preset" && (!presetAvatar || !isPresetAvatar(presetAvatar))) {
     return { error: "请选择有效的预设头像" }
   }
-  if (avatarKind === "upload" && !avatarPath) return { error: "请先上传头像" }
 
   const { error } = await callCommunityRpc("community_upsert_profile", {
-    p_nickname: nickname.trim(),
+    p_nickname: nickname,
     p_avatar_kind: avatarKind,
-    p_avatar_path: avatarKind === "upload" ? avatarPath : null,
+    p_avatar_path: null,
     p_preset_avatar: avatarKind === "preset" ? presetAvatar : null,
   })
   if (error) return { error: communityErrorMessage(error, "社区身份保存失败") }

@@ -3,15 +3,17 @@
 import { useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useTranslations } from "next-intl"
+import { ChevronRight, MessageCircle } from "lucide-react"
 import { buildPublicUrl } from "@/lib/site-url"
 
 const LINE_CHANNEL_ID = (process.env.NEXT_PUBLIC_LIFF_ID || "").split("-")[0]
 
 interface Props {
   lineUserId: string | null
+  variant?: "card" | "row"
 }
 
-export function LineBindingCard({ lineUserId: initial }: Props) {
+export function LineBindingCard({ lineUserId: initial, variant = "card" }: Props) {
   const searchParams = useSearchParams()
   const t = useTranslations("line")
   const success = searchParams?.get("line_success")
@@ -45,14 +47,46 @@ export function LineBindingCard({ lineUserId: initial }: Props) {
     setLoading(false)
   }
 
+  if (variant === "row") {
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={bound ? handleUnbind : handleBind}
+          disabled={loading}
+          aria-describedby={msg ? "line-binding-message" : undefined}
+          className="flex min-h-[3.25rem] w-full items-center gap-3 py-1 text-left transition-colors hover:bg-muted/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset disabled:opacity-60"
+        >
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#06C755]/12 text-[#06A94A]">
+            <MessageCircle className="size-[18px]" strokeWidth={2} aria-hidden="true" />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-semibold leading-5">{t("accountTitle")}</span>
+            <span className="block text-[11px] leading-4 text-muted-foreground">
+              {loading ? t("processing") : bound ? t("bound") : t("unbound")}
+            </span>
+          </span>
+          <ChevronRight className="size-5 shrink-0 text-muted-foreground/80" strokeWidth={1.7} aria-hidden="true" />
+        </button>
+        {msg && (
+          <p
+            id="line-binding-message"
+            role="status"
+            className={`pb-3 pl-[3.25rem] text-xs ${msg.ok ? "text-primary" : "text-destructive"}`}
+          >
+            {msg.text}
+          </p>
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 space-y-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="size-8 rounded-full bg-[#06C755] flex items-center justify-center">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="white">
-              <path d="M24 10.304c0-5.369-5.383-9.738-12-9.738S0 4.935 0 10.304c0 4.814 4.27 8.846 10.035 9.608.391.084.922.258 1.057.592.121.303.079.777.039 1.085l-.171 1.027c-.053.303-.242 1.186 1.039.647 1.281-.54 6.911-4.069 9.428-6.967C23.309 14.15 24 12.326 24 10.304"/>
-            </svg>
+          <div className="flex size-8 items-center justify-center rounded-full bg-[#06C755] text-white">
+            <MessageCircle className="size-[18px]" strokeWidth={2.2} aria-hidden="true" />
           </div>
           <div>
             <p className="text-sm font-medium">{t("accountTitle")}</p>
@@ -73,7 +107,7 @@ export function LineBindingCard({ lineUserId: initial }: Props) {
         )}
       </div>
 
-      {msg && <p className={`text-xs ${msg.ok ? "text-green-600" : "text-red-500"}`}>{msg.text}</p>}
+      {msg && <p role="status" className={`text-xs ${msg.ok ? "text-primary" : "text-destructive"}`}>{msg.text}</p>}
     </div>
   )
 }

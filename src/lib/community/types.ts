@@ -7,7 +7,7 @@ export type CommunityLocale = "zh" | "ja"
 export interface CommunityProfile {
   id: string
   nickname: string
-  avatarKind: "default" | "preset" | "upload"
+  avatarKind: "default" | "preset" | "upload" | "personal"
   avatarPath: string | null
   presetAvatar: string | null
   joinedAt: string

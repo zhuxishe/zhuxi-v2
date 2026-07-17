@@ -129,6 +129,21 @@ export interface MemberVerificationRow {
   updated_at: string
 }
 
+export interface PersonalityQuizResultRow {
+  id: string
+  member_id: string
+  answers: unknown
+  score_e: number
+  score_a: number
+  score_o: number
+  score_c: number
+  score_n: number
+  personality_type: string | null
+  completed_at: string
+  created_at: string
+  updated_at: string
+}
+
 export interface MemberDetail {
   id: string
   member_number: string | null
@@ -147,6 +162,7 @@ export interface MemberDetail {
   member_language: MemberLanguageRow | null
   member_interests: MemberInterestsRow | null
   member_personality: MemberPersonalityRow | null
+  personality_quiz_results: PersonalityQuizResultRow[] | PersonalityQuizResultRow | null
   member_boundaries: MemberBoundariesRow | null
   member_verification: MemberVerificationRow | null
 }

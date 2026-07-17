@@ -18,6 +18,30 @@ function validPath(path: string) {
     && /^[a-zA-Z0-9/_\-.]+$/.test(path)
 }
 
+async function isCommunityInteractionBlocked(
+  db: ReturnType<typeof createAdminClient>,
+  viewerMemberId: string,
+  otherProfileId: string,
+) {
+  const [viewerMapping, otherMapping, forwardBlock] = await Promise.all([
+    db.schema("private").from("community_profile_members").select("profile_id").eq("member_id", viewerMemberId).maybeSingle<{ profile_id: string }>(),
+    db.schema("private").from("community_profile_members").select("member_id").eq("profile_id", otherProfileId).maybeSingle<{ member_id: string | null }>(),
+    db.from("community_blocks").select("blocked_profile_id", { count: "exact", head: true }).eq("blocker_member_id", viewerMemberId).eq("blocked_profile_id", otherProfileId),
+  ])
+  const lookupError = viewerMapping.error ?? otherMapping.error ?? forwardBlock.error
+  if (lookupError) throw lookupError
+  if (forwardBlock.count) return true
+  if (!viewerMapping.data?.profile_id || !otherMapping.data?.member_id) return false
+
+  const reverseBlock = await db
+    .from("community_blocks")
+    .select("blocked_profile_id", { count: "exact", head: true })
+    .eq("blocker_member_id", otherMapping.data.member_id)
+    .eq("blocked_profile_id", viewerMapping.data.profile_id)
+  if (reverseBlock.error) throw reverseBlock.error
+  return !!reverseBlock.count
+}
+
 export async function GET(request: NextRequest) {
   const bucket = request.nextUrl.searchParams.get("bucket")
   const path = request.nextUrl.searchParams.get("path") ?? ""
@@ -31,48 +55,90 @@ export async function GET(request: NextRequest) {
   if (!admin && (!player || player.status !== "approved")) {
     return NextResponse.json({ error: "无权访问" }, { status: 403 })
   }
-  if (player) {
-    const context = await getCommunityContext(player)
-    if (context.restriction?.type === "permanent_ban") {
-      return NextResponse.json({ error: "无权访问" }, { status: 403 })
-    }
-  }
 
   const db = createAdminClient()
   if (bucket === COMMUNITY_AVATAR_BUCKET) {
-    const { data: avatarProfile, error: avatarError } = await db
-      .from("community_profiles")
-      .select("id")
-      .eq("avatar_path", path)
-      .maybeSingle<{ id: string }>()
-    if (avatarError) {
-      console.error("[community media] avatar visibility lookup failed", avatarError)
+    const [communityProfileResult, personalProfileResult, pendingUploadResult] = await Promise.all([
+      db
+        .from("community_profiles")
+        .select("id")
+        .eq("avatar_path", path)
+        .maybeSingle<{ id: string }>(),
+      db
+        .from("member_identity")
+        .select("member_id")
+        .eq("personal_avatar_path", path)
+        .maybeSingle<{ member_id: string }>(),
+      player
+        ? db
+          .schema("private")
+          .from("community_processed_uploads")
+          .select("member_id")
+          .eq("member_id", player.memberId)
+          .eq("bucket_id", COMMUNITY_AVATAR_BUCKET)
+          .eq("storage_path", path)
+          .eq("thumbnail_path", path)
+          .is("cleanup_claimed_at", null)
+          .maybeSingle<{ member_id: string }>()
+        : Promise.resolve({ data: null, error: null }),
+    ])
+    const personalAvatarColumnMissing = personalProfileResult.error?.code === "42703"
+      || personalProfileResult.error?.code === "PGRST204"
+    if (communityProfileResult.error || pendingUploadResult.error || (personalProfileResult.error && !personalAvatarColumnMissing)) {
+      console.error(
+        "[community media] avatar visibility lookup failed",
+        communityProfileResult.error ?? personalProfileResult.error ?? pendingUploadResult.error,
+      )
       return NextResponse.json({ error: "图片不存在" }, { status: 404 })
     }
-    if (!avatarProfile) {
-      if (!admin) return NextResponse.json({ error: "图片不存在" }, { status: 404 })
-      const evidenceResult = await db.rpc("community_service_media_evidence_exists", {
-        p_bucket_id: bucket,
-        p_object_path: path,
-      })
-      if (evidenceResult.error || !evidenceResult.data) {
-        if (evidenceResult.error) console.error("[community media] avatar evidence lookup failed", evidenceResult.error)
-        return NextResponse.json({ error: "图片不存在" }, { status: 404 })
+    const avatarProfile = communityProfileResult.data
+    const personalProfile = personalAvatarColumnMissing ? null : personalProfileResult.data
+    const isOwnPersonalAvatar = !!player && (
+      personalProfile?.member_id === player.memberId
+      || pendingUploadResult.data?.member_id === player.memberId
+    )
+    if (!admin && player && !isOwnPersonalAvatar) {
+      const context = await getCommunityContext(player)
+      if (context.restriction?.type === "permanent_ban") {
+        return NextResponse.json({ error: "无权访问" }, { status: 403 })
       }
     }
-    if (!admin && player && avatarProfile) {
-      const blockedResult = await db
-        .from("community_blocks")
-        .select("blocked_profile_id", { count: "exact", head: true })
-        .eq("blocker_member_id", player.memberId)
-        .eq("blocked_profile_id", avatarProfile.id)
-      if (blockedResult.error) {
-        console.error("[community media] avatar block lookup failed", blockedResult.error)
+    if (!avatarProfile && !personalProfile) {
+      if (!admin && !isOwnPersonalAvatar) return NextResponse.json({ error: "图片不存在" }, { status: 404 })
+      if (isOwnPersonalAvatar) {
+        // The crop preview is readable by its owner before the profile form is
+        // saved; the processed-upload proof above prevents arbitrary paths.
+      } else {
+        const evidenceResult = await db.rpc("community_service_media_evidence_exists", {
+          p_bucket_id: bucket,
+          p_object_path: path,
+        })
+        if (evidenceResult.error || !evidenceResult.data) {
+          if (evidenceResult.error) console.error("[community media] avatar evidence lookup failed", evidenceResult.error)
+          return NextResponse.json({ error: "图片不存在" }, { status: 404 })
+        }
+      }
+    }
+    if (!admin && player && personalProfile && !avatarProfile && personalProfile.member_id !== player.memberId) {
+      return NextResponse.json({ error: "图片不存在" }, { status: 404 })
+    }
+    if (!admin && player && avatarProfile && !isOwnPersonalAvatar) {
+      let blocked = false
+      try {
+        blocked = await isCommunityInteractionBlocked(db, player.memberId, avatarProfile.id)
+      } catch (error) {
+        console.error("[community media] avatar block lookup failed", error)
         return NextResponse.json({ error: "图片不存在" }, { status: 404 })
       }
-      if (blockedResult.count) return NextResponse.json({ error: "图片不存在" }, { status: 404 })
+      if (blocked) return NextResponse.json({ error: "图片不存在" }, { status: 404 })
     }
   } else {
+    if (player) {
+      const context = await getCommunityContext(player)
+      if (context.restriction?.type === "permanent_ban") {
+        return NextResponse.json({ error: "无权访问" }, { status: 403 })
+      }
+    }
     const { data: image, error: imageError } = await db
       .from("community_post_images")
       .select("post_id")
@@ -114,16 +180,14 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "图片不可用" }, { status: 404 })
       }
       if (!admin && player && !post.is_anonymous && post.author_profile_id) {
-        const blockedResult = await db
-          .from("community_blocks")
-          .select("blocked_profile_id", { count: "exact", head: true })
-          .eq("blocker_member_id", player.memberId)
-          .eq("blocked_profile_id", post.author_profile_id)
-        if (blockedResult.error) {
-          console.error("[community media] post block lookup failed", blockedResult.error)
+        let blocked = false
+        try {
+          blocked = await isCommunityInteractionBlocked(db, player.memberId, post.author_profile_id)
+        } catch (error) {
+          console.error("[community media] post block lookup failed", error)
           return NextResponse.json({ error: "图片不可用" }, { status: 404 })
         }
-        if (blockedResult.count) return NextResponse.json({ error: "图片不可用" }, { status: 404 })
+        if (blocked) return NextResponse.json({ error: "图片不可用" }, { status: 404 })
       }
     }
   }
@@ -133,7 +197,11 @@ export async function GET(request: NextRequest) {
   return new NextResponse(data.stream(), {
     headers: {
       "Content-Type": data.type || "image/webp",
-      "Cache-Control": "private, max-age=300",
+      // Authorization depends on the current account, owner relationship,
+      // sanctions and two-way blocks. Never reuse a protected image response
+      // after logout or an account switch in the same browser.
+      "Cache-Control": "private, no-store, max-age=0",
+      "Vary": "Cookie",
       "X-Content-Type-Options": "nosniff",
     },
   })

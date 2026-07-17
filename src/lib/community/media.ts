@@ -13,7 +13,7 @@ export function communityMediaUrl(
 }
 
 export function communityAvatarUrl(profile: CommunityProfile | null, audience: "member" | "admin" = "member"): string | null {
-  if (!profile || profile.avatarKind !== "upload") return null
+  if (!profile || (profile.avatarKind !== "upload" && profile.avatarKind !== "personal")) return null
   if (!profile.avatarPath) return null
   const params = new URLSearchParams({ bucket: COMMUNITY_AVATAR_BUCKET, path: profile.avatarPath })
   if (audience === "admin") params.set("audience", "admin")

@@ -31,13 +31,40 @@ export default async function CommunityProfilePage({ params }: PageProps) {
       <section className="rounded-2xl bg-card p-5 text-center shadow-soft">
         <CommunityAvatar profile={data.profile} size="lg" className="mx-auto" alt={data.profile.nickname} />
         <h2 className="mt-3 text-lg font-semibold">{data.profile.nickname}</h2>
+        {data.metrics.schoolName && <p className="mt-1 truncate text-sm text-muted-foreground">{data.metrics.schoolName}</p>}
         <p className="mt-1 text-xs text-muted-foreground">{locale === "ja" ? `${date}から参加` : `加入社区于 ${date}`}</p>
+        <div className="mt-4 grid min-h-[4.5rem] grid-cols-3 overflow-hidden rounded-xl bg-secondary/70 px-1 py-2">
+          <ProfileMetric label={locale === "ja" ? "レベル" : "等级"} value={levelLabel(data.metrics.level, locale)} />
+          <ProfileMetric
+            label={locale === "ja" ? "相性スコア" : "合拍分"}
+            value={data.metrics.compatibilityScore == null
+              ? (locale === "ja" ? "評価待ち" : "待评估")
+              : data.metrics.compatibilityScore.toFixed(1)}
+            bordered
+            compact={data.metrics.compatibilityScore == null}
+          />
+          <ProfileMetric label={locale === "ja" ? "活動" : "活动"} value={`${data.metrics.activityCount} ${locale === "ja" ? "回" : "次"}`} bordered />
+        </div>
         {!self && <CommunityProfileActions profileId={data.profile.id} locale={locale} />}
       </section>
       <section><SectionHeader title={locale === "ja" ? "公開つぶやき" : "公开树洞"} />{data.treeholes.length ? <ProfilePostList posts={data.treeholes} context={context} locale={locale} labels={labels} /> : <CommunityEmptyState icon={MessageCircle} title={locale === "ja" ? "公開投稿はまだありません" : "还没有公开树洞"} />}</section>
       <section><SectionHeader title={locale === "ja" ? "写真投稿" : "照片动态"} />{data.photos.length ? <ProfilePostList posts={data.photos} context={context} locale={locale} labels={labels} /> : <CommunityEmptyState icon={Camera} title={locale === "ja" ? "写真投稿はまだありません" : "还没有照片动态"} />}</section>
     </div>
   )
+}
+
+function ProfileMetric({ label, value, bordered = false, compact = false }: { label: string; value: string; bordered?: boolean; compact?: boolean }) {
+  return (
+    <div className={`flex min-w-0 flex-col items-center justify-center px-1 ${bordered ? "border-l border-border" : ""}`}>
+      <span className="text-[11px] leading-5 text-muted-foreground">{label}</span>
+      <span className={`mt-0.5 max-w-full break-words font-semibold leading-5 text-primary ${compact ? "text-xs" : "text-sm"}`}>{value}</span>
+    </div>
+  )
+}
+
+function levelLabel(level: 1 | 2 | 3, locale: "zh" | "ja") {
+  if (locale === "ja") return level === 1 ? "Lv.1 竹の子" : level === 2 ? "Lv.2 青竹" : "Lv.3 パンダ竹王"
+  return level === 1 ? "Lv.1 竹笋" : level === 2 ? "Lv.2 青竹" : "Lv.3 熊猫竹王"
 }
 
 function ProfilePostList({ posts, context, locale, labels }: { posts: CommunityPost[]; context: Awaited<ReturnType<typeof requireCommunityAccess>>; locale: "zh" | "ja"; labels: CommunityPostCardLabels }) {

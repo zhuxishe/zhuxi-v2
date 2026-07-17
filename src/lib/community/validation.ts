@@ -8,7 +8,7 @@ import type { CommunityActionState, UploadedCommunityImage } from "./types"
 const RESERVED_NICKNAMES = /^(admin|administrator|staff|官方|管理员|竹溪社官方|管理者|運営|公式)$/i
 
 export function validateNickname(value: string): string | null {
-  const nickname = value.trim()
+  const nickname = value.normalize("NFKC").trim()
   if ([...nickname].length < 2 || [...nickname].length > 20) return "昵称需要 2–20 个字符"
   if (RESERVED_NICKNAMES.test(nickname)) return "这个昵称由系统保留"
   return null

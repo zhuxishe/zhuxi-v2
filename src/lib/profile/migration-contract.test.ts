@@ -6,6 +6,10 @@ const migration = readFileSync(
   join(process.cwd(), "supabase/migrations/20260717133952_player_profile_v1.sql"),
   "utf8",
 )
+const correctionMigration = readFileSync(
+  join(process.cwd(), "supabase/migrations/20260717133953_correct_profile_defaults_and_member_number_admin.sql"),
+  "utf8",
+)
 
 function functionBody(name: string) {
   const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
@@ -20,8 +24,17 @@ describe("player profile migration contract", () => {
     expect(migration).not.toContain("avg_review_score")
     expect(migration).toContain("compatibility_score numeric(2,1) NOT NULL DEFAULT 5.0")
     expect(migration).toContain("compatibility_status text NOT NULL DEFAULT 'published'")
-    expect(migration).toContain("internal_note text NOT NULL DEFAULT '初试分'")
+    expect(correctionMigration).toContain("ALTER COLUMN internal_note SET DEFAULT '初始分'")
+    expect(correctionMigration).toContain("WHERE internal_note = '初试分'")
+    expect(correctionMigration).toContain("AND score_source = 'initial'")
     expect(migration).toContain("published_at timestamptz DEFAULT now()")
+  })
+
+  it("keeps member-number changes super-admin-only and audited", () => {
+    expect(correctionMigration).toContain("CREATE OR REPLACE FUNCTION public.admin_update_member_number")
+    expect(correctionMigration).toContain("administrator.role = 'super_admin'")
+    expect(correctionMigration).toContain("ARRAY['member_number']::text[]")
+    expect(correctionMigration).toContain("GRANT EXECUTE ON FUNCTION public.admin_update_member_number")
   })
 
   it("migrates canonical identity before enforcing nickname uniqueness", () => {

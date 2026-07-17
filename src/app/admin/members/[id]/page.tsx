@@ -7,6 +7,7 @@ import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MemberStatusBadge } from "@/components/admin/MemberStatusBadge"
 import { MemberStatusActions } from "@/components/admin/MemberStatusActions"
 import { MemberDetailCard } from "@/components/admin/MemberDetailCard"
+import { MemberNumberEditor } from "@/components/admin/MemberNumberEditor"
 import { MemberProfileMetricsCard } from "@/components/admin/MemberProfileMetricsCard"
 import { MemberDeleteButton } from "@/components/admin/MemberDeleteButton"
 import { Button } from "@/components/ui/button"
@@ -66,6 +67,12 @@ export default async function MemberDetailPage({ params }: Props) {
           <MemberDeleteButton memberId={id} memberName={identity?.full_name ?? "未知"} />
         </div>
 
+        <MemberNumberEditor
+          memberId={member.id}
+          memberNumber={member.member_number}
+          canEdit={admin.role === "super_admin"}
+        />
+
         {profileMetrics ? (
           <MemberProfileMetricsCard
             key={profileMetrics.updatedAt}
@@ -73,7 +80,6 @@ export default async function MemberDetailPage({ params }: Props) {
             member={{
               id: member.id,
               email: member.email,
-              memberNumber: member.member_number,
               fullName: identity?.full_name ?? "未知成员",
               nickname: identity?.nickname ?? null,
               schoolName: identity?.school_name ?? null,

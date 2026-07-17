@@ -41,7 +41,6 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         matchScore={profile.compatibilityScore}
         activityCount={profile.activityCount}
         labels={{
-          membership: t("membership"),
           nicknameUnset: t("nicknameUnset"),
           schoolUnset: t("schoolUnset"),
           memberNumber: t("number"),

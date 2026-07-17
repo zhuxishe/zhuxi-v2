@@ -2,7 +2,6 @@ import Link from "next/link"
 import { ProfileAvatar } from "./ProfileAvatar"
 
 export interface ProfileSummaryCardLabels {
-  membership: string
   nicknameUnset: string
   schoolUnset: string
   memberNumber: string
@@ -47,13 +46,8 @@ export function ProfileSummaryCard({
       >
         <ProfileAvatar src={avatarUrl} alt={nickname || fullName} size="lg" priority />
         <span className="min-w-0 flex-1">
-          <span className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-            <span className={`truncate text-lg font-semibold leading-6 tracking-tight ${nickname ? "text-foreground" : "text-muted-foreground"}`}>
-              {nickname || labels.nicknameUnset}
-            </span>
-            <span className="shrink-0 rounded-lg border border-primary/70 bg-primary/[0.03] px-2 py-0.5 text-[11px] font-medium leading-5 text-primary">
-              {labels.membership}
-            </span>
+          <span className={`block truncate text-lg font-semibold leading-6 tracking-tight ${nickname ? "text-foreground" : "text-muted-foreground"}`}>
+            {nickname || labels.nicknameUnset}
           </span>
           <span className="mt-1 block truncate text-sm leading-4 text-muted-foreground">{fullName}</span>
           <span className="mt-0.5 block truncate text-sm leading-4 text-muted-foreground">

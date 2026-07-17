@@ -47,7 +47,7 @@ describe("profile validation", () => {
       level: 1 as const,
       compatibilityScore: 5,
       compatibilityStatus: "published" as const,
-      internalNote: "初试分",
+      internalNote: "初始分",
       scoreSource: "initial" as const,
       auditReason: "初始化",
     }

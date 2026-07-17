@@ -25,7 +25,6 @@ interface MemberProfileMetricsCardProps {
   member: {
     id: string
     email: string | null
-    memberNumber: string | null
     fullName: string
     nickname: string | null
     schoolName: string | null
@@ -46,6 +45,7 @@ const AUDIT_FIELD_LABELS: Record<string, string> = {
   compatibilityStatus: "发布状态",
   internal_note: "内部备注",
   internalNote: "内部备注",
+  member_number: "会员编号",
   score_source: "分数来源",
   scoreSource: "分数来源",
   activity_count: "活动次数",
@@ -209,7 +209,6 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
               <p className="mt-1 truncate text-sm text-muted-foreground">{member.fullName}</p>
               {member.schoolName && <p className="mt-0.5 truncate text-sm text-muted-foreground">{member.schoolName}</p>}
               <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1.5"><Award className="size-3.5" aria-hidden="true" />会员编号：{member.memberNumber ?? "待分配"}</span>
                 <span className="inline-flex min-w-0 items-center gap-1.5"><Mail className="size-3.5 shrink-0" aria-hidden="true" /><span className="truncate">{member.email ?? "未绑定邮箱"}</span></span>
               </div>
             </div>

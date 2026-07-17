@@ -6,7 +6,6 @@ import type { CommunityLocale, LocalizedFaq } from "@/lib/community/types"
 import { cn } from "@/lib/utils"
 
 export interface FaqListLabels {
-  featured: string
   expand: string
   collapse: string
   fallbackLanguage: Record<CommunityLocale, string>
@@ -81,19 +80,12 @@ function FaqItem({
         )}
       >
         <span className="min-w-0 flex-1">
-          <span className="flex flex-wrap items-center gap-1.5">
-            {faq.isFeatured ? (
-              <span className="rounded-full bg-accent px-2 py-0.5 text-[11px] font-semibold text-accent-foreground">
-                {labels.featured}
-              </span>
-            ) : null}
-            {faq.fallbackLocale ? (
-              <span className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                {labels.fallbackLanguage[faq.fallbackLocale]}
-              </span>
-            ) : null}
-          </span>
-          <span className="mt-1.5 block text-[15px] font-semibold leading-6 text-foreground">
+          {faq.fallbackLocale ? (
+            <span className="inline-flex rounded-full border border-border px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+              {labels.fallbackLanguage[faq.fallbackLocale]}
+            </span>
+          ) : null}
+          <span className={cn("block text-[15px] font-semibold leading-6 text-foreground", faq.fallbackLocale && "mt-1.5")}>
             {faq.question}
           </span>
         </span>

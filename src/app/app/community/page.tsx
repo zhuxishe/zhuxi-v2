@@ -202,7 +202,6 @@ function announcementLabels(locale: "zh" | "ja") {
 
 function faqLabels(locale: "zh" | "ja") {
   return {
-    featured: locale === "ja" ? "注目" : "精选",
     expand: locale === "ja" ? "回答を開く" : "展开回答",
     collapse: locale === "ja" ? "回答を閉じる" : "收起回答",
     fallbackLanguage: { zh: "中文", ja: "日本語" },

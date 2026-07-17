@@ -15,6 +15,7 @@ import { requireCommunityAccess } from "@/lib/auth/community"
 import { isCommunityTab } from "@/lib/community/constants"
 import { normalizeCommunityLocale } from "@/lib/community/localize"
 import { fetchCommunityPageData } from "@/lib/community/queries/page"
+import { normalizeCommunityTreeholeSort } from "@/lib/community/sorting"
 import type { CommunityPost, CommunityTab } from "@/lib/community/types"
 
 interface CommunityPageProps {
@@ -31,7 +32,7 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
   const locale = normalizeCommunityLocale(rawLocale)
   const tab: CommunityTab = isCommunityTab(params.tab) ? params.tab : "all"
   const page = Math.max(1, Math.min(20, Number.parseInt(params.page ?? "1", 10) || 1))
-  const sort = params.sort === "discussed" ? "discussed" : "latest"
+  const sort = normalizeCommunityTreeholeSort(params.sort)
   const data = await fetchCommunityPageData({ memberId: context.memberId, locale, tab, page, sort })
   const tabLabels: Record<CommunityTab, string> = {
     all: t("tabs.all"),
@@ -109,9 +110,10 @@ export default async function CommunityPage({ searchParams }: CommunityPageProps
             className="mb-3"
             action={context.canWrite ? <PrimaryLink href="/app/community/treehole/new" label={t("treehole.write")} compact /> : undefined}
           />
-          <div className="mb-3 flex gap-2">
+          <div className="mb-3 flex justify-end gap-1">
             <SortLink active={sort === "latest"} href="/app/community?tab=treehole&sort=latest" label={t("treehole.newest")} />
             <SortLink active={sort === "discussed"} href="/app/community?tab=treehole&sort=discussed" label={t("treehole.mostDiscussed")} />
+            <SortLink active={sort === "liked"} href="/app/community?tab=treehole&sort=liked" label={t("treehole.mostLiked")} />
           </div>
           {data.treeholes.length ? (
             <PostList posts={data.treeholes} context={context} locale={locale} labels={postLabels} />
@@ -188,7 +190,13 @@ function PrimaryLink({ href, label, compact = false }: { href: string; label: st
 }
 
 function SortLink({ active, href, label }: { active: boolean; href: string; label: string }) {
-  return <Link href={href} aria-current={active ? "page" : undefined} className={`inline-flex min-h-10 items-center rounded-full px-4 text-sm font-medium ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>{label}</Link>
+  return (
+    <Link href={href} aria-current={active ? "page" : undefined} className="inline-flex min-h-11 items-center rounded-full text-sm font-medium">
+      <span className={`inline-flex min-h-8 items-center rounded-full px-3 ${active ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"}`}>
+        {label}
+      </span>
+    </Link>
+  )
 }
 
 function announcementLabels(locale: "zh" | "ja") {

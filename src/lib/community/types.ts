@@ -1,5 +1,6 @@
 export type CommunityTab = "all" | "announcements" | "treehole" | "album" | "qa"
 export type CommunityPostType = "treehole" | "photo"
+export type CommunityTreeholeSort = "latest" | "discussed" | "liked"
 export type CommunityContentStatus = "published" | "hidden" | "deleted"
 export type OfficialContentStatus = "draft" | "published" | "offline"
 export type CommunityLocale = "zh" | "ja"

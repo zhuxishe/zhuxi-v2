@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getCommunityTreeholeSortColumns } from "@/lib/community/sorting"
 import type {
   CommunityComment,
   CommunityContentStatus,
@@ -6,6 +7,7 @@ import type {
   CommunityPostImage,
   CommunityPostType,
   CommunityProfile,
+  CommunityTreeholeSort,
 } from "@/lib/community/types"
 
 interface PostRow {
@@ -90,7 +92,7 @@ export async function fetchCommunityPosts(options: {
   memberId: string
   postType: CommunityPostType
   limit: number
-  sort?: "latest" | "discussed"
+  sort?: CommunityTreeholeSort
   authorProfileId?: string
 }): Promise<CommunityPost[]> {
   const db = createAdminClient()
@@ -102,10 +104,8 @@ export async function fetchCommunityPosts(options: {
     .eq("post_type", options.postType)
 
   if (options.authorProfileId) query = query.eq("author_profile_id", options.authorProfileId)
-  if (options.sort === "discussed") {
-    query = query.order("comment_count", { ascending: false }).order("published_at", { ascending: false })
-  } else {
-    query = query.order("published_at", { ascending: false })
+  for (const column of getCommunityTreeholeSortColumns(options.sort)) {
+    query = query.order(column, { ascending: false })
   }
 
   const [postsResult, hiddenResult, blockedResult] = await Promise.all([

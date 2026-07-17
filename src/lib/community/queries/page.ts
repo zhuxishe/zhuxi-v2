@@ -1,14 +1,14 @@
 import { COMMUNITY_PAGE_SIZE } from "@/lib/community/constants"
 import { fetchPublishedAnnouncements, fetchPublishedFaqs } from "./official"
 import { fetchCommunityPosts } from "./posts"
-import type { CommunityLocale, CommunityPageData, CommunityTab } from "@/lib/community/types"
+import type { CommunityLocale, CommunityPageData, CommunityTab, CommunityTreeholeSort } from "@/lib/community/types"
 
 export async function fetchCommunityPageData(options: {
   memberId: string
   locale: CommunityLocale
   tab: CommunityTab
   page: number
-  sort: "latest" | "discussed"
+  sort: CommunityTreeholeSort
 }): Promise<CommunityPageData> {
   if (options.tab === "all") {
     const [announcements, treeholes, photos, faqs] = await Promise.all([

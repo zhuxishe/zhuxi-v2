@@ -2,13 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BellRing, CircleHelp, LayoutDashboard, ShieldAlert, Users } from "lucide-react"
+import { BellRing, CircleHelp, Files, LayoutDashboard, ShieldAlert, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const ITEMS = [
   { href: "/admin/community", label: "概览", icon: LayoutDashboard },
   { href: "/admin/community/announcements", label: "公告", icon: BellRing },
   { href: "/admin/community/qa", label: "问答", icon: CircleHelp },
+  { href: "/admin/community/content", label: "内容", icon: Files },
   { href: "/admin/community/moderation", label: "审核", icon: ShieldAlert },
   { href: "/admin/community/members", label: "成员", icon: Users },
 ] as const

@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils"
-import type { CommunityContentStatus, CommunityReportStatus } from "./types"
+import type { CommunityContentStatus, CommunityReportStatus, CommunityUserContentStatus } from "./types"
 
-type Status = CommunityContentStatus | CommunityReportStatus
+type Status = CommunityContentStatus | CommunityReportStatus | CommunityUserContentStatus
 
 const STATUS_LABELS: Record<Status, string> = {
   draft: "草稿",
@@ -10,6 +10,8 @@ const STATUS_LABELS: Record<Status, string> = {
   pending: "待处理",
   resolved: "已处理",
   dismissed: "已驳回",
+  hidden: "已隐藏",
+  deleted: "已删除",
 }
 
 const STATUS_CLASSES: Record<Status, string> = {
@@ -19,6 +21,8 @@ const STATUS_CLASSES: Record<Status, string> = {
   pending: "bg-orange-100 text-orange-700",
   resolved: "bg-emerald-100 text-emerald-700",
   dismissed: "bg-muted text-muted-foreground",
+  hidden: "bg-amber-100 text-amber-800",
+  deleted: "bg-red-100 text-red-700",
 }
 
 export function CommunityStatusBadge({ status, className }: { status: Status; className?: string }) {

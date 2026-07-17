@@ -1,5 +1,8 @@
 export type CommunityContentStatus = "draft" | "published" | "offline"
 
+export type CommunityUserContentStatus = "published" | "hidden" | "deleted"
+export type CommunityUserContentType = "treehole" | "photo" | "comment" | "reply"
+
 export type CommunityReportStatus = "pending" | "resolved" | "dismissed"
 
 export type CommunityTargetType = "post" | "comment" | "profile"
@@ -118,7 +121,7 @@ export interface CommunityReport {
   target_profile: {
     id: string
     nickname: string
-    avatarKind: "default" | "preset" | "upload"
+    avatarKind: "default" | "preset" | "upload" | "personal"
     avatarPath: string | null
     presetAvatar: string | null
     joinedAt: string
@@ -155,7 +158,7 @@ export interface CommunityRevealedAuthor {
 export interface CommunityAdminMember {
   profile_id: string
   nickname: string
-  avatar_kind: "default" | "preset" | "upload"
+  avatar_kind: "default" | "preset" | "upload" | "personal"
   avatar_path: string | null
   preset_avatar: string | null
   joined_at: string
@@ -194,3 +197,52 @@ export interface CommunityMemberDetail extends CommunityAdminMember {
     pending_reports: number
   }
 }
+
+export interface CommunityAdminContentRow {
+  id: string
+  targetType: "post" | "comment"
+  contentType: CommunityUserContentType
+  postId: string
+  parentCommentId: string | null
+  status: CommunityUserContentStatus
+  isAnonymous: boolean
+  authorProfileId: string | null
+  authorNickname: string | null
+  title: string | null
+  body: string | null
+  parentPostType: "treehole" | "photo"
+  parentPostTitle: string | null
+  imageCount: number
+  images: Array<{
+    id: string
+    storagePath: string
+    thumbnailPath: string
+    sortOrder: number
+  }>
+  likeCount: number | null
+  commentCount: number | null
+  pendingReportCount: number
+  totalReportCount: number
+  occurredAt: string
+  editedAt: string | null
+  sourceRank: number
+}
+
+export interface CommunityAdminContentFilters {
+  type?: CommunityUserContentType
+  status?: CommunityUserContentStatus
+  reports?: "pending" | "any" | "none"
+  anonymous?: boolean
+  query?: string
+  from?: string
+  to?: string
+  cursor?: string
+}
+
+export type CommunityAdminReasonCode =
+  | "privacy"
+  | "harassment"
+  | "spam"
+  | "inappropriate"
+  | "other"
+  | "reviewed_restore"

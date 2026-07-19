@@ -129,15 +129,37 @@ function timestamp(activity: LargeActivitySummary): number | null {
   return Number.isNaN(value) ? null : value
 }
 
+function tokyoDateKey(date: Date): string {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date)
+  const value = Object.fromEntries(parts.map((part) => [part.type, part.value]))
+  return `${value.year}-${value.month}-${value.day}`
+}
+
+export function hasExplicitLargeActivityStartTime(
+  activity: Pick<LargeActivitySummary, "startAt" | "eventDate">,
+): boolean {
+  if (!activity.startAt) return false
+  return !activity.eventDate || activity.startAt !== `${activity.eventDate}T00:00:00+09:00`
+}
+
 export function isUpcomingLargeActivity(activity: LargeActivitySummary, now = new Date()): boolean {
   const endValue = activity.endAt ? Date.parse(activity.endAt) : Number.NaN
   if (!Number.isNaN(endValue)) return endValue >= now.getTime()
 
+  const todayInTokyo = tokyoDateKey(now)
+  if (activity.eventDate && !hasExplicitLargeActivityStartTime(activity)) {
+    return activity.eventDate >= todayInTokyo
+  }
+
   const value = timestamp(activity)
   if (value == null) return false
-  const startOfToday = new Date(now)
-  startOfToday.setHours(0, 0, 0, 0)
-  return value >= startOfToday.getTime()
+  const startOfTodayInTokyo = Date.parse(`${todayInTokyo}T00:00:00+09:00`)
+  return value >= startOfTodayInTokyo
 }
 
 export function selectLargeActivitiesForHome(

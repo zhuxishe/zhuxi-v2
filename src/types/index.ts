@@ -19,3 +19,10 @@ export type {
 // Form types
 export type { SupplementaryFormData, PersonalitySelfData, TagOption, TagCategory } from "./form-types"
 export { EMPTY_SUPPLEMENTARY, EMPTY_PERSONALITY } from "./form-types"
+
+// Player feedback
+export type {
+  AdminFeedbackActionState, PlayerFeedbackActionState, PlayerFeedbackCategory,
+  PlayerFeedbackRow, PlayerFeedbackStatus,
+} from "./player-feedback"
+export { PLAYER_FEEDBACK_CATEGORIES, PLAYER_FEEDBACK_STATUSES } from "./player-feedback"

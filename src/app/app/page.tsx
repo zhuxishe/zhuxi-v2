@@ -1,95 +1,306 @@
 import { redirect } from "next/navigation"
+import { getLocale, getTranslations } from "next-intl/server"
 import { getPlayerInfo } from "@/lib/auth/player"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
-import { fetchPlayerProfile, calcCompleteness } from "@/lib/queries/profile"
 import { fetchOpenRound, fetchMySubmission } from "@/lib/queries/rounds"
-import { fetchLandingScripts } from "@/lib/queries/scripts"
+import { fetchMyProfileSummary } from "@/lib/profile/queries"
+import { fetchPlayerActivityHub } from "@/lib/player-activity/queries"
+import { isUpcomingLargeActivity } from "@/lib/player-activity/selection"
+import { fetchPublishedAnnouncements } from "@/lib/community/queries/official"
+import { normalizeCommunityLocale } from "@/lib/community/localize"
 import { PlayerPendingView } from "@/components/player/PlayerPendingView"
-import { PlayerHomeActivityCard } from "@/components/player/PlayerHomeActivityCard"
-import { PlayerHomeTasks } from "@/components/player/PlayerHomeTasks"
-import { getTranslations } from "next-intl/server"
-import Link from "next/link"
+import { PlayerHomeActionCard } from "@/components/player/home/PlayerHomeActionCard"
+import { PlayerHomeAnnouncements } from "@/components/player/home/PlayerHomeAnnouncements"
+import { PlayerHomeFeaturedActivity } from "@/components/player/home/PlayerHomeFeaturedActivity"
+import { PlayerHomeQuickActions } from "@/components/player/home/PlayerHomeQuickActions"
+import { PlayerHomeStatus } from "@/components/player/home/PlayerHomeStatus"
+import type { PlayerHomeAction } from "@/components/player/home/types"
 
 export default async function PlayerHomePage() {
   const player = await getPlayerInfo()
-  const t = await getTranslations("playerHome")
-
-  const route = resolvePlayerRoute(
-    player ? { status: player.status, hasIdentity: player.hasIdentity } : null
-  )
+  const route = resolvePlayerRoute(player ? { status: player.status, hasIdentity: player.hasIdentity } : null)
 
   if (route.action === "redirect") return redirect(route.to)
   if (route.view === "pending") return <PlayerPendingView />
   if (route.view === "rejected") return <PlayerPendingView rejected />
 
-  // At this point player is guaranteed to be non-null and approved
   const approvedPlayer = player!
-
-  // Approved → normal home
-  const [profile, openRound, activities] = await Promise.all([
-    fetchPlayerProfile(approvedPlayer.memberId),
+  const locale = await getLocale()
+  const [t, profileT, profile, openRound, activityData, announcements] = await Promise.all([
+    getTranslations("playerHome"),
+    getTranslations("profile"),
+    fetchMyProfileSummary(),
     fetchOpenRound(),
-    fetchLandingScripts(3),
+    fetchPlayerActivityHub(locale, new Date(), { largeLimit: 200 }),
+    fetchHomeAnnouncements(locale),
   ])
-  const completeness = calcCompleteness(profile)
 
-  // 检查是否已提交问卷
-  let hasSubmitted = false
-  if (openRound) {
-    const submission = await fetchMySubmission(openRound.id, approvedPlayer.memberId)
-    hasSubmitted = !!submission
-  }
+  const hasSubmitted = openRound
+    ? Boolean(await fetchMySubmission(openRound.id, approvedPlayer.memberId))
+    : false
+  // V1 keeps the mutual-review entry visible but does not infer eligibility
+  // from confirmed matches: current match data has no review-open timestamp,
+  // and group reviews are still tracked at match level rather than per person.
+  const pendingReviewCount = 0
+  const pendingReviewHref = "/app/matches"
+  const recruitingActivities = activityData.largeActivities.filter((activity) => isUpcomingLargeActivity(activity)).slice(0, 3)
+  const priorityActivityId = recruitingActivities[0]?.id ?? null
+  const action = resolvePrimaryAction({
+    labels: {
+      eyebrow: t("action.eyebrow"),
+      review: {
+        title: t("action.review.title", { count: pendingReviewCount }),
+        description: t("action.review.description"),
+        cta: t("action.review.cta"),
+      },
+      survey: {
+        title: t("action.survey.title"),
+        description: t("action.survey.description"),
+        cta: t("action.survey.cta"),
+      },
+      profile: {
+        title: t("action.profile.title"),
+        description: t("action.profile.description"),
+        cta: t("action.profile.cta"),
+      },
+      activity: {
+        title: t("action.activity.title"),
+        description: t("action.activity.description"),
+        cta: t("action.activity.cta"),
+      },
+      explore: {
+        title: t("action.explore.title"),
+        description: t("action.explore.description"),
+        cta: t("action.explore.cta"),
+      },
+    },
+    pendingReviewCount,
+    pendingReviewHref,
+    openRound: Boolean(openRound),
+    hasSubmitted,
+    profile,
+    featuredId: priorityActivityId,
+    fallbackScriptId: activityData.socialScripts[0]?.id ?? null,
+  })
+  const featured = recruitingActivities.find((activity) => action.href !== `/app/scripts/large/${activity.id}`) ?? null
+  const displayName = profile.nickname || approvedPlayer.name || profile.fullName
 
   return (
-    <div className="space-y-5 p-4 pb-6">
-      <div className="player-home-hero animate-fade-in-up rounded-xl bg-bamboo-muted p-4">
-        <p className="text-xs font-semibold text-primary">{t("kicker")}</p>
-        <h1 className="heading-display mt-2 text-2xl">{t("welcome", { name: approvedPlayer.name })}</h1>
-        <p className="mt-1.5 text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
+    <div className="px-[22px] pb-7 pt-[27px]">
+      <header>
+        <h1 className="text-[1.65rem] font-semibold leading-tight tracking-tight">
+          {t(`greeting.${greetingPeriod()}`, { name: displayName })}
+        </h1>
+        <p className="mt-1 text-sm text-muted-foreground">{t("greeting.subtitle")}</p>
+      </header>
+
+      <div className="mt-[10px]">
+        <PlayerHomeActionCard action={action} />
       </div>
 
-      <div className="animate-fade-in-up delay-1">
-        <PlayerHomeActivityCard
-          activity={activities[0] ?? null}
+      <div className="mt-6">
+        <PlayerHomeQuickActions
+          activities={recruitingActivities.map((activity) => ({
+            id: activity.id,
+            title: activity.title,
+            coverUrl: activity.coverUrl,
+            startAt: activity.startAt,
+            eventDate: activity.eventDate,
+            location: activity.location,
+          }))}
+          locale={locale}
+          pendingReviewCount={pendingReviewCount}
+          pendingReviewHref={pendingReviewHref}
           labels={{
-            title: t("featuredActivity"),
-            fallbackTitle: t("activityFallbackTitle"),
-            fallbackDesc: t("activityFallbackDesc"),
-            view: t("viewActivities"),
-            people: t("people"),
+            ariaLabel: t("quick.ariaLabel"),
+            recruiting: t("quick.recruiting"),
+            reviews: t("quick.reviews"),
+            history: t("quick.history"),
+            feedback: t("quick.feedback"),
+            recruitingSheet: {
+              title: t("recruiting.title"),
+              description: t("recruiting.description"),
+              empty: t("recruiting.empty"),
+              viewAll: t("recruiting.viewAll"),
+              datePending: t("common.datePending"),
+              locationPending: t("common.locationPending"),
+              close: t("common.close"),
+            },
+            feedbackDialog: {
+              title: t("feedback.title"),
+              description: t("feedback.description"),
+              category: t("feedback.category"),
+              categories: {
+                product: t("feedback.categories.product"),
+                activity: t("feedback.categories.activity"),
+                matching: t("feedback.categories.matching"),
+                community: t("feedback.categories.community"),
+                other: t("feedback.categories.other"),
+              },
+              content: t("feedback.content"),
+              placeholder: t("feedback.placeholder"),
+              counter: t("feedback.counter"),
+              submit: t("feedback.submit"),
+              submitting: t("feedback.submitting"),
+              successTitle: t("feedback.successTitle"),
+              successDescription: t("feedback.successDescription"),
+              done: t("feedback.done"),
+              close: t("common.close"),
+            },
           }}
         />
       </div>
 
-      <div className="animate-fade-in-up delay-2 grid grid-cols-2 gap-3">
-        <Link href="/app/scripts" className="rounded-xl bg-card p-4 shadow-soft">
-          <span className="text-xs text-muted-foreground">{t("activityCount")}</span>
-          <strong className="mt-1 block text-2xl">{activities.length}</strong>
-        </Link>
-        <Link href="/app/matches" className="rounded-xl bg-card p-4 shadow-soft">
-          <span className="text-xs text-muted-foreground">{t("matchEntrance")}</span>
-          <strong className="mt-1 block text-2xl">{openRound ? t("open") : t("waiting")}</strong>
-        </Link>
-      </div>
-
-      <div className="animate-fade-in-up delay-3">
-        <PlayerHomeTasks
-          openRound={openRound}
-          hasSubmitted={hasSubmitted}
-          completeness={completeness}
-          labels={{
-            title: t("tasksTitle"),
-            survey: t("surveyTask"),
-            surveyDone: t("surveyDone"),
-            surveyOpen: t("surveyOpen"),
-            daysLeft: t("daysLeft"),
-            profile: t("profileTask"),
-            profileHint: t("profileHint"),
-            activities: t("activitiesTask"),
-            activitiesHint: t("activitiesHint"),
+      <div className="mt-8">
+        <PlayerHomeStatus
+          title={t("status.title")}
+          compatibility={{
+            label: t("status.compatibility"),
+            value: profile.compatibilityStatus === "published" && profile.compatibilityScore != null
+              ? t("status.scoreValue", { score: profile.compatibilityScore.toFixed(1) })
+              : t("status.scorePending"),
+            hint: profile.compatibilityStatus === "published" ? t("status.viewProfile") : t("status.viewMatches"),
+            href: profile.compatibilityStatus === "published" ? "/app/profile" : "/app/matches",
+          }}
+          growth={{
+            label: t("status.growth"),
+            value: profileT(`levels.${profile.level}`),
+            hint: t("status.activityCount", { count: profile.activityCount }),
+            href: "/app/profile/stats",
           }}
         />
       </div>
+
+      {featured && (
+        <div className="mt-6">
+          <PlayerHomeFeaturedActivity
+            activity={{
+              id: featured.id,
+              title: featured.title,
+              coverUrl: featured.coverUrl,
+              startAt: featured.startAt,
+              eventDate: featured.eventDate,
+              location: featured.location,
+            }}
+            locale={locale}
+            labels={{
+              title: t("featured.title"),
+              badge: t("featured.badge"),
+              viewAll: t("featured.viewAll"),
+              viewDetail: t("featured.viewDetail"),
+              datePending: t("common.datePending"),
+              locationPending: t("common.locationPending"),
+            }}
+          />
+        </div>
+      )}
+
+      {announcements.length > 0 && (
+        <div className="mt-5">
+          <PlayerHomeAnnouncements
+            title={t("announcements.title")}
+            items={announcements.map((announcement) => ({ id: announcement.id, title: announcement.title }))}
+          />
+        </div>
+      )}
     </div>
   )
+}
+
+function resolvePrimaryAction({
+  labels,
+  pendingReviewCount,
+  pendingReviewHref,
+  openRound,
+  hasSubmitted,
+  profile,
+  featuredId,
+  fallbackScriptId,
+}: {
+  labels: {
+    eyebrow: string
+    review: ActionCopy
+    survey: ActionCopy
+    profile: ActionCopy
+    activity: ActionCopy
+    explore: ActionCopy
+  }
+  pendingReviewCount: number
+  pendingReviewHref: string
+  openRound: boolean
+  hasSubmitted: boolean
+  profile: Awaited<ReturnType<typeof fetchMyProfileSummary>>
+  featuredId: string | null
+  fallbackScriptId: string | null
+}): PlayerHomeAction {
+  if (pendingReviewCount > 0) return {
+    eyebrow: labels.eyebrow,
+    title: labels.review.title,
+    description: labels.review.description,
+    href: pendingReviewHref,
+    cta: labels.review.cta,
+  }
+  if (openRound && !hasSubmitted) return {
+    eyebrow: labels.eyebrow,
+    title: labels.survey.title,
+    description: labels.survey.description,
+    href: "/app/matching/survey",
+    cta: labels.survey.cta,
+  }
+  const incomplete = resolveIncompleteProfile(profile)
+  if (incomplete) return {
+    eyebrow: labels.eyebrow,
+    title: labels.profile.title,
+    description: labels.profile.description,
+    href: incomplete,
+    cta: labels.profile.cta,
+  }
+  if (featuredId) return {
+    eyebrow: labels.eyebrow,
+    title: labels.activity.title,
+    description: labels.activity.description,
+    href: `/app/scripts/large/${featuredId}`,
+    cta: labels.activity.cta,
+  }
+  return {
+    eyebrow: labels.eyebrow,
+    title: labels.explore.title,
+    description: labels.explore.description,
+    href: fallbackScriptId ? `/app/scripts/${fallbackScriptId}` : "/app/scripts",
+    cta: labels.explore.cta,
+  }
+}
+
+interface ActionCopy {
+  title: string
+  description: string
+  cta: string
+}
+
+function resolveIncompleteProfile(profile: Awaited<ReturnType<typeof fetchMyProfileSummary>>) {
+  if (!profile.identityComplete) return "/app/profile/edit"
+  if (!profile.supplementaryComplete) return "/app/profile/supplementary"
+  if (!profile.personalityComplete) return "/app/profile/personality"
+  if (!profile.quizComplete) return "/app/profile/quiz"
+  return null
+}
+
+function greetingPeriod() {
+  const hour = Number(new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Asia/Tokyo",
+    hour: "2-digit",
+    hour12: false,
+  }).format(new Date()))
+  if (hour < 11) return "morning"
+  if (hour < 18) return "afternoon"
+  return "evening"
+}
+
+async function fetchHomeAnnouncements(locale: string) {
+  try {
+    return await fetchPublishedAnnouncements(normalizeCommunityLocale(locale), { limit: 2, pinnedOnly: true })
+  } catch (error) {
+    console.warn("[player home announcements unavailable]", error)
+    return []
+  }
 }

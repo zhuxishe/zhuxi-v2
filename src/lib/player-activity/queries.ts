@@ -100,7 +100,11 @@ export async function fetchSocialHomeLimit(): Promise<number> {
     : DEFAULT_SOCIAL_HOME_LIMIT
 }
 
-export async function fetchPlayerActivityHub(locale: string, now = new Date()) {
+export async function fetchPlayerActivityHub(
+  locale: string,
+  now = new Date(),
+  options: { largeLimit?: number } = {},
+) {
   const [largeActivities, scripts, socialHomeLimit] = await Promise.all([
     fetchPlayerLargeActivities(locale),
     fetchPlayerScripts(locale),
@@ -108,7 +112,7 @@ export async function fetchPlayerActivityHub(locale: string, now = new Date()) {
   ])
 
   return {
-    largeActivities: selectLargeActivitiesForHome(largeActivities, now, 2),
+    largeActivities: selectLargeActivitiesForHome(largeActivities, now, options.largeLimit ?? 2),
     socialScripts: sortSocialScriptsForHome(scripts, socialHomeLimit),
   }
 }

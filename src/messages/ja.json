@@ -339,6 +339,98 @@
     "linkSent": "ログインリンクを{email}に送信しました。メール内のリンクをクリックしてログインしてください。"
   },
   "playerHome": {
+    "greeting": {
+      "morning": "おはようございます、{name}さん",
+      "afternoon": "こんにちは、{name}さん",
+      "evening": "こんばんは、{name}さん",
+      "subtitle": "今日も一緒に、素敵な出会いを見つけましょう"
+    },
+    "action": {
+      "eyebrow": "優先アクション",
+      "review": {
+        "title": "未完了の相互評価が {count} 件あります",
+        "description": "評価を完了すると、お互いの相性スコアがより正確になります",
+        "cta": "今すぐ評価"
+      },
+      "survey": {
+        "title": "新しいマッチング希望を受付中です",
+        "description": "最近の予定と希望を入力して、相性の良い相手を探しましょう",
+        "cta": "希望を入力"
+      },
+      "profile": {
+        "title": "プロフィールをもう少し整えましょう",
+        "description": "情報が充実すると、活動やマッチングの提案がより自分に合います",
+        "cta": "入力を続ける"
+      },
+      "activity": {
+        "title": "今週おすすめの活動を見てみましょう",
+        "description": "気軽な対面イベントから、新しい仲間と出会えます",
+        "cta": "活動を見る"
+      },
+      "explore": {
+        "title": "自分に合う次の出会いを見つけよう",
+        "description": "活動や交流シナリオから、興味のある過ごし方を選べます",
+        "cta": "探してみる"
+      }
+    },
+    "quick": {
+      "ariaLabel": "クイックメニュー",
+      "recruiting": "募集中",
+      "reviews": "評価待ち",
+      "history": "参加履歴",
+      "feedback": "ご意見"
+    },
+    "recruiting": {
+      "title": "近日開催の活動",
+      "description": "申込状況は各活動の詳細ページでご確認ください",
+      "empty": "近日開催予定の活動はありません",
+      "viewAll": "活動ページですべて見る"
+    },
+    "status": {
+      "title": "マイステータス",
+      "compatibility": "相性スコア",
+      "scoreValue": "{score} 点",
+      "scorePending": "評価待ち",
+      "finishReview": "評価を完了する",
+      "viewProfile": "詳細を見る",
+      "viewMatches": "マッチングと評価を見る",
+      "growth": "成長レベル",
+      "activityCount": "活動に {count} 回参加"
+    },
+    "featured": {
+      "title": "今週のおすすめ",
+      "badge": "対面イベント",
+      "viewAll": "すべて見る",
+      "viewDetail": "詳細を見る"
+    },
+    "announcements": {
+      "title": "重要なお知らせ"
+    },
+    "feedback": {
+      "title": "フィードバックを送る",
+      "description": "記名式で、スタッフのみが確認します。改善してほしい点をお知らせください。",
+      "category": "種類",
+      "categories": {
+        "product": "サービス全般",
+        "activity": "活動について",
+        "matching": "マッチングについて",
+        "community": "コミュニティについて",
+        "other": "その他"
+      },
+      "content": "内容",
+      "placeholder": "問題やご提案を具体的に入力してください（10文字以上）",
+      "counter": "{count}/500",
+      "submit": "送信する",
+      "submitting": "送信中…",
+      "successTitle": "フィードバックを受け付けました",
+      "successDescription": "ご意見ありがとうございます。スタッフが確認します。",
+      "done": "完了"
+    },
+    "common": {
+      "datePending": "日程未定",
+      "locationPending": "場所未定",
+      "close": "閉じる"
+    },
     "welcome": "こんにちは、{name}さん",
     "kicker": "今週の活動入口",
     "subtitle": "まず最近の活動を見て、固定で遊べる相手を探したい時にマッチング希望を入力できます。",

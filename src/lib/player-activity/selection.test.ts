@@ -150,6 +150,16 @@ describe("Player activity selection", () => {
     }), NOW)).toBe(false)
   })
 
+  it("keeps a date-only activity upcoming for the full Tokyo calendar day", () => {
+    const dateOnly = activity({
+      startAt: "2026-07-20T00:00:00+09:00",
+      eventDate: "2026-07-20",
+    })
+
+    expect(isUpcomingLargeActivity(dateOnly, new Date("2026-07-20T23:30:00+09:00"))).toBe(true)
+    expect(isUpcomingLargeActivity(dateOnly, new Date("2026-07-21T00:01:00+09:00"))).toBe(false)
+  })
+
   it("places upcoming before latest and retains cancelled entries in the child library", () => {
     const sections = buildLargeActivitySections([
       activity({ id: "past", startAt: "2026-07-10T10:00:00+09:00" }),

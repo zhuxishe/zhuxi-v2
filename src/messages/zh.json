@@ -339,6 +339,98 @@
     "linkSent": "登录链接已发送到 {email}，请点击邮件中的链接登录。"
   },
   "playerHome": {
+    "greeting": {
+      "morning": "早上好，{name}",
+      "afternoon": "下午好，{name}",
+      "evening": "晚上好，{name}",
+      "subtitle": "今天也一起认识有趣的人吧"
+    },
+    "action": {
+      "eyebrow": "优先处理",
+      "review": {
+        "title": "还有 {count} 项互评待完成",
+        "description": "完成评价，帮助彼此获得更准确的合拍分",
+        "cta": "立即互评"
+      },
+      "survey": {
+        "title": "新一期匹配问卷已开放",
+        "description": "告诉我们你最近的时间与偏好，开始寻找合适的伙伴",
+        "cta": "填写问卷"
+      },
+      "profile": {
+        "title": "再完善一点个人资料",
+        "description": "资料越完整，活动与匹配建议就越贴近你的需求",
+        "cta": "继续完善"
+      },
+      "activity": {
+        "title": "看看本周值得参加的活动",
+        "description": "从一场轻松的线下见面开始，认识新的伙伴",
+        "cta": "查看活动"
+      },
+      "explore": {
+        "title": "发现适合你的下一场相遇",
+        "description": "浏览活动与社交剧本，选择你感兴趣的方式",
+        "cta": "开始探索"
+      }
+    },
+    "quick": {
+      "ariaLabel": "快捷入口",
+      "recruiting": "募集中",
+      "reviews": "待互评",
+      "history": "参与记录",
+      "feedback": "反馈"
+    },
+    "recruiting": {
+      "title": "近期活动",
+      "description": "以下活动即将举办，报名状态请在详情中确认",
+      "empty": "暂时没有即将举办的活动",
+      "viewAll": "进入活动页查看全部"
+    },
+    "status": {
+      "title": "我的状态",
+      "compatibility": "合拍分",
+      "scoreValue": "{score} 分",
+      "scorePending": "待评估",
+      "finishReview": "去完成互评",
+      "viewProfile": "查看详情",
+      "viewMatches": "查看匹配与互评",
+      "growth": "成长等级",
+      "activityCount": "已参与 {count} 次活动"
+    },
+    "featured": {
+      "title": "本周推荐",
+      "badge": "线下活动",
+      "viewAll": "查看全部",
+      "viewDetail": "查看详情"
+    },
+    "announcements": {
+      "title": "重要公告"
+    },
+    "feedback": {
+      "title": "发送反馈",
+      "description": "这是实名反馈，仅工作人员可见。告诉我们哪里可以做得更好。",
+      "category": "反馈类型",
+      "categories": {
+        "product": "产品体验",
+        "activity": "活动相关",
+        "matching": "匹配相关",
+        "community": "社区相关",
+        "other": "其他"
+      },
+      "content": "反馈内容",
+      "placeholder": "请具体描述你遇到的问题或建议（至少 10 个字）",
+      "counter": "{count}/500",
+      "submit": "发送反馈",
+      "submitting": "发送中…",
+      "successTitle": "反馈已收到",
+      "successDescription": "谢谢你的建议，我们会认真查看。",
+      "done": "完成"
+    },
+    "common": {
+      "datePending": "日期待定",
+      "locationPending": "地点待定",
+      "close": "关闭"
+    },
     "welcome": "你好，{name}",
     "kicker": "本周活动入口",
     "subtitle": "先看看最近有什么活动；想找固定搭子时，再填写匹配问卷。",

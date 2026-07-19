@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ChevronRight } from "lucide-react"
 import { ProfileAvatar } from "./ProfileAvatar"
 
 export interface ProfileSummaryCardLabels {
@@ -38,7 +39,7 @@ export function ProfileSummaryCard({
   labels,
 }: ProfileSummaryCardProps) {
   return (
-    <section className="overflow-hidden rounded-[22px] border border-border/90 bg-card shadow-soft" aria-label={labels.editProfile}>
+    <section className="overflow-hidden rounded-[22px] border border-border/90 bg-card shadow-soft">
       <Link
         href="/app/profile/edit"
         aria-label={labels.editProfile}
@@ -67,7 +68,12 @@ export function ProfileSummaryCard({
           bordered
           compact={matchScore == null}
         />
-        <Stat label={labels.activities} value={`${activityCount} ${labels.activityUnit}`} bordered />
+        <Stat
+          label={labels.activities}
+          value={`${activityCount} ${labels.activityUnit}`}
+          href="/app/profile/stats"
+          bordered
+        />
       </div>
     </section>
   )
@@ -76,20 +82,46 @@ export function ProfileSummaryCard({
 function Stat({
   label,
   value,
+  href,
   bordered = false,
   compact = false,
 }: {
   label: string
   value: string
+  href?: string
   bordered?: boolean
   compact?: boolean
 }) {
-  return (
-    <div className={`flex min-w-0 flex-col items-center justify-center px-1 text-center ${bordered ? "border-l border-border" : ""}`}>
+  const content = (
+    <>
       <span className="text-[11px] leading-4 text-muted-foreground">{label}</span>
-      <span className={`mt-1 max-w-full break-words font-semibold leading-5 text-primary ${compact ? "text-xs" : "text-base"}`}>
-        {value}
+      <span className="mt-1 flex max-w-full items-center justify-center gap-0.5">
+        <span className={`max-w-full break-words font-semibold leading-5 text-primary ${compact ? "text-xs" : "text-base"}`}>
+          {value}
+        </span>
+        {href && (
+          <ChevronRight
+            className="size-3.5 shrink-0 text-primary/70 transition-transform group-hover:translate-x-0.5"
+            strokeWidth={1.8}
+            aria-hidden="true"
+          />
+        )}
       </span>
-    </div>
+    </>
   )
+
+  const className = `flex min-w-0 flex-col items-center justify-center px-1 text-center ${bordered ? "border-l border-border" : ""}`
+
+  if (href) {
+    return (
+      <Link
+        href={href}
+        className={`group transition-colors hover:bg-muted/30 active:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-inset ${className}`}
+      >
+        {content}
+      </Link>
+    )
+  }
+
+  return <div className={className}>{content}</div>
 }

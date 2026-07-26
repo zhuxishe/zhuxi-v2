@@ -14,11 +14,11 @@ export function OrganizationMissionCard() {
         <div>
           <h2
             id="organization-mission-title"
-            className="text-xs font-semibold uppercase tracking-[0.18em] text-[#4f6f3e]"
+            className="font-display text-xl font-bold leading-tight tracking-[0.02em] text-[#253320] md:text-2xl"
           >
-            Our mission
+            Our Mission 我们的使命
           </h2>
-          <p className="mt-2 max-w-3xl font-display text-xl font-bold leading-relaxed text-[#253320] md:text-2xl">
+          <p className="mt-3 max-w-4xl text-base font-semibold leading-[1.8] text-[#3f463c] md:text-lg">
             {organizationMission}
           </p>
         </div>

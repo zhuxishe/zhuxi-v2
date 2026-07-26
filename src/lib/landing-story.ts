@@ -23,4 +23,4 @@ export const organizationStoryText = [
 ]
 
 export const organizationMission =
-  "我们的使命：竹溪社是一个实践解决社交问题的跨校社交类社团。我们力求让每个人都能遇见自己想遇见的人。"
+  "竹溪社是一个实践解决社交问题的跨校社交类社团。我们力求让每个人都能遇见自己想遇见的人。"

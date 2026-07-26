@@ -2,6 +2,7 @@ import Image from "next/image"
 import { getLocale } from "next-intl/server"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingNav } from "@/components/landing/LandingNav"
+import { OrganizationMissionCard } from "@/components/landing/OrganizationMissionCard"
 import { OrganizationStoryCard } from "@/components/landing/OrganizationStoryCard"
 import { TeamDepartmentGrid } from "@/components/landing/TeamDepartmentGrid"
 import { landingCopy } from "@/lib/landing-copy"
@@ -36,6 +37,7 @@ export default async function OrganizationPage() {
         <section className="mx-auto max-w-5xl space-y-5 px-5 pb-14">
           <OrganizationStoryCard />
           <TeamDepartmentGrid />
+          <OrganizationMissionCard />
 
           <article className="rounded-[1.8rem] border border-[#e5dfd3] bg-white/92 p-6 shadow-[0_16px_42px_rgba(44,55,35,0.08)] md:p-8">
             <div className="grid gap-6 md:grid-cols-[1fr_170px] md:items-center">

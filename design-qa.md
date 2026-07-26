@@ -284,3 +284,71 @@ The Activity V1 migrations are contract-tested and include a forward compatibili
 - [x] Remove all temporary QA routes, fixtures, and proxy bypasses.
 
 Activity V1 final result: passed
+
+---
+
+# Player App 首页 V1 — Design QA
+
+- Date: 2026-07-19
+- Route: `/app`
+- Target viewport: `390 × 844`
+- Source of truth: `/Users/seanmacmini/.codex/generated_images/019f73d0-9dec-7213-8563-bbef611a4497/exec-31ee2d8e-7cdb-411a-a84e-8d432b825c3d.png`
+- Previous live capture: `/tmp/01-play-app-home-mobile-viewport-390x844.png`
+
+## Source and implementation evidence
+
+- Correct browser profile: Chrome profile `风`; all browser QA was isolated to that profile.
+- Same-state implementation capture: `/Users/seanmacmini/.codex/visualizations/2026/07/18/019f73d0-9dec-7213-8563-bbef611a4497/player-home-v1/player-home-v1-same-state-390x844.png`.
+- Mandatory same-input comparison: `/Users/seanmacmini/.codex/visualizations/2026/07/18/019f73d0-9dec-7213-8563-bbef611a4497/player-home-v1/player-home-reference-vs-v1-same-state.png`.
+- Recruiting sheet capture: `/Users/seanmacmini/.codex/visualizations/2026/07/18/019f73d0-9dec-7213-8563-bbef611a4497/player-home-v1/player-home-recruiting-sheet-390x844.png`.
+- Feedback Dialog capture: `/Users/seanmacmini/.codex/visualizations/2026/07/18/019f73d0-9dec-7213-8563-bbef611a4497/player-home-v1/player-home-feedback-dialog-390x844.png`.
+- The selected source and implementation were compared in the same image at the same 390 × 844 CSS viewport and the same content state: greeting, two pending reviews, review-first primary action, growth level, featured activity, announcement, and unread-notification badge.
+
+## Findings
+
+No actionable P0, P1, or P2 visual findings remain.
+
+- Hierarchy: passed. The screen reads in the intended order: greeting → one primary action → four shortcuts → personal status → one recommended activity → announcement.
+- Visual fidelity: passed. The implementation matches the selected direction's 22px page gutter, compact clipped forest card, four-column shortcuts, two-column status layout, 110px featured card, type hierarchy, and restrained border/shadow treatment.
+- Existing-product consistency: passed. The production name `竹溪社`, real notification control, established theme tokens, and confirmed bottom navigation (`首页 / 活动 / 匹配 / 社区 / 我的`) are intentionally preserved instead of copying the mock's typo and alternate information architecture.
+- State behavior: passed. The visual fixture proves the conditional two-person review badge, review-first action, pending-review status, activity card, and announcement states. Production V1 still avoids fabricating a review count when the current backend cannot determine per-person eligibility safely.
+- Responsive behavior: passed. At 360 × 800 and 430 × 932 there is no horizontal overflow; the 390 × 844 reference breakpoint keeps the core hierarchy aligned and scrolls naturally behind the fixed navigation when content extends below the first viewport.
+- Assets: passed. The page uses the real bamboo decorative asset, a real local activity image or approved fallback, and Lucide icons; no placeholder drawings or fabricated SVG assets were introduced.
+- Localization: passed. Chinese and Japanese keys remain aligned, and the narrow Japanese quick-action label is the compact `ご意見`.
+
+## Functional and accessibility checks
+
+- `募集中` opens a Base UI Dialog sheet, lists upcoming activities, and exposes both activity-detail links and `查看全部活动`.
+- `待互评` remains visible and routes to `/app/matches`; V1 deliberately does not fabricate a count until review eligibility is represented correctly in the data model.
+- `参与记录` routes to `/app/profile/stats`.
+- `反馈` opens a focus-managed Base UI Dialog, discloses real-name handling, exposes the five categories, keeps submit disabled below ten characters, updates the Unicode-consistent counter, and enables submit after valid input. Browser QA did not submit a real feedback record.
+- Both dialogs fit the 390 × 844 viewport, retain accessible names and close controls, and keep the background inert while open.
+- Feedback is stored as real-name staff-only data. Admin processing includes status filters, pagination, notes, optimistic concurrency protection, and stable completion timestamps.
+- Upcoming/date-only activity logic is evaluated in the Tokyo calendar day and no longer renders a synthetic `00:00` time.
+
+## Browser and console evidence
+
+- A production build of the isolated visual fixture was opened in the selected Chrome profile at 390 × 844.
+- DOM snapshots confirmed all primary headings, routes, dialog controls, badge values, feedback categories, counter state, and disabled/enabled submit states.
+- A fresh production-build tab reported an empty console log after the final render and interaction pass.
+- The authenticated branch Preview was inspected first and confirmed to still show the previously deployed homepage; no Preview or Production deployment was performed during this QA pass.
+
+## Static verification
+
+- TypeScript typecheck: passed.
+- ESLint: passed.
+- Unit tests: 40 files / 143 tests passed.
+- Next.js production build: passed.
+- `git diff --check`: passed.
+- Temporary QA route and runtime server: removed/stopped after capture.
+
+## Release follow-up
+
+- The homepage and feedback administration implementation was committed as `7b61c65` (`Redesign Player App home and add feedback workflow`), pushed to `codex/July_updata`, and verified on the branch Preview at `/app`.
+- `supabase/migrations/20260718164721_player_feedback.sql` was subsequently applied to the shared Supabase database. The follow-up migration `20260721024131_harden_player_feedback_privileges.sql` tightened the effective table and function privileges and was committed as `4728ed8`.
+- The final database verification covered the object structure, migration history, effective ACLs, role privileges, RLS, a rollback smoke test, and the real Preview `/admin/feedback` page.
+- The original QA pass did not deploy the `main` branch or the Production frontend. Preview and Production share the same Supabase database, so the applied schema and privilege migrations affect that shared database even though the Production frontend was not redeployed.
+
+## Final result
+
+final result: passed

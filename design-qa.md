@@ -134,6 +134,82 @@ The repository still has no local Supabase public configuration or authenticated
 
 final result: passed
 
+---
+
+# Public Site 集体社交 — Design QA
+
+- Date: 2026-08-02
+- Routes: `/scripts` and `/scripts/collective-social`
+- Selected visual direction: option 3, `/Users/seanmacmini/.codex/generated_images/019fbe52-ac77-70c1-9ae7-8af811ad78e5/exec-429ca563-b01a-4fad-81fb-e0a26582d142.png`
+- Mandatory same-input comparison: `/tmp/collective-comparison-final-v2.jpg`
+- Desktop evidence: `/tmp/collective-hero-revised.jpg`, `/tmp/collective-model-final.jpg`, `/tmp/collective-rail-aligned.jpg`, `/tmp/collective-timeline-final.jpg`, `/tmp/collective-closing-final.jpg`
+- Mobile evidence: `/tmp/collective-mobile-390.jpg`, `/tmp/collective-mobile-model-390.jpg`, `/tmp/collective-mobile-rail-390.jpg`, `/tmp/collective-mobile-timeline-390.jpg`, `/tmp/collective-mobile-closing-390.jpg`, `/tmp/collective-mobile-ja-390.jpg`
+- Viewports: 1920 × 878 Chrome desktop; 390 × 844 same-browser responsive frame (375 CSS content width after the visible scrollbar)
+
+## Findings
+
+No actionable P0, P1, or P2 visual findings remain.
+
+- Visual fidelity: passed. The detail page follows the selected Tokyo social-magazine direction: full-bleed dusk hero with a warm-paper text fade, centered manifesto, three connected class files, oversized horizontal class feature, editorial semester timeline, and deep bamboo-green closing band.
+- Existing-product consistency: passed. The public site's fixed navigation, display typography, warm washi palette, bamboo-green accents, grain, footer, and existing activity-photo language remain intact.
+- Entry flow: passed. The third module appears after Large Events and Social Scripts, keeps the exact requested Chinese title/subtitle/description, and the card CTA opens the new static route.
+- Content truthfulness: passed. Chinese and Japanese consistently describe the system as planned or under preparation. No sample class, WeChat group, frequency, opening date, or participant result is presented as already available.
+- Class rail: passed. Cards use a text-left/image-right editorial spread on desktop and a readable stacked layout on mobile. Native horizontal scrolling, snap alignment, 44 px pagination targets, localized previous/next labels, keyboard focus, and reduced-motion behavior are present. Visible-arrow testing changed the active card without changing vertical scroll position.
+- Semester timeline: passed. The five stages use 3:2 imagery and a compact alternating desktop axis; the mobile axis retains practical text width and image crops.
+- Responsive behavior: passed. At 375 CSS px, the Chinese and Japanese pages reported `scrollWidth === clientWidth`; hero titles, long Japanese copy, the three-step model, class rail, timeline, and closing CTA wrapped without clipping or horizontal page overflow.
+- Accessibility: passed. The new route has one named H1, semantic section headings and ordered steps, meaningful hero/class image alternatives, decorative timeline alternatives, localized control names, visible focus rings, minimum 44 px controls, and reduced-motion fallbacks.
+- Image quality: passed. The hero and cat feature use purpose-generated raster assets at the intended aspect ratios; supporting editorial images use existing project photography. No placeholder boxes, inline SVG art, or stretched sprites were introduced.
+- Localization: passed. The Chinese and Japanese key sets are aligned. Both languages were switched through the real public navigation and rendered without overflow.
+- Browser health: passed. A fresh Chrome tab reported no console warnings or errors after the final render.
+
+## Comparison history
+
+### Pass 1
+
+- [P2] The initial hero used a hard split layout, causing the four-character Chinese title to wrap at wide desktop sizes and drifting from the selected full-image composition.
+  - Fix: make the generated Tokyo dusk image full-bleed, add the selected warm-paper fade, and cap the content width and title scale.
+- [P2] The first class rail placed imagery on the left, used small pagination targets, and relied on `scrollIntoView`, which could move the page vertically.
+  - Fix: restore text-left/image-right spreads, add 44 px pagination controls, localize arrow labels, and scroll only the horizontal rail.
+- [P2] Some entry and example copy implied that planned classes already existed.
+  - Fix: change entry language and metadata to explicit proposal/preparation wording, remove unverified dates and frequency claims, and keep the requested Chinese module description unchanged.
+
+### Pass 2
+
+- [P2] Mobile hero copy crossed into the dark part of the image and lost contrast.
+  - Fix: keep the warm-paper mobile overlay opaque through the complete copy block while preserving the group image at the lower edge.
+- [P3] The joined three-column model read like a generic dashboard panel rather than the selected editorial class files.
+  - Fix: separate the steps into rounded archive-style modules with numbered tabs and restrained Lucide connectors.
+- [P3] Several timeline sources were too vertical or semantically mismatched for the initial wide crops.
+  - Fix: use coherent project photography and fixed 3:2 slots.
+
+### Pass 3
+
+- [P1] The closing eyebrow and body could be read as an unverified current-semester launch promise.
+  - Fix: use neutral preparation wording in Chinese, Japanese, and English without a semester date.
+- [P2] A few small green labels were slightly below WCAG AA contrast, and generic editorial class imagery used topic-like alternatives.
+  - Fix: darken the labels, treat the supporting imagery as decorative, and expose the localized class title through each 44 px pagination control.
+
+## Functional and static verification
+
+- Exact Chinese title, subtitle, and description: passed.
+- Card-to-detail navigation: passed.
+- Chinese/Japanese language switch: passed.
+- Horizontal class arrows and active-state indicators: passed on desktop and mobile.
+- TypeScript typecheck: passed.
+- ESLint: passed.
+- Unit tests: 40 files / 143 tests passed.
+- Next.js production build: passed and includes `/scripts/collective-social`.
+- JSON parsing and `git diff --check`: passed.
+- Every edited or new TS/TSX source file remains below 150 lines.
+
+## Residual note
+
+The existing dismissible PWA install prompt can overlap a small part of lower-left content in some desktop sessions. It predates this route and was not changed in this scoped public-page implementation.
+
+## Final result
+
+final result: passed
+
 # Player App My Profile V1 Design QA
 
 ## Comparison target

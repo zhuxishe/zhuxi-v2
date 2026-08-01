@@ -18,7 +18,9 @@ export async function generateMetadata(): Promise<Metadata> {
 export default function CollectiveSocialPage() {
   return (
     <>
-      <BambooLeaves />
+      <div className="hidden sm:block">
+        <BambooLeaves />
+      </div>
       <LandingNav />
       <main className="relative overflow-hidden bg-[#fffdf7] text-[#171d15] grain-overlay">
         <CollectiveSocialHero />

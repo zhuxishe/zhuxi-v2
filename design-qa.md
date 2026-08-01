@@ -136,27 +136,27 @@ final result: passed
 
 ---
 
-# Public Site 集体社交 — Design QA
+# Public Site 团体社交 — Design QA
 
 - Date: 2026-08-02
 - Routes: `/scripts` and `/scripts/collective-social`
 - Selected visual direction: option 3, `/Users/seanmacmini/.codex/generated_images/019fbe52-ac77-70c1-9ae7-8af811ad78e5/exec-429ca563-b01a-4fad-81fb-e0a26582d142.png`
-- Mandatory same-input comparison: `/tmp/collective-comparison-final-v2.jpg`
+- Mandatory same-input comparisons: `/tmp/collective-comparison-final-v2.jpg`, `/tmp/collective-mobile-compare-1.jpg`, `/tmp/collective-mobile-compare-2.jpg`, `/tmp/collective-mobile-compare-3.jpg`
 - Desktop evidence: `/tmp/collective-hero-revised.jpg`, `/tmp/collective-model-final.jpg`, `/tmp/collective-rail-aligned.jpg`, `/tmp/collective-timeline-final.jpg`, `/tmp/collective-closing-final.jpg`
-- Mobile evidence: `/tmp/collective-mobile-390.jpg`, `/tmp/collective-mobile-model-390.jpg`, `/tmp/collective-mobile-rail-390.jpg`, `/tmp/collective-mobile-timeline-390.jpg`, `/tmp/collective-mobile-closing-390.jpg`, `/tmp/collective-mobile-ja-390.jpg`
-- Viewports: 1920 × 878 Chrome desktop; 390 × 844 same-browser responsive frame (375 CSS content width after the visible scrollbar)
+- Mobile evidence: `/tmp/collective-mobile-after-01-hero.jpg` through `/tmp/collective-mobile-after-06-closing.jpg`, `/tmp/collective-jp-320-01-hero.jpg` through `/tmp/collective-jp-320-06-closing.jpg`
+- Viewports: 1920 × 878 Chrome desktop; 320 × 568, 375 × 667, and 390 × 844 responsive frames
 
 ## Findings
 
 No actionable P0, P1, or P2 visual findings remain.
 
-- Visual fidelity: passed. The detail page follows the selected Tokyo social-magazine direction: full-bleed dusk hero with a warm-paper text fade, centered manifesto, three connected class files, oversized horizontal class feature, editorial semester timeline, and deep bamboo-green closing band.
+- Visual fidelity: passed. The detail page follows the selected Tokyo social-magazine direction: full-bleed dusk hero with a warm-paper text fade, editorial manifesto, four connected class files, oversized horizontal class feature, semester timeline, and deep bamboo-green closing band.
 - Existing-product consistency: passed. The public site's fixed navigation, display typography, warm washi palette, bamboo-green accents, grain, footer, and existing activity-photo language remain intact.
 - Entry flow: passed. The third module appears after Large Events and Social Scripts, keeps the exact requested Chinese title/subtitle/description, and the card CTA opens the new static route.
 - Content truthfulness: passed. Chinese and Japanese consistently describe the system as planned or under preparation. No sample class, WeChat group, frequency, opening date, or participant result is presented as already available.
 - Class rail: passed. Cards use a text-left/image-right editorial spread on desktop and a readable stacked layout on mobile. Native horizontal scrolling, snap alignment, 44 px pagination targets, localized previous/next labels, keyboard focus, and reduced-motion behavior are present. Visible-arrow testing changed the active card without changing vertical scroll position.
-- Semester timeline: passed. The five stages use 3:2 imagery and a compact alternating desktop axis; the mobile axis retains practical text width and image crops.
-- Responsive behavior: passed. At 375 CSS px, the Chinese and Japanese pages reported `scrollWidth === clientWidth`; hero titles, long Japanese copy, the three-step model, class rail, timeline, and closing CTA wrapped without clipping or horizontal page overflow.
+- Semester timeline: passed. The five stages use 3:2 desktop imagery and 4:3 mobile imagery; the mobile axis is removed in favor of overlaid number markers so copy and photos retain the full practical width.
+- Responsive behavior: passed. At 320, 375, and 390 CSS px, the Chinese and Japanese pages reported `scrollWidth === clientWidth`; hero titles, long Japanese copy, the compact four-step model, class rail, timeline, and closing CTA wrapped without clipping or horizontal page overflow.
 - Accessibility: passed. The new route has one named H1, semantic section headings and ordered steps, meaningful hero/class image alternatives, decorative timeline alternatives, localized control names, visible focus rings, minimum 44 px controls, and reduced-motion fallbacks.
 - Image quality: passed. The hero and cat feature use purpose-generated raster assets at the intended aspect ratios; supporting editorial images use existing project photography. No placeholder boxes, inline SVG art, or stretched sprites were introduced.
 - Localization: passed. The Chinese and Japanese key sets are aligned. Both languages were switched through the real public navigation and rendered without overflow.
@@ -188,6 +188,17 @@ No actionable P0, P1, or P2 visual findings remain.
   - Fix: use neutral preparation wording in Chinese, Japanese, and English without a semester date.
 - [P2] A few small green labels were slightly below WCAG AA contrast, and generic editorial class imagery used topic-like alternatives.
   - Fix: darken the labels, treat the supporting imagery as decorative, and expose the localized class title through each 44 px pagination control.
+
+### Pass 4 — copy update and mobile refinement
+
+- [P1] Five mobile pagination dots plus two arrows exceeded the usable width at 320–390 px.
+  - Fix: replace the mobile dots with a localized `01 / 05` progress indicator and keep two 44 px arrow controls; retain direct dots from the `sm` breakpoint upward.
+- [P1] Four full-height model cards, loose manifesto leading, and desktop-style timeline offsets made the narrow page unnecessarily long and visually uneven.
+  - Fix: use compact two-column step rows on mobile, tighten the reading rhythm, remove the mobile timeline axis, and preserve the spacious desktop composition at larger breakpoints.
+- [P1] The original third and fifth timeline photos were vertical collage sources that produced bad mobile crops.
+  - Fix: replace them with the inspected landscape originals `daiba-05.webp` and `shibuya-party-01.webp`; tune the cat and K-POP class focal positions separately.
+- [P2] Decorative falling leaves crossed copy and photos on narrow screens.
+  - Fix: hide the page-level leaf layer below the `sm` breakpoint while retaining grain, photography, and the established paper palette.
 
 ## Functional and static verification
 

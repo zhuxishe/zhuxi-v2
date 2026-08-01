@@ -41,7 +41,7 @@ const zhCopy = {
     photoBody: "我们把城市变成舞台，提供周末出游、露天聚餐到节日派对等诸多活动，热闹有趣，也最容易遇见同频的人。",
     photoTags: ["旅行", "聚餐", "户外", "节日", "团建"],
     photoCta: "查看详情",
-    scriptTeaserTitle: "社交剧本类",
+    scriptTeaserTitle: "社交剧本",
     scriptTeaserTitleEn: "Social Scripts",
     scriptTeaserSubtitle: "小范围、有主题，慢慢熟悉彼此",
     scriptTeaserBody: "更想在小范围里逐渐熟络？竹溪社提供以主题和任务为线索的剧本活动，在推理、角色扮演和桌游中自然破冰，慢热的人也能轻松融入，留下一起复盘的回忆。",

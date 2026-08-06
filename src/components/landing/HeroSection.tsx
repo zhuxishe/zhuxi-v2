@@ -4,6 +4,7 @@ import { CalendarDays, CircleHelp, Users, Zap } from "lucide-react"
 import { HeroPhotoSlider } from "@/components/landing/HeroPhotoSlider"
 import { HeroSchoolPie } from "@/components/landing/HeroSchoolPie"
 import { landingCopy } from "@/lib/landing-copy"
+import { fetchHomepageSchoolStats } from "@/lib/queries/homepage-school-stats"
 
 const cardIcons = [Users, CalendarDays, Zap, CircleHelp] as const
 const colorMap: Record<string, string> = {
@@ -14,7 +15,10 @@ const colorMap: Record<string, string> = {
 }
 
 export async function HeroSection() {
-  const locale = await getLocale()
+  const [locale, schoolStats] = await Promise.all([
+    getLocale(),
+    fetchHomepageSchoolStats(),
+  ])
   const copy = landingCopy(locale).home
 
   return (
@@ -38,7 +42,7 @@ export async function HeroSection() {
           </p>
         </div>
 
-        <HeroSchoolPie ja={locale === "ja"} />
+        <HeroSchoolPie stats={schoolStats} ja={locale === "ja"} viewport="responsive" />
 
         <div className="grid grid-cols-2 gap-2 md:gap-4">
           {copy.cards.map(([title, desc, href, color], index) => {

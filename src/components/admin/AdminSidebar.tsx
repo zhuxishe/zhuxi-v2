@@ -3,10 +3,18 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle, ClipboardList, UserRound, Images, MessagesSquare, MessageSquareText } from "lucide-react"
+import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle, ClipboardList, UserRound, Images, MessagesSquare, MessageSquareText, PieChart } from "lucide-react"
 import { logoutAdmin } from "@/app/admin/login/actions"
+import type { AdminRole } from "@/types"
 
-const NAV_GROUPS = [
+interface NavItem {
+  href: string
+  label: string
+  icon: typeof LayoutDashboard
+  superAdminOnly?: boolean
+}
+
+const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
   {
     label: "总览",
     items: [{ href: "/admin", label: "仪表板", icon: LayoutDashboard }],
@@ -34,6 +42,7 @@ const NAV_GROUPS = [
   {
     label: "系统",
     items: [
+      { href: "/admin/homepage-stats", label: "主页统计", icon: PieChart, superAdminOnly: true },
       { href: "/admin/quiz-config", label: "问卷配置", icon: ClipboardList },
       { href: "/admin/users", label: "管理员", icon: ShieldCheck },
     ],
@@ -41,7 +50,7 @@ const NAV_GROUPS = [
 ]
 const NAV_ITEMS = NAV_GROUPS.flatMap((group) => group.items)
 
-export function AdminSidebar() {
+export function AdminSidebar({ role }: { role: AdminRole }) {
   const pathname = usePathname()
 
   return (
@@ -52,20 +61,21 @@ export function AdminSidebar() {
         <span className="hidden md:inline ml-1 text-xs text-muted-foreground">管理</span>
       </div>
 
-      <nav className="flex-1 px-1.5 md:px-2 py-3">
+      <nav aria-label="后台主导航" className="flex-1 overflow-y-auto px-1.5 py-3 md:px-2">
         {NAV_GROUPS.map((group) => (
           <div key={group.label} className="mb-4 last:mb-0">
             <p className="hidden px-3 pb-1.5 text-[10px] font-semibold text-muted-foreground/70 md:block">{group.label}</p>
             <div className="space-y-1">
-              {group.items.map(({ href, label, icon: Icon }) => {
+              {group.items.filter((item) => !item.superAdminOnly || role === "super_admin").map(({ href, label, icon: Icon }) => {
                 const isActive = isActivePath(pathname, href)
                 return (
                   <Link
                     key={href}
                     href={href}
                     title={label}
+                    aria-current={isActive ? "page" : undefined}
                     className={cn(
-                      "flex items-center justify-center md:justify-start gap-2 rounded-lg px-2 md:px-3 py-2 text-sm font-medium transition-colors",
+                      "flex items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:justify-start md:px-3",
                       isActive ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                   >
@@ -80,11 +90,11 @@ export function AdminSidebar() {
       </nav>
 
       <div className="border-t border-border p-1.5 md:p-2">
-        <form action={logoutAdmin}>
+        <form action={logoutAdmin} data-homepage-stats-leave-guard>
           <button
             type="submit"
             title="退出登录"
-            className="flex w-full items-center justify-center md:justify-start gap-2 rounded-lg px-2 md:px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="flex w-full items-center justify-center gap-2 rounded-lg px-2 py-2 text-sm text-muted-foreground outline-none transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 md:justify-start md:px-3"
           >
             <LogOut className="size-4 shrink-0" />
             <span className="hidden md:inline">退出登录</span>

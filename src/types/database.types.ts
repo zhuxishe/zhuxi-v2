@@ -131,6 +131,87 @@ export type Database = {
         }
         Relationships: []
       }
+      homepage_school_stats: {
+        Row: {
+          featured_schools: Json
+          id: number
+          published_at: string
+          total_members: number
+          total_schools: number
+          version: number
+        }
+        Insert: {
+          featured_schools: Json
+          id?: number
+          published_at?: string
+          total_members: number
+          total_schools: number
+          version?: number
+        }
+        Update: {
+          featured_schools?: Json
+          id?: number
+          published_at?: string
+          total_members?: number
+          total_schools?: number
+          version?: number
+        }
+        Relationships: []
+      }
+      homepage_school_stats_history: {
+        Row: {
+          action: string
+          featured_schools: Json
+          id: number
+          published_at: string
+          published_by: string | null
+          published_by_name: string
+          restored_from_version: number | null
+          total_members: number
+          total_schools: number
+          version: number
+        }
+        Insert: {
+          action: string
+          featured_schools: Json
+          id?: never
+          published_at?: string
+          published_by?: string | null
+          published_by_name: string
+          restored_from_version?: number | null
+          total_members: number
+          total_schools: number
+          version: number
+        }
+        Update: {
+          action?: string
+          featured_schools?: Json
+          id?: never
+          published_at?: string
+          published_by?: string | null
+          published_by_name?: string
+          restored_from_version?: number | null
+          total_members?: number
+          total_schools?: number
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homepage_school_stats_history_published_by_fkey"
+            columns: ["published_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "homepage_school_stats_history_restored_from_version_fkey"
+            columns: ["restored_from_version"]
+            isOneToOne: false
+            referencedRelation: "homepage_school_stats_history"
+            referencedColumns: ["version"]
+          },
+        ]
+      }
       interview_evaluations: {
         Row: {
           articulation: number
@@ -1645,6 +1726,22 @@ export type Database = {
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }
+      publish_homepage_school_stats: {
+        Args: {
+          p_expected_version: number
+          p_featured_schools: Json
+          p_total_members: number
+          p_total_schools: number
+        }
+        Returns: number
+      }
+      restore_homepage_school_stats: {
+        Args: {
+          p_expected_version: number
+          p_history_id: number
+        }
+        Returns: number
+      }
     }
     Enums: {
       [_ in never]: never

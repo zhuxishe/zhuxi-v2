@@ -29,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     if (admin) {
       return (
         <div className="flex h-screen bg-background">
-          <AdminSidebar />
+          <AdminSidebar role={admin.role} />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       )
@@ -44,7 +44,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     if (admin) {
       return (
         <div className="flex h-screen bg-background">
-          <AdminSidebar />
+          <AdminSidebar role={admin.role} />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
       )
@@ -53,11 +53,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     return <>{children}</>
   }
 
-  await requireAdmin()
+  const admin = await requireAdmin()
 
   return (
     <div className="flex h-screen bg-background">
-      <AdminSidebar />
+      <AdminSidebar role={admin.role} />
       <main className="flex-1 overflow-y-auto">{children}</main>
     </div>
   )

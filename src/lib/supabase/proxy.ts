@@ -12,7 +12,16 @@ function getSupabasePublicKey() {
 }
 
 export async function updateSession(request: NextRequest) {
-  let response = NextResponse.next({ request })
+  const createResponse = () => {
+    const requestHeaders = new Headers(request.headers)
+    requestHeaders.set("x-next-pathname", request.nextUrl.pathname)
+
+    return NextResponse.next({
+      request: { headers: requestHeaders },
+    })
+  }
+
+  let response = createResponse()
 
   const supabase = createServerClient<Database>(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -27,7 +36,7 @@ export async function updateSession(request: NextRequest) {
             request.cookies.set(name, value)
           )
 
-          response = NextResponse.next({ request })
+          response = createResponse()
 
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)

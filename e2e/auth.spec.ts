@@ -7,12 +7,11 @@ test.describe("认证", () => {
     expect(page.url()).toContain("/login")
   })
 
-  // 本地 dev 无 x-next-pathname header，layout 无法判断路径，依赖各 page.tsx 的 requireAdmin()
-  // Vercel 部署时可用 x-next-pathname，重定向正常；本地跳过此测试
-  test.fixme("未登录访问 /admin 重定向到登录页", async ({ page }) => {
-    await page.goto("/admin")
-    await page.waitForURL(/\/login/, { timeout: 10_000 })
-    expect(page.url()).toContain("/login")
+  test("未登录访问后台统计页重定向到管理员登录页", async ({ page }) => {
+    await page.goto("/admin/homepage-stats")
+    await page.waitForURL(/\/admin\/login$/, { timeout: 10_000 })
+    await expect(page.locator("input[name=email]")).toBeVisible({ timeout: 10_000 })
+    await expect(page.locator("input[name=password]")).toBeVisible()
   })
 
   test("管理员登录页面可访问", async ({ page }) => {

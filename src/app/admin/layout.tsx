@@ -5,17 +5,12 @@ import { AdminSidebar } from "@/components/admin/AdminSidebar"
 /** 不需要 admin 保护的路径前缀 */
 const PUBLIC_PREFIXES = ["/admin/login"]
 
-/** 从多个 header 源提取 pathname */
+/** 从可信的内部 header 提取当前 pathname */
 async function getPathname(): Promise<string> {
   const h = await headers()
-  // Next.js 内部 header（Vercel 部署时可用）
+  // x-next-pathname 由 src/proxy.ts 注入；x-invoke-path 兼容旧运行时。
   const fromHeaders = h.get("x-next-pathname") ?? h.get("x-invoke-path")
   if (fromHeaders) return fromHeaders
-  // 本地开发 fallback: 从 referer 或 x-url 提取
-  const referer = h.get("referer")
-  if (referer) {
-    try { return new URL(referer).pathname } catch { /* ignore */ }
-  }
   return ""
 }
 

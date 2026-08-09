@@ -139,24 +139,46 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ error: "无权访问" }, { status: 403 })
       }
     }
-    const { data: image, error: imageError } = await db
-      .from("community_post_images")
-      .select("post_id")
-      .or(`storage_path.eq.${path},thumbnail_path.eq.${path}`)
-      .maybeSingle<{ post_id: string }>()
-    if (imageError) {
-      console.error("[community media] image lookup failed", imageError)
+    const [imageResult, pendingUploadResult] = await Promise.all([
+      db
+        .from("community_post_images")
+        .select("post_id")
+        .or(`storage_path.eq.${path},thumbnail_path.eq.${path}`)
+        .maybeSingle<{ post_id: string }>(),
+      player
+        ? db
+          .schema("private")
+          .from("community_processed_uploads")
+          .select("member_id")
+          .eq("member_id", player.memberId)
+          .eq("bucket_id", COMMUNITY_MEDIA_BUCKET)
+          .or(`storage_path.eq.${path},thumbnail_path.eq.${path}`)
+          .is("cleanup_claimed_at", null)
+          .maybeSingle<{ member_id: string }>()
+        : Promise.resolve({ data: null, error: null }),
+    ])
+    if (imageResult.error || pendingUploadResult.error) {
+      console.error(
+        "[community media] image visibility lookup failed",
+        imageResult.error ?? pendingUploadResult.error,
+      )
       return NextResponse.json({ error: "图片不存在" }, { status: 404 })
     }
+    const image = imageResult.data
+    const isOwnPendingPhoto = !!player && pendingUploadResult.data?.member_id === player.memberId
     if (!image) {
-      if (!admin) return NextResponse.json({ error: "图片不存在" }, { status: 404 })
-      const evidenceResult = await db.rpc("community_service_media_evidence_exists", {
-        p_bucket_id: bucket,
-        p_object_path: path,
-      })
-      if (evidenceResult.error || !evidenceResult.data) {
-        if (evidenceResult.error) console.error("[community media] photo evidence lookup failed", evidenceResult.error)
+      if (!admin && !isOwnPendingPhoto) {
         return NextResponse.json({ error: "图片不存在" }, { status: 404 })
+      }
+      if (admin) {
+        const evidenceResult = await db.rpc("community_service_media_evidence_exists", {
+          p_bucket_id: bucket,
+          p_object_path: path,
+        })
+        if (evidenceResult.error || !evidenceResult.data) {
+          if (evidenceResult.error) console.error("[community media] photo evidence lookup failed", evidenceResult.error)
+          return NextResponse.json({ error: "图片不存在" }, { status: 404 })
+        }
       }
     }
 

@@ -91,10 +91,11 @@ export async function POST(request: NextRequest) {
 
   let uploadedPath: string | null = null
   try {
+    const admin = createAdminClient()
     const processed = await normalizeAvatar(Buffer.from(await file.arrayBuffer()))
     uploadedPath = `${user.id}/avatars/profile-${randomUUID()}.webp`
 
-    const upload = await supabase.storage
+    const upload = await admin.storage
       .from(COMMUNITY_AVATAR_BUCKET)
       .upload(uploadedPath, processed.data, {
         contentType: "image/webp",
@@ -103,7 +104,6 @@ export async function POST(request: NextRequest) {
       })
     if (upload.error) throw new Error(upload.error.message)
 
-    const admin = createAdminClient()
     const registration = await admin.rpc("community_register_processed_upload", {
       p_member_id: player.memberId,
       p_bucket_id: COMMUNITY_AVATAR_BUCKET,

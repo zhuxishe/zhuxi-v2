@@ -115,6 +115,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const admin = createAdminClient()
     const processed = await normalizeImage(Buffer.from(await file.arrayBuffer()), kind)
     const id = randomUUID()
     const bucket = kind === "avatar" ? COMMUNITY_AVATAR_BUCKET : COMMUNITY_MEDIA_BUCKET
@@ -122,7 +123,7 @@ export async function POST(request: NextRequest) {
     const mainPath = `${user.id}/${folder}/${id}.webp`
     const thumbnailPath = kind === "avatar" ? mainPath : `${user.id}/${folder}/${id}-thumb.webp`
 
-    const mainUpload = await supabase.storage.from(bucket).upload(mainPath, processed.main, {
+    const mainUpload = await admin.storage.from(bucket).upload(mainPath, processed.main, {
       contentType: "image/webp",
       cacheControl: "31536000",
       upsert: false,
@@ -130,18 +131,17 @@ export async function POST(request: NextRequest) {
     if (mainUpload.error) throw new Error(mainUpload.error.message)
 
     if (thumbnailPath !== mainPath) {
-      const thumbnailUpload = await supabase.storage.from(bucket).upload(thumbnailPath, processed.thumbnail, {
+      const thumbnailUpload = await admin.storage.from(bucket).upload(thumbnailPath, processed.thumbnail, {
         contentType: "image/webp",
         cacheControl: "31536000",
         upsert: false,
       })
       if (thumbnailUpload.error) {
-        await supabase.storage.from(bucket).remove([mainPath])
+        await admin.storage.from(bucket).remove([mainPath])
         throw new Error(thumbnailUpload.error.message)
       }
     }
 
-    const admin = createAdminClient()
     const { error: registrationError } = await admin.rpc("community_register_processed_upload", {
       p_member_id: player.memberId,
       p_bucket_id: bucket,

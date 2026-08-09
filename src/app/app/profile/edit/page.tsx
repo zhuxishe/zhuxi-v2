@@ -1,8 +1,10 @@
 import { getTranslations } from "next-intl/server"
+import { requirePlayer } from "@/lib/auth/player"
 import { fetchMyProfileSummary } from "@/lib/profile/queries"
 import { ProfileEditForm } from "@/components/player/profile/ProfileEditForm"
 
 export default async function ProfileEditPage() {
+  await requirePlayer()
   const [profile, t] = await Promise.all([
     fetchMyProfileSummary(),
     getTranslations("profile.edit"),

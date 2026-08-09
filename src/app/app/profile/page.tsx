@@ -1,5 +1,6 @@
 import { CheckCircle2 } from "lucide-react"
 import { getTranslations } from "next-intl/server"
+import { requirePlayer } from "@/lib/auth/player"
 import { fetchMyProfileSummary } from "@/lib/profile/queries"
 import { ProfileMenuCard } from "@/components/player/profile/ProfileMenuCard"
 import { ProfileSettingsCard } from "@/components/player/profile/ProfileSettingsCard"
@@ -10,6 +11,7 @@ interface ProfilePageProps {
 }
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
+  await requirePlayer()
   const [profile, t, params] = await Promise.all([
     fetchMyProfileSummary(),
     getTranslations("profile"),

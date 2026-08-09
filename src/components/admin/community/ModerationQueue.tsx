@@ -20,7 +20,7 @@ const TARGET_LABELS: Record<CommunityReport["target_type"], string> = {
 
 export function ModerationFilters({ values }: { values: Record<string, string | undefined> }) {
   return (
-    <form className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-7">
+    <form className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-6">
       <select name="status" defaultValue={values.status ?? "pending"} aria-label="处理状态" className={COMMUNITY_ADMIN_INPUT_CLASS}>
         <option value="">全部状态</option>
         <option value="pending">待处理</option>
@@ -40,12 +40,11 @@ export function ModerationFilters({ values }: { values: Record<string, string | 
         <option value="profile">社区身份</option>
       </select>
       <input name="reporter" defaultValue={values.reporter ?? ""} placeholder="举报人会员编号" aria-label="举报人会员编号" className={COMMUNITY_ADMIN_INPUT_CLASS} />
-      <input name="author" defaultValue={values.author ?? ""} placeholder="内容作者会员编号" aria-label="内容作者会员编号" className={COMMUNITY_ADMIN_INPUT_CLASS} />
       <div className="grid grid-cols-2 gap-2 xl:col-span-2">
         <input name="from" type="date" defaultValue={values.from ?? ""} aria-label="开始日期" className={COMMUNITY_ADMIN_INPUT_CLASS} />
         <input name="to" type="date" defaultValue={values.to ?? ""} aria-label="结束日期" className={COMMUNITY_ADMIN_INPUT_CLASS} />
       </div>
-      <div className="flex gap-2 sm:col-span-2 xl:col-span-7 xl:justify-end">
+      <div className="flex gap-2 sm:col-span-2 xl:col-span-6 xl:justify-end">
         <Link href="/admin/community/moderation" className="inline-flex min-h-10 items-center justify-center rounded-lg border border-border px-4 text-sm font-medium hover:bg-muted">重置</Link>
         <button type="submit" className="inline-flex min-h-10 items-center justify-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90">应用筛选</button>
       </div>

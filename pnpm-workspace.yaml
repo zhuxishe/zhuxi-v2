@@ -1,2 +1,39 @@
 packages:
   - 'packages/*'
+
+overrides:
+  axios: '>=1.15.2'
+  '@babel/plugin-transform-modules-systemjs': '>=7.29.4'
+  brace-expansion: '>=5.0.6'
+  fast-uri: '>=3.1.2'
+  minimatch: '>=9.0.0'
+  follow-redirects: '>=1.16.0'
+  postcss: '>=8.5.10'
+  glob: '>=11.0.0'
+  got: '>=12.0.0'
+  http-cache-semantics: '>=4.2.0'
+  esbuild: '>=0.25.0'
+  serialize-javascript: '>=6.1.0'
+  vm2: '>=3.11.3'
+  webpack-dev-server: '>=5.2.4'
+  ws: '>=8.20.1'
+  swiper: '>=11.2.0'
+  'exceljs>uuid': '>=14.0.0'
+  'sockjs>uuid': '>=14.0.0'
+  html-minifier: 'npm:html-minifier-terser@6.1.0'
+  download-git-repo: 'link:./packages/security-overrides/download-git-repo'
+
+allowBuilds:
+  '@parcel/watcher': true
+  '@swc/core': true
+  '@tarojs/binding': true
+  '@tarojs/cli': true
+  core-js: true
+  core-js-pure: true
+  esbuild: true
+  sharp: true
+  unrs-resolver: true
+
+# CI performs an explicit frozen install before any script. Avoid implicit
+# network installs when running quality checks locally or in isolated runners.
+verifyDepsBeforeRun: false

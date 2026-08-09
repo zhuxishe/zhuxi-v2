@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 export const runtime = "nodejs"
 export const maxDuration = 60
 
+const MEDIA_CLEANUP_BATCH_SIZE = 25
+
 interface CleanupRow {
   cleanup_id: number
   bucket_id: string
@@ -43,7 +45,9 @@ export async function GET(request: NextRequest) {
   const purgeResult = await db.rpc("community_purge_expired_data")
   if (purgeResult.error) throw new Error(purgeResult.error.message)
 
-  const cleanupResult = await db.rpc("community_admin_claim_media_cleanup", { p_limit: 200 })
+  const cleanupResult = await db.rpc("community_admin_claim_media_cleanup", {
+    p_limit: MEDIA_CLEANUP_BATCH_SIZE,
+  })
   if (cleanupResult.error) throw new Error(cleanupResult.error.message)
 
   let mediaRemoved = 0

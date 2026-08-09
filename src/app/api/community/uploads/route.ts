@@ -6,7 +6,6 @@ import { getPlayerInfo } from "@/lib/auth/player"
 import { getCommunityContext } from "@/lib/auth/community"
 import {
   COMMUNITY_AVATAR_BUCKET,
-  COMMUNITY_MAX_IMAGE_BYTES,
   COMMUNITY_MAX_IMAGE_PIXELS,
   COMMUNITY_MEDIA_BUCKET,
 } from "@/lib/community/constants"
@@ -15,6 +14,11 @@ import {
   assertHeicPixelLimit,
   detectCommunityImageType,
 } from "@/lib/community/image-validation"
+import {
+  COMMUNITY_IMAGE_SIZE_ERROR,
+  isImageFileTooLarge,
+  validateMultipartLength,
+} from "@/lib/community/upload"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
@@ -80,12 +84,26 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "只有正式会员可以使用社区" }, { status: 403 })
   }
 
-  const formData = await request.formData()
+  const lengthError = validateMultipartLength(request.headers.get("content-length"))
+  if (lengthError === "missing") {
+    return NextResponse.json({ error: "无法确认上传大小" }, { status: 411 })
+  }
+  if (lengthError === "too_large") {
+    return NextResponse.json({ error: COMMUNITY_IMAGE_SIZE_ERROR }, { status: 413 })
+  }
+
+  let formData: FormData
+  try {
+    formData = await request.formData()
+  } catch {
+    return NextResponse.json({ error: "上传内容无法读取" }, { status: 400 })
+  }
   const file = formData.get("file")
   const kind = formData.get("kind") === "avatar" ? "avatar" : "photo"
   if (!(file instanceof File)) return NextResponse.json({ error: "请选择照片" }, { status: 400 })
-  if (file.size <= 0 || file.size > COMMUNITY_MAX_IMAGE_BYTES) {
-    return NextResponse.json({ error: "单张照片不能超过 15MB" }, { status: 400 })
+  if (file.size <= 0) return NextResponse.json({ error: "请选择照片" }, { status: 400 })
+  if (isImageFileTooLarge(file)) {
+    return NextResponse.json({ error: COMMUNITY_IMAGE_SIZE_ERROR }, { status: 413 })
   }
 
   const context = await getCommunityContext(player)

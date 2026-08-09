@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation"
 import { ChevronLeft, ChevronRight, GripVertical, ImagePlus, RotateCcw, Trash2, UserRound } from "lucide-react"
 import { createPhotoPostAction, updateCommunityPostAction } from "@/app/app/community/actions"
 import { ComposerHeader } from "./ComposerHeader"
+import {
+  imageSizeError,
+  isImageFileTooLarge,
+  readUploadResponse,
+} from "@/lib/community/upload"
 import type {
   CommunityActionState,
   CommunityPost,
@@ -38,6 +43,7 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
     : createPhotoPostAction
   const [state, action, pending] = useActionState(serverAction, INITIAL_STATE)
   const [body, setBody] = useState(post?.body ?? "")
+  const [selectionError, setSelectionError] = useState<string | null>(null)
   const [items, setItems] = useState<UploadItem[]>(() => post?.images.map((image) => ({
     id: image.id,
     preview: `/api/community/media?${new URLSearchParams({ bucket: "community-media", path: image.thumbnailPath || image.storagePath })}`,
@@ -87,14 +93,27 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
 
   async function upload(item: UploadItem) {
     if (!item.file) return
+    const sizeError = imageSizeError(locale)
+    if (isImageFileTooLarge(item.file)) {
+      setItems((current) => current.map((row) => row.id === item.id ? {
+        ...row,
+        status: "error",
+        error: sizeError,
+      } : row))
+      return
+    }
     setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: "uploading", error: undefined } : row))
     const data = new FormData()
     data.set("kind", "photo")
     data.set("file", item.file)
     try {
       const response = await fetch("/api/community/uploads", { method: "POST", body: data })
-      const result = await response.json() as UploadedCommunityImage & { error?: string }
-      if (!response.ok) throw new Error(result.error || "上传失败")
+      const fallback = locale === "ja" ? "アップロードに失敗しました" : "上传失败"
+      const result = await readUploadResponse<UploadedCommunityImage>(response, {
+        fallback,
+        payloadTooLarge: sizeError,
+      })
+      if (!response.ok) throw new Error(result.error || fallback)
       setItems((current) => current.map((row) => {
         if (row.id !== item.id) return row
         if (row.preview.startsWith("blob:")) URL.revokeObjectURL(row.preview)
@@ -110,7 +129,7 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
       setItems((current) => current.map((row) => row.id === item.id ? {
         ...row,
         status: "error",
-        error: error instanceof Error ? error.message : "上传失败",
+        error: error instanceof Error ? error.message : (locale === "ja" ? "アップロードに失敗しました" : "上传失败"),
       } : row))
     }
   }
@@ -118,7 +137,10 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
   function addFiles(files: FileList | null) {
     if (!files) return
     const available = Math.max(0, 9 - items.length)
-    const next = Array.from(files).slice(0, available).map((file) => ({
+    const selected = Array.from(files).slice(0, available)
+    const accepted = selected.filter((file) => !isImageFileTooLarge(file))
+    setSelectionError(accepted.length === selected.length ? null : imageSizeError(locale))
+    const next = accepted.map((file) => ({
       id: crypto.randomUUID(),
       file,
       preview: URL.createObjectURL(file),
@@ -241,6 +263,10 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
               </label>
             )}
           </div>
+          <p className="mt-3 text-xs leading-5 text-muted-foreground">
+            {locale === "ja" ? "写真は1枚4MB以下。JPG・PNG・WebP・HEICに対応しています。" : "单张照片不超过 4MB，支持 JPG、PNG、WebP 和 HEIC。"}
+          </p>
+          {selectionError ? <p className="mt-2 text-xs text-destructive" role="alert">{selectionError}</p> : null}
           {items.some((item) => item.status === "error") ? (
             <ul className="mt-3 space-y-1 text-xs text-destructive" role="alert">
               {items.map((item, index) => item.status === "error" ? (

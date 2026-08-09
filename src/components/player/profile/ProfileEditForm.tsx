@@ -4,6 +4,7 @@ import { useActionState, useEffect, useId, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Check, LoaderCircle, LockKeyhole, Trash2, X } from "lucide-react"
 import { updateMyProfileAction, type UpdateProfileActionState } from "@/app/app/profile/edit/actions"
+import { isImageFileTooLarge, readUploadResponse } from "@/lib/community/upload"
 import { ProfileAvatar } from "./ProfileAvatar"
 
 const INITIAL_ACTION_STATE: UpdateProfileActionState = {}
@@ -18,6 +19,7 @@ export interface ProfileEditLabels {
   changeAvatar: string
   removeAvatar: string
   avatarHint: string
+  avatarTooLarge: string
   cropTitle: string
   cropHint: string
   cropFallback: string
@@ -115,6 +117,10 @@ export function ProfileEditForm({ initial, labels }: ProfileEditFormProps) {
 
   function chooseFile(file: File | undefined) {
     if (!file) return
+    if (isImageFileTooLarge(file)) {
+      setUploadError(labels.avatarTooLarge)
+      return
+    }
     setUploadError(null)
     const objectUrl = URL.createObjectURL(file)
     const image = new window.Image()
@@ -141,10 +147,14 @@ export function ProfileEditForm({ initial, labels }: ProfileEditFormProps) {
       const file = crop.image
         ? await canvasFile(document.getElementById("profile-avatar-crop") as HTMLCanvasElement, crop.file.name)
         : crop.file
+      if (isImageFileTooLarge(file)) throw new Error(labels.avatarTooLarge)
       const body = new FormData()
       body.set("file", file)
       const response = await fetch("/api/profile/avatar", { method: "POST", body })
-      const result = await response.json() as { storagePath?: string; previewUrl?: string; error?: string }
+      const result = await readUploadResponse<{ storagePath?: string; previewUrl?: string }>(response, {
+        fallback: labels.uploadFailed,
+        payloadTooLarge: labels.avatarTooLarge,
+      })
       if (!response.ok || !result.storagePath || !result.previewUrl) {
         throw new Error(result.error || labels.uploadFailed)
       }

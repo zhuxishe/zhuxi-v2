@@ -349,7 +349,6 @@ export interface CommunityReportFilters {
   targetType?: CommunityReport["target_type"]
   contentType?: "treehole" | "photo" | "comment" | "reply" | "profile"
   reporterMemberNumber?: string
-  targetMemberNumber?: string
   from?: string
   to?: string
 }
@@ -396,31 +395,6 @@ export async function fetchCommunityReports(filters: CommunityReportFilters = {}
     if (reporterError) throw reporterError
     if (!reporter) return { reports: [], setupRequired: false }
     query = query.eq("reporter_member_id", reporter.id)
-  }
-  if (filters.targetMemberNumber) {
-    const { data: targetMember, error: memberError } = await supabase
-      .from("members")
-      .select("id")
-      .eq("member_number", filters.targetMemberNumber.trim())
-      .maybeSingle()
-    if (memberError) throw memberError
-    if (!targetMember) return { reports: [], setupRequired: false }
-    const [posts, comments, profiles] = await Promise.all([
-      supabase.schema("private").from("community_post_authors").select("post_id").eq("member_id", targetMember.id),
-      supabase.schema("private").from("community_comment_authors").select("comment_id").eq("member_id", targetMember.id),
-      supabase.schema("private").from("community_profile_members").select("profile_id").eq("member_id", targetMember.id),
-    ])
-    const mappingError = [posts, comments, profiles].find((result) => result.error)?.error
-    if (mappingError) throw mappingError
-    const clauses: string[] = []
-    const postIds = (posts.data ?? []).map((row: { post_id: string }) => row.post_id)
-    const commentIds = (comments.data ?? []).map((row: { comment_id: string }) => row.comment_id)
-    const profileIds = (profiles.data ?? []).map((row: { profile_id: string }) => row.profile_id)
-    if (postIds.length) clauses.push(`reported_post_id.in.(${postIds.join(",")})`)
-    if (commentIds.length) clauses.push(`reported_comment_id.in.(${commentIds.join(",")})`)
-    if (profileIds.length) clauses.push(`reported_profile_id.in.(${profileIds.join(",")})`)
-    if (!clauses.length) return { reports: [], setupRequired: false }
-    query = query.or(clauses.join(","))
   }
   const { data, error } = await query
   if (isCommunitySchemaMissing(error)) return { reports: [], setupRequired: true }

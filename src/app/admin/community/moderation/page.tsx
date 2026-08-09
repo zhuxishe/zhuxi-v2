@@ -20,7 +20,6 @@ export default async function AdminCommunityModerationPage({ searchParams }: Pag
     reason: first(raw.reason),
     targetType: first(raw.targetType),
     reporter: first(raw.reporter),
-    author: first(raw.author),
     from: first(raw.from),
     to: first(raw.to),
   }
@@ -40,7 +39,6 @@ export default async function AdminCommunityModerationPage({ searchParams }: Pag
     reason,
     contentType,
     reporterMemberNumber: values.reporter,
-    targetMemberNumber: values.author,
     from: values.from,
     to: values.to,
   })

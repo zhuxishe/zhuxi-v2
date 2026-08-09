@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { localizeAnnouncement, localizeFaq } from "./localize"
+import { COMMUNITY_MAX_IMAGE_BYTES } from "./constants"
 import { validateComment, validateNickname, validatePhotoPost, validateTreehole } from "./validation"
 
 describe("community validation", () => {
@@ -31,6 +32,8 @@ describe("community validation", () => {
     expect(validatePhotoPost("", [])).not.toBeNull()
     expect(validatePhotoPost("", [image])).toBeNull()
     expect(validatePhotoPost("", Array.from({ length: 10 }, () => image))).not.toBeNull()
+    expect(validatePhotoPost("", [{ ...image, byteSize: COMMUNITY_MAX_IMAGE_BYTES }])).toBeNull()
+    expect(validatePhotoPost("", [{ ...image, byteSize: COMMUNITY_MAX_IMAGE_BYTES + 1 }])).toContain("4MB")
   })
 })
 

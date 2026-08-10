@@ -14,6 +14,10 @@ const moderationQueueSource = readFileSync(
   join(process.cwd(), "src/components/admin/community/ModerationQueue.tsx"),
   "utf8",
 )
+const moderationDetailSource = readFileSync(
+  join(process.cwd(), "src/components/admin/community/ModerationReportDetail.tsx"),
+  "utf8",
+)
 
 function sourceBetween(startMarker: string, endMarker: string) {
   const start = dataSource.indexOf(startMarker)
@@ -51,5 +55,11 @@ describe("community moderation privacy contract", () => {
 
     expect(reportLookup).toContain("reporterMemberNumber")
     expect(reportLookup).toContain('query.eq("reporter_member_id", reporter.id)')
+  })
+
+  it("only claims an audit record for anonymous content author reveals", () => {
+    expect(moderationDetailSource).toMatch(
+      /report\.target_type === "profile"\s*\? "关联会员已读取"\s*: "作者身份已读取；匿名作者查看行为已写入审计记录"/,
+    )
   })
 })

@@ -95,7 +95,11 @@ export function ModerationReportDetail({
         return
       }
       setAuthor(result.author)
-      setMessage("作者身份已读取；匿名作者查看行为已写入审计记录")
+      setMessage(
+        report.target_type === "profile"
+          ? "关联会员已读取"
+          : "作者身份已读取；匿名作者查看行为已写入审计记录"
+      )
       router.refresh()
     })
   }

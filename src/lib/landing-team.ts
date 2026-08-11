@@ -13,7 +13,7 @@ export type TeamDepartment = {
 }
 
 export const teamLeads: TeamMember[] = [
-  { name: "Joanna", role: "社长", school: "东京理科大学", major: "工学部" },
+  { name: "Joanna", role: "社长", school: "东京理科大学", major: "化学" },
   { name: "Kane", role: "发起人", school: "早稻田大学（毕业）", major: "机械科学" },
 ]
 
@@ -23,11 +23,11 @@ export const teamDepartments: TeamDepartment[] = [
     name: "活动部",
     intro: "通过组织团建活动，为大家提供接触更多朋友的机会。",
     members: [
-      { name: "BIGJO", role: "活动部", school: "东京大学", major: "新领域创成研究科" },
-      { name: "Alice", role: "活动部", school: "上智大学", major: "经济学科" },
+      { name: "BIGJO", role: "活动部", school: "东京大学", major: "人间环境学" },
+      { name: "Alice", role: "活动部", school: "上智大学", major: "经济学" },
       { name: "Eliza", role: "活动部", school: "早稻田大学", major: "国际教养" },
       { name: "Aimon", role: "活动部", school: "青岛农业大学", major: "数字媒体艺术" },
-      { name: "Kakou", role: "活动部", school: "东京理科大学", major: "创域理工学部" },
+      { name: "Kakou", role: "活动部", school: "东京理科大学", major: "机械航空" },
     ],
   },
   {
@@ -35,8 +35,8 @@ export const teamDepartments: TeamDepartment[] = [
     name: "策划部",
     intro: "自创社团所有社交剧本，帮助大家进行最轻松的社交。",
     members: [
-      { name: "Quinn", role: "策划部", school: "早稻田大学", major: "社会科学部" },
-      { name: "Olivia", role: "策划部", school: "早稻田大学", major: "政治经济学部" },
+      { name: "Quinn", role: "策划部", school: "早稻田大学", major: "社会科学" },
+      { name: "Olivia", role: "策划部", school: "早稻田大学", major: "政治经济学" },
     ],
   },
   {
@@ -44,11 +44,11 @@ export const teamDepartments: TeamDepartment[] = [
     name: "宣传部",
     intro: "负责小红书运营、宣传和招新，同步每次活动资讯，让大家走进我们。",
     members: [
-      { name: "Aster", role: "宣传部", school: "早稻田大学", major: "电子物理系" },
-      { name: "kiki", role: "宣传部", school: "早稻田大学", major: "教育学部" },
-      { name: "Linda", role: "宣传部", school: "中央大学", major: "经营工" },
-      { name: "Shaw", role: "宣传部", school: "中央大学", major: "法学部法律学科" },
-      { name: "tang tang", role: "宣传部", school: "顺天堂大学", major: "健康数据科学科" },
+      { name: "Aster", role: "宣传部", school: "早稻田大学", major: "电子物理" },
+      { name: "kiki", role: "宣传部", school: "早稻田大学", major: "教育学" },
+      { name: "Linda", role: "宣传部", school: "中央大学", major: "商业数据科学" },
+      { name: "Shaw", role: "宣传部", school: "中央大学", major: "法学" },
+      { name: "tang tang", role: "宣传部", school: "顺天堂大学", major: "健康数据科学" },
     ],
   },
   {

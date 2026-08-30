@@ -26,6 +26,22 @@ const restoreAndQuizMigration = readFileSync(
   "utf8",
 )
 
+const matchingAclMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260830165712_restore_matching_table_acl.sql",
+  ),
+  "utf8",
+)
+
+const operationalAuditTriggerFixMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260830174115_fix_operational_audit_trigger_record_scope.sql",
+  ),
+  "utf8",
+)
+
 function functionBody(name: string) {
   const match = new RegExp(
     `CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${name}\\b`,
@@ -59,6 +75,59 @@ describe("user/member master migration contract", () => {
     expect(restoreAndQuizMigration).toContain("jsonb_typeof(quiz.answers) = 'string'")
     expect(restoreAndQuizMigration).toContain("personality_quiz_results_answers_array_check")
     expect(restoreAndQuizMigration).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
+  })
+
+  it("explicitly exposes matching tables to authenticated users behind RLS", () => {
+    expect(matchingAclMigration).toContain("public.match_rounds")
+    expect(matchingAclMigration).toContain("public.match_sessions")
+    expect(matchingAclMigration).toMatch(
+      /DROP POLICY IF EXISTS member_master_match_sessions_active_member_read[\s\S]*CREATE POLICY member_master_match_sessions_active_member_read/,
+    )
+    expect(matchingAclMigration).toMatch(
+      /status IN \('confirmed', 'published', 'closed'\)[\s\S]*member\.status = 'approved'[\s\S]*member\.account_status = 'active'/,
+    )
+    expect(matchingAclMigration).toMatch(
+      /REVOKE ALL ON TABLE[\s\S]*FROM PUBLIC, anon, authenticated/,
+    )
+    expect(matchingAclMigration).toMatch(
+      /GRANT SELECT, INSERT, UPDATE ON TABLE[\s\S]*TO authenticated/,
+    )
+    expect(matchingAclMigration).toMatch(
+      /GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE[\s\S]*TO service_role/,
+    )
+    expect(matchingAclMigration).toContain(
+      "has_table_privilege('authenticated', scoped_table.table_oid, 'DELETE')",
+    )
+    expect(matchingAclMigration).toContain("relation.relrowsecurity")
+    expect(matchingAclMigration).toContain(
+      "member_master_match_sessions_active_member_read",
+    )
+    expect(matchingAclMigration).toContain("MEMBER_MASTER_MATCHING_TABLE_ACL_INVALID")
+    expect(matchingAclMigration).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
+  })
+
+  it("scopes submission-only trigger fields before planning other table records", () => {
+    expect(operationalAuditTriggerFixMigration).toContain(
+      "CREATE OR REPLACE FUNCTION private.member_master_capture_operational_audit_reason()",
+    )
+    expect(operationalAuditTriggerFixMigration).toMatch(
+      /RETURNS trigger\s+LANGUAGE plpgsql\s+SECURITY DEFINER\s+SET search_path = ''/,
+    )
+    expect(operationalAuditTriggerFixMigration).toMatch(
+      /IF TG_TABLE_NAME = 'match_round_submissions'[\s\S]*AND TG_OP IN \('INSERT', 'UPDATE'\) THEN\s+IF NOT v_is_service[\s\S]*AND NEW\.member_id = private\.profile_current_approved_member_id\(\) THEN/,
+    )
+    expect(operationalAuditTriggerFixMigration).not.toMatch(
+      /AND TG_OP IN \('INSERT', 'UPDATE'\)\s+AND NOT v_is_service/,
+    )
+    expect(operationalAuditTriggerFixMigration).toMatch(
+      /REVOKE ALL ON FUNCTION private\.member_master_capture_operational_audit_reason\(\)[\s\S]*FROM PUBLIC, anon, authenticated, service_role/,
+    )
+    expect(operationalAuditTriggerFixMigration).toContain(
+      "MEMBER_MASTER_OPERATIONAL_TRIGGER_SCOPE_INVALID",
+    )
+    expect(operationalAuditTriggerFixMigration).toMatch(
+      /BEGIN;[\s\S]*COMMIT;\s*$/,
+    )
   })
 
   it("is one explicit atomic migration with a deployment lock", () => {

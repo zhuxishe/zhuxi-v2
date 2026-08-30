@@ -23,6 +23,33 @@ function expectGuardedServiceRead(text: string) {
 }
 
 describe("legacy admin member-read compatibility contract", () => {
+  it("guards dashboard matching lists and returns only display columns", () => {
+    const rounds = section(
+      "src/lib/queries/rounds.ts",
+      "export async function fetchRounds",
+      "/** 获取单个轮次详情 */",
+    )
+    const sessions = section(
+      "src/lib/queries/matching.ts",
+      "export async function fetchMatchSessions",
+      "export async function fetchMatchSession",
+    )
+
+    for (const text of [rounds, sessions]) {
+      const guardIndex = text.indexOf("await requireAdmin()")
+      const clientIndex = text.indexOf("await createClient()")
+      expect(guardIndex).toBeGreaterThanOrEqual(0)
+      expect(clientIndex).toBeGreaterThan(guardIndex)
+      expect(text).not.toContain('.select("*")')
+    }
+    expect(rounds).toContain(
+      '.select("id, round_name, status, survey_end, activity_start, activity_end")',
+    )
+    expect(sessions).toContain(
+      '.select("id, session_name, total_candidates, total_matched, created_at")',
+    )
+  })
+
   it.each([
     ["src/lib/queries/admin.ts", "export async function fetchDashboardStats"],
     ["src/lib/queries/members.ts", "export async function fetchMemberBriefList"],

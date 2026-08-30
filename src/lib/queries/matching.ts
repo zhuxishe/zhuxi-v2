@@ -4,11 +4,12 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { validateUuids } from "@/lib/sanitize"
 
 export async function fetchMatchSessions() {
+  await requireAdmin()
   const supabase = await createClient()
 
   const { data, error } = await supabase
     .from("match_sessions")
-    .select("*")
+    .select("id, session_name, total_candidates, total_matched, created_at")
     .order("created_at", { ascending: false })
 
   if (error) throw error

@@ -4,10 +4,11 @@ import { requireAdmin } from "@/lib/auth/admin"
 
 /** 获取所有匹配轮次 */
 export async function fetchRounds() {
+  await requireAdmin()
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("match_rounds")
-    .select("*")
+    .select("id, round_name, status, survey_end, activity_start, activity_end")
     .order("created_at", { ascending: false })
     .limit(100)
 

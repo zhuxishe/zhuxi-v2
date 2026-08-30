@@ -3,6 +3,7 @@ import {
   buildMemberDirectoryUrl,
   canRestoreMemberAudit,
   formatMemberValue,
+  hasRestorableMemberAuditSnapshot,
   memberLifecycleAvailability,
   normalizeMember360Tab,
   parseMemberDirectoryPage,
@@ -54,6 +55,12 @@ describe("member audit permissions", () => {
     expect(canRestoreMemberAudit("admin", true)).toBe(false)
     expect(canRestoreMemberAudit("super_admin", false)).toBe(false)
     expect(canRestoreMemberAudit("super_admin", true)).toBe(true)
+  })
+
+  it("does not offer restore when the event has no previous row snapshot", () => {
+    expect(hasRestorableMemberAuditSnapshot({})).toBe(false)
+    expect(hasRestorableMemberAuditSnapshot(null)).toBe(false)
+    expect(hasRestorableMemberAuditSnapshot({ full_name: "旧姓名" })).toBe(true)
   })
 })
 

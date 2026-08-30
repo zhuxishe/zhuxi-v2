@@ -53,6 +53,16 @@ function parseTagList(value: string) {
   ))
 }
 
+export function normalizeStoredQuizAnswers(value: unknown): unknown {
+  if (typeof value !== "string") return value ?? []
+  try {
+    const parsed = JSON.parse(value)
+    return Array.isArray(parsed) ? parsed : value
+  } catch {
+    return value
+  }
+}
+
 function ReasonInput({ value, onChange, disabled }: { value: string; onChange: (value: string) => void; disabled: boolean }) {
   return (
     <label className="block">
@@ -134,7 +144,7 @@ export function MemberAccountAdvancedEditor({ memberId, account }: { memberId: s
 
 export function MemberQuizAdvancedEditor({ memberId, quiz }: { memberId: string; quiz: MemberCenterRecord | null }) {
   const router = useRouter()
-  const [answers, setAnswers] = useState(() => JSON.stringify(quiz?.answers ?? [], null, 2))
+  const [answers, setAnswers] = useState(() => JSON.stringify(normalizeStoredQuizAnswers(quiz?.answers), null, 2))
   const [scores, setScores] = useState(() => ({
     score_e: String(quiz?.score_e ?? 0), score_a: String(quiz?.score_a ?? 0), score_o: String(quiz?.score_o ?? 0),
     score_c: String(quiz?.score_c ?? 0), score_n: String(quiz?.score_n ?? 0),

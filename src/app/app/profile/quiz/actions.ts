@@ -30,7 +30,7 @@ export async function submitQuiz(
       .from("personality_quiz_results")
       .upsert({
         member_id: player.memberId,
-        answers: JSON.stringify(answers),
+        answers,
         score_e: scores.E,
         score_a: scores.A,
         score_o: scores.O,

@@ -117,6 +117,10 @@ export function canRestoreMemberAudit(role: AdminRole, rpcCapability: boolean): 
   return role === "super_admin" && rpcCapability
 }
 
+export function hasRestorableMemberAuditSnapshot(value: unknown): value is MemberCenterRecord {
+  return Boolean(value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0)
+}
+
 export function memberLifecycleAvailability(accountStatus: string | null, anonymizedAt: string | null) {
   return {
     canSuspend: accountStatus === "active",

@@ -441,6 +441,13 @@ export function memberCenterErrorMessage(error: unknown): string {
   if (message.includes("REASON_REQUIRED")) return "请填写本次修改原因"
   if (message.includes("MEMBER_NUMBER_TAKEN")) return "该会员编号已被其他成员使用"
   if (message.includes("MEMBER_NUMBER_INVALID")) return "会员编号格式无效"
+  if (message.includes("IDENTITY_REQUIRED_FIELDS_MISSING") || message.includes("IDENTITY_REQUIRED")) {
+    return "首次建立基本信息时，请同时填写姓名、性别、年龄段、国籍和所在地"
+  }
+  if (message.includes("NICKNAME_CONFLICT")) return "昵称已被其他成员使用，请更换后重试"
+  if (message.includes("PAYLOAD_INVALID")) return "资料格式无效，请检查字段内容后重试"
+  if (message.includes("RESTORE_NO_CHANGES")) return "当前资料已与该历史版本一致，无需恢复"
+  if (message.includes("EVENT_NOT_RESTORABLE")) return "该事件没有可恢复的历史版本"
   if (message.includes("LEGACY_MEMBER_NUMBER_CONFLICT")) return "该历史会员编号已被其他旧记录使用"
   if (message.includes("LEGACY_NOT_FOUND")) return "历史来源记录不存在，请刷新后重试"
   if (message.includes("LEGACY_CLAIM_LINK_REQUIRED")) return "该旧记录尚未绑定认领成员，不能直接标记为 approved"

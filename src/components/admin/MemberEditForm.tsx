@@ -21,6 +21,24 @@ import type { MemberDetail, InterviewEvaluationRow } from "@/types"
 
 interface Props { memberId: string; member: MemberDetail }
 
+const INITIAL_IDENTITY_FIELDS = [
+  ["full_name", "姓名"],
+  ["gender", "性别"],
+  ["age_range", "年龄段"],
+  ["nationality", "国籍"],
+  ["current_city", "所在地"],
+] as const
+
+export function missingInitialIdentityFields(data: Record<string, unknown>): string[] {
+  return INITIAL_IDENTITY_FIELDS
+    .filter(([field]) => {
+      const value = data[field]
+      if (field === "gender") return !["male", "female", "other"].includes(String(value ?? ""))
+      return typeof value !== "string" || value.trim().length === 0
+    })
+    .map(([, label]) => label)
+}
+
 function ReadOnlyRow({ label, value }: { label: string; value?: string | number | null }) {
   return (
     <tr className="border-b border-border/50 last:border-0">
@@ -56,9 +74,21 @@ export function MemberEditForm({ memberId, member }: Props) {
       setError("请填写至少 4 个字符的修改原因")
       return
     }
+    const identityChanged = JSON.stringify(identity) !== JSON.stringify(member.member_identity ?? {})
+    const hasPersistedIdentity = Boolean(
+      member.member_identity && Object.keys(member.member_identity).length > 0,
+    )
+    if (identityChanged && !hasPersistedIdentity) {
+      const missing = missingInitialIdentityFields(identity)
+      if (missing.length > 0) {
+        setError(`首次建立基本信息时，请同时填写：${missing.join("、")}`)
+        return
+      }
+    }
+
     setSaving(true); setError(null)
     const updates = [
-      ["基本信息", JSON.stringify(identity) !== JSON.stringify(member.member_identity ?? {}), () => updateMemberIdentity(memberId, identity, reason)],
+      ["基本信息", identityChanged, () => updateMemberIdentity(memberId, identity, reason)],
       ["语言", JSON.stringify(language) !== JSON.stringify(member.member_language ?? {}), () => updateMemberLanguage(memberId, language, reason)],
       ["兴趣", JSON.stringify(interests) !== JSON.stringify(member.member_interests ?? {}), () => updateMemberInterests(memberId, interests, reason)],
       ["性格", JSON.stringify(personality) !== JSON.stringify(member.member_personality ?? {}), () => updateMemberPersonality(memberId, personality, reason)],
@@ -71,13 +101,18 @@ export function MemberEditForm({ memberId, member }: Props) {
       setError("没有检测到资料变更")
       return
     }
+    const completedLabels: string[] = []
     for (const [label, , update] of changedUpdates) {
       const result = await update()
       if (result.error) {
         setSaving(false)
-        setError(`${label}保存失败：${result.error}。此前已完成的分区已记录审计，请刷新后核对。`)
+        const progress = completedLabels.length > 0
+          ? `此前已完成并记录审计的分区：${completedLabels.join("、")}。请刷新后核对。`
+          : "本次尚未保存任何分区。"
+        setError(`${label}保存失败：${result.error}。${progress}`)
         return
       }
+      completedLabels.push(label)
     }
     setSaving(false)
     router.push(`/admin/members/${memberId}`)

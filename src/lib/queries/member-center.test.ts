@@ -1,10 +1,24 @@
 import { describe, expect, it } from "vitest"
 import {
   buildMemberDirectoryRpcArgs,
+  memberCenterErrorMessage,
   normalizeMemberAuditPageResponse,
   normalizeMemberDirectoryResponse,
   normalizeMember360Response,
 } from "./member-center"
+
+describe("memberCenterErrorMessage", () => {
+  it("explains first-time identity creation requirements", () => {
+    expect(memberCenterErrorMessage(new Error("MEMBER_MASTER_IDENTITY_REQUIRED_FIELDS_MISSING")))
+      .toBe("首次建立基本信息时，请同时填写姓名、性别、年龄段、国籍和所在地")
+    expect(memberCenterErrorMessage(new Error("MEMBER_MASTER_PAYLOAD_INVALID")))
+      .toBe("资料格式无效，请检查字段内容后重试")
+    expect(memberCenterErrorMessage(new Error("MEMBER_MASTER_RESTORE_NO_CHANGES")))
+      .toBe("当前资料已与该历史版本一致，无需恢复")
+    expect(memberCenterErrorMessage(new Error("MEMBER_MASTER_EVENT_NOT_RESTORABLE")))
+      .toBe("该事件没有可恢复的历史版本")
+  })
+})
 
 describe("normalizeMemberDirectoryResponse", () => {
   it("uses the database page metadata without slicing items in memory", () => {

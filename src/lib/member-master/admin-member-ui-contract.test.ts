@@ -57,6 +57,7 @@ describe("admin member center UI contracts", () => {
   })
 
   it("exposes every mutable identity field plus quiz completion time", () => {
+    const editForm = source("src/components/admin/MemberEditForm.tsx")
     const identity = source("src/components/admin/MemberEditIdentity.tsx")
     const editActions = source("src/app/admin/members/[id]/edit/actions.ts")
     const advanced = source("src/components/admin/MemberAdvancedSectionEditors.tsx")
@@ -66,6 +67,19 @@ describe("admin member center UI contracts", () => {
     }
     expect(advanced).toContain("completed_at: parsedCompletedAt.toISOString()")
     expect(advanced).toContain('section: "workflow"')
+    expect(editForm).toContain("missingInitialIdentityFields")
+    expect(editForm).toContain("首次建立基本信息时，请同时填写")
+    expect(editForm).toContain("本次尚未保存任何分区")
+    expect(advanced).toContain("normalizeStoredQuizAnswers")
+    expect(advanced).toContain("Array.isArray(parsed) ? parsed : value")
+  })
+
+  it("keeps player quiz answers as a JSON array and hides empty-snapshot restore", () => {
+    const playerQuiz = source("src/app/app/profile/quiz/actions.ts")
+    const hub = source("src/components/admin/Member360Hub.tsx")
+    expect(playerQuiz).toMatch(/member_id: player\.memberId,\s*answers,\s*score_e:/)
+    expect(playerQuiz).not.toContain("answers: JSON.stringify")
+    expect(hub).toContain("hasRestorableMemberAuditSnapshot(before)")
   })
 
   it("edits legacy business fields through the audited super-admin RPC without exposing immutable links", () => {

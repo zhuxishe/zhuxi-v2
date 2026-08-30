@@ -27,6 +27,7 @@ import { MemberStatusBadge } from "./MemberStatusBadge"
 import {
   canRestoreMemberAudit,
   formatMemberValue,
+  hasRestorableMemberAuditSnapshot,
   memberFieldLabel,
   memberRecordEntries,
   MEMBER_360_TABS,
@@ -180,7 +181,7 @@ function AuditEventCard({ event, memberId, canRestore, canViewHighRisk }: {
           </p>
           <p className="mt-2 text-sm">原因：{event.reason ?? "未记录（null）"}</p>
         </div>
-        {canRestore && event.restorable === true && eventId !== undefined && before ? (
+        {canRestore && event.restorable === true && eventId !== undefined && hasRestorableMemberAuditSnapshot(before) ? (
           <div className="w-full max-w-md"><MemberAuditRestoreButton memberId={memberId} eventId={eventId} /></div>
         ) : null}
       </div>

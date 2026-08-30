@@ -10,6 +10,22 @@ const migration = readFileSync(
   "utf8",
 )
 
+const identityBootstrapMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260830162310_admin_create_missing_member_identity.sql",
+  ),
+  "utf8",
+)
+
+const restoreAndQuizMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260830163614_fix_member_restore_and_quiz_answers.sql",
+  ),
+  "utf8",
+)
+
 function functionBody(name: string) {
   const match = new RegExp(
     `CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${name}\\b`,
@@ -24,6 +40,27 @@ function functionBody(name: string) {
 }
 
 describe("user/member master migration contract", () => {
+  it("lets an administrator create the first identity row only with onboarding-required fields", () => {
+    expect(identityBootstrapMigration).toContain("CREATE OR REPLACE FUNCTION public.admin_update_member_section")
+    expect(identityBootstrapMigration).toContain("MEMBER_MASTER_IDENTITY_REQUIRED_FIELDS_MISSING")
+    for (const field of ["full_name", "gender", "age_range", "nationality", "current_city"]) {
+      expect(identityBootstrapMigration).toContain(`p_payload->>'${field}'`)
+    }
+    expect(identityBootstrapMigration).toMatch(
+      /v_before := private\.member_master_section_snapshot[\s\S]*INSERT INTO public\.member_identity[\s\S]*private\.member_master_apply_admin_section/,
+    )
+    expect(identityBootstrapMigration).toMatch(/ON CONFLICT \(member_id\) DO NOTHING/)
+    expect(identityBootstrapMigration).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
+  })
+
+  it("rejects empty or no-op restores and canonicalizes quiz answers as arrays", () => {
+    expect(restoreAndQuizMigration).toContain("v_source_event.before_values = '{}'::jsonb")
+    expect(restoreAndQuizMigration).toContain("MEMBER_MASTER_RESTORE_NO_CHANGES")
+    expect(restoreAndQuizMigration).toContain("jsonb_typeof(quiz.answers) = 'string'")
+    expect(restoreAndQuizMigration).toContain("personality_quiz_results_answers_array_check")
+    expect(restoreAndQuizMigration).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
+  })
+
   it("is one explicit atomic migration with a deployment lock", () => {
     expect(migration).toMatch(/^--[\s\S]*?\bBEGIN\s*;/i)
     expect(migration).toContain("pg_advisory_xact_lock")

@@ -42,6 +42,14 @@ const operationalAuditTriggerFixMigration = readFileSync(
   "utf8",
 )
 
+const adminSurfaceAclMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260830195942_explicit_data_api_acl_for_admin_surfaces.sql",
+  ),
+  "utf8",
+)
+
 function functionBody(name: string) {
   const match = new RegExp(
     `CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${name}\\b`,
@@ -128,6 +136,87 @@ describe("user/member master migration contract", () => {
     expect(operationalAuditTriggerFixMigration).toMatch(
       /BEGIN;[\s\S]*COMMIT;\s*$/,
     )
+  })
+
+  it("publishes the exact Data API ACL required by the current admin and player clients", () => {
+    const allTables = [
+      "scripts",
+      "match_results",
+      "match_rounds",
+      "match_sessions",
+      "member_dynamic_stats",
+      "member_notes",
+      "mutual_reviews",
+      "activity_records",
+      "pair_relationships",
+      "match_round_submissions",
+      "player_feedback",
+      "script_play_records",
+      "unmatched_diagnostics",
+      "personality_quiz_config",
+    ]
+    for (const table of allTables) {
+      expect(adminSurfaceAclMigration).toContain(`'public.${table}'::regclass`)
+    }
+
+    expect(adminSurfaceAclMigration).toMatch(
+      /REVOKE ALL ON TABLE[\s\S]*FROM PUBLIC, anon, authenticated, service_role/,
+    )
+    expect(adminSurfaceAclMigration).toContain(
+      "GRANT SELECT ON TABLE public.scripts TO anon",
+    )
+    expect(adminSurfaceAclMigration.match(/\bTO anon\s*;/g)).toHaveLength(1)
+    expect(adminSurfaceAclMigration).not.toMatch(/GRANT[\s\S]{0,300}\bTO PUBLIC\s*;/)
+
+    expect(adminSurfaceAclMigration).toContain(
+      "GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.scripts TO authenticated",
+    )
+    for (const table of [
+      "match_results",
+      "match_rounds",
+      "match_sessions",
+      "pair_relationships",
+      "match_round_submissions",
+      "script_play_records",
+      "personality_quiz_config",
+    ]) {
+      expect(adminSurfaceAclMigration).toContain(
+        `('public.${table}'::regclass, true, true, true, false)`,
+      )
+    }
+    for (const table of [
+      "member_dynamic_stats",
+      "member_notes",
+      "mutual_reviews",
+      "activity_records",
+    ]) {
+      expect(adminSurfaceAclMigration).toContain(
+        `('public.${table}'::regclass, true, false, false, false)`,
+      )
+    }
+    expect(adminSurfaceAclMigration).toContain(
+      "('public.unmatched_diagnostics'::regclass, false, true, false, false)",
+    )
+    expect(adminSurfaceAclMigration).toContain(
+      "('public.player_feedback'::regclass, false, false, false, false)",
+    )
+
+    expect(adminSurfaceAclMigration).toContain(
+      "GRANT SELECT, INSERT, UPDATE ON TABLE public.player_feedback TO service_role",
+    )
+    expect(adminSurfaceAclMigration).toContain(
+      "('public.player_feedback'::regclass, false)",
+    )
+    expect(adminSurfaceAclMigration).toContain(
+      "has_table_privilege('service_role', expected.table_oid, 'DELETE')",
+    )
+    expect(adminSurfaceAclMigration).toMatch(
+      /TRUNCATE[\s\S]*REFERENCES[\s\S]*TRIGGER/,
+    )
+    expect(adminSurfaceAclMigration).toContain("relation.relrowsecurity")
+    expect(adminSurfaceAclMigration).toContain("ADMIN_SURFACE_RLS_POLICY_INVALID")
+    expect(adminSurfaceAclMigration).toContain("ADMIN_SURFACE_TABLE_ACL_INVALID")
+    expect(adminSurfaceAclMigration).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
   })
 
   it("is one explicit atomic migration with a deployment lock", () => {

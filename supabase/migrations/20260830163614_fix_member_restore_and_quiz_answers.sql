@@ -4,6 +4,9 @@
 
 BEGIN;
 
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '5min';
+
 SELECT pg_advisory_xact_lock(hashtextextended('member-master-migration', 0));
 
 -- Older Player submissions stored JSON.stringify(answers) in a jsonb column,

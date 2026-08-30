@@ -3,6 +3,9 @@
 
 BEGIN;
 
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '2min';
+
 SELECT pg_advisory_xact_lock(hashtextextended('member-master-migration', 0));
 
 CREATE OR REPLACE FUNCTION private.member_master_capture_operational_audit_reason()

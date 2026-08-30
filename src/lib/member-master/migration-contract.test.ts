@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs"
+import { readFileSync, readdirSync } from "node:fs"
 import { join } from "node:path"
 import { describe, expect, it } from "vitest"
 
@@ -50,6 +50,239 @@ const adminSurfaceAclMigration = readFileSync(
   "utf8",
 )
 
+const productionBaselineReconciliationMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260830213104_production_baseline_reconciliation.sql",
+  ),
+  "utf8",
+)
+
+const communityStorageRouteOnlyMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260809094500_community_storage_route_only_writes.sql",
+  ),
+  "utf8",
+)
+
+const releaseDependencyAndStaffViewMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260830214322_complete_release_dependency_and_staff_view_security.sql",
+  ),
+  "utf8",
+)
+
+const releaseDependencyRelations = [
+  "auth.users",
+  "private.community_comment_authors",
+  "private.community_media_cleanup_queue",
+  "private.community_post_authors",
+  "private.community_processed_uploads",
+  "private.community_profile_members",
+  "private.member_profile_audit_log",
+  "private.member_profile_metrics",
+  "public.activity_records",
+  "public.admin_users",
+  "public.community_comments",
+  "public.community_moderation_actions",
+  "public.community_nickname_history",
+  "public.community_notification_preferences",
+  "public.community_post_images",
+  "public.community_posts",
+  "public.community_profiles",
+  "public.community_reports",
+  "public.community_sanctions",
+  "public.interview_evaluations",
+  "public.legacy_members",
+  "public.match_results",
+  "public.match_round_submissions",
+  "public.match_rounds",
+  "public.match_sessions",
+  "public.member_boundaries",
+  "public.member_dynamic_stats",
+  "public.member_identity",
+  "public.member_interests",
+  "public.member_language",
+  "public.member_notes",
+  "public.member_personality",
+  "public.member_verification",
+  "public.members",
+  "public.mutual_reviews",
+  "public.pair_relationships",
+  "public.past_event_reviews",
+  "public.personality_quiz_config",
+  "public.personality_quiz_results",
+  "public.player_activity_settings",
+  "public.player_feedback",
+  "public.script_play_records",
+  "public.scripts",
+  "public.staff_profiles",
+  "public.unmatched_diagnostics",
+  "storage.objects",
+] as const
+
+const releaseDependencyRoutines = [
+  "private.community_storage_object_referenced(text,text)",
+  "private.profile_admin_metrics_payload(uuid)",
+  "private.profile_current_admin_id()",
+  "private.profile_normalize_nickname(text)",
+  "private.recalculate_member_activity_stats(uuid)",
+  "public.admin_get_member_profile_audit(uuid,integer)",
+  "public.admin_get_member_profile_metrics(uuid)",
+  "public.admin_update_member_number(uuid,text,text)",
+  "public.is_admin()",
+  "public.my_email()",
+] as const
+
+const releaseDependencyTriggers = [
+  {
+    table: "private.community_profile_members",
+    name: "community_profile_mapping_sync_identity",
+    routine: "private.profile_sync_new_community_mapping()",
+    type: 21,
+    updateColumns: ["member_id"],
+  },
+  {
+    table: "public.activity_records",
+    name: "on_activity_change_recalculate",
+    routine: "private.recalculate_activity_stats_after_change()",
+    type: 29,
+    updateColumns: [],
+  },
+  {
+    table: "public.community_profiles",
+    name: "community_profiles_sync_member_identity",
+    routine: "private.profile_sync_community_to_identity()",
+    type: 17,
+    updateColumns: ["nickname", "avatar_kind", "avatar_path"],
+  },
+  {
+    table: "public.member_identity",
+    name: "member_identity_log_profile_change",
+    routine: "private.profile_log_identity_change()",
+    type: 17,
+    updateColumns: [
+      "full_name",
+      "gender",
+      "nickname",
+      "school_name",
+      "department",
+      "personal_avatar_path",
+    ],
+  },
+  {
+    table: "public.member_identity",
+    name: "member_identity_sync_community_profile",
+    routine: "private.profile_sync_identity_to_community()",
+    type: 17,
+    updateColumns: ["nickname", "personal_avatar_path"],
+  },
+  {
+    table: "public.member_identity",
+    name: "member_identity_validate_profile_fields",
+    routine: "private.profile_validate_identity_fields()",
+    type: 23,
+    updateColumns: ["nickname", "personal_avatar_path"],
+  },
+  {
+    table: "public.members",
+    name: "members_seed_profile_metrics",
+    routine: "private.profile_seed_member_metrics()",
+    type: 5,
+    updateColumns: [],
+  },
+] as const
+
+const releaseUniqueArbiters = [
+  {
+    table: "private.community_media_cleanup_queue",
+    columns: ["bucket_id", "object_path"],
+  },
+  { table: "private.member_profile_metrics", columns: ["member_id"] },
+  {
+    table: "public.interview_evaluations",
+    columns: ["member_id", "interviewer_id"],
+  },
+  { table: "public.member_boundaries", columns: ["member_id"] },
+  { table: "public.member_dynamic_stats", columns: ["member_id"] },
+  { table: "public.member_identity", columns: ["member_id"] },
+  { table: "public.member_interests", columns: ["member_id"] },
+  { table: "public.member_language", columns: ["member_id"] },
+  { table: "public.member_personality", columns: ["member_id"] },
+  { table: "public.member_verification", columns: ["member_id"] },
+  { table: "public.members", columns: ["member_number"] },
+  { table: "public.personality_quiz_results", columns: ["member_id"] },
+] as const
+
+function stripSqlComments(sql: string) {
+  return sql
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .replace(/^\s*--.*$/gm, "")
+}
+
+function expectedRelationValues(sql: string) {
+  const block = /WITH expected_relation\(qualified_name\) AS \(\s*VALUES([\s\S]*?)\n\s*\)\s*\n\s*SELECT string_agg/i.exec(
+    stripSqlComments(sql),
+  )
+  expect(block, "expected_relation VALUES block must exist").not.toBeNull()
+  return [...(block?.[1] ?? "").matchAll(/\('([^']+)'\)/g)]
+    .map((match) => match[1])
+    .sort()
+}
+
+function expectedRoutineValues(sql: string) {
+  const block = /WITH expected_routine\(signature\) AS \(\s*VALUES([\s\S]*?)\n\s*\)\s*\n\s*SELECT string_agg/i.exec(
+    stripSqlComments(sql),
+  )
+  expect(block, "expected_routine VALUES block must exist").not.toBeNull()
+  return [...(block?.[1] ?? "").matchAll(/\('([^']+)'\)/g)]
+    .map((match) => match[1])
+    .sort()
+}
+
+function expectedTriggerValues(sql: string) {
+  const block = /WITH expected_trigger\([\s\S]*?\) AS \(\s*VALUES([\s\S]*?)\n\s*\)\s*\n\s*SELECT string_agg/i.exec(
+    stripSqlComments(sql),
+  )
+  expect(block, "expected_trigger VALUES block must exist").not.toBeNull()
+
+  return [...(block?.[1] ?? "").matchAll(
+    /\(\s*'(public|private)',\s*'([^']+)',\s*'([^']+)',\s*'([^']+\(\))',\s*(\d+),\s*ARRAY\[([\s\S]*?)\]::text\[\]\s*\)/g,
+  )]
+    .map((match) => ({
+      table: `${match[1]}.${match[2]}`,
+      name: match[3],
+      routine: match[4],
+      type: Number(match[5]),
+      updateColumns: [...match[6].matchAll(/'([^']+)'/g)].map(
+        (column) => column[1],
+      ),
+    }))
+    .sort((left, right) =>
+      `${left.table}.${left.name}`.localeCompare(`${right.table}.${right.name}`),
+    )
+}
+
+function expectedUniqueValues(sql: string) {
+  const block = /WITH expected_unique\(table_schema, table_name, column_names\) AS \(\s*VALUES([\s\S]*?)\n\s*\)\s*\n\s*SELECT string_agg/i.exec(
+    stripSqlComments(sql),
+  )
+  expect(block, "expected_unique VALUES block must exist").not.toBeNull()
+
+  return [...(block?.[1] ?? "").matchAll(
+    /\(\s*'(public|private)',\s*'([^']+)',\s*ARRAY\[([\s\S]*?)\]::text\[\]\s*\)/g,
+  )]
+    .map((match) => ({
+      table: `${match[1]}.${match[2]}`,
+      columns: [...match[3].matchAll(/'([^']+)'/g)].map(
+        (column) => column[1],
+      ),
+    }))
+    .sort((left, right) => left.table.localeCompare(right.table))
+}
+
 function functionBody(name: string) {
   const match = new RegExp(
     `CREATE\\s+(?:OR\\s+REPLACE\\s+)?FUNCTION\\s+public\\.${name}\\b`,
@@ -64,6 +297,184 @@ function functionBody(name: string) {
 }
 
 describe("user/member master migration contract", () => {
+  it("statically bounds release waits without implying applied versions are replayable", () => {
+    for (const [sql, statementTimeout] of [
+      [communityStorageRouteOnlyMigration, "2min"],
+      [migration, "15min"],
+      [identityBootstrapMigration, "2min"],
+      [restoreAndQuizMigration, "5min"],
+      [matchingAclMigration, "2min"],
+      [operationalAuditTriggerFixMigration, "2min"],
+      [adminSurfaceAclMigration, "3min"],
+      [productionBaselineReconciliationMigration, "60s"],
+      [releaseDependencyAndStaffViewMigration, "60s"],
+    ] as const) {
+      const executableSql = stripSqlComments(sql)
+      expect(executableSql).toContain("SET LOCAL lock_timeout = '5s'")
+      expect(executableSql).toContain(
+        `SET LOCAL statement_timeout = '${statementTimeout}'`,
+      )
+      expect(executableSql).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
+    }
+  })
+
+  it("documents replay only for the two reviewed idempotent forward migrations", () => {
+    const runbook = readFileSync(
+      join(process.cwd(), "docs/engineering/user-member-master-runbook.md"),
+      "utf8",
+    )
+    const baseline = stripSqlComments(productionBaselineReconciliationMigration)
+    const hardening = stripSqlComments(releaseDependencyAndStaffViewMigration)
+
+    expect(runbook).toContain("migration repair` 不是通用的 SQL 重跑工具")
+    expect(runbook).toContain(
+      "本轮仅允许在可丢弃的隔离 Preview 中",
+    )
+    expect(runbook).toContain("`20260830213104` 与 `20260830214322`")
+    expect(runbook).toContain(
+      "不得仅为这些执行时保护在现有 Preview 重放",
+    )
+    expect(runbook).toContain("全新可丢弃数据库从头验证")
+    expect(runbook).toContain("新增可审计的 forward migration")
+    expect(runbook).not.toContain(
+      "任何同版本 SQL 修订都必须在隔离 Preview 通过官方 repair/replay",
+    )
+
+    expect(baseline).toMatch(
+      /UPDATE public\.interview_evaluations[\s\S]*WHERE administrator\.id = evaluation\.interviewer_id[\s\S]*evaluation\.interviewer_name IS NULL/,
+    )
+    expect(baseline).toMatch(
+      /ALTER TABLE public\.match_round_submissions\s+ADD COLUMN IF NOT EXISTS import_metadata jsonb/,
+    )
+    expect(hardening).toMatch(
+      /DROP POLICY IF EXISTS member_master_staff_profiles_public_read[\s\S]*CREATE POLICY member_master_staff_profiles_public_read/,
+    )
+    expect(hardening).toContain(
+      "CREATE OR REPLACE VIEW public.published_staff_profiles",
+    )
+    expect(hardening).not.toMatch(
+      /\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM|TRUNCATE)\s+(?:public|private)\./i,
+    )
+  })
+
+  it("reconciles the verified Production baseline without replaying legacy migrations", () => {
+    const sql = stripSqlComments(productionBaselineReconciliationMigration)
+
+    expect(expectedRelationValues(sql)).toEqual([...releaseDependencyRelations])
+    expect(expectedRelationValues(sql)).toHaveLength(46)
+    expect(expectedRoutineValues(sql)).toEqual([...releaseDependencyRoutines])
+    expect(expectedRoutineValues(sql)).toHaveLength(10)
+    expect(expectedTriggerValues(sql)).toEqual(releaseDependencyTriggers)
+    expect(expectedTriggerValues(sql)).toHaveLength(7)
+    expect(expectedUniqueValues(sql)).toEqual(releaseUniqueArbiters)
+    expect(expectedUniqueValues(sql)).toHaveLength(12)
+    expect(sql).toContain("member_profile_audit_log_id_seq")
+    expect(sql).toContain("pg_get_serial_sequence(")
+    expect(sql).toContain("column_info.identity_generation = 'ALWAYS'")
+    expect(sql).toContain("PRODUCTION_BASELINE_AUDIT_IDENTITY_MISMATCH")
+    expect(sql).toContain("PRODUCTION_BASELINE_TRIGGER_BINDINGS_MISSING")
+    expect(sql).toContain("PRODUCTION_BASELINE_UNIQUE_ARBITERS_MISSING")
+    expect(sql).toContain("trigger_info.tgenabled IN ('O', 'A')")
+    expect(sql).toContain("trigger_info.tgtype::integer = expected.trigger_type")
+    expect(sql).toContain("index_info.indpred IS NULL")
+    expect(sql).toContain("index_info.indexprs IS NULL")
+    expect(sql).toContain("SET LOCAL lock_timeout = '5s'")
+    expect(sql).toContain("SET LOCAL statement_timeout = '60s'")
+    expect(sql).toContain(
+      "PRODUCTION_BASELINE_RELATIONS_MISSING",
+    )
+    expect(sql).toContain(
+      "PRODUCTION_BASELINE_SOCIAL_GOAL_TYPE_MISMATCH",
+    )
+    expect(sql).toMatch(
+      /ALTER TABLE public\.match_round_submissions\s+ADD COLUMN IF NOT EXISTS import_metadata jsonb/,
+    )
+    expect(sql).toContain(
+      "community_storage_route_only_insert",
+    )
+    expect(sql).toContain("actual.cmd = expected.command_name")
+    expect(sql).toContain("actual.qual IS NOT DISTINCT FROM expected.row_filter")
+    expect(sql).toContain(
+      "actual.with_check IS NOT DISTINCT FROM expected.check_filter",
+    )
+    expect(sql).toContain("index_class.relname = 'idx_admin_users_user_id_unique'")
+    expect(sql).toContain("= '(user_id IS NOT NULL)'")
+    expect(sql).toContain(
+      "PRODUCTION_BASELINE_RECONCILIATION_FAILED",
+    )
+    expect(sql).not.toMatch(
+      /supabase_migrations\.schema_migrations|migration\s+repair/i,
+    )
+    expect(sql).toMatch(
+      /BEGIN;[\s\S]*COMMIT;\s*$/,
+    )
+  })
+
+  it("hardens the exact release dependency, Storage, binding and public-view contracts", () => {
+    const sql = stripSqlComments(releaseDependencyAndStaffViewMigration)
+
+    expect(expectedRelationValues(sql)).toEqual([...releaseDependencyRelations])
+    expect(expectedRelationValues(sql)).toHaveLength(46)
+    expect(expectedRoutineValues(sql)).toEqual([...releaseDependencyRoutines])
+    expect(expectedRoutineValues(sql)).toHaveLength(10)
+    expect(expectedTriggerValues(sql)).toEqual(releaseDependencyTriggers)
+    expect(expectedTriggerValues(sql)).toHaveLength(7)
+    expect(expectedUniqueValues(sql)).toEqual(releaseUniqueArbiters)
+    expect(expectedUniqueValues(sql)).toHaveLength(12)
+    expect(sql).toContain("member_profile_audit_log_id_seq")
+    expect(sql).toContain("pg_get_serial_sequence(")
+    expect(sql).toContain("column_info.identity_generation = 'ALWAYS'")
+    expect(sql).toContain("MEMBER_MASTER_RELEASE_AUDIT_IDENTITY_MISMATCH")
+    expect(sql).toContain("MEMBER_MASTER_RELEASE_TRIGGER_BINDINGS_MISSING")
+    expect(sql).toContain("MEMBER_MASTER_RELEASE_UNIQUE_ARBITERS_MISSING")
+    expect(sql).toContain("trigger_info.tgenabled IN ('O', 'A')")
+    expect(sql).toContain("trigger_info.tgtype::integer = expected.trigger_type")
+    expect(sql).toContain("index_info.indpred IS NULL")
+    expect(sql).toContain("index_info.indexprs IS NULL")
+    for (const [policy, command] of [
+      ["community_storage_route_only_insert", "INSERT"],
+      ["community_storage_route_only_update", "UPDATE"],
+      ["community_storage_route_only_delete", "DELETE"],
+    ]) {
+      expect(sql).toMatch(
+        new RegExp(`'${policy}'[\\s\\S]{0,80}'${command}'`),
+      )
+    }
+    expect(sql.match(/community-avatars/g)).toHaveLength(4)
+    expect(sql.match(/community-media/g)).toHaveLength(4)
+    expect(sql).toContain("actual.qual IS NOT DISTINCT FROM expected.row_filter")
+    expect(sql).toContain(
+      "actual.with_check IS NOT DISTINCT FROM expected.check_filter",
+    )
+    expect(sql).toContain("index_class.relname = 'idx_admin_users_user_id_unique'")
+    expect(sql).toContain("= '(user_id IS NOT NULL)'")
+    expect(sql).toContain("security_invoker = true")
+    expect(sql).not.toContain("security_invoker = false")
+    expect(sql).toContain("member_master_staff_profiles_public_read")
+    expect(sql).toContain("'anon', 'public.staff_profiles', 'member_id', 'SELECT'")
+    expect(sql).toContain("'anon', 'public.staff_profiles', 'audit_reason', 'SELECT'")
+    expect(sql).not.toMatch(
+      /supabase_migrations\.schema_migrations|migration\s+repair/i,
+    )
+    expect(sql).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
+  })
+
+  it("keeps the repository and runbook migration count aligned", () => {
+    const migrationNames = readdirSync(
+      join(process.cwd(), "supabase", "migrations"),
+    ).filter((name) => name.endsWith(".sql"))
+    const runbook = readFileSync(
+      join(process.cwd(), "docs/engineering/user-member-master-runbook.md"),
+      "utf8",
+    )
+
+    expect(migrationNames).toHaveLength(58)
+    expect(runbook).toContain("当前仓库共有 58 条 migration")
+    expect(runbook).toContain(
+      "20260830214322_complete_release_dependency_and_staff_view_security.sql",
+    )
+  })
+
   it("lets an administrator create the first identity row only with onboarding-required fields", () => {
     expect(identityBootstrapMigration).toContain("CREATE OR REPLACE FUNCTION public.admin_update_member_section")
     expect(identityBootstrapMigration).toContain("MEMBER_MASTER_IDENTITY_REQUIRED_FIELDS_MISSING")

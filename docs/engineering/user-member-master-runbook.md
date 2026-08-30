@@ -52,7 +52,7 @@
 - 没有 canonical 成员主体的运营写入（例如未绑定 Staff、空成员活动或初建匹配会话）写入 `private.subjectless_operational_audit_log`。该表只保存实际变化的紧凑业务字段及记录定位、原因、来源、操作者快照和时间；只追加、service-role 只读，不会与成员审计重复。
 - 管理员删除活动使用 `admin_delete_activity_record()`；其他受支持的运营删除使用 `admin_delete_operational_record()`。禁止从后台直接 DELETE 以绕过理由与成员审计。
 - 原始轮次问卷只有超级管理员可以在后台查看、覆盖或删除；普通管理员只能看到“已提交”的去敏历史。玩家只能在问卷开放时间内读取、创建或修改自己的提交，不能直接 DELETE，也不能改写 ID、成员/轮次外键、导入元数据或技术时间。
-- 公开 Staff 区块只读取 `published_staff_profiles` 安全视图；`staff_profiles.member_id` 与 `audit_reason` 不授予匿名或普通认证客户端读取。
+- `published_staff_profiles` 是未来动态 Staff 区块的唯一公开数据入口；`staff_profiles.member_id` 与 `audit_reason` 不授予匿名或普通认证客户端读取。当前仓库尚未把 `StaffSection` 挂载到公开 route，现有 organization 团队页仍使用静态 `TeamDepartmentGrid`，因此当前发布只验收 Data API 视图与后台 Staff 管理，不把首页展示误报为已接线。
 - service-role 的既有系统流程若未提供理由，数据库记录紧凑且确定性的系统原因；它不冒充真人管理员理由。
 
 ## 管理员管理
@@ -95,8 +95,42 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 4. `20260830165712_restore_matching_table_acl.sql`：`match_rounds`、`match_sessions` 最小 Data API ACL 与策略修正。
 5. `20260830174115_fix_operational_audit_trigger_record_scope.sql`：运营审计触发器记录作用域修正。
 6. `20260830195942_explicit_data_api_acl_for_admin_surfaces.sql`：显式修复已确认的 Data API `42501`，并对 `scripts`、匹配、成员运营记录、玩家反馈、剧本游玩记录和问卷配置等 14 张直接访问表实施最小 ACL。匿名用户仅可读取 RLS 允许的已发布剧本；authenticated 与 service role 的权限按实际客户端操作逐表断言。
+7. `20260830213104_production_baseline_reconciliation.sql`：不重放 `001`–`038`，只补齐已确认缺失的 `match_round_submissions.import_metadata`，安全回填空缺的面试官姓名，并在有限锁等待内断言六条成员迁移及其保留触发器链依赖的全部 46 个既有 relation、10 个既有 routine、7 条精确 trigger 绑定/事件/列范围、11 个 `ON CONFLICT` 唯一仲裁键及 `members(member_number)` 并发唯一键、审计 `id` 的 identity/唯一键/sequence 绑定、单选字段类型、Staff/往期活动及 route-only Storage 的命令与谓词。
+8. `20260830214322_complete_release_dependency_and_staff_view_security.sql`：终态重验相同的 46 relation、10 routine、7 条 trigger、12 个唯一不变量、审计 identity/sequence、Storage 三条策略的命令与谓词及管理员 Auth 绑定唯一索引；随后把公开教职员视图改为 `security_invoker`，通过列级授权与 RLS 仅公开已发布的安全字段。
 
 任何一步失败都必须停止；保存完整错误与已应用版本，不得在同一目标上反复重放大迁移。修正应使用新的、可审计的 forward migration。
+
+在迁移历史正常、按文件名执行的全新环境中，第 7、8 条在六条成员迁移之后运行并作为终态断言。Production 的历史已发生分叉，发布时必须在隔离 workdir 中先只放入 `20260809094500` 与第 7 条并执行、验证，再加入六条成员迁移，最后加入第 8 条；禁止从主工作区直接运行 `db push --include-all`。
+
+## Production 只读对账（2026-08-31）
+
+本节来自 Supabase CLI 2.116.0 的 `migration list`、隔离目录 `migration fetch` 以及包裹在 `REPEATABLE READ + READ ONLY` 单一快照中的实际 catalog/聚合数据查询。完整可重复查询见 `supabase/audits/user_member_master_production_reconciliation.sql`。本轮未对 Production 执行 SQL 写入、migration repair 或 push。
+
+### 历史映射
+
+- 当前仓库共有 58 条 migration：原 `main` 的 50 条、本功能六条、Production 基线前向迁移一条以及发布依赖/公开视图安全迁移一条。隔离 Preview 已登记全部 58 条。
+- Production 远端登记 45 条：34 条 `202604*`、10 条 `202607*` 和 `20260806140912`。仓库的 `001`–`038`、`20260809094500`、六条成员迁移和新基线前向迁移均未以本地版本登记在 Production。
+- 34 条 April 历史中，27 条去注释/空白后与本地对应 SQL 一致；`015`–`017` 只多幂等包装；远端 `022` 加后续独立 session policy 修复后等价于当前本地 `022`。
+- 远端 `008` 历史曾把 `social_goal_secondary` 转为 `text[]`，但实际 Production catalog 已是 nullable `text`、默认 `NULL`，与代码和 Preview 类型一致。远端 `011` 没有本地的姓名回填，但 Production 8 条面试记录均已填充且与当前管理员名称一致。
+- 本地 `009`、`036`–`038` 的实际 schema 效果均存在；唯一缺失的旧编号迁移效果是 `035` 的 `match_round_submissions.import_metadata`。因此不能重放旧迁移，也不能把缺失列用 repair 伪装成已应用，必须使用 `20260830213104` 前向补齐。
+- 五条已登记的 202607 迁移在远端历史表中没有保存 SQL statements，`migration fetch` 只能生成空语句文件；历史版本本身不能替代 actual catalog 核对。
+
+### 当前 Production 数据与权限基线
+
+- Auth 33、members 39（已绑定 16、账号外 23）、identity 38、legacy 119；有 17 个 Auth 账号尚无 member，1 个 member 缺 identity。
+- 119 条 legacy 均未认领；主迁移会为其逐条创建账号外 canonical 外壳，同时为 17 个未建档 Auth 创建登录主档。若事务成功，members 预计由 39 增至 175。不会按姓名或邮箱自动合并。
+- 现有 member/auth 规范化邮箱重复组均为 0，未绑定 member/Auth 邮箱候选为 0，无效成员引用为 0，自评为 0。17 条 legacy 与既有 identity 存在“姓名+学校”人工重复候选，电话+姓名重复候选对为 0；这些只进入候选队列。
+- 问卷答案共 5 条：1 条已是 JSON array，4 条均为可安全转换的 JSON-stringified array；畸形 JSON 和不可转换值均为 0。
+- 管理员 9 条，其中 admin 6、super_admin 3，已绑定 8、已绑定 super_admin 3。既有 profile audit 6 条，member/action 均非空，动作类型为现有允许值。
+- 六条成员迁移及其保留触发器链依赖的 46 个既有 relation、10 个既有 routine、7 条 trigger→function 绑定与启用状态、11 个 `ON CONFLICT` 唯一仲裁键、`members(member_number)` 并发唯一键，以及 `private.member_profile_audit_log.id` 的 identity/唯一键/sequence 绑定均已通过 Production 只读 catalog 核对；trigger 的精确 timing/events/`UPDATE OF` 列范围仍由基线迁移在写入前 fail-closed 复核。但 8 个成员生命周期字段、13 个 `audit_reason` 字段、6 张新增私有状态/审计表及 28 个新 RPC 确实尚不存在，不能把问题解释为“仅历史表未登记”。
+- Production 仍保留 Community Storage 的 authenticated permissive INSERT/UPDATE/DELETE 策略，route-only 三条 restrictive 策略尚不存在；必须先应用 `20260809094500`。
+
+### 历史校准边界
+
+- 禁止重放 `001`–`038`：其中大量 `CREATE TABLE/POLICY/TRIGGER/INDEX` 非幂等，且部分历史 SQL 与 actual catalog 的最终状态不同。
+- 禁止把 `001`–`038` 整批 `migration repair --status applied`，也禁止把 34 条远端 April 版本标记为 reverted。CLI 只比较 version，不比较 SQL 内容哈希。
+- Production 发布必须在临时隔离 workdir 重新 fetch 45 条远端历史，以它们作为已登记基线；随后只加入明确的 forward 文件。任何 `db push --dry-run --include-all` 必须只显示本节批准的前向版本，否则中止。
+- 仓库 numeric migration 与 Production timestamp 历史的长期归一化是独立维护任务；不得在发布窗口中通过删除历史、改名或批量 repair 顺手处理。
 
 ## 隔离 Preview 发布门禁
 
@@ -106,7 +140,9 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 2. 按上一节核对 `<PREVIEW_PROJECT_REF>`、Vercel Preview 环境与最终 Preview URL；确认与 `<PRODUCTION_PROJECT_REF>` 不同。
 3. 在任何迁移前运行 `supabase/audits/user_member_master_preflight.sql`，保存带时间、commit SHA 和 Preview ref 的完整结果。
 4. 人工确认 Auth 数量、成员数量、旧成员数量、重复候选、无效引用和现有 ACL；脚本不会按姓名、邮箱或昵称自动合并。存在未解释异常时停止。
-5. 按“本分支成员迁移顺序”只应用尚未登记的迁移，并再次核对目标迁移历史包含完整且有序的六个版本。
+5. 按“本分支成员迁移顺序”只应用尚未登记的迁移，并再次核对目标迁移历史包含本功能完整且有序的 8 个版本、仓库与 Preview 合计 58 个版本。版本登记只证明 migration version 存在，不证明后来修改过的同版本 SQL 已执行；是否允许重放必须遵守下述边界。
+
+   **同版本重放边界：** `migration repair` 不是通用的 SQL 重跑工具。本轮仅允许在可丢弃的隔离 Preview 中，把已经逐条确认可幂等重放、且后来增强了持久效果或终态断言的 `20260830213104` 与 `20260830214322` 标记为 reverted，再按依赖顺序重放并保存 `dry-run`、push、history 与 postflight 证据。`20260809094500` 和六条成员迁移后来新增的 `BEGIN`、`SET LOCAL lock_timeout`、`SET LOCAL statement_timeout` 只约束未来执行，不改变已落库终态，不得仅为这些执行时保护在现有 Preview 重放。若已登记的大迁移发生任何持久 DDL、DML、权限或函数逻辑变化，必须改用全新可丢弃数据库从头验证，或新增可审计的 forward migration；禁止在已有 Preview 通过 repair 重跑大迁移。
 6. 运行 `supabase/audits/user_member_master_postflight.sql` 并保存完整结果，确认：
    - `auth_without_member_or_tombstone = 0`
    - 没有非法状态组合
@@ -142,13 +178,16 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 1. 固定与 Preview 完全相同的 commit SHA 和迁移集合，记录当前 Production Vercel deployment 作为应用回退点。
 2. 确认 `<PRODUCTION_PROJECT_REF>` 与 Vercel Production 环境一致；再次运行 Production preflight，若数据分布或 ACL 与 Preview 假设不符则中止。
 3. 创建可验证的 Supabase 全库备份/快照或确认 PITR 恢复点，记录恢复时间点、`auth`/`public`/`private`/`storage` metadata 的覆盖范围和负责人；没有可验证恢复点不得继续。
-4. 开启维护窗口并冻结受本迁移影响的写入：新用户建档、资料/问卷、成员与管理员编辑、导入、匹配、取消、Staff、反馈、LINE 绑定及写入相关定时任务。记录冻结前关键行数和迁移历史。
+4. 开启维护窗口并冻结受本迁移影响的写入：新用户建档、资料/问卷、成员与管理员编辑、导入、匹配、取消、Staff、反馈、LINE 绑定及写入相关定时任务。排空或中止会长时间持有相关 relation 锁的读事务并检查 blocking/long-running query；先行 Storage 与 8 条功能迁移均设 `lock_timeout = 5s`，单语句上限按规模为 60 秒至 15 分钟。超时必须整事务停止并调查，不能盲目重试。记录冻结前关键行数和迁移历史。
 
 ### 阶段 1：Production 数据库
 
-1. 在保持写冻结的情况下，只应用迁移历史中缺失的六个版本；每步失败立即停止，不得继续合并 `main`。
-2. 运行并保存 Production postflight、14 张 Data API 表的显式 ACL/RLS 检查和关键只读查询；所有门禁通过后才进入阶段 2。
-3. 在旧 Production 应用仍在线时完成只读兼容性烟雾测试。若旧应用因新权限边界无法安全读取，保持维护页/写冻结并立即进入已批准的阶段 2，不能在半迁移状态开放写入。
+1. 在临时隔离 workdir 重新 fetch Production 的 45 条远端历史；加入 `20260809094500_community_storage_route_only_writes.sql` 和 `20260830213104_production_baseline_reconciliation.sql`，干跑必须只列出这两条前向版本。
+2. 在保持写冻结的情况下先应用 Storage 收紧，再应用 Production 基线前向迁移；运行 `user_member_master_production_reconciliation.sql`，确认 `import_metadata` 已存在、Storage 三条 restrictive policy 生效且所有基线断言通过。
+3. 将六条成员迁移加入同一隔离 workdir，使用 `--include-all` 干跑确认只列出六条且顺序正确；随后逐条应用。每一步失败立即停止，不得继续合并 `main`。
+4. 加入并单独应用 `20260830214322_complete_release_dependency_and_staff_view_security.sql`；确认 46 relation、10 routine、7 条 trigger、12 个唯一不变量、审计 identity/sequence、Storage 精确谓词、管理员绑定唯一索引与 `security_invoker` 公开视图断言全部通过，并重新运行 Supabase Security Advisor。
+5. 运行并保存 Production postflight、14 张 Data API 表的显式 ACL/RLS 检查和关键只读查询；所有门禁通过后才进入阶段 2。
+6. 在旧 Production 应用仍在线时完成只读兼容性烟雾测试。若旧应用因新权限边界无法安全读取，保持维护页/写冻结并立即进入已批准的阶段 2，不能在半迁移状态开放写入。
 
 ### 阶段 2：Production 应用
 
@@ -186,7 +225,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 - 普通玩家提交互评、请求取消等既有流程在收紧运营审计后仍可成功；service-role 后端流程不得因缺少真人理由而中断，并应产生 system 来源审计。
 - Excel 导入分别模拟 create、delete、restore 与补偿失败；审计元数据不得含姓名、文件名或任意自由文本。
 - 并发执行两个超级管理员的降级/删除请求，最多一个可成功，系统始终至少保留一位已绑定超级管理员；三个管理动作均留下真实 actor、before/after 与 reason。
-- anon/authenticated 对 `staff_profiles` 做 `select *` 或读取 `member_id` 必须失败，而首页通过 `published_staff_profiles` 仍按预期显示已发布 Staff。
+- anon/authenticated 对 `staff_profiles` 做 `select *` 或读取 `member_id` / `audit_reason` 必须失败；两者从 `published_staff_profiles` 只能读取已发布安全字段，service role 仍可管理基表。当前没有公开 route 消费该视图，未来挂载 `StaffSection` 时必须另做公开页面 E2E。
 - 分别创建未绑定 Staff、空成员活动和尚无结果的匹配会话，确认各自只产生一条 subjectless 紧凑审计；为同类记录补上成员主体后，确认只产生 member audit 而不重复写 subjectless。
 
 ## 当前验证边界
@@ -194,9 +233,10 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 - 本地 TypeScript、Vitest、静态 SQL 契约、lint 和 build 通过，只证明代码与迁移文本的静态一致性；它们不是数据库执行、数据回填或权限安全证明。
 - 2026-08-31 已从 Vercel Preview branch override 确认隔离 Preview project ref 为 `ijddkjejgkseujqrrndh`，与 Production ref 不同。迁移前只读基线为 Auth 3、members 3、linked 3、accountless 0、legacy 0、无效引用 0、重复成员邮箱组 0；其中 2 个测试成员缺少 identity，可由首次管理员编辑流程补建。
 - 同日已在该隔离 Preview 执行 `20260830195942_explicit_data_api_acl_for_admin_surfaces.sql`；迁移自身的 14 表 RLS、27 条 policy、PUBLIC 清零和精确 ACL 断言通过。`/admin/scripts`、`/admin/matching/cancellations`、`/admin/members` 及实际 Preview 成员 360 均可加载，原 `42501` 页面错误已消失。
-- 该 Preview 原为“schema 已存在、迁移历史全为空”的测试库。核验主档效果与 ACL 后，已使用 Supabase 官方 `migration repair --status applied` 对齐仓库全部 55 个版本；`migration list` 显示 local/remote 一一对应，`db push --dry-run --include-all` 返回 up to date。随后正式只读 postflight 返回 `PASS`（6 条成员迁移、34 RPC、14 ACL 表、27 policy），没有手工写入迁移历史表。
-- 已从 project ref `ijddkjejgkseujqrrndh` 重新生成 `src/types/database.types.ts`，补齐既有 schema 与成员主档 RPC；TypeScript、371 个单元测试、lint、生产 build 和 `git diff --check` 均通过。
+- 该 Preview 原为“schema 已存在、迁移历史全为空”的测试库。核验主档效果与 ACL 后，已使用 Supabase 官方 `migration repair --status applied` 对齐当时全部 56 个版本；新增的两条 forward migration 均由官方 `db push` 单独应用。最终增强依赖断言后，仅将确认幂等的 `20260830213104`、`20260830214322` 标记为 reverted 并按 dry-run 显示的精确两条顺序重放；46 relation、10 routine、7 trigger、12 unique invariant 与审计 identity/sequence 断言均在真实 Preview catalog 通过。当前 58 个 local/remote 版本一一对应，`db push --dry-run --include-all` 返回 up to date。随后正式只读 postflight 返回 `PASS`（6 条成员迁移、34 RPC、14 ACL 表、27 policy），没有手工写入迁移历史表。
+- 从 project ref `ijddkjejgkseujqrrndh` 只读重新生成 public schema 类型后的 SHA-256 与 `src/types/database.types.ts` 完全一致；TypeScript、379 个单元测试、lint、生产 build 和 `git diff --check` 均通过。
 - 使用公开 publishable key 与隔离测试账号完成了只读角色探针：在本次 ACL 表中 anon 只能读取 `scripts`，读取 `match_results`/`members` 分别返回 401；普通 admin 可读取剧本、匹配、统计、备注和问卷配置，但直接读取 `player_feedback`/`unmatched_diagnostics` 返回 403；玩家只能看到自己的 1 条成员主档，并且同样不能直接读取反馈或诊断表。
+- 最终 Staff 安全迁移重放后，匿名 Data API 读取 `published_staff_profiles` 返回 200；直接 `select *` 或读取基表 `member_id` / `audit_reason` 均返回 401 + PostgreSQL `42501`。当前 Preview 的 Staff 基表和安全视图均为 0 行，因此“未发布记录不泄露”由精确 RLS/列授权/`security_invoker` 迁移断言保证，尚未用写入测试 fixture 做动态行级证明。Supabase Security Advisor 已重新运行并显示 0 errors；79 warnings 与 13 suggestions 为独立存量审查项，不在本次发布中顺手扩范围。
 - 超级管理员在测试成员上把姓名从 `Preview Player` 改为临时验收值，UI 生成第 4 条永久审计并显示原因、完整修改前/修改后；随后通过 `admin_restore_member_event` 恢复原名，审计总数变为 5。普通管理员在 360 页只能看到裁剪后的登录、问卷、角色、legacy、原始提交和审计字段。
-- commit `0fb4d5d` 的 Vercel Preview deployment `BHyeVLSL92STm8F113MVD8ztWNG2` 为 `Ready`；精确 URL `https://zhuxi-v2-53ozp7dj4-zhuxishe-6227s-projects.vercel.app` 上，普通管理员访问剧本、取消申请、成员目录和成员 360 均为 200。按该 deployment ID 过滤的运行日志为 Warning 0、Error 0、Fatal 0，且没有 `42501`、`PGRST` 或 500。
-- 尚未在 Preview 执行匿名化、Auth 删除、并发超级管理员降级等破坏性/高风险完整矩阵。2026-08-31 对 Production ref `wjjhprflldvclulistcx` 的只读 `migration list` 还显示迁移历史分叉：远端有 34 条本地目录不存在的 2026 年 4 月版本，本地 `001`–`038` 未登记在远端，`20260809094500` 与六条成员迁移也尚未登记；官方 `db push --dry-run --include-all` 因 `LegacyDbPushMissingLocalError` 停止。禁止据此盲目 repair 或 push；必须先在隔离目录执行 Production schema pull/diff、逐项映射旧版本与当前迁移效果，再制定可审计的历史校准和 forward-migration 方案。Production 尚未备份、冻结写入或应用成员迁移，因此不得合并 `main`。
+- 上一轮 commit `0fb4d5d` 的 Vercel Preview deployment `BHyeVLSL92STm8F113MVD8ztWNG2` 为 `Ready`；精确 URL `https://zhuxi-v2-53ozp7dj4-zhuxishe-6227s-projects.vercel.app` 上，普通管理员访问剧本、取消申请、成员目录和成员 360 均为 200。按该 deployment ID 过滤的运行日志为 Warning 0、Error 0、Fatal 0，且没有 `42501`、`PGRST` 或 500。最终 commit 的新 deployment ID、URL 与日志扫描保存在当次发布证据中，不把会变化的运行态标识固化为迁移契约。
+- 尚未在 Preview 执行匿名化、Auth 删除、并发超级管理员降级等破坏性/高风险完整矩阵。Production 只读历史/catalog/数据对账已经完成，并已生成、在 Preview 应用验证新的前向基线迁移；但 Production 仍未备份、冻结写入、收紧 Storage 或应用任何成员迁移。当前只具备申请维护窗口的技术方案，尚不具备合并 `main` 的发布条件。

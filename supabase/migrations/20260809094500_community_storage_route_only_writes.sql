@@ -2,6 +2,11 @@
 -- processed-upload registration checks. Authenticated Storage writes can
 -- bypass those checks and create objects that are never queued for cleanup.
 
+BEGIN;
+
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '2min';
+
 DROP POLICY IF EXISTS community_storage_insert ON storage.objects;
 DROP POLICY IF EXISTS community_storage_update ON storage.objects;
 DROP POLICY IF EXISTS community_storage_delete ON storage.objects;
@@ -39,3 +44,5 @@ CREATE POLICY community_storage_route_only_delete
   USING (
     bucket_id NOT IN ('community-avatars', 'community-media')
   );
+
+COMMIT;

@@ -10,6 +10,9 @@
 
 BEGIN;
 
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '15min';
+
 SELECT pg_advisory_xact_lock(hashtextextended('user_member_master_v1', 0));
 
 CREATE SCHEMA IF NOT EXISTS private;

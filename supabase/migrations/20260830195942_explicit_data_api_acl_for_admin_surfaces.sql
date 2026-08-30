@@ -4,6 +4,9 @@
 
 BEGIN;
 
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '3min';
+
 SELECT pg_advisory_xact_lock(hashtextextended('member-master-migration', 0));
 
 -- Fail closed before granting table access if a required RLS boundary is absent.

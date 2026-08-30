@@ -14,10 +14,21 @@ function stripSqlComments(sql: string) {
     .replace(/^\s*--.*$/gm, "")
 }
 
+function expectedRelationValues(sql: string) {
+  const block = /WITH expected_relation\(qualified_name\) AS \(\s*VALUES([\s\S]*?)\n\s*\)\s*\n\s*SELECT count\(\*\)/i.exec(
+    stripSqlComments(sql),
+  )
+  expect(block, "expected_relation VALUES block must exist").not.toBeNull()
+  return [...(block?.[1] ?? "").matchAll(/\('([^']+)'\)/g)]
+    .map((match) => match[1])
+    .sort()
+}
+
 describe("user/member migration data audits", () => {
   it.each([
     "user_member_master_preflight.sql",
     "user_member_master_postflight.sql",
+    "user_member_master_production_reconciliation.sql",
   ])("keeps %s transactionally read-only", (name) => {
     const sql = stripSqlComments(readAudit(name))
 
@@ -27,6 +38,98 @@ describe("user/member migration data audits", () => {
     expect(sql).not.toMatch(
       /\b(?:INSERT\s+INTO|UPDATE\s+[\w".]+\s+SET|DELETE\s+FROM|TRUNCATE|ALTER\s+TABLE|CREATE\s+TABLE|DROP\s+TABLE|GRANT|REVOKE)\b/i,
     )
+  })
+
+  it("keeps the Production reconciliation report aggregate-only", () => {
+    const sql = stripSqlComments(
+      readAudit("user_member_master_production_reconciliation.sql"),
+    )
+
+    expect(sql).toContain("projected_member_rows_after_v1")
+    expect(sql).toContain("match_round_import_metadata_column_valid")
+    expect(sql).toContain("SET TRANSACTION ISOLATION LEVEL REPEATABLE READ")
+    expect(sql).toContain("community_storage_route_only_insert")
+    expect(sql).toContain("safely_convertible_stringified_arrays")
+    expect(sql).toContain("legacy_rows_matching_existing_identity_name_school")
+    expect(sql).toContain("qual, with_check")
+    expect(sql).not.toMatch(
+      /\bSELECT\s+\*\s+FROM\s+(?:public|private|auth)\./i,
+    )
+    expect(sql).not.toMatch(/\bRETURNING\b/i)
+    expect(sql).not.toMatch(/SELECT[\s\S]{0,120}\b(?:email|full_name|phone|id)\b\s*(?:,|FROM)/i)
+  })
+
+  it("checks the exact 46 release relations and every migrated member reference shape", () => {
+    const sql = readAudit("user_member_master_production_reconciliation.sql")
+    const relations = expectedRelationValues(sql)
+
+    expect(relations).toHaveLength(46)
+    for (const relation of [
+      "auth.users",
+      "private.community_comment_authors",
+      "private.community_post_authors",
+      "private.community_processed_uploads",
+      "public.admin_users",
+      "public.community_moderation_actions",
+      "public.community_nickname_history",
+      "public.community_post_images",
+      "public.community_reports",
+      "public.community_sanctions",
+      "public.past_event_reviews",
+      "public.player_activity_settings",
+      "storage.objects",
+    ]) {
+      expect(relations).toContain(relation)
+    }
+
+    for (const routine of [
+      "private.community_storage_object_referenced(text,text)",
+      "private.profile_admin_metrics_payload(uuid)",
+      "private.profile_current_admin_id()",
+      "private.profile_normalize_nickname(text)",
+      "private.recalculate_member_activity_stats(uuid)",
+      "public.admin_get_member_profile_audit(uuid,integer)",
+      "public.admin_get_member_profile_metrics(uuid)",
+      "public.admin_update_member_number(uuid,text,text)",
+      "public.is_admin()",
+      "public.my_email()",
+    ]) {
+      expect(sql).toContain(`('${routine}')`)
+    }
+    expect(sql).toContain("expected_routines")
+    expect(sql).toContain("present_routines")
+    expect(sql).toContain("member_profile_audit_sequence_present")
+    expect(sql).toContain("member_profile_audit_sequence_bound")
+    expect(sql).toContain("member_profile_audit_id_identity_valid")
+    expect(sql).toContain("member_profile_audit_id_unique")
+    expect(sql).toContain("expected_triggers")
+    expect(sql).toContain("valid_triggers")
+    expect(sql).toContain("missing_or_mismatched_triggers")
+    expect(sql).toContain("expected_unique_arbiters")
+    expect(sql).toContain("valid_unique_arbiters")
+    expect(sql).toContain("missing_or_mismatched_unique_arbiters")
+    expect(sql).toContain("trigger_info.tgenabled IN ('O', 'A')")
+    expect(sql).toContain("trigger_info.tgtype::integer = expected.trigger_type")
+    expect(sql).toContain("index_info.indpred IS NULL")
+    expect(sql).toContain("index_info.indexprs IS NULL")
+
+    for (const source of [
+      "private.community_comment_authors",
+      "private.community_post_authors",
+      "private.community_profile_members",
+      "private.member_profile_audit_log",
+      "private.member_profile_metrics",
+      "public.match_results.group_members",
+      "public.activity_records.participant_ids",
+      "public.activity_records.late_member_ids",
+      "public.activity_records.no_show_member_ids",
+      "public.match_round_submissions",
+      "public.player_feedback",
+      "public.script_play_records",
+      "public.unmatched_diagnostics",
+    ]) {
+      expect(sql).toContain(`'${source}'`)
+    }
   })
 
   it("reports every population and identity-link boundary before migration", () => {

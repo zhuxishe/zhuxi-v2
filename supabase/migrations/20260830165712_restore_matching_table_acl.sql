@@ -5,6 +5,9 @@
 
 BEGIN;
 
+SET LOCAL lock_timeout = '5s';
+SET LOCAL statement_timeout = '2min';
+
 SELECT pg_advisory_xact_lock(hashtextextended('member-master-migration', 0));
 
 DROP POLICY IF EXISTS member_master_match_sessions_active_member_read

@@ -34,6 +34,7 @@ export default async function AdminCommunityModerationPage({ searchParams }: Pag
     : undefined
 
   const admin = await requireAdmin()
+  const canViewMemberNumber = admin.role === "super_admin"
   const result = await fetchCommunityReports({
     status,
     reason,
@@ -53,9 +54,9 @@ export default async function AdminCommunityModerationPage({ searchParams }: Pag
         <CommunitySetupWarning />
       ) : (
         <div className="space-y-4">
-          <ModerationFilters values={values} />
+          <ModerationFilters values={values} canSearchMemberNumber={canViewMemberNumber} />
           <p className="text-sm text-muted-foreground">显示最近 {result.reports.length} 条记录</p>
-          <ModerationQueue reports={result.reports} />
+          <ModerationQueue reports={result.reports} canViewMemberNumber={canViewMemberNumber} />
         </div>
       )}
     </CommunityAdminPage>

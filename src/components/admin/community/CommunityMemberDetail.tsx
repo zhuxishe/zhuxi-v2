@@ -6,7 +6,7 @@ import { Camera, Gavel, MessageCircle, MessageSquareText, RotateCcw, ShieldAlert
 import { Button } from "@/components/ui/button"
 import { CommunityAvatar } from "@/components/community/CommunityAvatar"
 import { CommunityMetricCard } from "./CommunityMetricCard"
-import { COMMUNITY_ADMIN_INPUT_CLASS, COMMUNITY_ADMIN_LABEL_CLASS, formatAdminDate } from "./community-admin-ui"
+import { COMMUNITY_ADMIN_INPUT_CLASS, COMMUNITY_ADMIN_LABEL_CLASS, formatAdminDate, formatProtectedMemberNumber } from "./community-admin-ui"
 import type { CommunityMemberDetail as MemberDetail } from "./types"
 import {
   applyCommunitySanction,
@@ -91,7 +91,7 @@ export function CommunityMemberDetail({ member, adminRole }: { member: MemberDet
             <div>
             <p className="text-xs font-medium text-primary">社区身份</p>
             <h3 className="mt-1 text-xl font-semibold">{member.nickname}</h3>
-            <p className="mt-2 text-sm text-muted-foreground">会员编号：{member.member_number ?? "未编号"} · 会员状态：{member.member_status}</p>
+            <p className="mt-2 text-sm text-muted-foreground">会员编号：{formatProtectedMemberNumber(member.member_number, adminRole === "super_admin")} · 会员状态：{member.member_status}</p>
             </div>
           </div>
           <div className="space-y-2 sm:w-72">

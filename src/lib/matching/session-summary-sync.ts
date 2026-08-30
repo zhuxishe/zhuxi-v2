@@ -4,6 +4,7 @@ import { buildSessionSummary } from "./session-summary"
 export async function syncSessionSummary(
   db: SupabaseClient<any, any, any>,
   sessionId: string,
+  auditReason: string,
 ) {
   const [{ data: session, error: sessionError }, { data: results, error: resultsError }] = await Promise.all([
     db.from("match_sessions").select("total_candidates").eq("id", sessionId).single(),
@@ -19,6 +20,7 @@ export async function syncSessionSummary(
     .update({
       total_matched: summary.totalMatched,
       total_unmatched: summary.totalUnmatched,
+      audit_reason: auditReason,
     })
     .eq("id", sessionId)
 

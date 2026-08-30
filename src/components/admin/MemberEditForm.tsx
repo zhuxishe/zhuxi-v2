@@ -8,12 +8,14 @@ import { MemberEditLanguage } from "./MemberEditLanguage"
 import { MemberEditInterests } from "./MemberEditInterests"
 import { MemberEditPersonality } from "./MemberEditPersonality"
 import { MemberEditBoundaries } from "./MemberEditBoundaries"
+import { MemberEditApplication, type MemberApplicationEditData } from "./MemberEditApplication"
 import {
   updateMemberIdentity,
   updateMemberLanguage,
   updateMemberInterests,
   updateMemberPersonality,
   updateMemberBoundaries,
+  updateMemberApplication,
 } from "@/app/admin/members/[id]/edit/actions"
 import type { MemberDetail, InterviewEvaluationRow } from "@/types"
 
@@ -32,6 +34,7 @@ export function MemberEditForm({ memberId, member }: Props) {
   const router = useRouter()
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reason, setReason] = useState("")
 
   const rawEvals = member.interview_evaluations
   const evals = Array.isArray(rawEvals) ? rawEvals : rawEvals ? [rawEvals] : []
@@ -41,23 +44,43 @@ export function MemberEditForm({ memberId, member }: Props) {
   const [interests, setInterests] = useState(member.member_interests ?? {})
   const [personality, setPersonality] = useState(member.member_personality ?? {})
   const [boundaries, setBoundaries] = useState(member.member_boundaries ?? {})
+  const originalApplication: MemberApplicationEditData = {
+    interview_date: member.interview_date,
+    interviewer: member.interviewer,
+    attractiveness_score: member.attractiveness_score,
+  }
+  const [application, setApplication] = useState(originalApplication)
 
   async function handleSave() {
-    setSaving(true); setError(null)
-    const results = await Promise.all([
-      updateMemberIdentity(memberId, identity),
-      updateMemberLanguage(memberId, language),
-      updateMemberInterests(memberId, interests),
-      updateMemberPersonality(memberId, personality),
-      updateMemberBoundaries(memberId, boundaries),
-    ])
-    const failed = results.find((r) => r.error)
-    setSaving(false)
-    if (failed) {
-      setError(failed.error ?? "保存失败")
-    } else {
-      router.push(`/admin/members/${memberId}`)
+    if (reason.trim().length < 4) {
+      setError("请填写至少 4 个字符的修改原因")
+      return
     }
+    setSaving(true); setError(null)
+    const updates = [
+      ["基本信息", JSON.stringify(identity) !== JSON.stringify(member.member_identity ?? {}), () => updateMemberIdentity(memberId, identity, reason)],
+      ["语言", JSON.stringify(language) !== JSON.stringify(member.member_language ?? {}), () => updateMemberLanguage(memberId, language, reason)],
+      ["兴趣", JSON.stringify(interests) !== JSON.stringify(member.member_interests ?? {}), () => updateMemberInterests(memberId, interests, reason)],
+      ["性格", JSON.stringify(personality) !== JSON.stringify(member.member_personality ?? {}), () => updateMemberPersonality(memberId, personality, reason)],
+      ["个人边界", JSON.stringify(boundaries) !== JSON.stringify(member.member_boundaries ?? {}), () => updateMemberBoundaries(memberId, boundaries, reason)],
+      ["申请信息", JSON.stringify(application) !== JSON.stringify(originalApplication), () => updateMemberApplication(memberId, application, reason)],
+    ] as const
+    const changedUpdates = updates.filter(([, changed]) => changed)
+    if (changedUpdates.length === 0) {
+      setSaving(false)
+      setError("没有检测到资料变更")
+      return
+    }
+    for (const [label, , update] of changedUpdates) {
+      const result = await update()
+      if (result.error) {
+        setSaving(false)
+        setError(`${label}保存失败：${result.error}。此前已完成的分区已记录审计，请刷新后核对。`)
+        return
+      }
+    }
+    setSaving(false)
+    router.push(`/admin/members/${memberId}`)
   }
 
   return (
@@ -69,7 +92,13 @@ export function MemberEditForm({ memberId, member }: Props) {
           <MemberEditIdentity data={identity} onChange={setIdentity} />
         </div>
 
-        {/* 2. 面试评估（只读 — 走独立编辑页） */}
+        {/* 2. 申请流程字段（可编辑） */}
+        <div className="p-5 space-y-3">
+          <SectionHeader title="申请流程字段" color="amber" />
+          <MemberEditApplication data={application} onChange={setApplication} />
+        </div>
+
+        {/* 3. 面试评估（只读 — 走独立编辑页） */}
         <div className="p-5 space-y-3">
           <SectionHeader title="面试评估（只读）" color="amber" />
           {!evals.length ? <p className="text-sm text-muted-foreground">未评估</p> : (
@@ -115,8 +144,22 @@ export function MemberEditForm({ memberId, member }: Props) {
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
+      <label className="block rounded-xl border border-border bg-card p-4">
+        <span className="text-sm font-semibold">本次修改原因（必填）</span>
+        <textarea
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="例如：根据本人 2026-08-30 提交的更正申请更新资料"
+          className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          disabled={saving}
+        />
+        <span className="mt-1 block text-xs text-muted-foreground">原因会写入每个变更分区的审计记录。</span>
+      </label>
+
       <div className="flex gap-3">
-        <button onClick={handleSave} disabled={saving}
+        <button onClick={handleSave} disabled={saving || reason.trim().length < 4}
           className="rounded-lg bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors">
           {saving ? "保存中..." : "保存全部"}
         </button>

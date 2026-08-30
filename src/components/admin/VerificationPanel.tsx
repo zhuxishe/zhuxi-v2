@@ -19,6 +19,9 @@ export function VerificationPanel({ memberId, existing }: Props) {
   const [photo, setPhoto] = useState(existing?.photo_verified ?? false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reason, setReason] = useState("")
+  const hasChanges = studentId !== (existing?.student_id_verified ?? false)
+    || photo !== (existing?.photo_verified ?? false)
 
   async function handleSave() {
     setSubmitting(true)
@@ -26,10 +29,13 @@ export function VerificationPanel({ memberId, existing }: Props) {
     const result = await updateVerification(memberId, {
       student_id_verified: studentId,
       photo_verified: photo,
-    })
+    }, reason)
     setSubmitting(false)
     if (result.error) setError(result.error)
-    else router.refresh()
+    else {
+      setReason("")
+      router.refresh()
+    }
   }
 
   return (
@@ -56,8 +62,21 @@ export function VerificationPanel({ memberId, existing }: Props) {
         )}
       </div>
 
+      <label className="block rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+        <span className="text-sm font-semibold">核验变更原因（必填）</span>
+        <textarea
+          value={reason}
+          onChange={(event) => setReason(event.target.value)}
+          maxLength={500}
+          rows={3}
+          placeholder="例如：现场核对学生证原件"
+          className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+          disabled={submitting}
+        />
+      </label>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
-      <Button onClick={handleSave} disabled={submitting}>
+      <Button onClick={handleSave} disabled={submitting || reason.trim().length < 4 || !hasChanges}>
         {submitting ? "保存中..." : "保存核验状态"}
       </Button>
     </div>

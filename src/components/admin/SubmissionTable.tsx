@@ -10,6 +10,7 @@ interface Props {
   submissions: Sub[]
   onEdit?: (sub: Sub) => void
   editable?: boolean
+  showRaw?: boolean
 }
 
 const GAME_TYPE_COLORS: Record<string, string> = {
@@ -18,7 +19,7 @@ const GAME_TYPE_COLORS: Record<string, string> = {
   "都可以": "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400",
 }
 
-export function SubmissionTable({ submissions, onEdit, editable = true }: Props) {
+export function SubmissionTable({ submissions, onEdit, editable = true, showRaw = true }: Props) {
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
   if (submissions.length === 0) {
@@ -36,6 +37,23 @@ export function SubmissionTable({ submissions, onEdit, editable = true }: Props)
         const slotCount = Object.values(avail).reduce((sum, s) => sum + s.length, 0)
         const dayCount = Object.keys(avail).length
         const expanded = expandedId === sub.id
+
+        if (!showRaw) {
+          return (
+            <div
+              key={sub.id}
+              className="flex items-center justify-between gap-3 rounded-lg bg-card px-4 py-3 ring-1 ring-foreground/10"
+            >
+              <div>
+                <span className="text-sm font-medium">{name}</span>
+                {school && <span className="ml-3 text-xs text-muted-foreground">{school}</span>}
+              </div>
+              <span className="text-xs text-muted-foreground">
+                已提交 · 原始问卷仅超级管理员可查看
+              </span>
+            </div>
+          )
+        }
 
         return (
           <div key={sub.id} className="rounded-lg bg-card ring-1 ring-foreground/10">

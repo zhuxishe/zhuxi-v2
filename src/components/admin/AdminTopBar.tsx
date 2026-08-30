@@ -12,7 +12,7 @@ export function AdminTopBar({ admin, title }: Props) {
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">{admin.name}</span>
         <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-          {admin.role === "super_admin" ? "超级管理员" : "管理员"}
+          管理员
         </span>
       </div>
     </header>

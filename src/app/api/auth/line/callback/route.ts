@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { buildPublicUrl } from "@/lib/site-url"
+import {
+  getLineIdentityDiagnostic,
+  isValidLineUserId,
+  serviceSetMemberLineIdentity,
+  toPublicLineIdentityError,
+} from "@/lib/member-master/line"
 
 const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID!
 const LINE_CHANNEL_SECRET = process.env.LINE_CHANNEL_SECRET!
@@ -14,6 +20,20 @@ function isSecureRequest(req: NextRequest) {
   return req.nextUrl.protocol === "https:"
 }
 
+function safeErrorName(error: unknown) {
+  return error instanceof Error && error.name ? error.name : "UNKNOWN"
+}
+
+function clearStateCookie(req: NextRequest, res: NextResponse) {
+  res.cookies.set("line_oauth_state", "", {
+    path: "/",
+    maxAge: 0,
+    sameSite: "lax",
+    secure: isSecureRequest(req),
+  })
+  return res
+}
+
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get("code")
@@ -22,7 +42,7 @@ export async function GET(req: NextRequest) {
   const profileUrl = "/app/profile"
 
   if (error || !code) {
-    return profileErrorRedirect(req)
+    return clearStateCookie(req, profileErrorRedirect(req))
   }
 
   // CSRF 验证：比对 URL 中的 state 与 cookie 中保存的 state
@@ -32,25 +52,17 @@ export async function GET(req: NextRequest) {
     .map(c => c.trim().split("="))
     .find(([k]) => k === "line_oauth_state")?.[1]
 
-  const clearStateCookie = (res: NextResponse) => {
-    res.cookies.set("line_oauth_state", "", {
-      path: "/",
-      maxAge: 0,
-      sameSite: "lax",
-      secure: isSecureRequest(req),
-    })
-    return res
-  }
-
   if (!urlState || !storedState || urlState !== storedState) {
     const res = profileErrorRedirect(req)
-    return clearStateCookie(res)
+    return clearStateCookie(req, res)
   }
 
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.redirect(new URL("/login", req.url))
+    if (!user) {
+      return clearStateCookie(req, NextResponse.redirect(new URL("/login", req.url)))
+    }
 
     // Exchange code for tokens
     const tokenRes = await fetch("https://api.line.me/oauth2/v2.1/token", {
@@ -66,51 +78,55 @@ export async function GET(req: NextRequest) {
     })
 
     if (!tokenRes.ok) {
-      return profileErrorRedirect(req)
+      return clearStateCookie(req, profileErrorRedirect(req))
     }
 
-    const tokens = await tokenRes.json()
+    const tokens = await tokenRes.json() as { access_token?: unknown }
+    if (typeof tokens.access_token !== "string" || !tokens.access_token) {
+      return clearStateCookie(req, profileErrorRedirect(req))
+    }
 
     // Get LINE profile
     const profileRes = await fetch("https://api.line.me/v2/profile", {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     })
     if (!profileRes.ok) {
-      return profileErrorRedirect(req)
+      return clearStateCookie(req, profileErrorRedirect(req))
     }
 
-    const lineProfile = await profileRes.json()
-    const lineUserId = lineProfile.userId as string
+    const lineProfile = await profileRes.json() as { userId?: unknown }
+    if (!isValidLineUserId(lineProfile.userId)) {
+      return clearStateCookie(req, profileErrorRedirect(req))
+    }
+    const lineUserId = lineProfile.userId
 
-    // Check conflict
+    // The service-only RPC owns conflict detection, atomic mutation, fixed
+    // reason/source values and append-only audit creation.
     const serviceClient = createAdminClient()
-
-    const { data: existing } = await serviceClient
-      .from("members")
-      .select("id, user_id")
-      .eq("line_user_id", lineUserId)
-      .maybeSingle()
-
-    if (existing && existing.user_id !== user.id) {
-      return NextResponse.redirect(new URL(`${profileUrl}?line_error=${encodeURIComponent("This LINE account is bound to another user")}`, req.url))
-    }
-
-    // Bind
-    const { error: updateError } = await serviceClient
-      .from("members")
-      .update({ line_user_id: lineUserId })
-      .eq("user_id", user.id)
+    const { error: updateError } = await serviceSetMemberLineIdentity(serviceClient, {
+      userId: user.id,
+      lineUserId,
+      operation: "bind",
+    })
 
     if (updateError) {
-      const res = profileErrorRedirect(req)
-      return clearStateCookie(res)
+      console.error(
+        "[LINE Callback] identity RPC failed:",
+        getLineIdentityDiagnostic(updateError)
+      )
+      const publicError = toPublicLineIdentityError(updateError)
+      const res = NextResponse.redirect(new URL(
+        `${profileUrl}?line_error=${encodeURIComponent(publicError.message)}`,
+        req.url
+      ))
+      return clearStateCookie(req, res)
     }
 
     const res = NextResponse.redirect(new URL(`${profileUrl}?line_success=${encodeURIComponent("LINE bound successfully")}`, req.url))
-    return clearStateCookie(res)
+    return clearStateCookie(req, res)
   } catch (err) {
-    console.error("[LINE Callback] Error:", err)
+    console.error("[LINE Callback] unexpected failure:", safeErrorName(err))
     const res = profileErrorRedirect(req)
-    return clearStateCookie(res)
+    return clearStateCookie(req, res)
   }
 }

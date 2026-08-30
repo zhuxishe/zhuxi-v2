@@ -21,6 +21,7 @@ interface Props {
   diagnostics: DiagnosticItem[]
   sessionId?: string
   submissionPrefs?: Record<string, SubmissionPrefInfo>
+  canViewRawSubmissions?: boolean
   onManualPair?: (memberId: string, name: string) => void
 }
 
@@ -85,7 +86,7 @@ function analyzeReasons(
   return reasons
 }
 
-export function UnmatchedDiagnostics({ diagnostics, submissionPrefs, onManualPair }: Props) {
+export function UnmatchedDiagnostics({ diagnostics, submissionPrefs, canViewRawSubmissions = false, onManualPair }: Props) {
   const [open, setOpen] = useState(true)
 
   if (diagnostics.length === 0) return null
@@ -116,7 +117,9 @@ export function UnmatchedDiagnostics({ diagnostics, submissionPrefs, onManualPai
           {diagnostics.map((d) => {
             const name = d.member?.member_identity?.full_name ?? d.member_id
             const pref = submissionPrefs?.[d.member_id]
-            const reasons = analyzeReasons(d, diagnostics, submissionPrefs)
+            const reasons = canViewRawSubmissions
+              ? analyzeReasons(d, diagnostics, submissionPrefs)
+              : ["原始问卷与详细诊断已隐藏；配对校验仍在服务端执行"]
 
             return (
               <div key={d.id} className="px-4 py-3 space-y-1.5">

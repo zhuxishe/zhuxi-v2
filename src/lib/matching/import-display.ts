@@ -5,6 +5,7 @@ import type { ImportDisplayInfo } from "@/components/admin/match-detail-types"
 import type { LegacyImportProfile } from "./import-metadata"
 
 type RowMember = {
+  record_source?: string | null
   member_number?: string | null
   member_identity?: { full_name?: string | null; nickname?: string | null } | { full_name?: string | null; nickname?: string | null }[] | null
 }
@@ -32,7 +33,8 @@ function buildFallbackInfo(
   const identity = getSingleRelation(member?.member_identity)
   const normalizedName = normalizeImportName(identity?.full_name ?? identity?.nickname ?? "")
   const matches = normalizedName ? (legacyMap.get(normalizedName) ?? []) : []
-  const isTemp = String(member?.member_number ?? "").startsWith("IMP-")
+  const isTemp = member?.record_source === "import"
+    || String(member?.member_number ?? "").startsWith("IMP-")
 
   if (!isTemp) {
     return {

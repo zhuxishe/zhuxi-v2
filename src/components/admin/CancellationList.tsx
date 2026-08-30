@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { approveCancellation, rejectCancellation } from "@/app/admin/matching/cancellations/actions"
 import { Check, X, AlertTriangle } from "lucide-react"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 interface CancellationRequest {
   id: string
@@ -33,6 +34,7 @@ export function CancellationList({ requests }: Props) {
 function CancellationItem({ request }: { request: CancellationRequest }) {
   const [loading, setLoading] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [auditReason, setAuditReason] = useState("")
   const router = useRouter()
 
   const isGroup = Array.isArray(request.group_member_names) && request.group_member_names.length > 0
@@ -48,7 +50,7 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
   async function handleAction(action: "approve" | "reject") {
     setLoading(action); setError(null)
     const fn = action === "approve" ? approveCancellation : rejectCancellation
-    const result = await fn(request.id)
+    const result = await fn(request.id, auditReason)
     setLoading("")
     if (result.error) setError(result.error)
     else router.refresh()
@@ -77,10 +79,25 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
 
       {error && <p className="text-xs text-destructive">{error}</p>}
 
+      <div className="space-y-1">
+        <label htmlFor={`cancellation-reason-${request.id}`} className="text-xs font-medium">
+          审批理由
+        </label>
+        <input
+          id={`cancellation-reason-${request.id}`}
+          value={auditReason}
+          onChange={(event) => setAuditReason(event.target.value)}
+          minLength={4}
+          maxLength={500}
+          placeholder="必填，4–500 字；写入成员审计记录"
+          className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+        />
+      </div>
+
       <div className="flex gap-2 pt-1">
         <button
           onClick={() => handleAction("approve")}
-          disabled={!!loading}
+          disabled={!!loading || !adminAuditReasonIsValid(auditReason)}
           className="inline-flex items-center gap-1 rounded-lg bg-green-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-green-600 disabled:opacity-50 transition-colors"
         >
           <Check className="size-3.5" />
@@ -88,7 +105,7 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
         </button>
         <button
           onClick={() => handleAction("reject")}
-          disabled={!!loading}
+          disabled={!!loading || !adminAuditReasonIsValid(auditReason)}
           className="inline-flex items-center gap-1 rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
         >
           <X className="size-3.5" />

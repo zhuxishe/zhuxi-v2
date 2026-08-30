@@ -1,7 +1,11 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
+import {
+  ensureMyMemberRecord,
+  getMemberMasterDiagnostic,
+} from "@/lib/member-master/rpc"
+import { buildPublicUrl } from "@/lib/site-url"
 import { redirect } from "next/navigation"
 
 export async function sendMagicLink(email: string) {
@@ -9,31 +13,20 @@ export async function sendMagicLink(email: string) {
 
   const supabase = await createClient()
 
-  // Verify this email belongs to an approved member
-  const { data: member } = await supabase
-    .from("members")
-    .select("id, status")
-    .eq("email", email.trim().toLowerCase())
-    .single()
-
-  if (!member) {
-    return { error: "emailNotRegistered" }
-  }
-
-  if (member.status !== "approved") {
-    return { error: "accountNotApproved" }
-  }
-
-  // Send magic link
+  // Deprecated compatibility action. Never infer Auth ownership or approval
+  // from members.email: an unbound legacy row is not the current Auth user.
+  // Existing Auth users may continue through the canonical callback, while
+  // new users must use the current registration flow at /login.
   const { error } = await supabase.auth.signInWithOtp({
     email: email.trim().toLowerCase(),
     options: {
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/app/login/callback`,
+      emailRedirectTo: buildPublicUrl("/login/callback"),
+      shouldCreateUser: false,
     },
   })
 
   if (error) {
-    console.error("[sendMagicLink]", error)
+    console.error("[legacy magic link] failed:", error.code ?? "UNKNOWN")
     return { error: "sendFailed" }
   }
   return { success: true }
@@ -43,22 +36,18 @@ export async function handleAuthCallback() {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
-  if (!user) redirect("/app/login")
+  if (!user) redirect("/login")
 
-  // Link auth user to member record (if not already linked)
-  const { data: member } = await supabase
-    .from("members")
-    .select("id, user_id")
-    .eq("email", user.email ?? "")
-    .single()
-
-  if (member && !member.user_id) {
-    const admin = createAdminClient()
-    await admin
-      .from("members")
-      .update({ user_id: user.id })
-      .eq("id", member.id)
-      .is("user_id", null)
+  try {
+    // Legacy callback compatibility. Ownership is established only through
+    // auth.uid(); an email match must never claim an unbound legacy member.
+    await ensureMyMemberRecord(supabase)
+  } catch (error) {
+    console.error(
+      "[legacy login callback] member master failed:",
+      getMemberMasterDiagnostic(error)
+    )
+    redirect("/login?error=oauth_failed")
   }
 
   redirect("/app")

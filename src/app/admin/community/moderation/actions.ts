@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient as createServerClient } from "@/lib/supabase/server"
 import type { CommunityRevealedAuthor } from "@/components/admin/community/types"
 
 type RpcResult<T> = PromiseLike<{ data: T | null; error: { code?: string; message: string } | null }>
@@ -33,7 +34,8 @@ function revalidateModerationPaths(reportId?: string) {
 }
 
 async function fetchMemberSanctions(memberId: string): Promise<CommunityRevealedAuthor["sanctions"]> {
-  const { data, error } = await createAdminClient()
+  const sessionDb = await createServerClient() as unknown as ReturnType<typeof createAdminClient>
+  const { data, error } = await sessionDb
     .from("community_sanctions")
     .select("id, sanction_type, reason, starts_at, ends_at, revoked_at")
     .eq("member_id", memberId)
@@ -97,18 +99,19 @@ export async function resolveCommunityReport(
 
 export async function revealCommunityReportAuthor(reportId: string, auditReason: string) {
   const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "只有超级管理员可以揭示匿名作者" }
   const reason = auditReason.trim()
   if (!reason) return { error: "查看作者身份必须填写审计理由" }
 
-  const adminDb = createAdminClient()
-  const { data: report, error } = await adminDb
+  const sessionDb = await createServerClient() as unknown as ReturnType<typeof createAdminClient>
+  const { data: report, error } = await sessionDb
     .from("community_reports")
     .select("target_type, reported_post_id, reported_comment_id, reported_profile_id")
     .eq("id", reportId)
     .maybeSingle()
   if (error || !report) return { error: "举报不存在或无法读取" }
 
-  const rpc = getCommunityRpcClient()
+  const rpc = sessionDb as unknown as CommunityRpcClient
   if (report.target_type === "profile" && report.reported_profile_id) {
     const result = await rpc.rpc<Record<string, unknown>>("community_admin_get_member", {
       p_profile_id: report.reported_profile_id,
@@ -135,7 +138,7 @@ export async function revealCommunityReportAuthor(reportId: string, auditReason:
   const result = await rpc.rpc<CommunityRevealedAuthor[]>(functionName, {
     [report.target_type === "post" ? "p_post_id" : "p_comment_id"]: targetId,
     p_reason: reason,
-    p_admin_user_id: admin.id,
+    p_report_id: reportId,
   })
   if (result.error) return { error: friendlyRpcError(result.error) }
   const author = result.data?.[0]

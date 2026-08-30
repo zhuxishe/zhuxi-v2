@@ -37,15 +37,20 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing }:
   )
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [reason, setReason] = useState("")
 
   function setField<K extends keyof InterviewEvalFormData>(key: K, val: InterviewEvalFormData[K]) {
     setData((prev) => ({ ...prev, [key]: val }))
   }
 
   async function handleSubmit() {
+    if (reason.trim().length < 4) {
+      setError("请填写至少 4 个字符的保存原因")
+      return
+    }
     setSubmitting(true)
     setError(null)
-    const result = await submitInterviewEval(memberId, data, interviewDate)
+    const result = await submitInterviewEval(memberId, data, interviewDate, reason)
     setSubmitting(false)
     if (result.error) setError(result.error)
     else router.push(`/admin/members/${memberId}`)
@@ -107,9 +112,24 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing }:
         <textarea className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" rows={3} placeholder="其他观察和备注..." value={data.interviewer_notes} onChange={(e) => setField("interviewer_notes", e.target.value)} />
       </div>
 
+      <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
+        <label className="block">
+          <span className="text-sm font-semibold">本次保存原因（必填）</span>
+          <textarea
+            value={reason}
+            onChange={(event) => setReason(event.target.value)}
+            maxLength={500}
+            rows={3}
+            placeholder="例如：2026-08-30 面试完成，录入本人评估"
+            className="mt-2 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
+            disabled={submitting}
+          />
+        </label>
+      </div>
+
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-3">
-        <Button onClick={handleSubmit} disabled={submitting}>{submitting ? "保存中..." : "保存评估"}</Button>
+        <Button onClick={handleSubmit} disabled={submitting || reason.trim().length < 4}>{submitting ? "保存中..." : "保存评估"}</Button>
         <Button variant="outline" onClick={() => router.back()}>取消</Button>
       </div>
     </div>

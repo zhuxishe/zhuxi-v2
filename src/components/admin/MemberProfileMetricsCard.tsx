@@ -134,6 +134,7 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
   const [score, setScore] = useState(metrics.compatibilityScore.toFixed(1))
   const [status, setStatus] = useState<"pending" | "published">(metrics.compatibilityStatus)
   const [note, setNote] = useState(metrics.internalNote)
+  const [reason, setReason] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [savePending, startSaveTransition] = useTransition()
@@ -153,6 +154,7 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
         compatibilityScore: parsedScore,
         compatibilityStatus: status,
         internalNote: note,
+        reason,
       })
       if (!result.success) {
         setError(result.error)
@@ -167,7 +169,7 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
     setError(null)
     setMessage(null)
     startRecalculateTransition(async () => {
-      const result = await recalculateMemberActivityStats(member.id)
+      const result = await recalculateMemberActivityStats(member.id, reason)
       if (!result.success) {
         setError(result.error)
         return
@@ -252,7 +254,7 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
               <h3 className="font-semibold">运营设置</h3>
               <p className="mt-1 text-xs leading-5 text-muted-foreground">保存后会记录操作者、时间和字段变更。</p>
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={recalculate} disabled={recalculatePending || savePending}>
+            <Button type="button" variant="outline" size="sm" onClick={recalculate} disabled={recalculatePending || savePending || reason.trim().length < 4}>
               <RefreshCw className={`size-4 ${recalculatePending ? "animate-spin motion-reduce:animate-none" : ""}`} />
               {recalculatePending ? "计算中" : "重新计算活动次数"}
             </Button>
@@ -312,6 +314,19 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
             <span className="mt-1 block text-right text-xs text-muted-foreground">{note.length}/2000</span>
           </label>
 
+          <label className="mt-4 block">
+            <span className="mb-1.5 block text-xs font-medium text-muted-foreground">操作原因（必填）</span>
+            <textarea
+              value={reason}
+              onChange={(event) => setReason(event.target.value)}
+              maxLength={500}
+              rows={2}
+              placeholder="说明本次保存或重算的原因"
+              className={`${INPUT_CLASS} resize-y py-2.5 leading-6`}
+              disabled={savePending || recalculatePending}
+            />
+          </label>
+
           {(error || message) && (
             <p role={error ? "alert" : "status"} className={`mt-4 rounded-lg px-3 py-2 text-sm ${error ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
               {error ?? message}
@@ -319,7 +334,7 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
           )}
 
           <div className="mt-4 flex justify-end">
-            <Button type="submit" disabled={savePending || recalculatePending}>
+            <Button type="submit" disabled={savePending || recalculatePending || reason.trim().length < 4}>
               <Save className="size-4" />
               {savePending ? "保存中" : "保存运营设置"}
             </Button>

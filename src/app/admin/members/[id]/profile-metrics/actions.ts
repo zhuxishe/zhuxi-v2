@@ -10,6 +10,7 @@ export interface UpdateMemberProfileMetricsInput {
   compatibilityScore: number
   compatibilityStatus: "pending" | "published"
   internalNote: string
+  reason: string
 }
 
 export type MemberProfileMetricsActionResult =
@@ -59,6 +60,10 @@ export async function updateMemberProfileMetrics(
   if (!internalNote || internalNote.length > 2000) {
     return { success: false, error: "请填写内部备注，且不要超过 2000 个字符" }
   }
+  const reason = input.reason.trim()
+  if (reason.length < 4 || reason.length > 500) {
+    return { success: false, error: "请填写 4–500 个字符的修改原因" }
+  }
 
   const supabase = await createClient() as unknown as ProfileMetricsRpcClient
   const { error } = await supabase.rpc<null>("admin_update_member_profile_metrics", {
@@ -68,7 +73,7 @@ export async function updateMemberProfileMetrics(
     p_compatibility_status: input.compatibilityStatus,
     p_internal_note: internalNote,
     p_score_source: "manual",
-    p_audit_reason: "后台成员详情页手动更新",
+    p_audit_reason: reason,
   })
 
   if (error) {
@@ -82,17 +87,22 @@ export async function updateMemberProfileMetrics(
 
 export async function recalculateMemberActivityStats(
   memberId: string,
+  rawReason: string,
 ): Promise<MemberProfileMetricsActionResult> {
   await requireAdmin()
 
   if (!UUID_PATTERN.test(memberId)) {
     return { success: false, error: "成员编号无效，请刷新页面后重试" }
   }
+  const reason = rawReason.trim()
+  if (reason.length < 4 || reason.length > 500) {
+    return { success: false, error: "请填写 4–500 个字符的重算原因" }
+  }
 
   const supabase = await createClient() as unknown as ProfileMetricsRpcClient
   const { error } = await supabase.rpc<unknown>("admin_recalculate_member_activity_stats", {
     p_member_id: memberId,
-    p_audit_reason: "后台成员详情页手动重算活动次数",
+    p_audit_reason: reason,
   })
 
   if (error) {

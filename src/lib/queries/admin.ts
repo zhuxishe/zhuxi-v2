@@ -1,7 +1,9 @@
-import { createClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function fetchDashboardStats() {
-  const supabase = await createClient()
+  await requireAdmin()
+  const supabase = createAdminClient()
 
   const [
     { count: totalMembers },
@@ -9,10 +11,10 @@ export async function fetchDashboardStats() {
     { count: approvedMembers },
     { count: rejectedMembers },
   ] = await Promise.all([
-    supabase.from("members").select("*", { count: "exact", head: true }),
-    supabase.from("members").select("*", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("members").select("*", { count: "exact", head: true }).eq("status", "approved"),
-    supabase.from("members").select("*", { count: "exact", head: true }).eq("status", "rejected"),
+    supabase.from("members").select("id", { count: "exact", head: true }),
+    supabase.from("members").select("id", { count: "exact", head: true }).eq("status", "pending"),
+    supabase.from("members").select("id", { count: "exact", head: true }).eq("status", "approved"),
+    supabase.from("members").select("id", { count: "exact", head: true }).eq("status", "rejected"),
   ])
 
   return {

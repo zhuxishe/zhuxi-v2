@@ -1,7 +1,6 @@
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchMemberDetail } from "@/lib/queries/members"
-import { fetchMemberVerification } from "@/lib/queries/activities"
+import { fetchMember360, isMemberNotFoundError, member360ToLegacyDetail } from "@/lib/queries/member-center"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { VerificationPanel } from "@/components/admin/VerificationPanel"
 
@@ -13,10 +12,15 @@ export default async function MemberVerifyPage({ params }: Props) {
   const admin = await requireAdmin()
   const { id } = await params
 
-  let member
-  try { member = await fetchMemberDetail(id) } catch { notFound() }
-
-  const verification = await fetchMemberVerification(id)
+  let member360
+  try {
+    member360 = await fetchMember360(id)
+  } catch (error) {
+    if (isMemberNotFoundError(error)) notFound()
+    throw error
+  }
+  const member = member360ToLegacyDetail(member360)
+  const verification = member.member_verification
   const name = member.member_identity?.full_name ?? "未知"
 
   return (

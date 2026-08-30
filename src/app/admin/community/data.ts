@@ -1,4 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { createClient as createServerClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/admin"
 import type {
   CommunityAdminMember,
   CommunityAnnouncement,
@@ -15,8 +17,8 @@ type CommunityRpcClient = {
   rpc<T>(name: string, args?: Record<string, unknown>): RpcResult<T>
 }
 
-function communityRpcClient() {
-  return createAdminClient() as unknown as CommunityRpcClient
+async function communityRpcClient() {
+  return await createServerClient() as unknown as CommunityRpcClient
 }
 
 interface QueryError {
@@ -198,6 +200,7 @@ function snapshotProfile(value: unknown): CommunityReport["target_profile"] {
 
 async function hydrateCommunityReports(rows: RawCommunityReport[]): Promise<CommunityReport[]> {
   if (rows.length === 0) return []
+  const admin = await requireAdmin()
   const supabase = createAdminClient()
   const memberIds = [...new Set(rows.map((row) => row.reporter_member_id))]
   const postIds = rows.flatMap((row) => (row.reported_post_id ? [row.reported_post_id] : []))
@@ -214,7 +217,9 @@ async function hydrateCommunityReports(rows: RawCommunityReport[]): Promise<Comm
     commentReportsResult,
     profileReportsResult,
   ] = await Promise.all([
-    supabase.from("members").select("id, member_number").in("id", memberIds),
+    admin.role === "super_admin"
+      ? supabase.from("members").select("id, member_number").in("id", memberIds)
+      : Promise.resolve({ data: [], error: null }),
     postIds.length > 0
       ? supabase.from("community_posts").select("id, title, body, status, is_anonymous").in("id", postIds)
       : Promise.resolve({ data: [], error: null }),
@@ -357,6 +362,7 @@ export async function fetchCommunityReports(filters: CommunityReportFilters = {}
   reports: CommunityReport[]
   setupRequired: boolean
 }> {
+  const admin = await requireAdmin()
   const supabase = createAdminClient()
   let query = supabase.from("community_reports").select("*").order("created_at", { ascending: false }).limit(100)
   if (filters.status) query = query.eq("status", filters.status)
@@ -387,6 +393,9 @@ export async function fetchCommunityReports(filters: CommunityReportFilters = {}
   if (filters.from) query = query.gte("created_at", `${filters.from}T00:00:00+09:00`)
   if (filters.to) query = query.lt("created_at", `${filters.to}T23:59:59.999+09:00`)
   if (filters.reporterMemberNumber) {
+    if (admin.role !== "super_admin") {
+      return { reports: [], setupRequired: false }
+    }
     const { data: reporter, error: reporterError } = await supabase
       .from("members")
       .select("id")
@@ -446,7 +455,8 @@ export async function fetchCommunityAdminMembers({
   members: CommunityAdminMember[]
   setupRequired: boolean
 }> {
-  const rpc = communityRpcClient()
+  const admin = await requireAdmin()
+  const rpc = await communityRpcClient()
   const members: CommunityAdminMember[] = []
   let cursorJoinedAt = afterJoinedAt ?? null
   let cursorProfileId = afterProfileId ?? null
@@ -460,7 +470,9 @@ export async function fetchCommunityAdminMembers({
     })
     if (isCommunitySchemaMissing(error)) return { members: [], setupRequired: true }
     if (error) throw error
-    const page = data ?? []
+    const page = (data ?? []).map((member) => admin.role === "super_admin"
+      ? member
+      : { ...member, member_number: null })
     members.push(...page)
     if (page.length < pageSize) break
     const last = page.at(-1)
@@ -495,7 +507,8 @@ export async function fetchCommunityAdminMember(profileId: string): Promise<{
   member: CommunityMemberDetail | null
   setupRequired: boolean
 }> {
-  const rpc = communityRpcClient()
+  const admin = await requireAdmin()
+  const rpc = await communityRpcClient()
   const { data, error } = await rpc.rpc<CommunityMemberRpcPayload>("community_admin_get_member", {
     p_profile_id: profileId,
   })
@@ -528,7 +541,7 @@ export async function fetchCommunityAdminMember(profileId: string): Promise<{
       preset_avatar: data.profile.preset_avatar,
       joined_at: data.profile.joined_at,
       member_id: data.member.id,
-      member_number: data.member.member_number,
+      member_number: admin.role === "super_admin" ? data.member.member_number : null,
       member_status: data.member.status,
       active_sanction_type: activeSanction?.sanction_type ?? null,
       active_sanction_ends_at: activeSanction?.ends_at ?? null,

@@ -31,6 +31,7 @@ interface Props {
   }
   pairRel?: PairRelationship | null
   submissionPrefs?: Record<string, SubmissionPrefInfo>
+  canViewRawSubmissions?: boolean
   onLock?: (id: string) => void
   onSplit?: (id: string) => void
   onRestore?: (id: string) => void
@@ -53,7 +54,7 @@ function scoreBgClass(score: number): string {
   return "bg-red-500/10"
 }
 
-export function MatchPairCard({ result, pairRel, submissionPrefs = {}, onLock, onSplit, onRestore }: Props) {
+export function MatchPairCard({ result, pairRel, submissionPrefs = {}, canViewRawSubmissions = false, onLock, onSplit, onRestore }: Props) {
   const { id, total_score, rank, status, best_slot, score_breakdown } = result
   const badge = STATUS_STYLES[status] ?? STATUS_STYLES.draft
   const aId = result.member_a?.id
@@ -99,16 +100,18 @@ export function MatchPairCard({ result, pairRel, submissionPrefs = {}, onLock, o
       </div>
 
       {/* Constraint checklist */}
-      <div className="px-4 py-3">
-        <ConstraintChecklist
-          memberA={result.member_a}
-          memberB={result.member_b}
-          groupMembers={result.group_member_details as import("./match-detail-types").EnrichedMember[] | null}
-          pairRel={pairRel}
-          bestSlot={best_slot}
-          submissionPrefs={submissionPrefs}
-        />
-      </div>
+      {canViewRawSubmissions ? (
+        <div className="px-4 py-3">
+          <ConstraintChecklist
+            memberA={result.member_a}
+            memberB={result.member_b}
+            groupMembers={result.group_member_details as import("./match-detail-types").EnrichedMember[] | null}
+            pairRel={pairRel}
+            bestSlot={best_slot}
+            submissionPrefs={submissionPrefs}
+          />
+        </div>
+      ) : null}
 
       {/* Score + breakdown */}
       <div className="px-4 py-3 space-y-3">

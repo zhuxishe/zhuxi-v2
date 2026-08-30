@@ -1,13 +1,13 @@
 import Link from "next/link"
 import { requireAdmin } from "@/lib/auth/admin"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { BlacklistAddForm } from "@/components/admin/BlacklistAddForm"
 import { BlacklistRemoveButton } from "@/components/admin/BlacklistRemoveButton"
 
 export default async function BlacklistPage() {
   const admin = await requireAdmin()
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data: rows } = await supabase
     .from("pair_relationships")

@@ -1,13 +1,16 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { requireAdmin } from "@/lib/auth/admin"
 import { fetchGroupMemberNames } from "./group-members"
 
 const MEMBER_SELECT = `
-  id, member_number,
+  id,
   member_identity (full_name, nickname)
 `
 
 export async function fetchPendingCancellations() {
-  const supabase = await createClient()
+  await requireAdmin()
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from("match_results")

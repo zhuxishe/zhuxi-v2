@@ -15,6 +15,7 @@ export function MemberNumberEditor({ memberId, memberNumber, canEdit }: MemberNu
   const initialValue = memberNumber ?? ""
   const [value, setValue] = useState(initialValue)
   const [savedValue, setSavedValue] = useState(initialValue)
+  const [reason, setReason] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
@@ -28,13 +29,14 @@ export function MemberNumberEditor({ memberId, memberNumber, canEdit }: MemberNu
     setError(null)
     setMessage(null)
     startTransition(async () => {
-      const result = await updateMemberNumber(memberId, normalized)
+      const result = await updateMemberNumber(memberId, normalized, reason)
       if (!result.success) {
         setError(result.error)
         return
       }
       setValue(result.memberNumber)
       setSavedValue(result.memberNumber)
+      setReason("")
       setMessage("会员编号已更新")
     })
   }
@@ -57,8 +59,8 @@ export function MemberNumberEditor({ memberId, memberNumber, canEdit }: MemberNu
         </div>
 
         {canEdit ? (
-          <form className="flex w-full max-w-md gap-2" onSubmit={submit}>
-            <label className="min-w-0 flex-1">
+          <form className="grid w-full max-w-xl gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]" onSubmit={submit}>
+            <label className="min-w-0">
               <span className="sr-only">会员编号</span>
               <input
                 value={value}
@@ -71,7 +73,18 @@ export function MemberNumberEditor({ memberId, memberNumber, canEdit }: MemberNu
                 className="min-h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
               />
             </label>
-            <Button type="submit" disabled={pending || !value.trim() || value.trim() === savedValue}>
+            <label className="min-w-0">
+              <span className="sr-only">修改原因</span>
+              <input
+                value={reason}
+                onChange={(event) => setReason(event.target.value)}
+                maxLength={500}
+                disabled={pending}
+                placeholder="修改原因（必填）"
+                className="min-h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
+              />
+            </label>
+            <Button type="submit" disabled={pending || !value.trim() || value.trim() === savedValue || reason.trim().length < 4}>
               <Save className="size-4" />
               {pending ? "保存中" : "保存"}
             </Button>

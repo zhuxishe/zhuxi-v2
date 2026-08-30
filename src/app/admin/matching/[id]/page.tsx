@@ -7,7 +7,7 @@ import { getSingleRelation } from "@/lib/supabase/relations"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MatchSessionView } from "@/components/admin/MatchSessionView"
 import type { EnrichedMember, SubmissionPrefInfo } from "@/components/admin/match-detail-types"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchPoolMembers } from "@/lib/queries/pool-members"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
@@ -30,6 +30,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   const { session, results } = data
   const roundId = (session as any).round_id as string | null
   const readOnly = !roundId
+  const canViewRawSubmissions = admin.role === "super_admin"
 
   // Collect member IDs for pair relationship lookup
   const memberIds = results.flatMap((r: Record<string, unknown>) => {
@@ -41,14 +42,14 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   })
 
   // Fetch pair relationships, pool members, diagnostics in parallel
-  const [pairRelationships, poolMembers, supabase] = await Promise.all([
+  const [pairRelationships, poolMembers] = await Promise.all([
     fetchPairRelationships([...new Set(memberIds)]),
     roundId ? fetchPoolMembers(id) : Promise.resolve([]),
-    createClient(),
   ])
+  const supabase = createAdminClient()
 
   const memberSelect = `
-    id, member_number,
+    id, record_source,
     member_identity (full_name, nickname, school_name, gender, hobby_tags, nationality, degree_level, department),
     member_interests (game_type_pref, scenario_theme_tags, preferred_time_slots, social_goal_primary),
     member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
@@ -73,7 +74,15 @@ export default async function MatchSessionDetailPage({ params }: Props) {
 
    
   let diagnostics = (diagnosticsRaw ?? []).map((d: any) => ({
-    ...d,
+    ...(canViewRawSubmissions ? d : {
+      id: d.id,
+      member_id: d.member_id,
+      session_id: d.session_id,
+      reason: d.reason,
+      details: null,
+      created_at: d.created_at,
+      member: d.member,
+    }),
     memberData: unmatchedMemberMap.get(d.member_id) ?? null,
   }))
 
@@ -84,15 +93,19 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   const importInfoMap = new Map<string, EnrichedMember["import_info"]>()
 
   if (roundId) {
-    const includeImportMetadata = await supportsImportMetadataColumn(supabase)
-    const submissionSelect = includeImportMetadata
+    const includeImportMetadata = canViewRawSubmissions
+      && await supportsImportMetadataColumn(supabase)
+    const submissionSelect = canViewRawSubmissions && includeImportMetadata
       ? `
         member_id, game_type_pref, gender_pref, availability, interest_tags, social_style, import_metadata,
-        member:members(id, member_number, member_identity(full_name, nickname))
+        member:members(id, record_source, member_identity(full_name, nickname))
       `
-      : `
+      : canViewRawSubmissions ? `
         member_id, game_type_pref, gender_pref, availability, interest_tags, social_style,
-        member:members(id, member_number, member_identity(full_name, nickname))
+        member:members(id, record_source, member_identity(full_name, nickname))
+      ` : `
+        member_id,
+        member:members(id, member_identity(full_name, nickname))
       `
 
     // 轮次匹配：从 match_round_submissions 读取热力图、偏好和手动配对候选
@@ -102,9 +115,11 @@ export default async function MatchSessionDetailPage({ params }: Props) {
       .eq("round_id", roundId)
 
     const submissionRows: any[] = subs ?? []
-    const needsFallbackImportLookup = !includeImportMetadata && submissionRows.some((sub: any) => {
+    const needsFallbackImportLookup = canViewRawSubmissions
+      && !includeImportMetadata
+      && submissionRows.some((sub: any) => {
       const member = getSingleRelation(sub.member as any)
-      return String(member?.member_number ?? "").startsWith("IMP-")
+      return member?.record_source === "import"
     })
     const legacyRows = needsFallbackImportLookup
       ? ((await (supabase as any)
@@ -123,29 +138,31 @@ export default async function MatchSessionDetailPage({ params }: Props) {
             match_history: row.match_history ?? [],
           }))
       : []
-    const builtImportInfo = buildImportInfoMap(submissionRows as any[], legacyRows)
-    for (const [memberId, info] of Object.entries(builtImportInfo)) {
-      importInfoMap.set(memberId, info)
-    }
-
-    timeSlotData = submissionRows.map((sub: any) => {
-      const avail = (sub.availability ?? {}) as Record<string, string[]>
-      const slots: string[] = []
-      for (const [date, times] of Object.entries(avail)) {
-        for (const t of times) slots.push(`${date}_${t}`)
+    if (canViewRawSubmissions) {
+      const builtImportInfo = buildImportInfoMap(submissionRows as any[], legacyRows)
+      for (const [memberId, info] of Object.entries(builtImportInfo)) {
+        importInfoMap.set(memberId, info)
       }
-      return { preferred_time_slots: slots }
-    })
 
-    // 构建问卷提交映射（memberId → 本轮偏好），供配对卡片、约束检查和 Popover 展示
-    for (const s of submissionRows) {
-      submissionPrefs.set(s.member_id, {
-        game_type_pref: s.game_type_pref,
-        gender_pref: s.gender_pref,
-        availability: s.availability as Record<string, string[]> | undefined,
-        interest_tags: s.interest_tags as string[] | undefined,
-        social_style: s.social_style as string | null | undefined,
+      timeSlotData = submissionRows.map((sub: any) => {
+        const avail = (sub.availability ?? {}) as Record<string, string[]>
+        const slots: string[] = []
+        for (const [date, times] of Object.entries(avail)) {
+          for (const t of times) slots.push(`${date}_${t}`)
+        }
+        return { preferred_time_slots: slots }
       })
+
+      // 原始问卷只传给 super_admin；普通 admin 仅获得提交成员名单。
+      for (const s of submissionRows) {
+        submissionPrefs.set(s.member_id, {
+          game_type_pref: s.game_type_pref,
+          gender_pref: s.gender_pref,
+          availability: s.availability as Record<string, string[]> | undefined,
+          interest_tags: s.interest_tags as string[] | undefined,
+          social_style: s.social_style as string | null | undefined,
+        })
+      }
     }
 
     // 排除已在活跃配对中的成员（防止手动配对时选到已匹配的人）
@@ -184,7 +201,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     ...result,
     member_a: attachImportInfo(result.member_a as EnrichedMember | null),
     member_b: attachImportInfo(result.member_b as EnrichedMember | null),
-    group_member_details: result.group_member_details?.map((member) => attachImportInfo(member as EnrichedMember) as EnrichedMember) ?? null,
+    group_member_details: result.group_member_details?.map((member: unknown) => attachImportInfo(member as EnrichedMember) as EnrichedMember) ?? null,
   }))
   diagnostics = diagnostics.map((item) => ({
     ...item,
@@ -194,6 +211,37 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     ...member,
     memberData: attachImportInfo(member.memberData),
   }))
+  const clientResults = canViewRawSubmissions
+    ? enrichedResults
+    : enrichedResults.map((result) => {
+        const {
+          audit_reason: _auditReason,
+          cancellation_requested_by: _cancellationRequestedBy,
+          cancellation_reviewed_by: _cancellationReviewedBy,
+          locked_by: _lockedBy,
+          ...safeResult
+        } = result as typeof result & Record<string, unknown>
+        void _auditReason
+        void _cancellationRequestedBy
+        void _cancellationReviewedBy
+        void _lockedBy
+        return {
+          ...safeResult,
+          cancellation_reason: null,
+          score_breakdown: null,
+        }
+      })
+  const clientSession = canViewRawSubmissions
+    ? session
+    : {
+        id: session.id,
+        session_name: session.session_name,
+        status: session.status,
+        total_candidates: session.total_candidates,
+        total_matched: session.total_matched,
+        total_unmatched: session.total_unmatched,
+        round_id: session.round_id,
+      }
 
   return (
     <div>
@@ -207,8 +255,8 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         </Link>
       </div>
       <MatchSessionView
-        session={session}
-        results={enrichedResults}
+        session={clientSession}
+        results={clientResults}
         diagnostics={diagnostics}
         candidates={timeSlotData}
         pairRelationships={pairRelationships}
@@ -216,6 +264,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         allMemberOptions={allMemberOptions}
         submissionPrefs={Object.fromEntries(submissionPrefs)}
         readOnly={readOnly}
+        canViewRawSubmissions={canViewRawSubmissions}
       />
     </div>
   )

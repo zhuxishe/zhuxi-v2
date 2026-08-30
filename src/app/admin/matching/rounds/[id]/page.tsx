@@ -38,7 +38,14 @@ export default async function RoundDetailPage({ params }: Props) {
         >
           <ArrowLeft className="size-4" /> 返回匹配管理
         </Link>
-        <RoundDetailClient round={round} submissions={submissions} stats={stats} allMembers={allMembers} />
+        <RoundDetailClient
+          round={round}
+          submissions={submissions}
+          stats={stats}
+          allMembers={allMembers}
+          canManageSubmissions={admin.role === "super_admin"}
+          canImportMembers={admin.role === "super_admin"}
+        />
       </div>
     </div>
   )

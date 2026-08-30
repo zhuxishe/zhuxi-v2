@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { addAdminWhitelist, removeAdmin, fetchAdminList } from "@/app/admin/users/actions"
+import { addAdminWhitelist, removeAdmin, fetchAdminList, updateAdminRole } from "@/app/admin/users/actions"
 import { Button } from "@/components/ui/button"
 import { Trash2, UserPlus, Shield, ShieldCheck } from "lucide-react"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 interface AdminRow {
   id: string
@@ -21,9 +22,11 @@ interface Props {
 export function AdminUserList({ initialAdmins }: Props) {
   const [admins, setAdmins] = useState<AdminRow[]>(initialAdmins)
   const [email, setEmail] = useState("")
+  const [newRole, setNewRole] = useState<"admin" | "super_admin">("admin")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [confirmId, setConfirmId] = useState<string | null>(null)
+  const [auditReason, setAuditReason] = useState("")
 
   async function loadList() {
     const result = await fetchAdminList()
@@ -34,16 +37,28 @@ export function AdminUserList({ initialAdmins }: Props) {
     if (!email.trim()) return
     setLoading(true)
     setError(null)
-    const result = await addAdminWhitelist(email.trim())
+    const result = await addAdminWhitelist(email.trim(), newRole, auditReason)
     setLoading(false)
     if (result.error) { setError(result.error); return }
     setEmail("")
+    setAuditReason("")
     await loadList()
   }
 
   async function handleRemove(id: string) {
-    const result = await removeAdmin(id)
+    const result = await removeAdmin(id, auditReason)
     if (result.error) { setError(result.error); return }
+    setAuditReason("")
+    await loadList()
+  }
+
+  async function handleRoleChange(id: string, role: "admin" | "super_admin") {
+    setLoading(true)
+    setError(null)
+    const result = await updateAdminRole(id, role, auditReason)
+    setLoading(false)
+    if (result.error) { setError(result.error); return }
+    setAuditReason("")
     await loadList()
   }
 
@@ -56,7 +71,7 @@ export function AdminUserList({ initialAdmins }: Props) {
         </p>
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-col gap-2 sm:flex-row">
         <input
           type="email"
           value={email}
@@ -65,11 +80,36 @@ export function AdminUserList({ initialAdmins }: Props) {
           placeholder="输入邮箱地址"
           className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
         />
-        <Button onClick={handleAdd} disabled={loading} size="sm">
+        <select
+          value={newRole}
+          onChange={(event) => setNewRole(event.target.value as "admin" | "super_admin")}
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+          aria-label="新管理员角色"
+        >
+          <option value="admin">管理员</option>
+          <option value="super_admin">超级管理员</option>
+        </select>
+        <Button
+          onClick={handleAdd}
+          disabled={loading || !adminAuditReasonIsValid(auditReason)}
+          size="sm"
+        >
           <UserPlus className="size-4 mr-1" />
           {loading ? "添加中..." : "添加"}
         </Button>
       </div>
+      <label className="block space-y-1">
+        <span className="text-sm font-medium">本次管理员变更理由</span>
+        <input
+          value={auditReason}
+          onChange={(event) => setAuditReason(event.target.value)}
+          minLength={4}
+          maxLength={500}
+          required
+          placeholder="必填，4–500 字；新增、角色变更或删除均写入不可覆盖审计"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+        />
+      </label>
       {error && <p className="text-sm text-destructive">{error}</p>}
 
       <div className="rounded-xl border border-border overflow-hidden">
@@ -87,11 +127,19 @@ export function AdminUserList({ initialAdmins }: Props) {
               <tr key={a.id} className="hover:bg-muted/30 transition-colors">
                 <td className="px-4 py-3">{a.email}</td>
                 <td className="px-4 py-3">
-                  <span className="inline-flex items-center gap-1 text-xs">
-                    {a.role === "super_admin"
-                      ? <><ShieldCheck className="size-3" /> 超级管理员</>
-                      : <><Shield className="size-3" /> 管理员</>}
-                  </span>
+                  <label className="inline-flex items-center gap-1 text-xs">
+                    {a.role === "super_admin" ? <ShieldCheck className="size-3" /> : <Shield className="size-3" />}
+                    <select
+                      value={a.role}
+                      onChange={(event) => handleRoleChange(a.id, event.target.value as "admin" | "super_admin")}
+                      disabled={loading || !adminAuditReasonIsValid(auditReason)}
+                      className="rounded border border-border bg-background px-1.5 py-1 text-xs"
+                      aria-label={`${a.email} 的管理员角色`}
+                    >
+                      <option value="admin">管理员</option>
+                      <option value="super_admin">超级管理员</option>
+                    </select>
+                  </label>
                 </td>
                 <td className="px-4 py-3">
                   {a.user_id ? (
@@ -105,6 +153,7 @@ export function AdminUserList({ initialAdmins }: Props) {
                     <span className="inline-flex items-center gap-1">
                       <button
                         onClick={() => { handleRemove(a.id); setConfirmId(null) }}
+                        disabled={!adminAuditReasonIsValid(auditReason)}
                         className="text-xs text-destructive font-medium hover:underline"
                       >确认</button>
                       <span className="text-muted-foreground">/</span>
@@ -116,6 +165,7 @@ export function AdminUserList({ initialAdmins }: Props) {
                   ) : (
                     <button
                       onClick={() => setConfirmId(a.id)}
+                      disabled={!adminAuditReasonIsValid(auditReason)}
                       className="text-muted-foreground hover:text-destructive transition-colors p-1"
                       title="删除"
                     >

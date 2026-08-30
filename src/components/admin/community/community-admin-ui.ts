@@ -3,6 +3,14 @@ export const COMMUNITY_ADMIN_INPUT_CLASS =
 
 export const COMMUNITY_ADMIN_LABEL_CLASS = "mb-1.5 block text-sm font-medium text-foreground"
 
+export function formatProtectedMemberNumber(
+  value: string | null | undefined,
+  canViewMemberNumber: boolean,
+) {
+  if (!canViewMemberNumber) return "权限隐藏"
+  return value ?? "未编号"
+}
+
 export function formatAdminDate(value: string | null | undefined, includeTime = true) {
   if (!value) return "—"
   const date = new Date(value)

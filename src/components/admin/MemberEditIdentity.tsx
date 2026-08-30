@@ -1,5 +1,6 @@
 "use client"
 
+import { useState } from "react"
 import {
   HOBBY_TAGS, ACTIVITY_TYPE_TAGS,
   PERSONALITY_SELF_TAGS, TABOO_TAGS,
@@ -17,7 +18,7 @@ function InputRow({ label, name, data, onChange, type = "text" }: {
       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
       <td className="py-2.5">
         <input type={type} value={(data[name] as string | number) ?? ""}
-          onChange={(e) => onChange({ ...data, [name]: e.target.value })}
+          onChange={(e) => onChange({ ...data, [name]: type === "number" ? (e.target.value ? Number(e.target.value) : null) : e.target.value })}
           className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
       </td>
     </tr>
@@ -69,6 +70,48 @@ function TagsRow({ label, name, options, data, onChange }: {
   )
 }
 
+function JsonObjectRow({ label, name, data, onChange }: {
+  label: string; name: string; data: IdentityData; onChange: (d: IdentityData) => void
+}) {
+  const source = data[name]
+  const serialized = typeof source === "string" ? source : JSON.stringify(source ?? {}, null, 2)
+  const [value, setValue] = useState(serialized)
+  const [error, setError] = useState<string | null>(null)
+
+  function commit() {
+    try {
+      const parsed = JSON.parse(value)
+      if (parsed === null || Array.isArray(parsed) || typeof parsed !== "object") {
+        setError("必须是 JSON 对象，例如 {\"instagram\": \"example\"}")
+        onChange({ ...data, [name]: value })
+        return
+      }
+      setError(null)
+      onChange({ ...data, [name]: parsed })
+    } catch {
+      setError("JSON 格式无效；修正后才能保存")
+      onChange({ ...data, [name]: value })
+    }
+  }
+
+  return (
+    <tr className="border-b border-border/50">
+      <td className="w-24 whitespace-nowrap py-2.5 pr-4 align-top text-xs text-muted-foreground">{label}</td>
+      <td className="py-2.5">
+        <textarea
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onBlur={commit}
+          rows={4}
+          spellCheck={false}
+          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 font-mono text-xs outline-none focus:border-primary"
+        />
+        {error ? <span role="alert" className="mt-1 block text-xs text-destructive">{error}</span> : null}
+      </td>
+    </tr>
+  )
+}
+
 export function MemberEditIdentity({ data, onChange }: Props) {
   return (
     <table className="w-full"><tbody>
@@ -83,6 +126,10 @@ export function MemberEditIdentity({ data, onChange }: Props) {
       <SelectRow label="学位" name="degree_level" options={["学士", "修士", "博士", "研究生", "别科", "语言学校"]} data={data} onChange={onChange} />
       <InputRow label="课程语言" name="course_language" data={data} onChange={onChange} />
       <InputRow label="入学年" name="enrollment_year" data={data} onChange={onChange} type="number" />
+      <InputRow label="身高 / 体重" name="height_weight" data={data} onChange={onChange} />
+      <InputRow label="电话" name="phone" data={data} onChange={onChange} type="tel" />
+      <JsonObjectRow label="SNS 账号" name="sns_accounts" data={data} onChange={onChange} />
+      <InputRow label="个人头像路径" name="personal_avatar_path" data={data} onChange={onChange} />
       <TagsRow label="爱好" name="hobby_tags" options={HOBBY_TAGS} data={data} onChange={onChange} />
       <TagsRow label="活动类型" name="activity_type_tags" options={ACTIVITY_TYPE_TAGS} data={data} onChange={onChange} />
       <TagsRow label="性格自评" name="personality_self_tags" options={PERSONALITY_SELF_TAGS} data={data} onChange={onChange} />

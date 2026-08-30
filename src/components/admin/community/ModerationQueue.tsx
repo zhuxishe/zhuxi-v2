@@ -1,7 +1,7 @@
 import Link from "next/link"
 import { ShieldCheck } from "lucide-react"
 import { CommunityStatusBadge } from "./CommunityStatusBadge"
-import { COMMUNITY_ADMIN_INPUT_CLASS, formatAdminDate } from "./community-admin-ui"
+import { COMMUNITY_ADMIN_INPUT_CLASS, formatAdminDate, formatProtectedMemberNumber } from "./community-admin-ui"
 import type { CommunityReport } from "./types"
 
 export const REPORT_REASON_LABELS: Record<CommunityReport["reason"], string> = {
@@ -18,7 +18,13 @@ const TARGET_LABELS: Record<CommunityReport["target_type"], string> = {
   profile: "社区身份",
 }
 
-export function ModerationFilters({ values }: { values: Record<string, string | undefined> }) {
+export function ModerationFilters({
+  values,
+  canSearchMemberNumber,
+}: {
+  values: Record<string, string | undefined>
+  canSearchMemberNumber: boolean
+}) {
   return (
     <form className="grid gap-3 rounded-xl border border-border bg-card p-4 sm:grid-cols-2 xl:grid-cols-6">
       <select name="status" defaultValue={values.status ?? "pending"} aria-label="处理状态" className={COMMUNITY_ADMIN_INPUT_CLASS}>
@@ -39,7 +45,9 @@ export function ModerationFilters({ values }: { values: Record<string, string | 
         <option value="reply">回复</option>
         <option value="profile">社区身份</option>
       </select>
-      <input name="reporter" defaultValue={values.reporter ?? ""} placeholder="举报人会员编号" aria-label="举报人会员编号" className={COMMUNITY_ADMIN_INPUT_CLASS} />
+      {canSearchMemberNumber ? (
+        <input name="reporter" defaultValue={values.reporter ?? ""} placeholder="举报人会员编号" aria-label="举报人会员编号" className={COMMUNITY_ADMIN_INPUT_CLASS} />
+      ) : null}
       <div className="grid grid-cols-2 gap-2 xl:col-span-2">
         <input name="from" type="date" defaultValue={values.from ?? ""} aria-label="开始日期" className={COMMUNITY_ADMIN_INPUT_CLASS} />
         <input name="to" type="date" defaultValue={values.to ?? ""} aria-label="结束日期" className={COMMUNITY_ADMIN_INPUT_CLASS} />
@@ -52,7 +60,13 @@ export function ModerationFilters({ values }: { values: Record<string, string | 
   )
 }
 
-export function ModerationQueue({ reports }: { reports: CommunityReport[] }) {
+export function ModerationQueue({
+  reports,
+  canViewMemberNumber,
+}: {
+  reports: CommunityReport[]
+  canViewMemberNumber: boolean
+}) {
   if (reports.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-card px-4 py-14 text-center">
@@ -78,7 +92,7 @@ export function ModerationQueue({ reports }: { reports: CommunityReport[] }) {
             {report.target_excerpt ? <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{report.target_excerpt}</p> : null}
             <dl className="mt-3 grid grid-cols-2 gap-2 text-xs text-muted-foreground">
               <div><dt>原因</dt><dd className="mt-0.5 font-medium text-foreground">{REPORT_REASON_LABELS[report.reason]}</dd></div>
-              <div><dt>举报人</dt><dd className="mt-0.5 font-medium text-foreground">{report.reporter_number ?? "未编号"}</dd></div>
+              <div><dt>举报人</dt><dd className="mt-0.5 font-medium text-foreground">{formatProtectedMemberNumber(report.reporter_number, canViewMemberNumber)}</dd></div>
               <div className="col-span-2"><dt>提交时间</dt><dd className="mt-0.5 font-medium text-foreground">{formatAdminDate(report.created_at)}</dd></div>
             </dl>
           </Link>
@@ -106,7 +120,7 @@ export function ModerationQueue({ reports }: { reports: CommunityReport[] }) {
                   {report.target_excerpt ? <p className="mt-1 truncate text-xs text-muted-foreground">{report.target_excerpt}</p> : null}
                 </td>
                 <td className="px-4 py-3">{REPORT_REASON_LABELS[report.reason]}</td>
-                <td className="px-4 py-3">{report.reporter_number ?? "未编号"}</td>
+                <td className="px-4 py-3">{formatProtectedMemberNumber(report.reporter_number, canViewMemberNumber)}</td>
                 <td className="px-4 py-3"><CommunityStatusBadge status={report.status} /></td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAdminDate(report.created_at)}</td>
                 <td className="px-4 py-3 text-right"><Link href={`/admin/community/moderation/${report.id}`} className="font-medium text-primary hover:underline">查看</Link></td>

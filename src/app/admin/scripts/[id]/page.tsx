@@ -2,7 +2,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchScript } from "@/lib/queries/scripts"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { ScriptAccessPanel, type AccessRecord } from "@/components/admin/ScriptAccessPanel"
@@ -28,15 +28,15 @@ export default async function AdminScriptDetailPage({ params }: Props) {
   }
 
   // 获取所有 approved 玩家（用于授权面板）
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data: members } = await supabase
     .from("members")
-    .select("id, member_number, member_identity(full_name)")
+    .select("id, member_identity(full_name)")
     .eq("status", "approved")
     .eq("membership_type", "player")
   const allMembers = (members ?? []).map((m) => {
     const identity = Array.isArray(m.member_identity) ? m.member_identity[0] : m.member_identity
-    return { id: m.id, name: (identity as { full_name?: string })?.full_name ?? m.id, memberNumber: m.member_number }
+    return { id: m.id, name: (identity as { full_name?: string })?.full_name ?? m.id }
   })
   const accessResult = await fetchScriptAccessList(id)
 

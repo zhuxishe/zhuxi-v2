@@ -44,7 +44,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { href: "/admin/homepage-stats", label: "主页统计", icon: PieChart, superAdminOnly: true },
       { href: "/admin/quiz-config", label: "问卷配置", icon: ClipboardList },
-      { href: "/admin/users", label: "管理员", icon: ShieldCheck },
+      { href: "/admin/users", label: "管理员", icon: ShieldCheck, superAdminOnly: true },
     ],
   },
 ]

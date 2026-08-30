@@ -10,6 +10,7 @@ import { RoundImportPanel } from "./RoundImportPanel"
 import { canRunRoundMatching } from "./round-detail-rules"
 import { updateRoundStatus, runRoundMatching } from "@/app/admin/matching/rounds/[id]/actions"
 import { Play, Eye, EyeOff, Plus } from "lucide-react"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
  
 type Round = Record<string, any>
@@ -27,19 +28,29 @@ interface Props {
   submissions: Sub[]
   stats: Stats
   allMembers: { id: string; name: string }[]
+  canManageSubmissions: boolean
+  canImportMembers: boolean
 }
 
-export function RoundDetailClient({ round, submissions, stats, allMembers }: Props) {
+export function RoundDetailClient({
+  round,
+  submissions,
+  stats,
+  allMembers,
+  canManageSubmissions,
+  canImportMembers,
+}: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [matchingReason, setMatchingReason] = useState("")
 
   // 编辑/新增 Dialog 状态
   const [editOpen, setEditOpen] = useState(false)
   const [editSub, setEditSub] = useState<Sub | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
 
-  const editable = round.status !== "matched"
+  const editable = canManageSubmissions && round.status !== "matched"
 
   // 新增时排除已提交的成员
   const availableMembers = useMemo(() => {
@@ -60,7 +71,7 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
     if (submissions.length < 2) { setError("至少需要 2 人提交问卷"); return }
     setLoading(true)
     setError(null)
-    const res = await runRoundMatching(round.id, `${round.round_name} 匹配`)
+    const res = await runRoundMatching(round.id, `${round.round_name} 匹配`, matchingReason)
     setLoading(false)
     if (res.error) { setError(res.error); return }
     router.push(`/admin/matching/${res.sessionId}`)
@@ -103,7 +114,11 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
             </Button>
           )}
           {canRunRoundMatching(round.status) && (
-            <Button size="sm" onClick={handleRunMatch} disabled={loading || submissions.length < 2}>
+            <Button
+              size="sm"
+              onClick={handleRunMatch}
+              disabled={loading || submissions.length < 2 || !adminAuditReasonIsValid(matchingReason)}
+            >
               <Play className="size-4 mr-1" />运行匹配
             </Button>
           )}
@@ -112,7 +127,24 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
 
       {error && <p className="text-sm text-destructive">{error}</p>}
 
-      <RoundImportPanel roundId={round.id} roundStatus={round.status} />
+      {canRunRoundMatching(round.status) && (
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-1">
+          <label htmlFor="round-matching-reason" className="text-sm font-medium">
+            运行匹配理由
+          </label>
+          <input
+            id="round-matching-reason"
+            value={matchingReason}
+            onChange={(event) => setMatchingReason(event.target.value)}
+            minLength={4}
+            maxLength={500}
+            placeholder="必填，4–500 字；写入本轮每位成员的匹配审计记录"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          />
+        </div>
+      )}
+
+      {canImportMembers ? <RoundImportPanel roundId={round.id} roundStatus={round.status} /> : null}
 
       {/* 统计面板 */}
       <RoundStatsPanel stats={stats} activityStart={round.activity_start} activityEnd={round.activity_end} />
@@ -131,11 +163,12 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
           submissions={submissions}
           onEdit={handleEdit}
           editable={editable}
+          showRaw={canManageSubmissions}
         />
       </div>
 
       {/* 编辑 Dialog — key 保证切换问卷时状态重置 */}
-      {editSub && (
+      {canManageSubmissions && editSub && (
         <SubmissionEditDialog
           key={editSub.id}
           open={editOpen}
@@ -150,16 +183,18 @@ export function RoundDetailClient({ round, submissions, stats, allMembers }: Pro
       )}
 
       {/* 新增 Dialog */}
-      <SubmissionEditDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        roundId={round.id}
-        mode="create"
-        availableMembers={availableMembers}
-        activityStart={round.activity_start}
-        activityEnd={round.activity_end}
-        onSaved={handleSaved}
-      />
+      {canManageSubmissions && (
+        <SubmissionEditDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          roundId={round.id}
+          mode="create"
+          availableMembers={availableMembers}
+          activityStart={round.activity_start}
+          activityEnd={round.activity_end}
+          onSaved={handleSaved}
+        />
+      )}
     </div>
   )
 }

@@ -1,16 +1,24 @@
 import { createClient } from "@/lib/supabase/server"
-import { getSingleRelation } from "@/lib/supabase/relations"
+import {
+  ensureMyMemberRecord,
+  getMemberMasterDiagnostic,
+  resolveMemberRouteSnapshot,
+} from "@/lib/member-master/rpc"
 import { redirect } from "next/navigation"
+import { cache } from "react"
 
 export interface PlayerInfo {
   memberId: string
   memberNumber: string | null
   name: string
   status: string
+  accountStatus: string
+  profileStage: string
+  onboardingStep: number
+  lastProfileSavedAt: string | null
+  submittedAt: string | null
   hasIdentity: boolean
 }
-
-type MemberIdentityRow = { full_name: string | null }
 
 /** Require auth. Redirects to /login if not logged in. */
 export async function requireAuth() {
@@ -20,67 +28,55 @@ export async function requireAuth() {
   return user
 }
 
-/** Get player info for logged-in user. Returns null if no member record. */
-export async function getPlayerInfo(): Promise<PlayerInfo | null> {
+/**
+ * Get the canonical player record for the logged-in user.
+ *
+ * Every authenticated read first runs the idempotent ensure RPC. Active rows
+ * are then re-read by members.id; blocked rows route from the ensure lifecycle
+ * because self-read RLS intentionally hides them from old JWTs. Email and
+ * display name are never used for ownership or legacy-record linking.
+ */
+export const getPlayerInfo = cache(async (): Promise<PlayerInfo | null> => {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return null
 
-  const { data: member, error: memberErr } = await supabase
-    .from("members")
-    .select("id, member_number, status, member_identity(full_name)")
-    .eq("user_id", user.id)
-    .maybeSingle()
+  try {
+    const ensured = await ensureMyMemberRecord(supabase)
+    const member = await resolveMemberRouteSnapshot(supabase, ensured)
 
-  // PGRST116 = no rows found (normal for new users)
-  // Any other error is a DB issue — throw to trigger error boundary
-  if (memberErr && memberErr.code !== "PGRST116") {
-    console.error("[getPlayerInfo] DB error:", memberErr)
+    return {
+      memberId: member.memberId,
+      memberNumber: member.memberNumber,
+      name: member.fullName ?? "Player",
+      status: member.status,
+      accountStatus: member.accountStatus,
+      profileStage: member.profileStage,
+      onboardingStep: member.onboardingStep,
+      lastProfileSavedAt: member.lastProfileSavedAt,
+      submittedAt: member.submittedAt,
+      hasIdentity: member.hasIdentity,
+    }
+  } catch (error) {
+    console.error("[getPlayerInfo] member master error:", getMemberMasterDiagnostic(error))
     throw new Error("データベースエラーが発生しました")
   }
-  if (!member) return null
+})
 
-  const identity = getSingleRelation(
-    member.member_identity as MemberIdentityRow | MemberIdentityRow[] | null
-  )
-
-  return {
-    memberId: member.id,
-    memberNumber: member.member_number,
-    name: identity?.full_name ?? "Player",
-    status: member.status,
-    hasIdentity: !!identity,
-  }
+/** Require auth plus an ensured canonical member row. */
+export async function requireMemberRecord(): Promise<PlayerInfo> {
+  const player = await getPlayerInfo()
+  if (!player) redirect("/login")
+  return player
 }
 
 /** Require approved player. Redirects to /login if not auth, /app if not approved. */
 export async function requirePlayer(): Promise<PlayerInfo> {
-  const user = await requireAuth()
-  const supabase = await createClient()
-
-  const { data: member, error: memberErr } = await supabase
-    .from("members")
-    .select("id, member_number, status, member_identity(full_name)")
-    .eq("user_id", user.id)
-    .maybeSingle()
-
-  if (memberErr && memberErr.code !== "PGRST116") {
-    console.error("[requirePlayer] DB error:", memberErr)
-    throw new Error("データベースエラーが発生しました")
-  }
-  if (!member || member.status !== "approved") redirect("/app")
-
-  const identity = getSingleRelation(
-    member.member_identity as MemberIdentityRow | MemberIdentityRow[] | null
-  )
-
-  return {
-    memberId: member.id,
-    memberNumber: member.member_number,
-    name: identity?.full_name ?? "Player",
-    status: member.status,
-    hasIdentity: !!identity,
-  }
+  const player = await requireMemberRecord()
+  if (player.accountStatus !== "active") redirect("/app/inactive")
+  if (player.status === "inactive") redirect("/app/inactive")
+  if (player.status !== "approved") redirect("/app")
+  return player
 }
 
 /** Get player without redirect (for optional checks). */

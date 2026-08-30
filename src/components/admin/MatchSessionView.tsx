@@ -11,11 +11,12 @@ import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { RematchPool } from "./RematchPool"
 import { ManualPairDialog } from "./ManualPairDialog"
-import { lockPair, splitPair, restorePair, confirmSession, deleteSession, unpublishSession } from "@/app/admin/matching/[id]/actions"
+import { lockPair, unlockPair, splitPair, restorePair, confirmSession, deleteSession, unpublishSession } from "@/app/admin/matching/[id]/actions"
 import { buildSessionSummary } from "@/lib/matching/session-summary"
 import type { EnrichedMatchResult, PairRelationship, EnrichedMember, SubmissionPrefInfo } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
 import type { DiagnosticItem } from "./UnmatchedDiagnostics"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 interface Props {
   session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number; round_id?: string | null }
@@ -27,6 +28,7 @@ interface Props {
   allMemberOptions?: { id: string; name: string }[]
   submissionPrefs?: Record<string, SubmissionPrefInfo>
   readOnly?: boolean
+  canViewRawSubmissions?: boolean
 }
 
 function memberName(m: EnrichedMember | null): string {
@@ -46,7 +48,7 @@ function matchesSearch(r: EnrichedMatchResult, query: string): boolean {
   return false
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false, canViewRawSubmissions = false }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -54,6 +56,8 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
   const [preselectedA, setPreselectedA] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [showCancelled, setShowCancelled] = useState(false)
+  const [auditReason, setAuditReason] = useState("")
+  const auditReasonValid = adminAuditReasonIsValid(auditReason)
 
   const relMap = useMemo(() => {
     const map = new Map<string, PairRelationship>()
@@ -85,10 +89,13 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
     return activeResults.filter((r) => matchesSearch(r, searchQuery))
   }, [activeResults, searchQuery])
 
-  const handleAction = (action: (id: string) => Promise<{ error?: string; success?: boolean }>, id: string) => {
+  const handleAction = (
+    action: (id: string, reason: string) => Promise<{ error?: string; success?: boolean }>,
+    id: string,
+  ) => {
     startTransition(async () => {
       setError("")
-      const res = await action(id)
+      const res = await action(id, auditReason)
       if (res.error) setError(res.error)
       else router.refresh()
     })
@@ -97,7 +104,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
   const handleConfirm = () => {
     startTransition(async () => {
       setError("")
-      const res = await confirmSession(session.id)
+      const res = await confirmSession(session.id, auditReason)
       if (res.error) setError(res.error)
       else router.refresh()
     })
@@ -114,15 +121,36 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       result={r}
       pairRel={findRel(r.member_a?.id, r.member_b?.id)}
       submissionPrefs={submissionPrefs}
-      onLock={readOnly ? undefined : (id) => handleAction(r.status === "locked" ? restorePair : lockPair, id)}
-      onSplit={readOnly ? undefined : (id) => handleAction(splitPair, id)}
-      onRestore={readOnly ? undefined : (id) => handleAction(restorePair, id)}
+      canViewRawSubmissions={canViewRawSubmissions}
+      onLock={readOnly || !auditReasonValid ? undefined : (id) => handleAction(r.status === "locked" ? unlockPair : lockPair, id)}
+      onSplit={readOnly || !auditReasonValid ? undefined : (id) => handleAction(splitPair, id)}
+      onRestore={readOnly || !auditReasonValid ? undefined : (id) => handleAction(restorePair, id)}
     />
   )
 
   return (
     <div className="p-6 space-y-6">
-      {/* KPI */}
+      {/* Shared audit reason for all mutations on this session. */}
+      {!readOnly && (
+        <div className="rounded-lg border bg-muted/20 p-3 space-y-1">
+          <label htmlFor="match-audit-reason" className="text-sm font-medium">
+            本次操作理由
+          </label>
+          <input
+            id="match-audit-reason"
+            value={auditReason}
+            onChange={(event) => setAuditReason(event.target.value)}
+            minLength={4}
+            maxLength={500}
+            placeholder="必填，4–500 字；用于锁定、拆分、恢复、配对、发布或删除的审计记录"
+            className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          />
+          {auditReason.length > 0 && !auditReasonValid && (
+            <p className="text-xs text-destructive">操作理由需为 4–500 个字符</p>
+          )}
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-3">
         <span className="rounded-full bg-primary/10 text-primary px-3 py-1 text-sm font-medium">
           {session.total_candidates} 人参与
@@ -141,23 +169,30 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           </span>
         )}
         {!readOnly && allMemberOptions.length > 0 && (
-          <Button size="sm" variant="outline" onClick={() => { setPreselectedA(""); setShowFreeManual(true) }}>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => { setPreselectedA(""); setShowFreeManual(true) }}
+            disabled={!auditReasonValid}
+          >
             <UserPlus className="size-3.5" /> 手动配对
           </Button>
         )}
-        <a
-          href={`/admin/matching/${session.id}/export`}
-          className={buttonVariants({ size: "sm", variant: "outline" })}
-        >
-          <Download className="size-3.5" /> 导出 Excel
-        </a>
+        {canViewRawSubmissions && (
+          <a
+            href={`/admin/matching/${session.id}/export`}
+            className={buttonVariants({ size: "sm", variant: "outline" })}
+          >
+            <Download className="size-3.5" /> 导出 Excel
+          </a>
+        )}
         {!readOnly && session.status === "draft" && (
           <>
             <Button size="sm" variant="outline" onClick={() => {
               if (!confirm("确定要删除当前结果并重新匹配？")) return
               startTransition(async () => {
                 setError("")
-                const res = await deleteSession(session.id)
+                const res = await deleteSession(session.id, auditReason)
                 if (res.error) setError(res.error)
                 else {
                   const target = session.round_id
@@ -166,10 +201,10 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
                   router.replace(target)
                 }
               })
-            }} disabled={isPending}>
+            }} disabled={isPending || !auditReasonValid}>
               <RefreshCw className="size-3.5" /> 重新匹配
             </Button>
-            <Button size="sm" onClick={handleConfirm} disabled={isPending}>
+            <Button size="sm" onClick={handleConfirm} disabled={isPending || !auditReasonValid}>
               <CheckCircle className="size-3.5" /> 确认发布
             </Button>
           </>
@@ -179,17 +214,23 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             if (!confirm("撤回后玩家将无法看到匹配结果，确定吗？")) return
             startTransition(async () => {
               setError("")
-              const res = await unpublishSession(session.id)
+              const res = await unpublishSession(session.id, auditReason)
               if (res.error) setError(res.error)
               else router.refresh()
             })
-          }} disabled={isPending}>
+          }} disabled={isPending || !auditReasonValid}>
             <XCircle className="size-3.5" /> 撤回发布
           </Button>
         )}
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+
+      {!canViewRawSubmissions && session.round_id != null && (
+        <p className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          原始轮次问卷、问卷热力图与原始导出仅超级管理员可查看；当前页面仅显示匹配结果与去敏运营信息。
+        </p>
+      )}
 
       {/* Time slot heatmap */}
       {candidates.length > 0 && <TimeSlotHeatmap candidates={candidates} />}
@@ -224,6 +265,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           sessionId={session.id}
           poolMembers={poolMembers}
           submissionPrefs={submissionPrefs}
+          auditReason={auditReason}
           onRefresh={() => router.refresh()}
         />
       )}
@@ -233,7 +275,8 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
         <UnmatchedDiagnostics
           diagnostics={diagnostics}
           submissionPrefs={submissionPrefs}
-          onManualPair={readOnly ? undefined : handleManualPairFromUnmatched}
+          canViewRawSubmissions={canViewRawSubmissions}
+          onManualPair={readOnly || !auditReasonValid ? undefined : handleManualPairFromUnmatched}
         />
       )}
 
@@ -269,6 +312,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           sessionId={session.id}
           poolMembers={allMemberOptions}
           preselectedA={preselectedA}
+          auditReason={auditReason}
           onPaired={() => { setShowFreeManual(false); router.refresh() }}
         />
       )}

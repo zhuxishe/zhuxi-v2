@@ -62,6 +62,7 @@ export function CancelRequestForm({ matchId, labels }: Props) {
         value={reason}
         onChange={(e) => setReason(e.target.value)}
         placeholder={labels.cancelReasonPlaceholder}
+        maxLength={500}
         className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
         rows={3}
       />

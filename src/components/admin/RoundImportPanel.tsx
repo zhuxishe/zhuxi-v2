@@ -14,6 +14,7 @@ interface Props {
 export function RoundImportPanel({ roundId, roundStatus }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [fileName, setFileName] = useState("")
+  const [importReason, setImportReason] = useState("")
   const [error, setError] = useState("")
   const [summary, setSummary] = useState<ImportSummary | null>(null)
   const [previewRows, setPreviewRows] = useState<ImportPreviewRow[]>([])
@@ -23,6 +24,8 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
   const [isPreviewing, startPreview] = useTransition()
   const [isImporting, startImport] = useTransition()
   const disabled = roundStatus === "matched"
+  const reasonLength = Array.from(importReason.trim()).length
+  const reasonIsValid = reasonLength >= 4 && reasonLength <= 500
   const pendingGenderRows = previewRows.filter((row) => {
     const key = String(row.rowNumber)
     return !row.currentMatch && !legacyOverrides[key] && !genderOverrides[key]
@@ -62,8 +65,10 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
   function handleImport() {
     const formData = buildFormData()
     if (!formData) { setError("请先选择 .xlsx 文件"); return }
+    if (!reasonIsValid) { setError("请填写 4-500 个字符的导入原因"); return }
     formData.set("legacyOverrides", JSON.stringify(legacyOverrides))
     formData.set("genderOverrides", JSON.stringify(genderOverrides))
+    formData.set("reason", importReason.trim())
     startImport(async () => {
       setError("")
       const res = await importRoundExcel(roundId, formData)
@@ -73,6 +78,7 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
       setLegacyOptions([])
       setLegacyOverrides({})
       setGenderOverrides({})
+      setImportReason("")
     })
   }
 
@@ -90,7 +96,7 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
           <Button
             size="sm"
             onClick={handleImport}
-            disabled={disabled || isPreviewing || isImporting || previewRows.length === 0 || pendingGenderRows > 0}
+            disabled={disabled || isPreviewing || isImporting || previewRows.length === 0 || pendingGenderRows > 0 || !reasonIsValid}
           >
             {isImporting ? "导入中..." : "确认导入"}
           </Button>
@@ -111,6 +117,29 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
       />
 
       {fileName && <p className="text-xs text-muted-foreground">已选择：{fileName}</p>}
+      <div className="space-y-1.5">
+        <label htmlFor="round-import-reason" className="text-sm font-medium">
+          导入原因（必填）
+        </label>
+        <textarea
+          id="round-import-reason"
+          value={importReason}
+          minLength={4}
+          maxLength={500}
+          required
+          rows={3}
+          disabled={disabled || isPreviewing || isImporting}
+          onChange={(event) => {
+            setImportReason(event.target.value)
+            setError("")
+          }}
+          placeholder="例如：根据 2026 年 8 月活动报名表，重新导入本轮成员及可用时间。"
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+        />
+        <p className="text-xs text-muted-foreground">
+          请说明本次覆盖导入的业务依据；将写入永久审计记录。{reasonLength}/500
+        </p>
+      </div>
       {previewRows.length > 0 && (
         <RoundImportPreview
           rows={previewRows}

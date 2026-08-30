@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { STAFF_AVATAR_PRESETS } from "@/lib/constants/staff-avatars"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import { createStaffProfile } from "./actions"
 import { uploadStaffAvatar } from "./avatar-actions"
 
@@ -13,6 +14,7 @@ export function StaffProfileForm() {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [auditReason, setAuditReason] = useState("")
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -25,20 +27,24 @@ export function StaffProfileForm() {
       setError(avatarUrl.error)
       return
     }
-    const result = await createStaffProfile({
-      name: fd.get("name") as string,
-      school: fd.get("school") as string,
-      major: fd.get("major") as string,
-      intro: fd.get("intro") as string,
-      avatar_url: avatarUrl || undefined,
-      sort_order: Number(fd.get("sort_order") || 0),
-    })
+    const result = await createStaffProfile(
+      {
+        name: fd.get("name") as string,
+        school: fd.get("school") as string,
+        major: fd.get("major") as string,
+        intro: fd.get("intro") as string,
+        avatar_url: avatarUrl || undefined,
+        sort_order: Number(fd.get("sort_order") || 0),
+      },
+      auditReason,
+    )
     setLoading(false)
     if (result.error) {
       setError(result.error)
       return
     }
     setOpen(false)
+    setAuditReason("")
     e.currentTarget.reset()
   }
 
@@ -80,9 +86,22 @@ export function StaffProfileForm() {
         <span className="text-xs font-medium text-muted-foreground">显示排序（数字越小越靠前）</span>
         <input name="sort_order" type="number" defaultValue={0} className={`${inputClass} w-28`} />
       </label>
+      <label className="block space-y-1">
+        <span className="text-xs font-medium text-muted-foreground">新增理由（必填，写入审计）</span>
+        <input
+          name="audit_reason"
+          value={auditReason}
+          onChange={(event) => setAuditReason(event.target.value)}
+          minLength={4}
+          maxLength={500}
+          required
+          placeholder="例如：新增首页 Staff 展示资料"
+          className={`${inputClass} w-full`}
+        />
+      </label>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-2">
-        <Button type="submit" size="sm" disabled={loading}>
+        <Button type="submit" size="sm" disabled={loading || !adminAuditReasonIsValid(auditReason)}>
           {loading ? "保存中..." : "保存"}
         </Button>
         <Button type="button" variant="ghost" size="sm" onClick={() => setOpen(false)}>

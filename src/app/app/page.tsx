@@ -18,7 +18,13 @@ import type { PlayerHomeAction } from "@/components/player/home/types"
 
 export default async function PlayerHomePage() {
   const player = await getPlayerInfo()
-  const route = resolvePlayerRoute(player ? { status: player.status, hasIdentity: player.hasIdentity } : null)
+  const route = resolvePlayerRoute(player ? {
+    status: player.status,
+    accountStatus: player.accountStatus,
+    profileStage: player.profileStage,
+    onboardingStep: player.onboardingStep,
+    hasIdentity: player.hasIdentity,
+  } : null)
 
   if (route.action === "redirect") return redirect(route.to)
   if (route.view === "pending") return <PlayerPendingView />

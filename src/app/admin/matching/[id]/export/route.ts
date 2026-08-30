@@ -11,6 +11,9 @@ export async function GET(request: NextRequest, { params }: Props) {
   if (!admin) {
     return NextResponse.redirect(new URL("/admin/login", request.url))
   }
+  if (admin.role !== "super_admin") {
+    return NextResponse.json({ error: "仅超级管理员可导出原始匹配数据" }, { status: 403 })
+  }
 
   try {
     const { id } = await params

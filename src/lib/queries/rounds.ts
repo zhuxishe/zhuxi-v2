@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { requireAdmin } from "@/lib/auth/admin"
 
 /** 获取所有匹配轮次 */
 export async function fetchRounds() {
@@ -28,22 +30,27 @@ export async function fetchRound(id: string) {
 
 /** 获取某轮次的所有问卷提交 */
 export async function fetchRoundSubmissions(roundId: string) {
-  const supabase = await createClient()
+  const admin = await requireAdmin()
+  const supabase = createAdminClient()
+  const columns = admin.role === "super_admin"
+    ? `
+      id, round_id, member_id, game_type_pref, gender_pref, availability,
+      interest_tags, social_style, message, created_at, updated_at,
+      member:members (
+        id,
+        member_identity (full_name, nickname, school_name)
+      )
+    `
+    : `
+      id, round_id, member_id, created_at, updated_at,
+      member:members (
+        id,
+        member_identity (full_name, nickname, school_name)
+      )
+    `
   const { data, error } = await supabase
     .from("match_round_submissions")
-    .select(`
-      *,
-      member:members (
-        id, member_number, status, attractiveness_score,
-        member_identity (*),
-        member_personality (warmup_speed, expression_style_tags, group_role_tags),
-        member_interests (*),
-        member_language (*),
-        member_boundaries (*),
-        member_dynamic_stats (*),
-        personality_quiz_results (score_e, score_a, score_o, score_c, score_n)
-      )
-    `)
+    .select(columns)
     .eq("round_id", roundId)
     .order("created_at", { ascending: false })
     .limit(500)
@@ -54,7 +61,8 @@ export async function fetchRoundSubmissions(roundId: string) {
 
 /** 获取某轮次的问卷统计（轻量查询，仅读 game_type_pref + availability） */
 export async function fetchRoundStats(roundId: string) {
-  const supabase = await createClient()
+  await requireAdmin()
+  const supabase = createAdminClient()
   const { data: submissions, error } = await supabase
     .from("match_round_submissions")
     .select("game_type_pref, availability")

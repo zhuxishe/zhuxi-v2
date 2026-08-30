@@ -5,6 +5,7 @@ import { useState } from "react"
 import { Eye, EyeOff, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { STAFF_AVATAR_PRESETS } from "@/lib/constants/staff-avatars"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import type { StaffProfile } from "@/lib/queries/staff"
 import { deleteStaffProfile, toggleStaffProfilePublished, updateStaffProfile } from "./actions"
 import { uploadStaffAvatar } from "./avatar-actions"
@@ -25,17 +26,27 @@ export function StaffProfileList({ staff }: { staff: StaffProfile[] }) {
 function StaffProfileItem({ item }: { item: StaffProfile }) {
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [auditReason, setAuditReason] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
   async function handleDelete() {
     if (!confirm(`确定删除「${item.name}」？`)) return
+    const reason = prompt("请输入删除理由（4–500 字，将写入审计）") ?? ""
+    if (!adminAuditReasonIsValid(reason)) {
+      setError("删除理由需为 4–500 字")
+      return
+    }
     setLoading(true)
-    await deleteStaffProfile(item.id)
+    setError(null)
+    const result = await deleteStaffProfile(item.id, reason)
     setLoading(false)
+    if (result.error) setError(result.error)
   }
 
   async function handleUpdate(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setLoading(true)
+    setError(null)
     const fd = new FormData(e.currentTarget)
     const avatarUrl = await uploadAvatarIfSelected(fd)
     if (typeof avatarUrl !== "string") {
@@ -51,8 +62,13 @@ function StaffProfileItem({ item }: { item: StaffProfile }) {
       sort_order: Number(fd.get("sort_order") || 0),
     }
     if (avatarUrl) patch.avatar_url = avatarUrl
-    await updateStaffProfile(item.id, patch)
+    const result = await updateStaffProfile(item.id, patch, auditReason)
     setLoading(false)
+    if (result.error) {
+      setError(result.error)
+      return
+    }
+    setAuditReason("")
     setEditing(false)
   }
 
@@ -87,8 +103,21 @@ function StaffProfileItem({ item }: { item: StaffProfile }) {
           <span className="text-xs font-medium text-muted-foreground">显示排序（数字越小越靠前）</span>
           <input name="sort_order" type="number" defaultValue={item.sort_order} className={`${inputClass} w-28`} />
         </label>
+        <label className="block space-y-1">
+          <span className="text-xs font-medium text-muted-foreground">修改理由（必填，写入审计）</span>
+          <input
+            value={auditReason}
+            onChange={(event) => setAuditReason(event.target.value)}
+            minLength={4}
+            maxLength={500}
+            required
+            placeholder="例如：更新学校与简介"
+            className={`${inputClass} w-full`}
+          />
+        </label>
+        {error && <p className="text-sm text-destructive">{error}</p>}
         <div className="flex gap-2">
-          <Button type="submit" size="sm" disabled={loading}>
+          <Button type="submit" size="sm" disabled={loading || !adminAuditReasonIsValid(auditReason)}>
             {loading ? "保存中..." : "保存"}
           </Button>
           <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
@@ -100,7 +129,8 @@ function StaffProfileItem({ item }: { item: StaffProfile }) {
   }
 
   return (
-    <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10 flex items-start justify-between gap-4">
+    <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
+      <div className="flex items-start justify-between gap-4">
       <div className="relative size-12 shrink-0 overflow-hidden rounded-full bg-bamboo-muted text-bamboo">
         {item.avatar_url ? (
           <Image
@@ -127,13 +157,31 @@ function StaffProfileItem({ item }: { item: StaffProfile }) {
         <Button variant="ghost" size="icon" onClick={() => setEditing(true)} disabled={loading}>
           <Pencil className="size-4" />
         </Button>
-        <Button variant="ghost" size="icon" onClick={() => toggleStaffProfilePublished(item.id, !item.is_published)} disabled={loading}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={async () => {
+            const reason = prompt("请输入显示状态变更理由（4–500 字，将写入审计）") ?? ""
+            if (!adminAuditReasonIsValid(reason)) {
+              setError("变更理由需为 4–500 字")
+              return
+            }
+            setLoading(true)
+            setError(null)
+            const result = await toggleStaffProfilePublished(item.id, !item.is_published, reason)
+            setLoading(false)
+            if (result.error) setError(result.error)
+          }}
+          disabled={loading}
+        >
           {item.is_published ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
         </Button>
         <Button variant="ghost" size="icon" onClick={handleDelete} disabled={loading}>
           <Trash2 className="size-4 text-destructive" />
         </Button>
       </div>
+      </div>
+      {error && <p className="mt-3 text-sm text-destructive">{error}</p>}
     </div>
   )
 }

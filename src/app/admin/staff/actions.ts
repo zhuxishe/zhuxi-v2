@@ -2,7 +2,16 @@
 
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/admin"
-import { createAdminClient } from "@/lib/supabase/admin"
+import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
+import { createClient } from "@/lib/supabase/server"
+import type { Database } from "@/types/database.types"
+
+type OperationalRpcClient = {
+  rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{
+    data: T | null
+    error: { code?: string; message: string } | null
+  }>
+}
 
 interface StaffProfileInput {
   name: string
@@ -52,12 +61,14 @@ function formatStaffDbError(error: { code?: string; message?: string }) {
   return "操作失败"
 }
 
-export async function createStaffProfile(input: StaffProfileInput) {
+export async function createStaffProfile(input: StaffProfileInput, rawReason: string) {
   await requireAdmin()
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
   const validationError = validateStaffInput(input)
   if (validationError) return { error: validationError }
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
   const { error } = await supabase.from("staff_profiles").insert({
     name: input.name.trim(),
     school: input.school.trim(),
@@ -66,6 +77,7 @@ export async function createStaffProfile(input: StaffProfileInput) {
     avatar_url: input.avatar_url?.trim() || null,
     is_published: input.is_published ?? true,
     sort_order: input.sort_order ?? 0,
+    audit_reason: reasonResult.reason,
   })
 
   if (error) {
@@ -76,19 +88,28 @@ export async function createStaffProfile(input: StaffProfileInput) {
   return { success: true }
 }
 
-export async function updateStaffProfile(id: string, input: Partial<StaffProfileInput>) {
+export async function updateStaffProfile(
+  id: string,
+  input: Partial<StaffProfileInput>,
+  rawReason: string,
+) {
   await requireAdmin()
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
   const validationError = validateStaffInput(input)
   if (validationError) return { error: validationError }
 
-  const filtered: Record<string, unknown> = {}
+  const filtered: Database["public"]["Tables"]["staff_profiles"]["Update"] = {}
   for (const [key, value] of Object.entries(input)) {
     if (!ALLOWED_UPDATE_FIELDS.has(key)) continue
-    filtered[key] = typeof value === "string" ? value.trim() || null : value
+    filtered[key as keyof typeof filtered] = (
+      typeof value === "string" ? value.trim() || null : value
+    ) as never
   }
   if (Object.keys(filtered).length === 0) return { error: "无有效更新字段" }
+  filtered.audit_reason = reasonResult.reason
 
-  const supabase = createAdminClient()
+  const supabase = await createClient()
   const { error } = await supabase.from("staff_profiles").update(filtered).eq("id", id)
 
   if (error) {
@@ -99,10 +120,17 @@ export async function updateStaffProfile(id: string, input: Partial<StaffProfile
   return { success: true }
 }
 
-export async function deleteStaffProfile(id: string) {
+export async function deleteStaffProfile(id: string, rawReason: string) {
   await requireAdmin()
-  const supabase = createAdminClient()
-  const { error } = await supabase.from("staff_profiles").delete().eq("id", id)
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  const supabase = await createClient()
+  const rpc = supabase as unknown as OperationalRpcClient
+  const { error } = await rpc.rpc<unknown>("admin_delete_operational_record", {
+    p_entity: "staff_profiles",
+    p_id: id,
+    p_reason: reasonResult.reason,
+  })
 
   if (error) {
     console.error("[deleteStaffProfile]", error)
@@ -112,7 +140,11 @@ export async function deleteStaffProfile(id: string) {
   return { success: true }
 }
 
-export async function toggleStaffProfilePublished(id: string, isPublished: boolean) {
+export async function toggleStaffProfilePublished(
+  id: string,
+  isPublished: boolean,
+  rawReason: string,
+) {
   await requireAdmin()
-  return updateStaffProfile(id, { is_published: isPublished })
+  return updateStaffProfile(id, { is_published: isPublished }, rawReason)
 }

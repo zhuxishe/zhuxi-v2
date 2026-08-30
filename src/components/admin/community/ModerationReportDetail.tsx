@@ -7,7 +7,7 @@ import { Eye, EyeOff, Gavel, ShieldAlert, Trash2, UserSearch } from "lucide-reac
 import { Button } from "@/components/ui/button"
 import { CommunityStatusBadge } from "./CommunityStatusBadge"
 import { CommunityAvatar } from "@/components/community/CommunityAvatar"
-import { COMMUNITY_ADMIN_INPUT_CLASS, COMMUNITY_ADMIN_LABEL_CLASS, formatAdminDate } from "./community-admin-ui"
+import { COMMUNITY_ADMIN_INPUT_CLASS, COMMUNITY_ADMIN_LABEL_CLASS, formatAdminDate, formatProtectedMemberNumber } from "./community-admin-ui"
 import { REPORT_REASON_LABELS } from "./ModerationQueue"
 import type { CommunityReportDetail, CommunityRevealedAuthor } from "./types"
 import { communityMediaUrl } from "@/lib/community/media"
@@ -175,7 +175,7 @@ export function ModerationReportDetail({
             {report.target_uses_snapshot ? <div><dt className="text-xs text-muted-foreground">举报时状态</dt><dd className="mt-1 font-medium">{report.target_snapshot_status ?? "—"}</dd></div> : null}
             <div><dt className="text-xs text-muted-foreground">举报提交时间</dt><dd className="mt-1 font-medium">{formatAdminDate(report.created_at)}</dd></div>
             {report.target_snapshot_captured_at ? <div><dt className="text-xs text-muted-foreground">快照记录时间</dt><dd className="mt-1 font-medium">{formatAdminDate(report.target_snapshot_captured_at)}</dd></div> : null}
-            <div><dt className="text-xs text-muted-foreground">举报人会员编号</dt><dd className="mt-1 font-medium">{report.reporter_number ?? "未编号"}</dd></div>
+            <div><dt className="text-xs text-muted-foreground">举报人会员编号</dt><dd className="mt-1 font-medium">{formatProtectedMemberNumber(report.reporter_number, adminRole === "super_admin")}</dd></div>
             <div><dt className="text-xs text-muted-foreground">举报原因</dt><dd className="mt-1 font-medium">{REPORT_REASON_LABELS[report.reason]}</dd></div>
             <div><dt className="text-xs text-muted-foreground">该目标累计举报</dt><dd className="mt-1 font-medium">{report.target_report_count} 次</dd></div>
           </dl>
@@ -196,7 +196,7 @@ export function ModerationReportDetail({
             <div className="mt-4 space-y-4">
               <div className="rounded-lg bg-muted/60 p-4 text-sm">
                 <p className="font-medium">{author.nickname ?? "未设置社区昵称"}</p>
-                <p className="mt-1 text-muted-foreground">会员编号：{author.member_number ?? "未编号"}</p>
+                <p className="mt-1 text-muted-foreground">会员编号：{formatProtectedMemberNumber(author.member_number, adminRole === "super_admin")}</p>
                 <p className="mt-1 text-muted-foreground">历史处罚：{author.sanctions.length} 条</p>
                 {author.sanctions.length > 0 ? (
                   <ul className="mt-3 space-y-2 border-t border-border pt-3">

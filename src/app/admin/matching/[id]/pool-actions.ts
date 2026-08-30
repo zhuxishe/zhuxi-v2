@@ -9,11 +9,14 @@ import { buildRoundCandidates } from "@/lib/matching/build-round-candidates"
 import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
+import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import type { Json } from "@/types/database.types"
 
 /** 对取消池成员重新运行匹配算法 */
-export async function runPoolRematch(sessionId: string) {
+export async function runPoolRematch(sessionId: string, rawReason: string) {
   await requireAdmin()
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
 
   // 1. 获取已取消的成员 ID
   const memberIds = await fetchCancelledPoolIds(sessionId)
@@ -57,6 +60,7 @@ export async function runPoolRematch(sessionId: string) {
     rank: r.rank,
     best_slot: r.best_slot,
     status: "draft",
+    audit_reason: reasonResult.reason,
   }))
 
   if (rows.length > 0) {
@@ -67,7 +71,7 @@ export async function runPoolRematch(sessionId: string) {
     }
   }
 
-  await syncSessionSummary(supabase, sessionId)
+  await syncSessionSummary(supabase, sessionId, reasonResult.reason)
   revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true, matchCount: result.rows.length }
 }

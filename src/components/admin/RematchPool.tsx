@@ -9,6 +9,7 @@ import { ManualPairDialog } from "./ManualPairDialog"
 import { PlayerInfoPopover } from "./PlayerInfoPopover"
 import type { SubmissionPrefInfo } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 export type { PoolMember }
 
@@ -16,10 +17,11 @@ interface Props {
   sessionId: string
   poolMembers: PoolMember[]
   submissionPrefs?: Record<string, SubmissionPrefInfo>
+  auditReason: string
   onRefresh: () => void
 }
 
-export function RematchPool({ sessionId, poolMembers, submissionPrefs, onRefresh }: Props) {
+export function RematchPool({ sessionId, poolMembers, submissionPrefs, auditReason, onRefresh }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -38,7 +40,7 @@ export function RematchPool({ sessionId, poolMembers, submissionPrefs, onRefresh
     startTransition(async () => {
       setError("")
       setSuccess("")
-      const res = await runPoolRematch(sessionId)
+      const res = await runPoolRematch(sessionId, auditReason)
       if (res.error) {
         setError(res.error)
       } else {
@@ -68,14 +70,14 @@ export function RematchPool({ sessionId, poolMembers, submissionPrefs, onRefresh
             size="sm"
             variant="outline"
             onClick={() => setShowManual(true)}
-            disabled={poolMembers.length < 2}
+            disabled={poolMembers.length < 2 || !adminAuditReasonIsValid(auditReason)}
           >
             <UserPlus className="size-3.5" /> 手动配对
           </Button>
           <Button
             size="sm"
             onClick={handleRematch}
-            disabled={isPending || poolMembers.length < 2}
+            disabled={isPending || poolMembers.length < 2 || !adminAuditReasonIsValid(auditReason)}
           >
             <RefreshCw className={`size-3.5 ${isPending ? "animate-spin" : ""}`} />
             运行再匹配
@@ -106,6 +108,7 @@ export function RematchPool({ sessionId, poolMembers, submissionPrefs, onRefresh
         onOpenChange={setShowManual}
         sessionId={sessionId}
         poolMembers={dialogMembers}
+        auditReason={auditReason}
         onPaired={handlePaired}
       />
     </div>

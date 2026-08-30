@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
+import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMatchHistory } from "@/lib/queries/match-history"
 import { getImportedHistory } from "./import-metadata"
 import { mergeMatchHistory } from "./round-import-utils"
@@ -8,7 +9,7 @@ import type { MatchCandidate } from "./types"
 const ROUND_MEMBER_SELECT = `
   *,
   member:members (
-    id, member_number, status, attractiveness_score,
+    id, status, attractiveness_score,
     member_identity (*),
     member_personality (warmup_speed, expression_style_tags, group_role_tags),
     member_interests (*),
@@ -30,7 +31,8 @@ function sortSubmissions(submissions: RoundSubmission[], memberIds?: string[]) {
 }
 
 export async function buildRoundCandidates(roundId: string, memberIds?: string[]) {
-  const supabase = await createClient()
+  await requireAdmin()
+  const supabase = createAdminClient()
   let query = supabase
     .from("match_round_submissions")
     .select(ROUND_MEMBER_SELECT)

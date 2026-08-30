@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           activity_date: string
           activity_type: string | null
+          audit_reason: string | null
           created_at: string
           created_by: string | null
           duration_minutes: number | null
@@ -34,6 +35,7 @@ export type Database = {
         Insert: {
           activity_date: string
           activity_type?: string | null
+          audit_reason?: string | null
           created_at?: string
           created_by?: string | null
           duration_minutes?: number | null
@@ -50,6 +52,7 @@ export type Database = {
         Update: {
           activity_date?: string
           activity_type?: string | null
+          audit_reason?: string | null
           created_at?: string
           created_by?: string | null
           duration_minutes?: number | null
@@ -319,6 +322,7 @@ export type Database = {
       }
       match_results: {
         Row: {
+          audit_reason: string | null
           best_slot: string | null
           cancellation_reason: string | null
           cancellation_requested_at: string | null
@@ -340,6 +344,7 @@ export type Database = {
           total_score: number
         }
         Insert: {
+          audit_reason?: string | null
           best_slot?: string | null
           cancellation_reason?: string | null
           cancellation_requested_at?: string | null
@@ -361,6 +366,7 @@ export type Database = {
           total_score?: number
         }
         Update: {
+          audit_reason?: string | null
           best_slot?: string | null
           cancellation_reason?: string | null
           cancellation_requested_at?: string | null
@@ -421,12 +427,14 @@ export type Database = {
       }
       match_round_submissions: {
         Row: {
+          audit_reason: string | null
           availability: Json
           created_at: string | null
           game_type_pref: string
           gender_pref: string
           id: string
           interest_tags: string[] | null
+          import_metadata: Json | null
           member_id: string
           message: string | null
           round_id: string
@@ -434,12 +442,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          audit_reason?: string | null
           availability?: Json
           created_at?: string | null
           game_type_pref: string
           gender_pref: string
           id?: string
           interest_tags?: string[] | null
+          import_metadata?: Json | null
           member_id: string
           message?: string | null
           round_id: string
@@ -447,12 +457,14 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          audit_reason?: string | null
           availability?: Json
           created_at?: string | null
           game_type_pref?: string
           gender_pref?: string
           id?: string
           interest_tags?: string[] | null
+          import_metadata?: Json | null
           member_id?: string
           message?: string | null
           round_id?: string
@@ -523,6 +535,7 @@ export type Database = {
       match_sessions: {
         Row: {
           algorithm: string
+          audit_reason: string | null
           config: Json
           created_at: string
           created_by: string | null
@@ -537,6 +550,7 @@ export type Database = {
         }
         Insert: {
           algorithm?: string
+          audit_reason?: string | null
           config?: Json
           created_at?: string
           created_by?: string | null
@@ -551,6 +565,7 @@ export type Database = {
         }
         Update: {
           algorithm?: string
+          audit_reason?: string | null
           config?: Json
           created_at?: string
           created_by?: string | null
@@ -627,6 +642,7 @@ export type Database = {
       member_dynamic_stats: {
         Row: {
           activity_count: number
+          audit_reason: string | null
           avg_review_score: number | null
           complaint_count: number
           created_at: string
@@ -643,6 +659,7 @@ export type Database = {
         }
         Insert: {
           activity_count?: number
+          audit_reason?: string | null
           avg_review_score?: number | null
           complaint_count?: number
           created_at?: string
@@ -659,6 +676,7 @@ export type Database = {
         }
         Update: {
           activity_count?: number
+          audit_reason?: string | null
           avg_review_score?: number | null
           complaint_count?: number
           created_at?: string
@@ -883,6 +901,7 @@ export type Database = {
       }
       member_notes: {
         Row: {
+          audit_reason: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -890,6 +909,7 @@ export type Database = {
           note: string
         }
         Insert: {
+          audit_reason?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -897,6 +917,7 @@ export type Database = {
           note: string
         }
         Update: {
+          audit_reason?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1078,6 +1099,7 @@ export type Database = {
       mutual_reviews: {
         Row: {
           activity_id: string | null
+          audit_reason: string | null
           comment: string | null
           communication_score: number
           created_at: string
@@ -1095,6 +1117,7 @@ export type Database = {
         }
         Insert: {
           activity_id?: string | null
+          audit_reason?: string | null
           comment?: string | null
           communication_score: number
           created_at?: string
@@ -1112,6 +1135,7 @@ export type Database = {
         }
         Update: {
           activity_id?: string | null
+          audit_reason?: string | null
           comment?: string | null
           communication_score?: number
           created_at?: string
@@ -1160,6 +1184,7 @@ export type Database = {
       }
       pair_relationships: {
         Row: {
+          audit_reason: string | null
           avg_score: number | null
           created_at: string
           feedback_a: Json | null
@@ -1174,6 +1199,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          audit_reason?: string | null
           avg_score?: number | null
           created_at?: string
           feedback_a?: Json | null
@@ -1188,6 +1214,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          audit_reason?: string | null
           avg_score?: number | null
           created_at?: string
           feedback_a?: Json | null
@@ -1250,6 +1277,65 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      player_feedback: {
+        Row: {
+          admin_note: string | null
+          audit_reason: string | null
+          category: string
+          client_submission_id: string
+          completed_at: string | null
+          content: string
+          created_at: string
+          id: string
+          locale: string
+          member_id: string
+          member_name_snapshot: string
+          page_path: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_note?: string | null
+          audit_reason?: string | null
+          category: string
+          client_submission_id: string
+          completed_at?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          locale?: string
+          member_id: string
+          member_name_snapshot: string
+          page_path?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_note?: string | null
+          audit_reason?: string | null
+          category?: string
+          client_submission_id?: string
+          completed_at?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          locale?: string
+          member_id?: string
+          member_name_snapshot?: string
+          page_path?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "player_feedback_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personality_quiz_results: {
         Row: {
@@ -1336,6 +1422,7 @@ export type Database = {
       script_play_records: {
         Row: {
           activity_id: string | null
+          audit_reason: string | null
           can_view_full: boolean
           comment: string | null
           created_at: string
@@ -1347,6 +1434,7 @@ export type Database = {
         }
         Insert: {
           activity_id?: string | null
+          audit_reason?: string | null
           can_view_full?: boolean
           comment?: string | null
           created_at?: string
@@ -1358,6 +1446,7 @@ export type Database = {
         }
         Update: {
           activity_id?: string | null
+          audit_reason?: string | null
           can_view_full?: boolean
           comment?: string | null
           created_at?: string
@@ -1611,42 +1700,56 @@ export type Database = {
       }
       staff_profiles: {
         Row: {
+          audit_reason: string | null
           avatar_url: string | null
           created_at: string
           id: string
           intro: string
           is_published: boolean
           major: string
+          member_id: string | null
           name: string
           school: string
           sort_order: number
           updated_at: string
         }
         Insert: {
+          audit_reason?: string | null
           avatar_url?: string | null
           created_at?: string
           id?: string
           intro: string
           is_published?: boolean
           major: string
+          member_id?: string | null
           name: string
           school: string
           sort_order?: number
           updated_at?: string
         }
         Update: {
+          audit_reason?: string | null
           avatar_url?: string | null
           created_at?: string
           id?: string
           intro?: string
           is_published?: boolean
           major?: string
+          member_id?: string | null
           name?: string
           school?: string
           sort_order?: number
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "staff_profiles_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       testimonials: {
         Row: {
@@ -1680,6 +1783,7 @@ export type Database = {
       }
       unmatched_diagnostics: {
         Row: {
+          audit_reason: string | null
           created_at: string
           details: Json | null
           id: string
@@ -1688,6 +1792,7 @@ export type Database = {
           session_id: string
         }
         Insert: {
+          audit_reason?: string | null
           created_at?: string
           details?: Json | null
           id?: string
@@ -1696,6 +1801,7 @@ export type Database = {
           session_id: string
         }
         Update: {
+          audit_reason?: string | null
           created_at?: string
           details?: Json | null
           id?: string
@@ -1722,7 +1828,17 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      published_staff_profiles: {
+        Row: {
+          avatar_url: string | null
+          id: string | null
+          intro: string | null
+          major: string | null
+          name: string | null
+          school: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       is_admin: { Args: never; Returns: boolean }

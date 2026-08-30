@@ -1,49 +1,77 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
+import { memberCenterErrorMessage, updateMemberSection } from "@/lib/queries/member-center"
 import type { InterviewEvalFormData } from "@/types"
+
+function normalizedReason(rawReason: string) {
+  const reason = rawReason.trim()
+  if (reason.length < 4) return { ok: false, error: "请填写至少 4 个字符的操作原因" } as const
+  if (reason.length > 500) return { ok: false, error: "操作原因不得超过 500 个字符" } as const
+  return { ok: true, reason } as const
+}
 
 export async function submitInterviewEval(
   memberId: string,
   data: InterviewEvalFormData,
-  interviewDate?: string,
+  interviewDate: string | undefined,
+  rawReason: string,
 ) {
-  const admin = await requireAdmin()
-  const supabase = await createClient()
+  await requireAdmin()
+  const reasonResult = normalizedReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
 
-  // Upsert evaluation — trigger `on_eval_upsert_sync_score` 会自动
-  // 计算 AVG(attractiveness_score) 并同步到 members 表（同一事务）
-  const { error: evalError } = await supabase
-    .from("interview_evaluations")
-    .upsert(
-      { member_id: memberId, interviewer_id: admin.id, interviewer_name: admin.name, ...data },
-      { onConflict: "member_id,interviewer_id" },
-    )
-
-  if (evalError) {
-    console.error("[submitInterviewEval]", evalError)
-    return { error: "操作失败" }
+  let interviewDateSaved = false
+  try {
+    if (interviewDate) {
+      await updateMemberSection({
+        memberId,
+        section: "application",
+        payload: { interview_date: interviewDate },
+        reason: reasonResult.reason,
+      })
+      interviewDateSaved = true
+    }
+    await updateMemberSection({
+      memberId,
+      section: "interview_evaluation",
+      payload: { ...data },
+      reason: reasonResult.reason,
+    })
+    revalidatePath(`/admin/members/${memberId}`)
+    revalidatePath(`/admin/members/${memberId}/interview`)
+    return { success: true }
+  } catch (error) {
+    console.error("[submitInterviewEval]", error)
+    const message = memberCenterErrorMessage(error)
+    return {
+      error: interviewDateSaved
+        ? `面试日期已保存，但评估保存失败：${message}。请刷新后重试评估。`
+        : message,
+    }
   }
-  revalidatePath(`/admin/members/${memberId}`)
-  return { success: true }
 }
 
-export async function updateMemberStatus(memberId: string, status: string) {
+export async function updateMemberStatus(memberId: string, status: string, rawReason: string) {
   await requireAdmin()
+  const validStatuses = ["pending", "approved", "rejected", "inactive"]
+  if (!validStatuses.includes(status)) return { error: `无效审批状态：${status}` }
+  const reasonResult = normalizedReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
 
-  const VALID_STATUSES = ['pending', 'approved', 'rejected', 'inactive']
-  if (!VALID_STATUSES.includes(status)) {
-    return { error: `无效状态: ${status}` }
-  }
-
-  const supabase = await createClient()
-  const { error } = await supabase.from("members").update({ status }).eq("id", memberId)
-  if (error) {
+  try {
+    await updateMemberSection({
+      memberId,
+      section: "application",
+      payload: { status },
+      reason: reasonResult.reason,
+    })
+    revalidatePath("/admin/members")
+    revalidatePath(`/admin/members/${memberId}`)
+    return { success: true }
+  } catch (error) {
     console.error("[updateMemberStatus]", error)
-    return { error: "操作失败" }
+    return { error: memberCenterErrorMessage(error) }
   }
-  revalidatePath(`/admin/members/${memberId}`)
-  return { success: true }
 }

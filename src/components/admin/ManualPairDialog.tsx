@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react"
 import { checkPairCompatibility, checkGroupCompatibility, manualPair } from "@/app/admin/matching/[id]/manual-actions"
 import { MemberSelect, MemberChips, CompatDisplay, GroupCompatDisplay } from "./ManualPairHelpers"
 import type { CompatResult, GroupCompatResult } from "./ManualPairHelpers"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 interface SelectableMember { id: string; name: string }
 
@@ -19,11 +20,12 @@ interface Props {
   sessionId: string
   poolMembers: SelectableMember[]
   preselectedA?: string
+  auditReason: string
   onPaired: () => void
 }
 
 export function ManualPairDialog({
-  open, onOpenChange, sessionId, poolMembers, preselectedA = "", onPaired,
+  open, onOpenChange, sessionId, poolMembers, preselectedA = "", auditReason, onPaired,
 }: Props) {
   const [selectedIds, setSelectedIds] = useState<string[]>(preselectedA ? [preselectedA] : [])
   const [addValue, setAddValue] = useState("")
@@ -89,7 +91,7 @@ export function ManualPairDialog({
   const handleConfirm = () => {
     startTransition(async () => {
       setError("")
-      const res = await manualPair(sessionId, selectedIds)
+      const res = await manualPair(sessionId, selectedIds, auditReason)
       if (res.error) {
         setError(res.error)
       } else {
@@ -163,7 +165,7 @@ export function ManualPairDialog({
           )}
           <Button
             onClick={handleConfirm}
-            disabled={!checked || (!compatible && !canForce) || isPending}
+            disabled={!checked || (!compatible && !canForce) || isPending || !adminAuditReasonIsValid(auditReason)}
             variant={canForce ? "outline" : "default"}
           >
             {isPending ? <Loader2 className="size-3.5 animate-spin" /> : null}

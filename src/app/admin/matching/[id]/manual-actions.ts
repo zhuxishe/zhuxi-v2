@@ -12,8 +12,16 @@ import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
 import { validateUuids } from "@/lib/sanitize"
+import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import type { MatchCandidate, ScoreComponent } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
+
+type OperationalRpcClient = {
+  rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{
+    data: T | null
+    error: { code?: string; message: string } | null
+  }>
+}
 
 /** 获取 session 对应的 round_id */
 async function getSessionRoundId(sessionId: string): Promise<string | null> {
@@ -134,6 +142,13 @@ function buildGroupConstraints(
   return items
 }
 
+function redactRawConstraintDetails(items: ConstraintItem[]): ConstraintItem[] {
+  return items.map((item) => ({
+    ...item,
+    details: ["已在服务端完成校验；原始问卷详情仅超级管理员可查看"],
+  }))
+}
+
 /** 检查两人兼容性（硬约束 + 评分） */
 export async function checkPairCompatibility(
   sessionId: string,
@@ -141,7 +156,7 @@ export async function checkPairCompatibility(
   memberBId: string,
 ) {
   validateUuids([sessionId, memberAId, memberBId])
-  await requireAdmin()
+  const admin = await requireAdmin()
 
   const roundId = await getSessionRoundId(sessionId)
   if (!roundId) throw new Error("该匹配会话无关联轮次，无法获取问卷数据")
@@ -162,10 +177,14 @@ export async function checkPairCompatibility(
 
   return {
     compatible: constraint.passed,
-    warnings: constraint.reasons,
-    constraints,
+    warnings: admin.role === "super_admin"
+      ? constraint.reasons
+      : constraint.passed ? [] : ["存在不满足的匹配约束"],
+    constraints: admin.role === "super_admin"
+      ? constraints
+      : redactRawConstraintDetails(constraints),
     score: score.totalScore,
-    breakdown: score.breakdown as ScoreComponent[],
+    breakdown: admin.role === "super_admin" ? score.breakdown as ScoreComponent[] : [],
     bestSlot,
   }
 }
@@ -176,7 +195,7 @@ export async function checkGroupCompatibility(
   memberIds: string[],
 ) {
   validateUuids([sessionId, ...memberIds])
-  await requireAdmin()
+  const admin = await requireAdmin()
 
   const roundId = await getSessionRoundId(sessionId)
   if (!roundId) throw new Error("该匹配会话无关联轮次，无法获取问卷数据")
@@ -220,8 +239,12 @@ export async function checkGroupCompatibility(
 
   return {
     compatible: warnings.length === 0,
-    warnings,
-    constraints,
+    warnings: admin.role === "super_admin"
+      ? warnings
+      : warnings.length === 0 ? [] : ["存在不满足的匹配约束"],
+    constraints: admin.role === "super_admin"
+      ? constraints
+      : redactRawConstraintDetails(constraints),
     bestSlot: hasSlot ? bestSlot : null,
   }
 }
@@ -230,9 +253,12 @@ export async function checkGroupCompatibility(
 export async function manualPair(
   sessionId: string,
   memberIds: string[],
+  rawReason: string,
 ) {
   validateUuids([sessionId, ...memberIds])
   await requireAdmin()
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
 
   if (memberIds.length < 2) return { error: "至少需要 2 人" }
   if (memberIds.length > 6) return { error: "最多 6 人" }
@@ -303,17 +329,22 @@ export async function manualPair(
 
   // ── 插入配对 ──
   const isDuo = memberIds.length === 2
-  const { error } = await supabase.from("match_results").insert({
-    session_id: sessionId,
-    member_a_id: memberIds[0],
-    member_b_id: isDuo ? memberIds[1] : null,
-    group_members: isDuo ? null : memberIds,
-    total_score: totalScore,
-    score_breakdown: scoreBreakdown,
-    best_slot: bestSlot,
-    status: "draft",
-    rank: 999,
-  })
+  const { data: insertedResult, error } = await supabase
+    .from("match_results")
+    .insert({
+      session_id: sessionId,
+      member_a_id: memberIds[0],
+      member_b_id: isDuo ? memberIds[1] : null,
+      group_members: isDuo ? null : memberIds,
+      total_score: totalScore,
+      score_breakdown: scoreBreakdown,
+      best_slot: bestSlot,
+      status: "draft",
+      rank: 999,
+      audit_reason: reasonResult.reason,
+    })
+    .select("id")
+    .single()
 
   if (error) {
     console.error("[manualPair]", error)
@@ -321,13 +352,33 @@ export async function manualPair(
   }
 
   // ── 清理未匹配诊断 ──
-  await supabase
-    .from("unmatched_diagnostics")
-    .delete()
-    .eq("session_id", sessionId)
-    .in("member_id", memberIds)
+  const rpc = supabase as unknown as OperationalRpcClient
+  const { error: diagnosticError } = await rpc.rpc<unknown>(
+    "admin_clear_unmatched_diagnostics",
+    {
+      p_session_id: sessionId,
+      p_member_ids: memberIds,
+      p_reason: reasonResult.reason,
+    },
+  )
+  if (diagnosticError) {
+    console.error("[manualPair:clearDiagnostics]", diagnosticError)
+    const { error: compensationError } = await rpc.rpc<unknown>(
+      "admin_delete_operational_record",
+      {
+        p_entity: "match_results",
+        p_id: insertedResult.id,
+        p_reason: `诊断清理失败，撤销手动配对：${reasonResult.reason}`.slice(0, 500),
+      },
+    )
+    if (compensationError) {
+      console.error("[manualPair:compensation]", compensationError)
+      return { error: "未匹配诊断清理失败，且配对补偿失败，请立即人工检查" }
+    }
+    return { error: "未匹配诊断清理失败，手动配对已撤销" }
+  }
 
-  await syncSessionSummary(supabase, sessionId)
+  await syncSessionSummary(supabase, sessionId, reasonResult.reason)
   revalidatePath(`/admin/matching/${sessionId}`)
   return { success: true }
 }

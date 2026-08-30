@@ -52,7 +52,7 @@ export interface SubmissionPrefInfo {
 
 export interface EnrichedMember {
   id: string
-  member_number: string | null
+  record_source: string | null
   member_identity: MemberIdentityInfo | null
   member_interests: MemberInterestsInfo | null
   member_personality: MemberPersonalityInfo | null

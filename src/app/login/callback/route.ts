@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
-import { getSingleRelation } from "@/lib/supabase/relations"
+import {
+  ensureMyMemberRecord,
+  getMemberMasterDiagnostic,
+  resolveMemberRouteSnapshot,
+} from "@/lib/member-master/rpc"
 import { buildPublicUrl } from "@/lib/site-url"
 import { APP_SPLASH_SKIP_COOKIE } from "@/lib/app-launch-splash"
 import type { Database } from "@/types/database.types"
@@ -101,25 +105,32 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
   }
 
-  const { data: member, error: memberError } = await supabase
-    .from("members")
-    .select("id, status, member_identity(full_name)")
-    .eq("user_id", user.id)
-    .maybeSingle()
-
-  if (memberError) {
-    console.error("[login/callback] member lookup failed:", memberError.message)
-    return NextResponse.redirect(buildRedirectUrl(req, "/app"))
+  let member: Awaited<ReturnType<typeof resolveMemberRouteSnapshot>>
+  try {
+    // First login always gets a canonical record. Active users re-read the row
+    // for complete profile state; blocked users route from ensure because the
+    // self-read RLS policy intentionally hides suspended/closed rows.
+    const ensured = await ensureMyMemberRecord(supabase)
+    member = await resolveMemberRouteSnapshot(supabase, ensured)
+  } catch (memberError) {
+    console.error(
+      "[login/callback] member master failed:",
+      getMemberMasterDiagnostic(memberError)
+    )
+    return copyCookies(
+      authResponse,
+      NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
+    )
   }
 
-  const identity = member
-    ? getSingleRelation(
-        member.member_identity as { full_name: string | null } | { full_name: string | null }[] | null
-      )
-    : null
-
   const route = resolvePlayerRoute(
-    member ? { status: member.status, hasIdentity: !!identity } : null
+    {
+      status: member.status,
+      accountStatus: member.accountStatus,
+      profileStage: member.profileStage,
+      onboardingStep: member.onboardingStep,
+      hasIdentity: member.hasIdentity,
+    }
   )
 
   if (route.action === "redirect") {
@@ -129,8 +140,9 @@ export async function GET(req: NextRequest) {
     ), req)
   }
 
+  const destination = route.view === "home" ? nextPath : "/app"
   return markSkipAppSplash(copyCookies(
     authResponse,
-    NextResponse.redirect(buildRedirectUrl(req, nextPath))
+    NextResponse.redirect(buildRedirectUrl(req, destination))
   ), req)
 }

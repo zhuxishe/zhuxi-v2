@@ -16,6 +16,16 @@ export type {
   MemberVerificationRow, MemberDetail,
 } from "./member-detail"
 
+// Unified admin member directory and 360 detail
+export type {
+  Member360, Member360Account, Member360Capabilities, Member360Core,
+  MemberAuditEvent, MemberAuditPage, MemberCenterRecord, MemberCommunitySummary,
+  MemberDirectoryFilters, MemberDirectoryItem, MemberDirectoryPage,
+  MemberDuplicateResolutionResult, MemberFeedbackSummary, MemberHardDeleteResult,
+  MemberLifecyclePreflight, MemberMatchingSummary,
+  MemberSectionUpdateResult,
+} from "./member-center"
+
 // Form types
 export type { SupplementaryFormData, PersonalitySelfData, TagOption, TagCategory } from "./form-types"
 export { EMPTY_SUPPLEMENTARY, EMPTY_PERSONALITY } from "./form-types"

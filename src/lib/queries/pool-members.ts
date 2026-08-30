@@ -1,4 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchCancelledPoolIds } from "./cancelled-pool"
 import { getSingleRelation } from "@/lib/supabase/relations"
 import type { EnrichedMember } from "@/components/admin/match-detail-types"
@@ -14,15 +15,16 @@ export interface PoolMember {
  * 返回 { id, name, memberData } 数组，供 RematchPool 使用
  */
 export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]> {
-  const supabase = await createClient()
+  await requireAdmin()
   const poolIds = await fetchCancelledPoolIds(sessionId)
   if (poolIds.length === 0) return []
 
   // 获取成员详情（含 popover 所需数据）
+  const supabase = createAdminClient()
   const { data: members, error: mErr } = await supabase
     .from("members")
     .select(`
-      id, member_number,
+      id, record_source,
       member_identity (full_name, nickname, school_name, gender, hobby_tags, nationality, degree_level, department),
       member_interests (game_type_pref, scenario_theme_tags, preferred_time_slots, social_goal_primary),
       member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
@@ -40,7 +42,7 @@ export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]>
     return {
       id: m.id,
       name,
-      memberData: m as EnrichedMember,
+      memberData: m as unknown as EnrichedMember,
     }
   })
 }

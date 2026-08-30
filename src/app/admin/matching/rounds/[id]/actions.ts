@@ -10,6 +10,14 @@ import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { canUpdateRoundStatus } from "@/components/admin/round-detail-rules"
 import type { MatchingConfig } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
+import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
+
+type OperationalRpcClient = {
+  rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{
+    data: T | null
+    error: { code?: string; message: string } | null
+  }>
+}
 
 /** 更新轮次状态 */
 export async function updateRoundStatus(roundId: string, status: string) {
@@ -47,8 +55,10 @@ export async function updateRoundStatus(roundId: string, status: string) {
 }
 
 /** 基于轮次问卷运行匹配 */
-export async function runRoundMatching(roundId: string, sessionName: string) {
+export async function runRoundMatching(roundId: string, sessionName: string, rawReason: string) {
   const admin = await requireAdmin()
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
   const supabase = await createClient()
 
   // 0. 前置状态校验：只有 closed 状态的轮次才能执行匹配
@@ -95,6 +105,7 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
       total_matched: result.totalMatched,
       total_unmatched: result.totalUnmatched,
       created_by: admin.id,
+      audit_reason: reasonResult.reason,
     })
     .select("id")
     .single()
@@ -114,15 +125,25 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
     score_breakdown: r.score_breakdown as import("@/types/database.types").Json,
     rank: r.rank,
     best_slot: r.best_slot,
+    audit_reason: reasonResult.reason,
   }))
 
   if (rows.length > 0) {
     const { error: rErr } = await supabase.from("match_results").insert(rows)
     if (rErr) {
       // 补偿：删除孤立的 session，避免脏数据
-      await supabase.from("match_sessions").delete().eq("id", session.id)
+      const rpc = supabase as unknown as OperationalRpcClient
+      const { error: compensationError } = await rpc.rpc<unknown>("admin_delete_operational_record", {
+        p_entity: "match_sessions",
+        p_id: session.id,
+        p_reason: `匹配写入失败补偿：${reasonResult.reason}`.slice(0, 500),
+      })
       console.error("[runRoundMatching:results]", rErr)
-      return { error: "操作失败" }
+      if (compensationError) {
+        console.error("[runRoundMatching:compensation]", compensationError)
+        return { error: "匹配结果写入失败，且会话补偿删除失败，请立即人工检查" }
+      }
+      return { error: "匹配结果写入失败，会话已补偿删除" }
     }
   }
 
@@ -133,12 +154,52 @@ export async function runRoundMatching(roundId: string, sessionName: string) {
       member_id: idMap.get(subId) ?? subId,
       reason: "unmatched_after_all_stages",
       details: { stage: "overflow" } as import("@/types/database.types").Json,
+      audit_reason: reasonResult.reason,
     }))
-    await supabase.from("unmatched_diagnostics").insert(diagRows)
+    const { error: diagnosticError } = await supabase
+      .from("unmatched_diagnostics")
+      .insert(diagRows)
+    if (diagnosticError) {
+      const rpc = supabase as unknown as OperationalRpcClient
+      const { error: compensationError } = await rpc.rpc<unknown>(
+        "admin_delete_operational_record",
+        {
+          p_entity: "match_sessions",
+          p_id: session.id,
+          p_reason: `诊断写入失败补偿：${reasonResult.reason}`.slice(0, 500),
+        },
+      )
+      console.error("[runRoundMatching:diagnostics]", diagnosticError)
+      if (compensationError) {
+        console.error("[runRoundMatching:diagnosticsCompensation]", compensationError)
+        return { error: "未匹配诊断写入失败，且会话补偿删除失败，请立即人工检查" }
+      }
+      return { error: "未匹配诊断写入失败，会话已补偿删除" }
+    }
   }
 
   // 8. 更新轮次状态为 matched
-  await supabase.from("match_rounds").update({ status: "matched" }).eq("id", roundId)
+  const { error: roundStatusError } = await supabase
+    .from("match_rounds")
+    .update({ status: "matched" })
+    .eq("id", roundId)
+  if (roundStatusError) {
+    const rpc = supabase as unknown as OperationalRpcClient
+    const { error: compensationError } = await rpc.rpc<unknown>(
+      "admin_delete_operational_record",
+      {
+        p_entity: "match_sessions",
+        p_id: session.id,
+        p_reason: `轮次状态写入失败补偿：${reasonResult.reason}`.slice(0, 500),
+      },
+    )
+    console.error("[runRoundMatching:roundStatus]", roundStatusError)
+    if (compensationError) {
+      console.error("[runRoundMatching:roundStatusCompensation]", compensationError)
+      return { error: "轮次状态更新失败，且会话补偿删除失败，请立即人工检查" }
+    }
+    return { error: "轮次状态更新失败，会话已补偿删除" }
+  }
 
   revalidatePath(`/admin/matching/rounds/${roundId}`)
   revalidatePath("/admin/matching")
@@ -156,9 +217,41 @@ interface SubmissionData {
   message: string | null
 }
 
+const SUBMISSION_GAME_TYPES = new Set(["双人", "多人", "都可以"])
+const SUBMISSION_GENDER_PREFS = new Set(["男", "女", "都可以"])
+const SUBMISSION_SLOTS = new Set(["上午", "下午", "晚上"])
+
+function validateSubmissionData(data: SubmissionData) {
+  if (!SUBMISSION_GAME_TYPES.has(data.game_type_pref)
+    || !SUBMISSION_GENDER_PREFS.has(data.gender_pref)
+    || !data.availability
+    || typeof data.availability !== "object"
+    || Array.isArray(data.availability)
+    || Object.keys(data.availability).length > 100
+    || Object.entries(data.availability).some(([date, slots]) =>
+      !/^\d{4}-\d{2}-\d{2}$/.test(date)
+      || !Array.isArray(slots)
+      || slots.length === 0
+      || slots.length > 3
+      || slots.some((slot) => !SUBMISSION_SLOTS.has(slot)))
+    || !Array.isArray(data.interest_tags)
+    || data.interest_tags.length > 50
+    || data.interest_tags.some((tag) => typeof tag !== "string" || Array.from(tag).length > 100)
+    || (data.social_style !== null && (typeof data.social_style !== "string" || Array.from(data.social_style).length > 100))
+    || (data.message !== null && (typeof data.message !== "string" || Array.from(data.message).length > 2000))) {
+    return "问卷数据格式或长度不正确"
+  }
+  return null
+}
+
 /** 更新已有问卷 */
-export async function updateSubmission(submissionId: string, data: SubmissionData) {
-  await requireAdmin()
+export async function updateSubmission(submissionId: string, data: SubmissionData, rawReason: string) {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "仅超级管理员可覆盖原始问卷" }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  const validationError = validateSubmissionData(data)
+  if (validationError) return { error: validationError }
   const supabase = await createClient()
 
   // 检查关联轮次状态
@@ -185,6 +278,7 @@ export async function updateSubmission(submissionId: string, data: SubmissionDat
       interest_tags: data.interest_tags,
       social_style: data.social_style,
       message: data.message,
+      audit_reason: reasonResult.reason,
     })
     .eq("id", submissionId)
 
@@ -199,9 +293,14 @@ export async function updateSubmission(submissionId: string, data: SubmissionDat
 
 /** 新增问卷 */
 export async function createSubmission(
-  roundId: string, memberId: string, data: SubmissionData,
+  roundId: string, memberId: string, data: SubmissionData, rawReason: string,
 ) {
-  await requireAdmin()
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "仅超级管理员可新增原始问卷" }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  const validationError = validateSubmissionData(data)
+  if (validationError) return { error: validationError }
   const supabase = await createClient()
 
   // 检查轮次状态
@@ -233,6 +332,7 @@ export async function createSubmission(
       interest_tags: data.interest_tags,
       social_style: data.social_style,
       message: data.message,
+      audit_reason: reasonResult.reason,
     })
 
   if (error) {
@@ -245,8 +345,11 @@ export async function createSubmission(
 }
 
 /** 删除问卷 */
-export async function deleteSubmission(submissionId: string) {
-  await requireAdmin()
+export async function deleteSubmission(submissionId: string, rawReason: string) {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "仅超级管理员可删除原始问卷" }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
   const supabase = await createClient()
 
   // 查询关联轮次
@@ -264,10 +367,12 @@ export async function deleteSubmission(submissionId: string) {
     .single()
   if (round?.status === "matched") return { error: "该轮次已完成匹配，无法删除" }
 
-  const { error } = await supabase
-    .from("match_round_submissions")
-    .delete()
-    .eq("id", submissionId)
+  const rpc = supabase as unknown as OperationalRpcClient
+  const { error } = await rpc.rpc<unknown>("admin_delete_operational_record", {
+    p_entity: "match_round_submissions",
+    p_id: submissionId,
+    p_reason: reasonResult.reason,
+  })
 
   if (error) {
     console.error("[deleteSubmission]", error)

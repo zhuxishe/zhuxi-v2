@@ -1,67 +1,109 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import {
+  getLineIdentityDiagnostic,
+  isValidLineUserId,
+  serviceSetMemberLineIdentity,
+  toPublicLineIdentityError,
+} from "@/lib/member-master/line"
 
 const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID!
 
 /** POST: Bind LINE account to current user */
 export async function POST(req: NextRequest) {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 })
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 })
 
-  const { idToken, lineUserId } = await req.json()
-  if (!idToken || !lineUserId) return NextResponse.json({ error: "Missing params" }, { status: 400 })
+    const body = await readJsonBody(req)
+    if (!body || typeof body.idToken !== "string" || !isValidLineUserId(body.lineUserId)) {
+      return NextResponse.json({ error: "Missing or invalid params" }, { status: 400 })
+    }
 
-  // Verify LINE token
-  const verifyRes = await fetch("https://api.line.me/oauth2/v2.1/verify", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ id_token: idToken, client_id: LINE_CHANNEL_ID }),
-  })
-  if (!verifyRes.ok) return NextResponse.json({ error: "LINE verification failed" }, { status: 401 })
+    // Verify LINE token and require its subject to match the claimed identity.
+    const verifyRes = await fetch("https://api.line.me/oauth2/v2.1/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ id_token: body.idToken, client_id: LINE_CHANNEL_ID }),
+    })
+    if (!verifyRes.ok) {
+      return NextResponse.json({ error: "LINE verification failed" }, { status: 401 })
+    }
 
-  // Verify token subject matches claimed lineUserId
-  const verifyData = await verifyRes.json()
-  if (verifyData.sub !== lineUserId) {
-    return NextResponse.json({ error: "Token subject mismatch" }, { status: 403 })
+    const verifyData = await verifyRes.json() as { sub?: unknown }
+    if (verifyData.sub !== body.lineUserId) {
+      return NextResponse.json({ error: "Token subject mismatch" }, { status: 403 })
+    }
+
+    const serviceClient = createAdminClient()
+    const { error } = await serviceSetMemberLineIdentity(serviceClient, {
+      userId: user.id,
+      lineUserId: body.lineUserId,
+      operation: "bind",
+    })
+    if (error) return lineIdentityErrorResponse(error)
+    return NextResponse.json({ success: true })
+  } catch {
+    return unexpectedLineIdentityError()
   }
-
-  const serviceClient = createAdminClient()
-
-  // Check conflict
-  const { data: existing } = await serviceClient
-    .from("members")
-    .select("id, user_id")
-    .eq("line_user_id", lineUserId)
-    .maybeSingle()
-
-  if (existing && existing.user_id !== user.id) {
-    return NextResponse.json({ error: "LINE account bound to another user" }, { status: 409 })
-  }
-
-  const { error } = await serviceClient
-    .from("members")
-    .update({ line_user_id: lineUserId })
-    .eq("user_id", user.id)
-
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
 }
 
 /** DELETE: Unbind LINE account */
-export async function DELETE() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 })
+export async function DELETE(req: NextRequest) {
+  try {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return NextResponse.json({ error: "Not logged in" }, { status: 401 })
 
-  const serviceClient = createAdminClient()
+    // The value came from the authenticated user's canonical profile. The RPC
+    // compares it with the locked row before clearing, so a stale or tampered
+    // request cannot unlink a different identity.
+    const body = await readJsonBody(req)
+    if (!body || !isValidLineUserId(body.lineUserId)) {
+      return NextResponse.json({ error: "Missing or invalid params" }, { status: 400 })
+    }
 
-  const { error } = await serviceClient
-    .from("members")
-    .update({ line_user_id: null })
-    .eq("user_id", user.id)
+    const serviceClient = createAdminClient()
+    const { error } = await serviceSetMemberLineIdentity(serviceClient, {
+      userId: user.id,
+      lineUserId: body.lineUserId,
+      operation: "unbind",
+    })
+    if (error) return lineIdentityErrorResponse(error)
+    return NextResponse.json({ success: true })
+  } catch {
+    return unexpectedLineIdentityError()
+  }
+}
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
-  return NextResponse.json({ success: true })
+async function readJsonBody(req: NextRequest) {
+  try {
+    const value: unknown = await req.json()
+    return typeof value === "object" && value !== null && !Array.isArray(value)
+      ? value as Record<string, unknown>
+      : null
+  } catch {
+    return null
+  }
+}
+
+function lineIdentityErrorResponse(error: { code?: string; message?: string }) {
+  console.error(
+    "[LINE Link] identity RPC failed:",
+    getLineIdentityDiagnostic(error)
+  )
+  const publicError = toPublicLineIdentityError(error)
+  return NextResponse.json(
+    { error: publicError.message, code: publicError.code },
+    { status: publicError.status }
+  )
+}
+
+function unexpectedLineIdentityError() {
+  return NextResponse.json(
+    { error: "LINE account update failed", code: "line_identity_update_failed" },
+    { status: 500 }
+  )
 }

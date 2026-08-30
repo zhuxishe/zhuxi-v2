@@ -24,6 +24,7 @@ export function ActivityRecordForm({ members }: Props) {
   const [participantIds, setParticipantIds] = useState<string[]>([])
   const [lateIds, setLateIds] = useState<string[]>([])
   const [noShowIds, setNoShowIds] = useState<string[]>([])
+  const [reason, setReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -37,6 +38,7 @@ export function ActivityRecordForm({ members }: Props) {
       participant_ids: participantIds,
       late_member_ids: lateIds,
       no_show_member_ids: noShowIds,
+      reason,
     })
     setSubmitting(false)
     if (result.error) setError(result.error)
@@ -81,9 +83,11 @@ export function ActivityRecordForm({ members }: Props) {
       <MemberMultiSelect members={members} selected={noShowIds} onChange={setNoShowIds} label="缺席成员" />
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} placeholder="备注..."
         className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
+      <textarea value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={500} placeholder="新建原因（必填，4–500 字符）"
+        className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" />
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-2">
-        <Button onClick={handleSubmit} disabled={submitting}>{submitting ? "保存中..." : "保存"}</Button>
+        <Button onClick={handleSubmit} disabled={submitting || reason.trim().length < 4}>{submitting ? "保存中..." : "保存"}</Button>
         <Button variant="outline" onClick={() => setOpen(false)}>取消</Button>
       </div>
     </div>

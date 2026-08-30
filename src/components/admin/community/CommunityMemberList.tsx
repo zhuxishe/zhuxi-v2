@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { Search, Users } from "lucide-react"
-import { COMMUNITY_ADMIN_INPUT_CLASS, formatAdminDate } from "./community-admin-ui"
+import { COMMUNITY_ADMIN_INPUT_CLASS, formatAdminDate, formatProtectedMemberNumber } from "./community-admin-ui"
 import type { CommunityAdminMember } from "./types"
 
 function sanctionLabel(member: CommunityAdminMember) {
@@ -15,19 +15,37 @@ function sanctionClass(member: CommunityAdminMember) {
   return "bg-emerald-100 text-emerald-700"
 }
 
-export function CommunityMemberSearch({ query }: { query?: string }) {
+export function CommunityMemberSearch({
+  query,
+  canSearchMemberNumber,
+}: {
+  query?: string
+  canSearchMemberNumber: boolean
+}) {
   return (
     <form className="flex max-w-md gap-2">
       <label className="relative min-w-0 flex-1">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <input name="q" defaultValue={query ?? ""} placeholder="搜索社区昵称或会员编号" aria-label="搜索社区昵称或会员编号" className={`${COMMUNITY_ADMIN_INPUT_CLASS} pl-9`} />
+        <input
+          name="q"
+          defaultValue={query ?? ""}
+          placeholder={canSearchMemberNumber ? "搜索社区昵称或会员编号" : "搜索社区昵称"}
+          aria-label={canSearchMemberNumber ? "搜索社区昵称或会员编号" : "搜索社区昵称"}
+          className={`${COMMUNITY_ADMIN_INPUT_CLASS} pl-9`}
+        />
       </label>
       <button type="submit" className="min-h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground">搜索</button>
     </form>
   )
 }
 
-export function CommunityMemberList({ members }: { members: CommunityAdminMember[] }) {
+export function CommunityMemberList({
+  members,
+  canViewMemberNumber,
+}: {
+  members: CommunityAdminMember[]
+  canViewMemberNumber: boolean
+}) {
   if (members.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-border bg-card px-4 py-14 text-center">
@@ -45,7 +63,7 @@ export function CommunityMemberList({ members }: { members: CommunityAdminMember
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
                 <h3 className="truncate font-semibold">{member.nickname}</h3>
-                <p className="mt-1 text-xs text-muted-foreground">会员编号 {member.member_number ?? "未编号"}</p>
+                <p className="mt-1 text-xs text-muted-foreground">会员编号 {formatProtectedMemberNumber(member.member_number, canViewMemberNumber)}</p>
               </div>
               <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${sanctionClass(member)}`}>{sanctionLabel(member)}</span>
             </div>
@@ -70,7 +88,7 @@ export function CommunityMemberList({ members }: { members: CommunityAdminMember
             {members.map((member) => (
               <tr key={member.profile_id} className="hover:bg-muted/30">
                 <td className="px-4 py-3 font-medium">{member.nickname}</td>
-                <td className="px-4 py-3">{member.member_number ?? "未编号"}</td>
+                <td className="px-4 py-3">{formatProtectedMemberNumber(member.member_number, canViewMemberNumber)}</td>
                 <td className="px-4 py-3 text-muted-foreground">{member.member_status}</td>
                 <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 text-xs font-medium ${sanctionClass(member)}`}>{sanctionLabel(member)}</span></td>
                 <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">{formatAdminDate(member.joined_at)}</td>

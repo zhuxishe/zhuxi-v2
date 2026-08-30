@@ -1,12 +1,16 @@
 "use server"
 
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
 import { revalidatePath } from "next/cache"
+import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 
 /** 批量授予剧本访问权 */
-export async function grantScriptAccess(scriptId: string, memberIds: string[]) {
+export async function grantScriptAccess(scriptId: string, memberIds: string[], rawReason: string) {
   await requireAdmin()
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
   if (memberIds.length === 0) return { error: "请选择至少一个成员" }
 
   const supabase = await createClient()
@@ -14,6 +18,7 @@ export async function grantScriptAccess(scriptId: string, memberIds: string[]) {
     script_id: scriptId,
     member_id: mid,
     can_view_full: true,
+    audit_reason: reasonResult.reason,
   }))
 
   const { error } = await supabase
@@ -29,13 +34,15 @@ export async function grantScriptAccess(scriptId: string, memberIds: string[]) {
 }
 
 /** 撤销单个成员的剧本访问权 */
-export async function revokeScriptAccess(scriptId: string, memberId: string) {
+export async function revokeScriptAccess(scriptId: string, memberId: string, rawReason: string) {
   await requireAdmin()
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
   const supabase = await createClient()
 
   const { error } = await supabase
     .from("script_play_records")
-    .update({ can_view_full: false })
+    .update({ can_view_full: false, audit_reason: reasonResult.reason })
     .eq("script_id", scriptId)
     .eq("member_id", memberId)
 
@@ -50,14 +57,14 @@ export async function revokeScriptAccess(scriptId: string, memberId: string) {
 /** 获取已授权玩家列表 */
 export async function fetchScriptAccessList(scriptId: string) {
   await requireAdmin()
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from("script_play_records")
     .select(`
       member_id, can_view_full,
       member:members!script_play_records_member_id_fkey (
-        id, member_number,
+        id,
         member_identity (full_name)
       )
     `)

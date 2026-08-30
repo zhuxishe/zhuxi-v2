@@ -32,11 +32,8 @@ export async function fetchPublishedStaffProfiles(): Promise<StaffProfilePublic[
   const supabase = await createClient()
 
   const { data, error } = await supabase
-    .from("staff_profiles")
+    .from("published_staff_profiles")
     .select("id, name, school, major, intro, avatar_url")
-    .eq("is_published", true)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: true })
 
   if (error) return []
   return (data ?? []) as StaffProfilePublic[]

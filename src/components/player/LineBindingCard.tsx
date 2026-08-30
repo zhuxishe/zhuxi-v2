@@ -40,7 +40,11 @@ export function LineBindingCard({ lineUserId: initial, variant = "card" }: Props
     if (!confirm(t("confirmUnbind"))) return
     setLoading(true); setMsg(null)
     try {
-      const res = await fetch("/api/auth/line/link", { method: "DELETE" })
+      const res = await fetch("/api/auth/line/link", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lineUserId: initial }),
+      })
       if (res.ok) { setMsg({ ok: true, text: t("unbindSuccess") }); setBound(false) }
       else { const d = await res.json(); setMsg({ ok: false, text: d.error }) }
     } catch { setMsg({ ok: false, text: t("operationFailed") }) }

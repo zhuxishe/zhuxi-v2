@@ -1,4 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
+import { requireAdmin } from "@/lib/auth/admin"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { validateUuids } from "@/lib/sanitize"
 
 export async function fetchMatchSessions() {
@@ -14,7 +16,8 @@ export async function fetchMatchSessions() {
 }
 
 export async function fetchMatchSession(id: string) {
-  const supabase = await createClient()
+  await requireAdmin()
+  const supabase = createAdminClient()
 
   const { data: session, error: sErr } = await supabase
     .from("match_sessions")
@@ -25,7 +28,7 @@ export async function fetchMatchSession(id: string) {
   if (sErr) throw sErr
 
   const memberSelect = `
-    id, member_number,
+    id, record_source,
     member_identity (full_name, nickname, school_name, gender, hobby_tags, nationality, degree_level, department),
     member_interests (game_type_pref, scenario_theme_tags, preferred_time_slots, social_goal_primary),
     member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
@@ -58,7 +61,7 @@ export async function fetchMatchSession(id: string) {
     const { data: gmData } = await supabase
       .from("members")
       .select(`
-        id, member_number,
+        id, record_source,
         member_identity (full_name, nickname, school_name, gender, hobby_tags, nationality, degree_level, department),
         member_interests (game_type_pref, scenario_theme_tags, preferred_time_slots, social_goal_primary),
         member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
@@ -81,19 +84,28 @@ export async function fetchMatchSession(id: string) {
 }
 
 export async function fetchMatchCandidates() {
-  const supabase = await createClient()
+  await requireAdmin()
+  const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from("members")
     .select(`
-      id, member_number, status, attractiveness_score, membership_type,
-      member_identity (*),
-      member_interests (*),
-      member_personality (*),
-      member_language (*),
-      member_boundaries (*),
-      member_dynamic_stats (activity_count, late_count, no_show_count, replay_willing_rate, reliability_score),
-      personality_quiz_results (score_e, score_a, score_o, score_c, score_n)
+      id, status, attractiveness_score, membership_type,
+      member_identity (
+        full_name, nickname, gender, current_city, school_name, department,
+        degree_level, hobby_tags, personality_self_tags, taboo_tags
+      ),
+      member_interests (
+        game_type_pref, scenario_mode_pref, scenario_theme_tags,
+        preferred_time_slots, social_goal_primary, accept_beginners,
+        accept_cross_school, activity_area
+      ),
+      member_personality (
+        expression_style_tags, group_role_tags, extroversion, warmup_speed
+      ),
+      member_language (communication_language_pref, japanese_level),
+      member_boundaries (preferred_gender_mix, taboo_tags, deal_breakers),
+      member_dynamic_stats (activity_count, late_count, no_show_count, replay_willing_rate, reliability_score)
     `)
     .eq("status", "approved")
     .eq("membership_type", "player")

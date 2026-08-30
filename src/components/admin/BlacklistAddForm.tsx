@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react"
 import { addBlacklist, searchMembersForBlacklist } from "@/app/admin/matching/blacklist/actions"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 type MemberOption = { id: string; label: string }
 
@@ -20,6 +21,10 @@ export function BlacklistAddForm() {
     }
     if (memberA.id === memberB.id) {
       setError("不能选择同一个人")
+      return
+    }
+    if (!adminAuditReasonIsValid(reason)) {
+      setError("请填写 4–500 个字符的黑名单及审计理由")
       return
     }
     startTransition(async () => {
@@ -51,15 +56,17 @@ export function BlacklistAddForm() {
       </div>
       <input
         type="text"
-        placeholder="原因（选填）"
+        placeholder="原因（必填，4–500 字；同时写入审计记录）"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
+        minLength={4}
+        maxLength={500}
         className="w-full rounded-md border px-3 py-2 text-sm"
       />
       {error && <p className="text-destructive text-xs">{error}</p>}
       <button
         onClick={handleSubmit}
-        disabled={isPending}
+        disabled={isPending || !adminAuditReasonIsValid(reason)}
         className="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
       >
         {isPending ? "添加中..." : "添加"}
@@ -108,7 +115,7 @@ function MemberSearchInput({
       </label>
       <input
         type="text"
-        placeholder="搜索姓名或编号..."
+        placeholder="搜索姓名..."
         value={value ? value.label : query}
         onChange={(e) => handleSearch(e.target.value)}
         onFocus={() => results.length > 0 && setShowDropdown(true)}

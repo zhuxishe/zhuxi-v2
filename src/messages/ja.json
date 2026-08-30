@@ -286,6 +286,10 @@
     "rejectedTitle": "審査不合格",
     "rejectedDescription": "申し訳ございませんが、審査を通過できませんでした。"
   },
+  "inactive": {
+    "title": "アカウントは現在利用できません",
+    "description": "このアカウントでは現在メンバー機能を利用できません。サポートが必要な場合は管理者にお問い合わせください。"
+  },
   "line": {
     "accountTitle": "LINE アカウント",
     "bound": "連携済み",
@@ -1051,8 +1055,21 @@
     "previous": "前へ",
     "next": "次へ",
     "submit": "送信",
+    "saving": "保存中...",
+    "savingStep": "ステップ{step}を保存中...",
     "submitting": "送信中...",
+    "progress": "ステップ {current} / {total}",
+    "lastSavedAt": "最終保存：{time}",
+    "notSavedYet": "下書きはまだ保存されていません",
+    "saveError": "このステップを保存できませんでした。保存済みの内容は保持されています。もう一度お試しください。",
     "submitError": "送信に失敗しました。後ほどお試しください",
+    "accountBlockedError": "このアカウントでは現在操作を続けられません。管理者にお問い合わせください。",
+    "invalidStepError": "ステップが正しくありません。ページを再読み込みしてお試しください。",
+    "stepOutOfOrderError": "各ステップを順番に保存してから進んでください。",
+    "invalidPayloadError": "必須項目と選択数をご確認ください。",
+    "requiredFieldsError": "未入力の必須項目があります。戻って確認してから送信してください。",
+    "nicknameConflictError": "このニックネームはすでに使われています。別の名前をお試しください。",
+    "onboardingLockedError": "このプロフィールはロックされているため変更できません。",
     "successTitle": "送信完了！",
     "stepBasic": "基本情報",
     "stepAcademic": "学歴情報",

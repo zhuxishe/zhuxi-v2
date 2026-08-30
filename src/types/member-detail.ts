@@ -21,6 +21,7 @@ export interface MemberIdentityRow {
   height_weight: string | null
   phone: string | null
   sns_accounts: unknown
+  personal_avatar_path: string | null
   created_at: string
   updated_at: string
 }

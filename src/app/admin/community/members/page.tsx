@@ -13,9 +13,11 @@ export default async function AdminCommunityMembersPage({ searchParams }: PagePr
   const qValue = Array.isArray(raw.q) ? raw.q[0] : raw.q
   const query = qValue?.trim().toLocaleLowerCase()
   const admin = await requireAdmin()
+  const canViewMemberNumber = admin.role === "super_admin"
   const result = await fetchCommunityAdminMembers()
   const members = query
-    ? result.members.filter((member) => member.nickname.toLocaleLowerCase().includes(query) || member.member_number?.toLocaleLowerCase().includes(query))
+    ? result.members.filter((member) => member.nickname.toLocaleLowerCase().includes(query)
+      || canViewMemberNumber && member.member_number?.toLocaleLowerCase().includes(query))
     : result.members
 
   return (
@@ -28,9 +30,9 @@ export default async function AdminCommunityMembersPage({ searchParams }: PagePr
         <CommunitySetupWarning />
       ) : (
         <div className="space-y-4">
-          <CommunityMemberSearch query={qValue} />
+          <CommunityMemberSearch query={qValue} canSearchMemberNumber={canViewMemberNumber} />
           <p className="text-sm text-muted-foreground">显示 {members.length} 位成员</p>
-          <CommunityMemberList members={members} />
+          <CommunityMemberList members={members} canViewMemberNumber={canViewMemberNumber} />
         </div>
       )}
     </CommunityAdminPage>

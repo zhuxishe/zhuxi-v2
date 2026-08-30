@@ -28,12 +28,16 @@ interface Props {
 export function ActivityRecordCard({ record, members }: Props) {
   const [editing, setEditing] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleteReason, setDeleteReason] = useState("")
   const [isPending, startTransition] = useTransition()
 
   function handleDelete() {
     startTransition(async () => {
-      await deleteActivityRecord(record.id)
-      setConfirmDelete(false)
+      const result = await deleteActivityRecord(record.id, deleteReason)
+      if (!result.error) {
+        setConfirmDelete(false)
+        setDeleteReason("")
+      }
     })
   }
 
@@ -66,8 +70,9 @@ export function ActivityRecordCard({ record, members }: Props) {
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           {confirmDelete ? (
-            <div className="flex items-center gap-1">
-              <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={handleDelete} disabled={isPending}>
+            <div className="flex max-w-xs items-center gap-1">
+              <input value={deleteReason} onChange={(event) => setDeleteReason(event.target.value)} maxLength={500} placeholder="删除原因（必填）" className="h-7 min-w-0 rounded border border-border bg-background px-2 text-xs" disabled={isPending} />
+              <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={handleDelete} disabled={isPending || deleteReason.trim().length < 4}>
                 {isPending ? "..." : "确认"}
               </Button>
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setConfirmDelete(false)}>

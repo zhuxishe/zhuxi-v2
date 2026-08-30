@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchMemberDetail } from "@/lib/queries/members"
+import { fetchMember360, isMemberNotFoundError, member360ToLegacyDetail } from "@/lib/queries/member-center"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MemberEditForm } from "@/components/admin/MemberEditForm"
 
@@ -12,12 +12,14 @@ export default async function MemberEditPage({ params }: Props) {
   const admin = await requireAdmin()
   const { id } = await params
 
-  let member
+  let member360
   try {
-    member = await fetchMemberDetail(id)
-  } catch {
-    notFound()
+    member360 = await fetchMember360(id)
+  } catch (error) {
+    if (isMemberNotFoundError(error)) notFound()
+    throw error
   }
+  const member = member360ToLegacyDetail(member360)
 
   return (
     <div>

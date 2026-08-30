@@ -2,6 +2,7 @@ import ExcelJS from "exceljs"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { buildRoundSubmissionSelect, supportsImportMetadataColumn } from "./import-metadata-column"
 import { getImportMetadata, getImportedSource } from "./import-metadata"
+import { requireAdmin } from "@/lib/auth/admin"
 
 function memberSlots(row: any): string[] {
   if (Array.isArray(row.group_members) && row.group_members.length > 0) return row.group_members
@@ -30,6 +31,10 @@ function appendSheet(
 }
 
 export async function buildSessionExportWorkbook(sessionId: string): Promise<{ buffer: Buffer; fileName: string }> {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") {
+    throw new Error("仅超级管理员可导出原始匹配数据")
+  }
   const db = createAdminClient() as any
   const { data: session, error: sessionError } = await db
     .from("match_sessions")

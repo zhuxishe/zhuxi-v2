@@ -8,6 +8,7 @@ import {
 import { Loader2, Trash2 } from "lucide-react"
 import { updateSubmission, createSubmission, deleteSubmission } from "@/app/admin/matching/rounds/[id]/actions"
 import { SCENARIO_THEME_OPTIONS } from "@/lib/constants/supplementary"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 const GAME_TYPES = ["双人", "多人", "都可以"] as const
 const GENDER_PREFS = ["男", "女", "都可以"] as const
@@ -62,6 +63,7 @@ export function SubmissionEditDialog({
   const [error, setError] = useState("")
   const [isPending, startTransition] = useTransition()
   const [confirmDelete, setConfirmDelete] = useState(false)
+  const [auditReason, setAuditReason] = useState("")
 
   const toggleSlot = (date: string, slot: string) => {
     setAvailability((prev) => {
@@ -96,8 +98,8 @@ export function SubmissionEditDialog({
         message: message || null,
       }
       const res = mode === "edit"
-        ? await updateSubmission(submission!.id, data)
-        : await createSubmission(roundId, memberId, data)
+        ? await updateSubmission(submission!.id, data, auditReason)
+        : await createSubmission(roundId, memberId, data, auditReason)
 
       if (res.error) { setError(res.error); return }
       onSaved()
@@ -250,8 +252,24 @@ export function SubmissionEditDialog({
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={2}
+              maxLength={2000}
               className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm resize-none"
               placeholder="选填"
+            />
+          </div>
+
+          <div>
+            <label htmlFor={`submission-audit-reason-${mode}`} className="text-xs font-medium">
+              本次修改理由
+            </label>
+            <input
+              id={`submission-audit-reason-${mode}`}
+              value={auditReason}
+              onChange={(event) => setAuditReason(event.target.value)}
+              minLength={4}
+              maxLength={500}
+              placeholder="必填，4–500 字；写入成员审计"
+              className="mt-1 block w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
             />
           </div>
 
@@ -266,11 +284,11 @@ export function SubmissionEditDialog({
                 <span className="text-xs text-red-600">确认删除？</span>
                 <Button
                   size="sm" variant="destructive"
-                  disabled={isPending}
+                  disabled={isPending || !adminAuditReasonIsValid(auditReason)}
                   onClick={() => {
                     startTransition(async () => {
                       setError("")
-                      const res = await deleteSubmission(submission!.id)
+                      const res = await deleteSubmission(submission!.id, auditReason)
                       if (res.error) { setError(res.error); setConfirmDelete(false); return }
                       onSaved()
                       onOpenChange(false)
@@ -295,7 +313,7 @@ export function SubmissionEditDialog({
 
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>取消</Button>
-            <Button onClick={handleSave} disabled={isPending}>
+            <Button onClick={handleSave} disabled={isPending || !adminAuditReasonIsValid(auditReason)}>
               {isPending && <Loader2 className="size-3.5 animate-spin mr-1" />}
               保存
             </Button>

@@ -3,76 +3,91 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAuth } from "@/lib/auth/player"
-import type { PreInterviewFormData } from "@/types"
+import {
+  buildOnboardingStepPayload,
+  OnboardingInputError,
+} from "@/lib/member-master/onboarding"
+import {
+  getMemberMasterDiagnostic,
+  saveMyOnboardingStep,
+  submitMyOnboarding,
+  toMemberMasterActionError,
+} from "@/lib/member-master/rpc"
+import type {
+  MemberMasterActionError,
+  OnboardingStep,
+} from "@/lib/member-master/types"
+
+export interface SaveStepResult {
+  success: boolean
+  error?: MemberMasterActionError
+  onboardingStep?: number
+  lastSavedAt?: string | null
+}
 
 export interface SubmitResult {
   success: boolean
-  error?: string
+  error?: MemberMasterActionError
 }
 
-export async function submitPreInterviewForm(
-  data: PreInterviewFormData
-): Promise<SubmitResult> {
-  const user = await requireAuth()
-  const supabase = await createClient()
+/** Save exactly one UI step. The RPC owns row-level validation and atomicity. */
+export async function savePreInterviewStep(
+  step: OnboardingStep,
+  input: unknown
+): Promise<SaveStepResult> {
+  await requireAuth()
 
-  // Upsert member record — ON CONFLICT(user_id) prevents race condition
-  // ignoreDuplicates=true means conflicting rows are silently skipped (no update),
-  // so .single() returns PGRST116 when the row already exists.
-  const { data: member, error: memberError } = await supabase
-    .from("members")
-    .upsert(
-      { status: "pending", user_id: user.id, email: user.email },
-      { onConflict: "user_id", ignoreDuplicates: true }
+  let payload: Record<string, unknown>
+  try {
+    payload = buildOnboardingStepPayload(step, input)
+  } catch (error) {
+    if (error instanceof OnboardingInputError) {
+      return { success: false, error: "invalidPayload" }
+    }
+    throw error
+  }
+
+  try {
+    const supabase = await createClient()
+    const saved = await saveMyOnboardingStep(supabase, step, payload)
+
+    revalidatePath("/app/interview-form")
+    return {
+      success: true,
+      onboardingStep: saved.onboardingStep,
+      lastSavedAt: saved.lastProfileSavedAt,
+    }
+  } catch (error) {
+    console.error(
+      "[savePreInterviewStep] member master failed:",
+      getMemberMasterDiagnostic(error)
     )
-    .select("id")
-    .single()
-
-  let memberId: string
-  if (member) {
-    // New user — upsert inserted successfully
-    memberId = member.id
-  } else if (memberError?.code === "PGRST116" || !memberError) {
-    // Existing user — row was skipped, fetch the existing record
-    const { data: existing } = await supabase
-      .from("members")
-      .select("id")
-      .eq("user_id", user.id)
-      .single()
-    if (!existing) return { success: false, error: "saveFailed" }
-    memberId = existing.id
-  } else {
-    // Real DB error
-    return { success: false, error: memberError.message }
+    return {
+      success: false,
+      error: toMemberMasterActionError(error, "saveFailed"),
+    }
   }
+}
 
-  // Upsert identity record
-  const { error: identityError } = await supabase
-    .from("member_identity")
-    .upsert({
-      member_id: memberId,
-      full_name: data.full_name.trim(),
-      nickname: data.nickname.trim() || null,
-      gender: data.gender,
-      age_range: data.age_range,
-      nationality: data.nationality,
-      current_city: data.current_city,
-      school_name: data.school_name.trim() || null,
-      department: data.department.trim() || null,
-      degree_level: data.degree_level || null,
-      course_language: data.course_language || null,
-      enrollment_year: data.enrollment_year,
-      hobby_tags: data.hobby_tags,
-      activity_type_tags: data.activity_type_tags,
-      personality_self_tags: data.personality_self_tags,
-      taboo_tags: data.taboo_tags,
-    }, { onConflict: "member_id" })
+/** Finalize the already-saved four-step draft. No direct table writes occur. */
+export async function submitPreInterviewForm(): Promise<SubmitResult> {
+  await requireAuth()
 
-  if (identityError) {
-    return { success: false, error: identityError.message }
+  try {
+    const supabase = await createClient()
+    await submitMyOnboarding(supabase)
+
+    revalidatePath("/app/interview-form")
+    revalidatePath("/app")
+    return { success: true }
+  } catch (error) {
+    console.error(
+      "[submitPreInterviewForm] member master failed:",
+      getMemberMasterDiagnostic(error)
+    )
+    return {
+      success: false,
+      error: toMemberMasterActionError(error, "submitFailed"),
+    }
   }
-
-  revalidatePath("/app/interview-form")
-  revalidatePath("/app")
-  return { success: true }
 }

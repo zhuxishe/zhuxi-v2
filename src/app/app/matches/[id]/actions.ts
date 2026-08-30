@@ -4,43 +4,26 @@ import { requirePlayer } from "@/lib/auth/player"
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 
+type PlayerMatchRpcClient = {
+  rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{
+    data: T | null
+    error: { code?: string; message: string } | null
+  }>
+}
+
 export async function requestCancellation(formData: FormData) {
   const matchId = formData.get("matchId") as string
   const reason = (formData.get("reason") as string)?.trim() ?? ""
 
   if (!matchId) return { error: "缺少匹配 ID" }
+  if (Array.from(reason).length > 500) return { error: "取消理由不能超过 500 个字符" }
 
-  const player = await requirePlayer()
-  const supabase = await createClient()
-
-  // Verify the player is a participant
-  const { data: match } = await supabase
-    .from("match_results")
-    .select("id, member_a_id, member_b_id, group_members, status, cancellation_status")
-    .eq("id", matchId)
-    .single()
-
-  if (!match) return { error: "匹配记录不存在" }
-
-  const gm = match.group_members as string[] | null
-  const isParticipant =
-    match.member_a_id === player.memberId ||
-    match.member_b_id === player.memberId ||
-    (Array.isArray(gm) && gm.includes(player.memberId))
-
-  if (!isParticipant) return { error: "你不是该匹配的参与者" }
-  if (match.status === "cancelled") return { error: "该匹配已取消" }
-  if (match.cancellation_status === "pending") return { error: "已有待审核的取消申请" }
-
-  const { error } = await supabase
-    .from("match_results")
-    .update({
-      cancellation_requested_by: player.memberId,
-      cancellation_reason: reason || null,
-      cancellation_requested_at: new Date().toISOString(),
-      cancellation_status: "pending",
-    })
-    .eq("id", matchId)
+  await requirePlayer()
+  const supabase = await createClient() as unknown as PlayerMatchRpcClient
+  const { error } = await supabase.rpc<unknown>("request_my_match_cancellation", {
+    p_result_id: matchId,
+    p_reason: reason || null,
+  })
 
   if (error) {
     console.error("[requestCancellation]", error)

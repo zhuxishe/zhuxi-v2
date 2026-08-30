@@ -286,6 +286,10 @@
     "rejectedTitle": "未通过审核",
     "rejectedDescription": "很抱歉，你的申请未通过。如有疑问请联系管理员。"
   },
+  "inactive": {
+    "title": "账号暂不可用",
+    "description": "该账号当前无法使用成员功能。如需帮助，请联系管理员。"
+  },
   "line": {
     "accountTitle": "LINE 账号",
     "bound": "已绑定",
@@ -1051,8 +1055,21 @@
     "previous": "上一步",
     "next": "下一步",
     "submit": "提交",
+    "saving": "保存中...",
+    "savingStep": "正在保存第 {step} 步...",
     "submitting": "提交中...",
+    "progress": "第 {current} / {total} 步",
+    "lastSavedAt": "最近保存：{time}",
+    "notSavedYet": "尚未保存草稿",
+    "saveError": "本步保存失败，请稍后重试。此前已保存的内容不会丢失。",
     "submitError": "提交失败，请稍后重试",
+    "accountBlockedError": "该账号当前无法继续操作，请联系管理员。",
+    "invalidStepError": "步骤无效，请刷新页面后重试。",
+    "stepOutOfOrderError": "请按顺序保存每一步后再继续。",
+    "invalidPayloadError": "请检查本步必填内容和选择数量。",
+    "requiredFieldsError": "仍有必填内容未完成，请返回检查后再提交。",
+    "nicknameConflictError": "该昵称已被使用，请更换后重试。",
+    "onboardingLockedError": "该资料已锁定，无法继续修改。",
     "successTitle": "提交成功！",
     "successDescription": "感谢你的填写，我们会尽快安排面试，请留意通知。",
     "stepBasic": "基本信息",

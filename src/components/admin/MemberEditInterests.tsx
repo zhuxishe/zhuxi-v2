@@ -4,22 +4,23 @@ import {
   ACTIVITY_AREA_OPTIONS, GROUP_SIZE_OPTIONS, ACTIVITY_FREQUENCY_OPTIONS,
   TIME_SLOT_OPTIONS, BUDGET_RANGE_OPTIONS, TRAVEL_RADIUS_OPTIONS,
   SOCIAL_GOAL_OPTIONS, SCENARIO_MODE_OPTIONS, SCRIPT_PREFERENCE_OPTIONS,
-  NON_SCRIPT_PREFERENCE_OPTIONS,
+  NON_SCRIPT_PREFERENCE_OPTIONS, GRADUATION_YEAR_OPTIONS,
+  GAME_TYPE_PREF_OPTIONS, SCENARIO_THEME_OPTIONS,
 } from "@/lib/constants/supplementary"
 import type { MemberInterestsRow } from "@/types/member-detail"
 
 type InterestsData = Partial<MemberInterestsRow> & Record<string, unknown>
 interface Props { data: InterestsData; onChange: (data: InterestsData) => void }
 
-function SelectRow({ label, name, options, data, onChange }: {
-  label: string; name: string; options: readonly string[]; data: InterestsData; onChange: (d: InterestsData) => void
+function SelectRow({ label, name, options, data, onChange, numeric = false }: {
+  label: string; name: string; options: readonly string[]; data: InterestsData; onChange: (d: InterestsData) => void; numeric?: boolean
 }) {
   return (
     <tr className="border-b border-border/50">
       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
       <td className="py-2.5">
         <select value={(data[name] as string) ?? ""}
-          onChange={(e) => onChange({ ...data, [name]: e.target.value })}
+          onChange={(e) => onChange({ ...data, [name]: numeric ? (e.target.value ? Number(e.target.value) : null) : e.target.value })}
           className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary">
           <option value="">-</option>
           {options.map((o) => <option key={o} value={o}>{o}</option>)}
@@ -58,15 +59,24 @@ function TagsRow({ label, name, options, data, onChange }: {
 function ToggleRow({ label, name, data, onChange }: {
   label: string; name: string; data: InterestsData; onChange: (d: InterestsData) => void
 }) {
-  const val = (data[name] as boolean) ?? true
+  const raw = data[name]
+  const value = raw === true ? "true" : raw === false ? "false" : "null"
   return (
     <tr className="border-b border-border/50">
       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
       <td className="py-2.5">
-        <button type="button" onClick={() => onChange({ ...data, [name]: !val })}
-          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-            val ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-          }`}>{val ? "是" : "否"}</button>
+        <select
+          value={value}
+          onChange={(event) => onChange({
+            ...data,
+            [name]: event.target.value === "null" ? null : event.target.value === "true",
+          })}
+          className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary"
+        >
+          <option value="null">未填写（null）</option>
+          <option value="true">是（true）</option>
+          <option value="false">否（false）</option>
+        </select>
       </td>
     </tr>
   )
@@ -92,6 +102,7 @@ export function MemberEditInterests({ data, onChange }: Props) {
     <table className="w-full"><tbody>
       <SelectRow label="活动区域" name="activity_area" options={ACTIVITY_AREA_OPTIONS} data={data} onChange={onChange} />
       <InputRow label="最近车站" name="nearest_station" data={data} onChange={onChange} />
+      <SelectRow label="毕业年份" name="graduation_year" options={GRADUATION_YEAR_OPTIONS.map(String)} data={data} onChange={onChange} numeric />
       <SelectRow label="理想人数" name="ideal_group_size" options={GROUP_SIZE_OPTIONS} data={data} onChange={onChange} />
       <SelectRow label="活动频率" name="activity_frequency" options={ACTIVITY_FREQUENCY_OPTIONS} data={data} onChange={onChange} />
       <SelectRow label="预算" name="budget_range" options={BUDGET_RANGE_OPTIONS} data={data} onChange={onChange} />
@@ -99,6 +110,8 @@ export function MemberEditInterests({ data, onChange }: Props) {
       <SelectRow label="主要目标" name="social_goal_primary" options={SOCIAL_GOAL_OPTIONS} data={data} onChange={onChange} />
       <SelectRow label="次要目标" name="social_goal_secondary" options={SOCIAL_GOAL_OPTIONS} data={data} onChange={onChange} />
       <TagsRow label="剧本类型" name="scenario_mode_pref" options={SCENARIO_MODE_OPTIONS} data={data} onChange={onChange} />
+      <TagsRow label="剧本主题" name="scenario_theme_tags" options={SCENARIO_THEME_OPTIONS} data={data} onChange={onChange} />
+      <SelectRow label="偏好人数" name="game_type_pref" options={GAME_TYPE_PREF_OPTIONS} data={data} onChange={onChange} />
       <TagsRow label="剧本偏好" name="script_preference" options={SCRIPT_PREFERENCE_OPTIONS} data={data} onChange={onChange} />
       <TagsRow label="非剧本" name="non_script_preference" options={NON_SCRIPT_PREFERENCE_OPTIONS} data={data} onChange={onChange} />
       <TagsRow label="时间偏好" name="preferred_time_slots" options={TIME_SLOT_OPTIONS} data={data} onChange={onChange} />

@@ -120,7 +120,7 @@ export function ScriptAccessPanel({ scriptId, allMembers, initialAccessList }: P
               <option key={m.id} value={m.id}>{m.name}</option>
             ))}
           </select>
-          <p className="text-xs text-muted-foreground mt-1">按住 Ctrl 多选</p>
+          <p className="text-xs text-muted-foreground mt-1">按住 Command（macOS）或 Ctrl（Windows）可多选</p>
         </div>
         <Button size="sm" onClick={handleGrant} disabled={granting || selectedIds.length === 0 || !adminAuditReasonIsValid(auditReason)}>
           <UserPlus className="size-4" />

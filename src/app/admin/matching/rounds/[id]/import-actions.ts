@@ -23,6 +23,11 @@ interface ImportAuditRpcClient {
   ) => Promise<{ error: unknown }>
 }
 
+function importErrorMessage(error: unknown, fallback: string) {
+  const message = getPostgrestErrorMessage(error, fallback)
+  return /[\u3400-\u9fff]/.test(message) ? message : fallback
+}
+
 function readExcelFile(formData: FormData) {
   const file = formData.get("file")
   if (!(file instanceof File)) throw new Error("请选择 Excel 文件")
@@ -72,7 +77,8 @@ export async function previewRoundExcel(roundId: string, formData: FormData) {
     const result = await previewRoundWorkbook(roundId, buffer)
     return { success: true, rows: result.rows, legacyOptions: result.legacyOptions }
   } catch (error) {
-    const message = getPostgrestErrorMessage(error, "解析失败")
+    console.error("[previewRoundExcel]", error)
+    const message = importErrorMessage(error, "Excel 解析失败，请检查文件后重试")
     return { error: message }
   }
 }
@@ -114,7 +120,8 @@ export async function importRoundExcel(roundId: string, formData: FormData) {
     revalidatePath(`/admin/matching/rounds/${roundId}`)
     return { success: true, summary: result.summary }
   } catch (error) {
-    const message = getPostgrestErrorMessage(error, "导入失败")
+    console.error("[importRoundExcel]", error)
+    const message = importErrorMessage(error, "Excel 导入失败，请检查文件后重试")
     return { error: message }
   }
 }

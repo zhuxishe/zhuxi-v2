@@ -56,7 +56,7 @@ export async function submitInterviewEval(
 export async function updateMemberStatus(memberId: string, status: string, rawReason: string) {
   await requireAdmin()
   const validStatuses = ["pending", "approved", "rejected", "inactive"]
-  if (!validStatuses.includes(status)) return { error: `无效审批状态：${status}` }
+  if (!validStatuses.includes(status)) return { error: "审批状态无效" }
   const reasonResult = normalizedReason(rawReason)
   if (!reasonResult.ok) return { error: reasonResult.error }
 

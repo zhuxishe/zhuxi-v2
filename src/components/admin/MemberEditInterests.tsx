@@ -73,9 +73,9 @@ function ToggleRow({ label, name, data, onChange }: {
           })}
           className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary"
         >
-          <option value="null">未填写（null）</option>
-          <option value="true">是（true）</option>
-          <option value="false">否（false）</option>
+          <option value="null">未填写</option>
+          <option value="true">是</option>
+          <option value="false">否</option>
         </select>
       </td>
     </tr>

@@ -104,7 +104,7 @@ describe("round Excel import server action", () => {
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/matching/rounds/round-id")
   })
 
-  it("surfaces an authenticated audit RPC failure and does not report import success", async () => {
+  it("returns a Chinese audit failure message and does not report import success", async () => {
     rpc.mockResolvedValue({ data: null, error: { message: "audit RPC unavailable" } })
     mocks.importRoundWorkbook.mockImplementation(async (_roundId, _buffer, audit) => {
       await audit.recordEvent(auditRequest())
@@ -113,7 +113,7 @@ describe("round Excel import server action", () => {
 
     const result = await importRoundExcel("round-id", importForm("根据本轮报名表重新导入成员"))
 
-    expect(result).toEqual({ error: "audit RPC unavailable" })
+    expect(result).toEqual({ error: "Excel 导入失败，请检查文件后重试" })
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
   })
 

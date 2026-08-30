@@ -143,6 +143,6 @@ function CheckRow({ ok, label }: { ok: boolean; label: string }) {
   return <div className="mt-3 flex items-center gap-2 text-sm"><CheckCircle2 className={`size-4 ${ok ? "text-primary" : "text-gold"}`} /><span>{label}</span></div>
 }
 
-function statusText(status: string) { return STATUS[status]?.label ?? status }
+function statusText(status: string) { return STATUS[status]?.label ?? `未知状态（${status}）` }
 function shortDate(value: string) { return new Date(value).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }) }
 function formatDate(value: string) { return new Date(value).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }

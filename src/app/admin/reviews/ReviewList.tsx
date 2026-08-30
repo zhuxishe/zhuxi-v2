@@ -111,6 +111,6 @@ function StatusBadge({ status }: { status: string }) {
     : status === "cancelled"
       ? "bg-red-100 text-red-700"
       : "bg-orange-100 text-orange-700"
-  const label = status === "published" ? "Player 已发布" : status === "cancelled" ? "Player 已取消" : "Player 草稿"
+  const label = status === "published" ? "玩家端已发布" : status === "cancelled" ? "玩家端已取消" : "玩家端草稿"
   return <span className={`rounded px-1.5 py-0.5 text-xs ${styles}`}>{label}</span>
 }

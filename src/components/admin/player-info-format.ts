@@ -1,7 +1,8 @@
 export function displayGender(g: string | null | undefined): string {
   if (g === "male") return "男"
   if (g === "female") return "女"
-  return g || "未知"
+  if (g === "other") return "其他"
+  return "未知"
 }
 
 export function formatAvailabilityEntries(

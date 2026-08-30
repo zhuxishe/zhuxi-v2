@@ -15,7 +15,7 @@ const inputClass = "rounded-lg border border-border bg-background px-3 py-2 text
 export function StaffProfileList({ staff }: { staff: StaffProfile[] }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted-foreground">共 {staff.length} 位 Staff</p>
+      <p className="text-sm text-muted-foreground">共 {staff.length} 位团队成员</p>
       {staff.map((item) => (
         <StaffProfileItem key={item.id} item={item} />
       ))}

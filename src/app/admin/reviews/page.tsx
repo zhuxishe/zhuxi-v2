@@ -15,11 +15,11 @@ export default async function AdminReviewsPage() {
       <AdminTopBar admin={admin} title="大型活动" />
       <div className="p-6 space-y-6">
         <div className="rounded-xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-foreground/10">
-          统一维护大型活动资料。Player App 的状态、首页展示与活动库置顶可独立配置；官网往期回顾只有在单独勾选后才会更新。
+          统一维护大型活动资料。玩家端的状态、首页展示与活动库置顶可独立配置；官网往期回顾只有在单独勾选后才会更新。
         </div>
         {setupRequired ? (
           <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800">
-            数据库尚未应用 Player Activity V1 migration（<code>20260717133954</code>），升级前已暂停大型活动编辑。
+            数据库尚未应用玩家端活动 V1 数据库迁移（<code>20260717133954</code>），升级前已暂停大型活动编辑。
           </div>
         ) : (
           <>

@@ -28,6 +28,8 @@ import {
   canRestoreMemberAudit,
   formatMemberValue,
   hasRestorableMemberAuditSnapshot,
+  memberAuditActionLabel,
+  memberAuditSectionLabel,
   memberFieldLabel,
   memberRecordEntries,
   MEMBER_360_TABS,
@@ -42,7 +44,7 @@ interface Props {
 }
 
 function formatDate(value: string | null) {
-  if (!value) return "未填写（null）"
+  if (!value) return "未填写"
   const date = new Date(value)
   if (Number.isNaN(date.getTime())) return value
   return new Intl.DateTimeFormat("zh-CN", {
@@ -64,15 +66,18 @@ function RecordPanel({ title, record, description }: {
         {description ? <p className="mt-1 text-xs leading-5 text-muted-foreground">{description}</p> : null}
       </div>
       {entries.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-muted-foreground">此分区尚无记录（null）</p>
+        <p className="px-4 py-6 text-sm text-muted-foreground">此分区尚无记录</p>
       ) : (
         <dl className="divide-y divide-border/70">
-          {entries.map(([key, value]) => (
-            <div key={key} className="grid gap-1 px-4 py-3 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-4">
-              <dt className="text-xs font-medium text-muted-foreground">{memberFieldLabel(key)} <span className="font-mono text-[10px]">({key})</span></dt>
-              <dd className="min-w-0 whitespace-pre-wrap break-words text-sm">{formatMemberValue(value)}</dd>
+          {entries.map(([key, value]) => {
+            const label = memberFieldLabel(key)
+            return (
+              <div key={key} className="grid gap-1 px-4 py-3 sm:grid-cols-[13rem_minmax(0,1fr)] sm:gap-4">
+              <dt className={`text-xs font-medium text-muted-foreground ${label === key ? "font-mono" : ""}`}>{label}</dt>
+              <dd className="min-w-0 whitespace-pre-wrap break-words text-sm">{formatMemberValue(value, key)}</dd>
             </div>
-          ))}
+            )
+          })}
         </dl>
       )}
     </section>
@@ -140,11 +145,14 @@ function quizRecord(data: Member360, canViewHighRisk: boolean): MemberCenterReco
 }
 
 function memberRecord(data: Member360): MemberCenterRecord {
+  const raw = Object.fromEntries(
+    Object.entries(data.member.raw).filter(([key]) => key !== "status"),
+  )
   return {
-    ...data.member.raw,
+    ...raw,
     member_id: data.member.memberId,
     email: data.member.email,
-    status: data.member.status,
+    member_status: data.member.status,
     profile_stage: data.member.profileStage,
     record_source: data.member.recordSource,
     onboarding_step: data.member.onboardingStep,
@@ -156,6 +164,15 @@ function memberRecord(data: Member360): MemberCenterRecord {
   }
 }
 
+function memberAuditDisplayRecord(
+  record: MemberCenterRecord | null,
+  section: unknown,
+): MemberCenterRecord | null {
+  if (!record || section !== "application" || !("status" in record)) return record
+  const { status, ...rest } = record
+  return { ...rest, member_status: status }
+}
+
 function AuditEventCard({ event, memberId, canRestore, canViewHighRisk }: {
   event: MemberAuditEvent
   memberId: string
@@ -164,31 +181,34 @@ function AuditEventCard({ event, memberId, canRestore, canViewHighRisk }: {
 }) {
   const eventId = event.id ?? event.event_id
   const title = event.action_type ?? event.action ?? event.operation ?? "member_change"
+  const section = typeof event.section === "string" ? memberAuditSectionLabel(event.section) : null
   const valuesRedacted = event.values_redacted === true || (!canViewHighRisk && ["account", "quiz", "lifecycle"].includes(String(event.section ?? "")))
   const before = !valuesRedacted && event.before_values && typeof event.before_values === "object" ? event.before_values as MemberCenterRecord : null
   const after = !valuesRedacted && event.after_values && typeof event.after_values === "object" ? event.after_values as MemberCenterRecord : null
+  const displayBefore = memberAuditDisplayRecord(before, event.section)
+  const displayAfter = memberAuditDisplayRecord(after, event.section)
   return (
     <article className="rounded-xl border border-border bg-card p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs">#{String(eventId ?? "unknown")}</span>
-            <h3 className="font-semibold">{String(title)}</h3>
-            {event.section ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{event.section}</span> : null}
+            <span className="rounded-full bg-muted px-2 py-0.5 font-mono text-xs">#{String(eventId ?? "未知")}</span>
+            <h3 className="font-semibold">{memberAuditActionLabel(String(title))}</h3>
+            {section ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{section}</span> : null}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
             {event.actor_name ?? "系统"} · {formatDate(event.created_at ?? null)}
           </p>
-          <p className="mt-2 text-sm">原因：{event.reason ?? "未记录（null）"}</p>
+          <p className="mt-2 text-sm">原因：{event.reason ?? "未记录"}</p>
         </div>
         {canRestore && event.restorable === true && eventId !== undefined && hasRestorableMemberAuditSnapshot(before) ? (
           <div className="w-full max-w-md"><MemberAuditRestoreButton memberId={memberId} eventId={eventId} /></div>
         ) : null}
       </div>
-      {valuesRedacted ? <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">{canViewHighRisk ? "该成员已匿名化，旧 PII 的 before/after 值按不可逆隐私策略裁剪" : "此事件的高风险 before/after 值因权限隐藏"}；事件、操作者、时间与原因仍可审计。</p> : null}
+      {valuesRedacted ? <p className="mt-4 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900">{canViewHighRisk ? "该成员已匿名化，旧个人身份信息的修改前后内容已按不可逆隐私策略裁剪" : "此事件的高风险修改前后内容因权限隐藏"}；事件、操作者、时间与原因仍可审计。</p> : null}
       <div className="mt-4 grid gap-3 lg:grid-cols-2">
-        <RecordPanel title="变更前 / Before" record={before} />
-        <RecordPanel title="变更后 / After" record={after} />
+        <RecordPanel title="修改前" record={displayBefore} />
+        <RecordPanel title="修改后" record={displayAfter} />
       </div>
     </article>
   )
@@ -201,6 +221,13 @@ function safeCommunityRecord(record: MemberCenterRecord | null): MemberCenterRec
     "non_anonymous_post_count", "non_anonymous_comment_count", "preferences",
   ]
   return Object.fromEntries(allowed.map((key) => [key, record[key]]))
+}
+
+function redactedFieldLabel(field: string) {
+  const [section, ...parts] = field.split(".")
+  const sectionLabel = memberAuditSectionLabel(section)
+  if (parts.length === 0) return sectionLabel
+  return `${sectionLabel}·${memberFieldLabel(parts.at(-1) ?? field)}`
 }
 
 export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
@@ -227,7 +254,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
               {nickname ? <span className="text-sm text-muted-foreground">（{nickname}）</span> : null}
               <MemberStatusBadge status={data.member.status} />
             </div>
-            <p className="mt-2 break-all font-mono text-xs text-muted-foreground">canonical members.id: {memberId}</p>
+            <p className="mt-2 break-all text-xs text-muted-foreground">成员主记录 ID（<span className="font-mono">members.id</span>）：<span className="font-mono">{memberId}</span></p>
             <p className="mt-1 text-xs text-muted-foreground">最后更新：{formatDate(data.member.updatedAt)}</p>
           </div>
           {!isAnonymized ? <div className="flex flex-wrap gap-2">
@@ -255,18 +282,18 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
 
       {redactedFields.length > 0 ? (
         <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          {isSuperAdmin ? "匿名化隐私裁剪" : "权限隐藏"}：{redactedFields.join("、")}。这些值未返回，不代表数据库中的业务值为 null。
+          {isSuperAdmin ? "匿名化隐私裁剪" : "权限隐藏"}：{redactedFields.map(redactedFieldLabel).join("、")}。这些值未返回，不代表数据库中的业务值为空。
         </p>
       ) : null}
 
       {activeTab === "overview" ? (
         <div className="space-y-5">
           <div className="grid gap-4 lg:grid-cols-2">
-            <RecordPanel title="成员主记录 / Canonical member" record={memberRecord(data)} />
-            <RecordPanel title="登录账号 / Auth account" record={accountRecord(data, isSuperAdmin)} description={isSuperAdmin ? "super_admin 可查看完整账号事实；生命周期写操作仍需原因、预检与审计。" : "普通 admin 仅查看日常账号状态；会员编号、Auth 身份与外部绑定因权限隐藏。"} />
+            <RecordPanel title="成员主档" record={memberRecord(data)} />
+            <RecordPanel title="登录账号" record={accountRecord(data, isSuperAdmin)} description={isSuperAdmin ? "超级管理员可查看完整账号信息；生命周期写操作仍需填写原因，并经过预检和审计。" : "普通管理员仅查看日常账号状态；会员编号、登录身份与外部绑定因权限隐藏。"} />
           </div>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <SummaryLink icon={UserRound} title="资料" detail={`阶段：${data.member.profileStage ?? "null"}`} href={`/admin/members/${memberId}?tab=profile`} />
+            <SummaryLink icon={UserRound} title="资料" detail={`阶段：${formatMemberValue(data.member.profileStage, "profile_stage")}`} href={`/admin/members/${memberId}?tab=profile`} />
             <SummaryLink icon={Activity} title="活动与匹配" detail={`匹配：${formatMemberValue(data.matching?.match_count)}`} href={`/admin/members/${memberId}?tab=activity`} />
             <SummaryLink icon={MessagesSquare} title="社区与反馈" detail={`反馈：${formatMemberValue(data.feedback?.total)}`} href={`/admin/members/${memberId}?tab=community`} />
             <SummaryLink icon={History} title="审计" detail={data.audit ? `${data.audit.length}/${data.auditTotal} 条` : "审计数据暂不可用"} href={`/admin/members/${memberId}?tab=audit`} />
@@ -288,12 +315,12 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
       {activeTab === "profile" ? (
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-2">
-            <RecordPanel title="基本与学业 / Identity" record={data.identity} />
-            <RecordPanel title="语言 / Language" record={data.language} />
-            <RecordPanel title="兴趣与活动偏好 / Interests" record={data.interests} />
-            <RecordPanel title="性格自评 / Personality" record={data.personality} />
-            <RecordPanel title="个人边界 / Boundaries" record={data.boundaries} />
-            <RecordPanel title="人格测试 / Quiz" record={quizRecord(data, isSuperAdmin)} description={isSuperAdmin ? "包含当前 /app 人格测试记录与原始 answers。" : "普通 admin 可查看分数、类型与时间；原始 answers 因权限隐藏。"} />
+            <RecordPanel title="基本与学业信息" record={data.identity} />
+            <RecordPanel title="语言信息" record={data.language} />
+            <RecordPanel title="兴趣与活动偏好" record={data.interests} />
+            <RecordPanel title="性格自评" record={data.personality} />
+            <RecordPanel title="个人边界" record={data.boundaries} />
+            <RecordPanel title="人格测试" record={quizRecord(data, isSuperAdmin)} description={isSuperAdmin ? "包含当前玩家端人格测试记录与原始答案。" : "普通管理员可查看分数、类型与时间；原始答案因权限隐藏。"} />
           </div>
           {canModifyHighRisk ? <MemberQuizAdvancedEditor memberId={memberId} quiz={data.quiz} /> : null}
         </div>
@@ -301,10 +328,10 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
 
       {activeTab === "application" ? (
         <div className="space-y-4">
-          <RecordPanel title="申请流程 / Application" record={memberRecord(data)} />
-          <RecordPanel title="身份核验 / Verification" record={data.verification} />
+          <RecordPanel title="申请流程" record={memberRecord(data)} />
+          <RecordPanel title="身份核验" record={data.verification} />
           <section className="rounded-xl border border-border bg-card p-4">
-            <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">面试评估 / Interview evaluations</h3><span className="text-xs text-muted-foreground">{data.interviewEvaluations.length} 份</span></div>
+            <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">面试评估</h3><span className="text-xs text-muted-foreground">{data.interviewEvaluations.length} 份</span></div>
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
               {data.interviewEvaluations.length > 0 ? data.interviewEvaluations.map((evaluation, index) => (
                 <RecordPanel key={String(evaluation.id ?? index)} title={`评估 ${index + 1}`} record={evaluation} />
@@ -312,14 +339,14 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
             </div>
           </section>
           <RecordCollection
-            title="Staff 公开档案 / Staff profiles"
+            title="团队成员公开档案"
             records={data.staffProfiles}
-            description={isSuperAdmin ? "显示 canonical member 关联与完整公开档案。" : "显示公开业务字段；内部 member_id 因权限隐藏。"}
+            description={isSuperAdmin ? "显示成员主档关联与完整公开档案。" : "显示公开业务字段；内部成员 ID 因权限隐藏。"}
           />
           <section className="rounded-xl border border-border bg-card p-4">
-            <h3 className="font-semibold">成员角色 / Roles</h3>
+            <h3 className="font-semibold">成员角色</h3>
             <p className="mt-1 text-xs text-muted-foreground">
-              {isSuperAdmin ? "显示完整角色历史；修改仍会单独审计。" : "显示只读业务角色事实；内部操作者 UUID 与编辑能力因权限隐藏。"}
+              {isSuperAdmin ? "显示完整角色历史；修改仍会单独审计。" : "显示只读业务角色信息；内部操作者 ID 与编辑能力因权限隐藏。"}
             </p>
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
               {data.roles.length > 0 ? data.roles.map((role, index) => <RecordPanel key={String(role.id ?? index)} title={`角色 ${index + 1}`} record={role} />) : <p className="text-sm text-muted-foreground">尚无角色记录</p>}
@@ -327,9 +354,9 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
           </section>
           {data.legacyRecords.length > 0 ? (
             <section className="rounded-xl border border-border bg-card p-4">
-              <h3 className="font-semibold">历史来源记录 / Legacy records</h3>
+              <h3 className="font-semibold">历史来源记录</h3>
               <p className="mt-1 text-xs text-muted-foreground">
-                {isSuperAdmin ? "显示完整 legacy 原始记录及 canonical 映射。" : "显示业务历史字段；历史编号、认领操作者与 canonical 原始映射因权限隐藏。"}
+                {isSuperAdmin ? "显示完整历史原始记录及成员主档映射。" : "显示业务历史字段；历史编号、认领操作者与成员主档原始映射因权限隐藏。"}
               </p>
               <div className="mt-4 grid gap-4 xl:grid-cols-2">
                 {data.legacyRecords.map((record, index) => <RecordPanel key={String(record.id ?? index)} title={`历史记录 ${index + 1}`} record={record} />)}
@@ -349,7 +376,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
             </div>
           ) : null}
           {canModifyHighRisk ? <MemberRolesAdvancedEditor memberId={memberId} roles={data.roles} /> : !isSuperAdmin ? (
-            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">角色分配属于高风险权限操作；普通 admin 可查看，但不提供编辑入口。</p>
+            <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">角色分配属于高风险权限操作；普通管理员可查看，但不提供编辑入口。</p>
           ) : null}
           {canModifyHighRisk ? <MemberWorkflowAdvancedEditor memberId={memberId} profileStage={data.member.profileStage} onboardingStep={data.member.onboardingStep} /> : null}
         </div>
@@ -358,13 +385,13 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
       {activeTab === "activity" ? (
         <div className="space-y-4">
           <div className="grid gap-4 lg:grid-cols-2">
-            <RecordPanel title="活动统计 / Dynamic stats" record={data.dynamicStats} />
-            <RecordPanel title="个人主页运营指标 / Profile metrics" record={data.profileMetrics} />
-            <RecordPanel title="匹配与互评 / Matching" record={data.matching} />
+            <RecordPanel title="活动统计" record={data.dynamicStats} />
+            <RecordPanel title="个人主页运营指标" record={data.profileMetrics} />
+            <RecordPanel title="匹配与互评" record={data.matching} />
           </div>
-          <RecordCollection title="匹配问卷 / Round submissions" records={data.matchRoundSubmissions} />
-          <RecordCollection title="未匹配诊断 / Unmatched diagnostics" records={data.unmatchedDiagnostics} />
-          <RecordCollection title="剧本授权与游玩记录 / Script play records" records={data.scriptPlayRecords} />
+          <RecordCollection title="匹配问卷" records={data.matchRoundSubmissions} />
+          <RecordCollection title="未匹配原因诊断" records={data.unmatchedDiagnostics} />
+          <RecordCollection title="剧本授权与参与记录" records={data.scriptPlayRecords} />
           <div className="flex flex-wrap gap-2">
             <ModuleLink href="/admin/activity-records" label="活动记录" />
             <ModuleLink href="/admin/matching" label="匹配管理" />
@@ -380,8 +407,8 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
             匿名内容保护：此处只展示非匿名社区资料与聚合计数；不会列出匿名内容对应的真实成员、作者映射或历史。
           </div>
           <div className="grid gap-4 lg:grid-cols-2">
-            <RecordPanel title="社区公开资料 / Community" record={safeCommunityRecord(data.community)} />
-            <RecordPanel title="玩家反馈 / Feedback" record={data.feedback} />
+            <RecordPanel title="社区公开资料" record={safeCommunityRecord(data.community)} />
+            <RecordPanel title="玩家反馈" record={data.feedback} />
           </div>
           <div className="flex flex-wrap gap-2">
             {typeof data.community?.profile_id === "string" ? <ModuleLink href={`/admin/community/members/${data.community.profile_id}`} label="社区成员页" /> : null}
@@ -394,22 +421,22 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
       {activeTab === "audit" ? (
         <div className="space-y-4">
           <section className="rounded-xl border border-border bg-card p-4">
-            <h2 className="font-semibold">变更审计 / Audit trail</h2>
-            <p className="mt-1 text-sm text-muted-foreground">admin 与 super_admin 均可逐页查看非匿名审计事件；账号、生命周期与 quiz 原始值会按权限裁剪，仅 super_admin 会显示恢复操作。</p>
+            <h2 className="font-semibold">变更审计</h2>
+            <p className="mt-1 text-sm text-muted-foreground">普通管理员与超级管理员均可逐页查看非匿名审计事件；账号、生命周期与人格测试原始值会按权限裁剪，仅超级管理员会显示恢复操作。</p>
           </section>
           {auditPage ? (
             <p className="rounded-xl border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
               永久审计历史：共 {auditPage.total} 条，当前第 {auditPage.page}/{auditPage.totalPages || 1} 页；每页最多 {auditPage.pageSize} 条。
-              {auditPage.redactedFields.length > 0 ? ` 本页权限裁剪：${auditPage.redactedFields.join("、")}。` : ""}
+              {auditPage.redactedFields.length > 0 ? ` 本页权限裁剪：${auditPage.redactedFields.map(redactedFieldLabel).join("、")}。` : ""}
             </p>
           ) : null}
           {auditEvents && auditEvents.length > 0 ? auditEvents.map((event, index) => (
             <AuditEventCard key={String(event.id ?? event.event_id ?? index)} event={event} memberId={memberId} canRestore={canRestore} canViewHighRisk={isSuperAdmin} />
-          )) : auditEvents ? <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">此页没有审计事件。</p> : <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">审计 RPC 未返回数据，请确认最新数据库迁移已部署。</p>}
+          )) : auditEvents ? <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">此页没有审计事件。</p> : <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">审计数据读取失败，请确认最新数据库迁移已部署。</p>}
           {auditPage ? <AuditPagination memberId={memberId} auditPage={auditPage} /> : null}
           {isSuperAdmin && data.duplicateCandidates.length > 0 ? (
             <section className="rounded-xl border border-border bg-card p-4">
-              <h2 className="font-semibold">潜在重复记录 / Duplicate candidates</h2>
+              <h2 className="font-semibold">潜在重复记录</h2>
               <p className="mt-1 text-xs text-muted-foreground">仅供人工核对，不代表可自动合并。</p>
               <div className="mt-4 grid gap-4 xl:grid-cols-2">
                 {data.duplicateCandidates.map((candidate, index) => {
@@ -423,7 +450,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
                 })}
               </div>
             </section>
-          ) : !isSuperAdmin && redactedFields.some((field) => field.includes("duplicate")) ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">潜在重复候选因权限隐藏，仅 super_admin 可进行人工核对。</p> : null}
+          ) : !isSuperAdmin && redactedFields.some((field) => field.includes("duplicate")) ? <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">潜在重复候选因权限隐藏，仅超级管理员可进行人工核对。</p> : null}
         </div>
       ) : null}
     </div>

@@ -57,7 +57,7 @@ export function MemberDetailCard({ member, identity }: Props) {
         <table className="w-full"><tbody>
           <Row label="姓名" value={identity.full_name} />
           <Row label="昵称" value={identity.nickname} />
-          <Row label="性别" value={identity.gender === "male" ? "男" : identity.gender === "female" ? "女" : identity.gender} />
+          <Row label="性别" value={identity.gender === "male" ? "男" : identity.gender === "female" ? "女" : identity.gender === "other" ? "其他" : identity.gender} />
           <Row label="年龄段" value={identity.age_range} />
           <Row label="国籍" value={identity.nationality} />
           <Row label="所在地" value={identity.current_city} />
@@ -68,7 +68,7 @@ export function MemberDetailCard({ member, identity }: Props) {
           <TagRow label="爱好" tags={identity.hobby_tags} />
           <TagRow label="活动类型" tags={identity.activity_type_tags} variant="info" />
           <TagRow label="性格自评" tags={identity.personality_self_tags} variant="success" />
-          <TagRow label="个人NG" tags={identity.taboo_tags} variant="danger" />
+          <TagRow label="个人禁忌" tags={identity.taboo_tags} variant="danger" />
         </tbody></table>
       </div>
 

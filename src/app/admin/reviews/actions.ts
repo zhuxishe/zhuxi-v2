@@ -145,7 +145,7 @@ function revalidateReviewPaths() {
 
 function formatReviewDbError(error: { code?: string; message?: string }) {
   if (error.code === "PGRST205" || error.message?.includes("past_event_reviews")) {
-    return "数据库未更新：请先应用 Player Activity V1 migration（20260717133954）"
+    return "数据库未更新：请先应用玩家端活动 V1 数据库迁移（20260717133954）"
   }
   return "操作失败"
 }

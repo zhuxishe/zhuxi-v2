@@ -7,6 +7,64 @@ function source(path: string) {
 }
 
 describe("admin member center UI contracts", () => {
+  it("removes obsolete English display phrases while retaining necessary technical terms", () => {
+    const hub = source("src/components/admin/Member360Hub.tsx")
+    const table = source("src/components/admin/MemberTable.tsx")
+    const advanced = source("src/components/admin/MemberAdvancedSectionEditors.tsx")
+
+    for (const phrase of [
+      "变更前 / Before",
+      "变更后 / After",
+      "成员主记录 / Canonical member",
+      "登录账号 / Auth account",
+      "基本与学业 / Identity",
+      "语言 / Language",
+      "兴趣与活动偏好 / Interests",
+      "性格自评 / Personality",
+      "个人边界 / Boundaries",
+      "人格测试 / Quiz",
+      "申请流程 / Application",
+      "身份核验 / Verification",
+      "面试评估 / Interview evaluations",
+      "Staff 公开档案 / Staff profiles",
+      "成员角色 / Roles",
+      "历史来源记录 / Legacy records",
+      "活动统计 / Dynamic stats",
+      "个人主页运营指标 / Profile metrics",
+      "匹配与互评 / Matching",
+      "匹配问卷 / Round submissions",
+      "未匹配诊断 / Unmatched diagnostics",
+      "剧本授权与游玩记录 / Script play records",
+      "社区公开资料 / Community",
+      "玩家反馈 / Feedback",
+      "变更审计 / Audit trail",
+      "潜在重复记录 / Duplicate candidates",
+    ]) {
+      expect(hub).not.toContain(phrase)
+    }
+    expect(hub).toContain("memberAuditActionLabel")
+    expect(hub).toContain("memberAuditSectionLabel")
+    expect(hub).toContain("formatMemberValue(value, key)")
+    expect(hub).toContain("member_status: data.member.status")
+
+    expect(table).not.toContain("Canonical member ID")
+    expect(table).not.toContain("provider 因权限隐藏")
+
+    for (const phrase of [
+      "志愿者 / Volunteer",
+      "社区管理员 / Community moderator",
+      "运营 / Operations",
+      "（super_admin）",
+      '<option value="not_started">not_started</option>',
+      '<option value="in_progress">in_progress</option>',
+      '<option value="submitted">submitted</option>',
+      '<option value="complete">complete</option>',
+      '<option value="unclaimed">unclaimed</option>',
+    ]) {
+      expect(advanced).not.toContain(phrase)
+    }
+  })
+
   it("uses only schema-supported directory filter values", () => {
     const filters = source("src/components/admin/MemberListFilter.tsx")
     expect(filters).toContain('["in_progress", "填写中"]')

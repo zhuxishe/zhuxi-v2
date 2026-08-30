@@ -25,10 +25,15 @@ const STATUS_CLASSES: Record<Status, string> = {
   deleted: "bg-red-100 text-red-700",
 }
 
+export function communityStatusLabel(status: string | null | undefined) {
+  if (!status) return "—"
+  return STATUS_LABELS[status as Status] ?? `未知状态（${status}）`
+}
+
 export function CommunityStatusBadge({ status, className }: { status: Status; className?: string }) {
   return (
     <span className={cn("inline-flex rounded-full px-2 py-1 text-xs font-medium", STATUS_CLASSES[status], className)}>
-      {STATUS_LABELS[status]}
+      {communityStatusLabel(status)}
     </span>
   )
 }

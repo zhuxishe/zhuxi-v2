@@ -35,7 +35,7 @@ export function PlayerActivitySettingsForm({ initialLimit }: { initialLimit: num
             <SlidersHorizontal className="size-5" aria-hidden="true" />
           </span>
           <div>
-            <h2 id="player-activity-settings-title" className="font-semibold">Player 活动首页</h2>
+            <h2 id="player-activity-settings-title" className="font-semibold">玩家端活动首页</h2>
             <p className="mt-1 text-xs leading-5 text-muted-foreground">
               控制“社交剧本类”模块最多显示多少个已勾选剧本。
             </p>

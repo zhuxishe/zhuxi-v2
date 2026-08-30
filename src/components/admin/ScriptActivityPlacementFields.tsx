@@ -19,9 +19,9 @@ export function ScriptActivityPlacementFields(props: Props) {
   return (
     <section className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
       <div>
-        <h3 className="text-sm font-semibold">Player 活动展示</h3>
+        <h3 className="text-sm font-semibold">玩家端活动展示</h3>
         <p className="mt-1 text-xs leading-5 text-muted-foreground">
-          这些设置只影响 Player App，不改变官网“精选活动”展示。
+          这些设置只影响玩家端，不改变官网“精选活动”展示。
         </p>
       </div>
 
@@ -35,7 +35,7 @@ export function ScriptActivityPlacementFields(props: Props) {
           }
         }}
         label="归入社交剧本类"
-        hint="关闭后不会进入 Player App 的社交剧本模块。"
+        hint="关闭后不会进入玩家端的社交剧本模块。"
       />
       <ToggleField
         checked={props.showOnPlayerActivity}

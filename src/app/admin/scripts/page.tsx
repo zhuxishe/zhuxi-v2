@@ -30,7 +30,7 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
       <div className="p-6 space-y-4">
         {settingsState.setupRequired ? (
           <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800">
-            数据库尚未应用 Player Activity V1 迁移，暂时不能配置 Player 活动首页。
+            数据库尚未应用玩家端活动 V1 数据库迁移，暂时不能配置玩家端活动首页。
           </div>
         ) : (
           <PlayerActivitySettingsForm initialLimit={settingsState.settings?.social_home_limit ?? 5} />

@@ -24,7 +24,7 @@ export default async function AdminHomepageStatsPage() {
         {state.setupRequired || !state.stats ? (
           <section role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm text-amber-900">
             <h2 className="font-semibold">主页统计数据库尚未就绪</h2>
-            <p className="mt-1 leading-6">请先应用 Homepage School Stats 数据库迁移。迁移完成前，主页仍会使用当前静态回退数据。</p>
+            <p className="mt-1 leading-6">请先应用主页学校统计数据库迁移。迁移完成前，主页仍会使用当前静态回退数据。</p>
           </section>
         ) : (
           <HomepageStatsEditor initialStats={state.stats} history={state.history} />

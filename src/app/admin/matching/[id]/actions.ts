@@ -17,6 +17,16 @@ type OperationalRpcClient = {
   }>
 }
 
+function matchingStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    draft: "草稿",
+    locked: "已锁定",
+    cancelled: "已取消",
+    confirmed: "已确认",
+  }
+  return labels[status] ?? `未知状态（${status}）`
+}
+
 function compensationReason(reason: string) {
   return `失败补偿：${reason}`.slice(0, 500)
 }
@@ -61,7 +71,7 @@ export async function lockPair(resultId: string, rawReason: string) {
   const guarded = await getWritableResultSession(supabase, resultId)
   if ("error" in guarded) return { error: guarded.error }
   if (guarded.result.status !== "draft") {
-    return { error: `当前状态为「${guarded.result.status}」，只有「draft」状态才能锁定` }
+    return { error: `当前状态为「${matchingStatusLabel(guarded.result.status)}」，只有「草稿」状态才能锁定` }
   }
 
   const { error } = await supabase
@@ -91,7 +101,7 @@ export async function unlockPair(resultId: string, rawReason: string) {
   const guarded = await getWritableResultSession(supabase, resultId)
   if ("error" in guarded) return { error: guarded.error }
   if (guarded.result.status !== "locked") {
-    return { error: `当前状态为「${guarded.result.status}」，只有「locked」状态才能解锁` }
+    return { error: `当前状态为「${matchingStatusLabel(guarded.result.status)}」，只有「已锁定」状态才能解锁` }
   }
 
   const { error } = await supabase
@@ -122,7 +132,7 @@ export async function splitPair(resultId: string, rawReason: string) {
   const guarded = await getWritableResultSession(supabase, resultId)
   if ("error" in guarded) return { error: guarded.error }
   if (guarded.result.status !== "draft" && guarded.result.status !== "locked") {
-    return { error: `当前状态为「${guarded.result.status}」，只有「draft」或「locked」状态才能拆分` }
+    return { error: `当前状态为「${matchingStatusLabel(guarded.result.status)}」，只有「草稿」或「已锁定」状态才能拆分` }
   }
 
   const { error } = await supabase
@@ -148,7 +158,7 @@ export async function restorePair(resultId: string, rawReason: string) {
   const guarded = await getWritableResultSession(supabase, resultId)
   if ("error" in guarded) return { error: guarded.error }
   if (guarded.result.status !== "cancelled") {
-    return { error: `当前状态为「${guarded.result.status}」，只有「cancelled」状态才能恢复` }
+    return { error: `当前状态为「${matchingStatusLabel(guarded.result.status)}」，只有「已取消」状态才能恢复` }
   }
 
   const { error } = await supabase
@@ -180,7 +190,7 @@ export async function deleteSession(sessionId: string, rawReason: string) {
   const guarded = await getWritableSession(supabase, sessionId)
   if ("error" in guarded) return { error: guarded.error }
   if (guarded.session.status !== "draft") {
-    return { error: `当前状态为「${guarded.session.status}」，只有「draft」状态才能删除` }
+    return { error: `当前状态为「${matchingStatusLabel(guarded.session.status)}」，只有「草稿」状态才能删除` }
   }
   const roundId = guarded.session.round_id
 
@@ -238,7 +248,7 @@ export async function confirmSession(sessionId: string, rawReason: string) {
     return { error: "操作失败" }
   }
   if (!updated || updated.length === 0) {
-    return { error: "会话不存在或已不是「draft」状态，请刷新后重试" }
+    return { error: "会话不存在或已不是「草稿」状态，请刷新后重试" }
   }
 
   // draft 和 locked 的配对都应确认（locked = 管理员已审核保留）
@@ -295,7 +305,7 @@ export async function unpublishSession(sessionId: string, rawReason: string) {
     return { error: "操作失败" }
   }
   if (!updated || updated.length === 0) {
-    return { error: "会话不存在或不是「confirmed」状态" }
+    return { error: "会话不存在或不是「已确认」状态" }
   }
 
   // confirmed → draft（排除已取消的）

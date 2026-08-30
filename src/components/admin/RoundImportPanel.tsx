@@ -175,9 +175,9 @@ export function RoundImportPanel({ roundId, roundStatus }: Props) {
         <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground sm:grid-cols-5">
           <span>总行数 {summary.totalRows}</span>
           <span>复用成员 {summary.currentCount}</span>
-          <span>legacy 补强 {summary.legacyCount}</span>
-          <span>temp 成员 {summary.tempCount}</span>
-          <span>warning {summary.warningCount}</span>
+          <span>历史资料补强 {summary.legacyCount}</span>
+          <span>临时成员 {summary.tempCount}</span>
+          <span>警告 {summary.warningCount}</span>
         </div>
       )}
     </div>

@@ -9,6 +9,7 @@ import { MemberEditInterests } from "./MemberEditInterests"
 import { MemberEditPersonality } from "./MemberEditPersonality"
 import { MemberEditBoundaries } from "./MemberEditBoundaries"
 import { MemberEditApplication, type MemberApplicationEditData } from "./MemberEditApplication"
+import { memberDisplayLabel } from "./member-center-utils"
 import {
   updateMemberIdentity,
   updateMemberLanguage,
@@ -140,7 +141,7 @@ export function MemberEditForm({ memberId, member }: Props) {
             <table className="w-full"><tbody>
               <ReadOnlyRow label="评估数" value={`${evals.length} 份`} />
               {evals.map((e: InterviewEvaluationRow, i: number) => (
-                <ReadOnlyRow key={i} label={e.interviewer_name ?? `面试官${i + 1}`} value={`推荐 ${e.overall_recommendation}/5 · 风险 ${e.risk_level}`} />
+                <ReadOnlyRow key={i} label={e.interviewer_name ?? `面试官${i + 1}`} value={`推荐 ${e.overall_recommendation}/5 · 风险 ${memberDisplayLabel(e.risk_level)}`} />
               ))}
             </tbody></table>
           )}

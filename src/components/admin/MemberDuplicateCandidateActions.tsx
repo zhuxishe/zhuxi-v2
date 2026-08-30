@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { resolveMemberDuplicateCandidateAction } from "@/app/admin/members/[id]/actions"
 import { Button } from "@/components/ui/button"
+import { memberDisplayLabel } from "./member-center-utils"
 
 export function MemberDuplicateCandidateActions({
   memberId,
@@ -21,7 +22,7 @@ export function MemberDuplicateCandidateActions({
   const [pending, startTransition] = useTransition()
 
   if (status !== "pending") {
-    return <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">已处理：{status ?? "未知状态"}</p>
+    return <p className="rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">已处理：{status ? memberDisplayLabel(status) : "未知状态"}</p>
   }
 
   function resolve(resolution: "confirmed_duplicate" | "not_duplicate") {

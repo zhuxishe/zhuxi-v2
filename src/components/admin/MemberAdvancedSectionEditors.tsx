@@ -9,20 +9,21 @@ import {
 } from "@/app/admin/members/[id]/advanced/actions"
 import { Button } from "@/components/ui/button"
 import type { MemberCenterRecord } from "@/types"
+import { memberFieldLabel } from "./member-center-utils"
 
 const INPUT_CLASS = "min-h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:opacity-60"
 const ACCOUNT_FIELDS = [
   ["email", "成员邮箱", true],
-  ["user_id", "Auth user_id", true],
-  ["line_user_id", "LINE user ID", true],
-  ["wechat_openid", "WeChat OpenID", true],
+  ["user_id", "登录账号 ID（user_id）", true],
+  ["line_user_id", "LINE 用户 ID", true],
+  ["wechat_openid", "微信 OpenID", true],
   ["membership_type", "会员类型", false],
   ["record_source", "记录来源", false],
 ] as const
 const ROLE_OPTIONS = [
-  ["volunteer", "志愿者 / Volunteer"],
-  ["community_moderator", "社区管理员 / Community moderator"],
-  ["operations", "运营 / Operations"],
+  ["volunteer", "志愿者"],
+  ["community_moderator", "社区管理员"],
+  ["operations", "运营"],
 ] as const
 
 function toTokyoDateTimeLocal(value: unknown) {
@@ -97,7 +98,7 @@ export function MemberAccountAdvancedEditor({ memberId, account }: { memberId: s
       return
     }
     if (field === "record_source" && !["app", "line", "legacy", "import", "admin"].includes(normalized)) {
-      setError("记录来源必须为 app、line、legacy、import 或 admin")
+      setError("记录来源必须为玩家端（app）、LINE、历史记录（legacy）、批量导入（import）或后台建立（admin）")
       return
     }
     setError(null)
@@ -121,8 +122,8 @@ export function MemberAccountAdvancedEditor({ memberId, account }: { memberId: s
 
   return (
     <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-      <div className="flex items-center gap-2"><ShieldAlert className="size-4 text-rose-700" aria-hidden="true" /><h3 className="font-semibold text-rose-950">高级账号字段（super_admin）</h3></div>
-      <p className="mt-1 text-xs leading-5 text-rose-900">一次只修改一个字段。清空可空字段会解除对应绑定；account_status 请使用生命周期面板，会员编号请使用上方专用编辑器。</p>
+      <div className="flex items-center gap-2"><ShieldAlert className="size-4 text-rose-700" aria-hidden="true" /><h3 className="font-semibold text-rose-950">高级账号字段（仅超级管理员）</h3></div>
+      <p className="mt-1 text-xs leading-5 text-rose-900">一次只修改一个字段。清空可空字段会解除对应绑定；账号状态请使用生命周期面板，会员编号请使用上方专用编辑器。</p>
       <form className="mt-4 grid gap-3 lg:grid-cols-2" onSubmit={save}>
         <label>
           <span className="mb-1 block text-xs font-medium text-rose-900">字段</span>
@@ -159,8 +160,8 @@ export function MemberQuizAdvancedEditor({ memberId, quiz }: { memberId: string;
   function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     let parsedAnswers: unknown
-    try { parsedAnswers = JSON.parse(answers) } catch { setError("answers 必须是有效 JSON"); return }
-    if (!Array.isArray(parsedAnswers)) { setError("answers 必须是 JSON 数组"); return }
+    try { parsedAnswers = JSON.parse(answers) } catch { setError("测试答案必须是有效的 JSON"); return }
+    if (!Array.isArray(parsedAnswers)) { setError("测试答案必须是 JSON 数组"); return }
     const numericScores = Object.fromEntries(Object.entries(scores).map(([key, value]) => [key, Number(value)]))
     if (Object.values(numericScores).some((value) => !Number.isInteger(value) || value < 0 || value > 100)) {
       setError("五项分数必须是 0–100 的整数")
@@ -168,7 +169,7 @@ export function MemberQuizAdvancedEditor({ memberId, quiz }: { memberId: string;
     }
     const parsedCompletedAt = completedAt ? new Date(`${completedAt}+09:00`) : null
     if (parsedCompletedAt && Number.isNaN(parsedCompletedAt.getTime())) {
-      setError("completed_at 必须是有效的日本时间")
+      setError("测试完成时间必须是有效的日本时间")
       return
     }
     setError(null)
@@ -194,17 +195,17 @@ export function MemberQuizAdvancedEditor({ memberId, quiz }: { memberId: string;
 
   return (
     <section className="rounded-xl border border-rose-200 bg-rose-50 p-4 xl:col-span-2">
-      <div className="flex items-center gap-2"><ShieldAlert className="size-4 text-rose-700" aria-hidden="true" /><h3 className="font-semibold text-rose-950">人格测试原始记录（super_admin）</h3></div>
+      <div className="flex items-center gap-2"><ShieldAlert className="size-4 text-rose-700" aria-hidden="true" /><h3 className="font-semibold text-rose-950">人格测试原始记录（仅超级管理员）</h3></div>
       <p className="mt-1 text-xs text-rose-900">这是高风险人工纠错入口；不会重新运行测试计分逻辑。</p>
       <form className="mt-4 space-y-3" onSubmit={save}>
         <div className="grid gap-3 sm:grid-cols-5">
           {(Object.keys(scores) as Array<keyof typeof scores>).map((key) => (
-            <label key={key}><span className="mb-1 block font-mono text-xs text-rose-900">{key}</span><input type="number" min={0} max={100} step={1} value={scores[key]} onChange={(event) => setScores((current) => ({ ...current, [key]: event.target.value }))} className={INPUT_CLASS} disabled={pending} /></label>
+            <label key={key}><span className="mb-1 block text-xs text-rose-900">{memberFieldLabel(key)}</span><input type="number" min={0} max={100} step={1} value={scores[key]} onChange={(event) => setScores((current) => ({ ...current, [key]: event.target.value }))} className={INPUT_CLASS} disabled={pending} /></label>
           ))}
         </div>
-        <label className="block"><span className="mb-1 block text-xs text-rose-900">personality_type</span><input value={personalityType} onChange={(event) => setPersonalityType(event.target.value)} maxLength={100} className={INPUT_CLASS} disabled={pending} /></label>
-        <label className="block"><span className="mb-1 block text-xs text-rose-900">completed_at（日本时间）</span><input type="datetime-local" step={1} value={completedAt} onChange={(event) => setCompletedAt(event.target.value)} className={INPUT_CLASS} disabled={pending} /></label>
-        <label className="block"><span className="mb-1 block text-xs text-rose-900">answers JSON 数组</span><textarea value={answers} onChange={(event) => setAnswers(event.target.value)} rows={8} className={`${INPUT_CLASS} min-h-40 py-2 font-mono text-xs`} disabled={pending} /></label>
+        <label className="block"><span className="mb-1 block text-xs text-rose-900">人格类型（personality_type）</span><input value={personalityType} onChange={(event) => setPersonalityType(event.target.value)} maxLength={100} className={INPUT_CLASS} disabled={pending} /></label>
+        <label className="block"><span className="mb-1 block text-xs text-rose-900">测试完成时间（completed_at，日本时间）</span><input type="datetime-local" step={1} value={completedAt} onChange={(event) => setCompletedAt(event.target.value)} className={INPUT_CLASS} disabled={pending} /></label>
+        <label className="block"><span className="mb-1 block text-xs text-rose-900">测试答案（JSON 数组）</span><textarea value={answers} onChange={(event) => setAnswers(event.target.value)} rows={8} className={`${INPUT_CLASS} min-h-40 py-2 font-mono text-xs`} disabled={pending} /></label>
         <ReasonInput value={reason} onChange={setReason} disabled={pending} />
         <div className="flex justify-end"><Button type="submit" variant="destructive" disabled={pending || reason.trim().length < 4}><Save className="size-4" />{pending ? "保存中" : "保存原始测试记录"}</Button></div>
       </form>
@@ -237,7 +238,7 @@ export function MemberRolesAdvancedEditor({ memberId, roles }: { memberId: strin
 
   return (
     <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-      <div className="flex items-center gap-2"><ShieldAlert className="size-4 text-rose-700" aria-hidden="true" /><h3 className="font-semibold text-rose-950">角色分配（super_admin）</h3></div>
+      <div className="flex items-center gap-2"><ShieldAlert className="size-4 text-rose-700" aria-hidden="true" /><h3 className="font-semibold text-rose-950">角色分配（仅超级管理员）</h3></div>
       <form className="mt-4 space-y-3" onSubmit={save}>
         <div className="space-y-2">
           {ROLE_OPTIONS.map(([key, label]) => (
@@ -275,7 +276,7 @@ export function MemberWorkflowAdvancedEditor({
     event.preventDefault()
     const parsedStep = Number(step)
     if (!Number.isInteger(parsedStep) || parsedStep < 0 || parsedStep > 4) {
-      setError("onboarding_step 必须是 0–4 的整数")
+      setError("填写步骤必须是 0–4 的整数")
       return
     }
     setError(null)
@@ -296,20 +297,20 @@ export function MemberWorkflowAdvancedEditor({
 
   return (
     <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
-      <div className="flex items-center gap-2"><ShieldAlert className="size-4 text-rose-700" aria-hidden="true" /><h3 className="font-semibold text-rose-950">资料流程覆盖（super_admin）</h3></div>
+      <div className="flex items-center gap-2"><ShieldAlert className="size-4 text-rose-700" aria-hidden="true" /><h3 className="font-semibold text-rose-950">资料流程覆盖（仅超级管理员）</h3></div>
       <p className="mt-1 text-xs leading-5 text-rose-900">用于修复异常流程状态；不会改写创建、提交或更新时间等技术时间戳。</p>
       <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={save}>
         <label>
-          <span className="mb-1 block text-xs font-medium text-rose-900">profile_stage</span>
+          <span className="mb-1 block text-xs font-medium text-rose-900">资料阶段（profile_stage）</span>
           <select value={stage} onChange={(event) => setStage(event.target.value)} className={INPUT_CLASS} disabled={pending}>
-            <option value="not_started">not_started</option>
-            <option value="in_progress">in_progress</option>
-            <option value="submitted">submitted</option>
-            <option value="complete">complete</option>
+            <option value="not_started">未开始</option>
+            <option value="in_progress">填写中</option>
+            <option value="submitted">已提交</option>
+            <option value="complete">已完成</option>
           </select>
         </label>
         <label>
-          <span className="mb-1 block text-xs font-medium text-rose-900">onboarding_step</span>
+          <span className="mb-1 block text-xs font-medium text-rose-900">填写步骤（onboarding_step）</span>
           <input type="number" min={0} max={4} step={1} value={step} onChange={(event) => setStep(event.target.value)} className={INPUT_CLASS} disabled={pending} />
         </label>
         <div className="sm:col-span-2"><ReasonInput value={reason} onChange={setReason} disabled={pending} /></div>
@@ -373,12 +374,12 @@ export function MemberLegacyAdvancedEditor({
       ? null
       : Number(form.compatibilityScore)
     if (compatibilityScore !== null && (!Number.isFinite(compatibilityScore) || compatibilityScore < 0 || compatibilityScore > 5)) {
-      setError("compatibility_score 必须为 0–5，或留空表示 null")
+      setError("合拍分数必须为 0–5，或留空表示未填写")
       return
     }
     const sessionCount = form.sessionCount.trim() === "" ? null : Number(form.sessionCount)
     if (sessionCount !== null && (!Number.isInteger(sessionCount) || sessionCount < 0 || sessionCount > 1_000_000)) {
-      setError("session_count 必须为 0–1,000,000 的整数，或留空表示 null")
+      setError("参加次数必须为 0–1,000,000 的整数，或留空表示未填写")
       return
     }
 
@@ -386,11 +387,11 @@ export function MemberLegacyAdvancedEditor({
     try {
       matchHistory = JSON.parse(form.matchHistory)
     } catch {
-      setError("match_history 必须是有效 JSON 数组或 null")
+      setError("历史匹配记录（match_history）必须是有效的 JSON 数组或空值（null）")
       return
     }
     if (matchHistory !== null && !Array.isArray(matchHistory)) {
-      setError("match_history 必须是 JSON 数组或 null")
+      setError("历史匹配记录（match_history）必须是 JSON 数组或空值（null）")
       return
     }
 
@@ -422,7 +423,7 @@ export function MemberLegacyAdvancedEditor({
         return
       }
       setReason("")
-      setMessage(`历史记录 ${recordNumber} 已更新，并写入 before/after 审计`)
+      setMessage(`历史记录 ${recordNumber} 已更新，并写入修改前／修改后审计`)
       router.refresh()
     })
   }
@@ -431,24 +432,24 @@ export function MemberLegacyAdvancedEditor({
     <section className="rounded-xl border border-rose-200 bg-rose-50 p-4">
       <div className="flex items-center gap-2">
         <ShieldAlert className="size-4 text-rose-700" aria-hidden="true" />
-        <h3 className="font-semibold text-rose-950">编辑历史原始记录 {recordNumber}（super_admin）</h3>
+        <h3 className="font-semibold text-rose-950">编辑历史原始记录 {recordNumber}（仅超级管理员）</h3>
       </div>
       <p className="mt-1 text-xs leading-5 text-rose-900">
-        canonical ID、关联外键、审核操作者、审计字段和技术时间不可在此覆盖；认领状态变更由数据库自动维护审核人和审核时间。
+        成员主记录 ID、关联外键、审核操作者、审计字段和技术时间不可在此覆盖；认领状态变更由数据库自动维护审核人和审核时间。
       </p>
       <form className="mt-4 grid gap-3 lg:grid-cols-2" onSubmit={save}>
-        <label><span className="mb-1 block text-xs text-rose-900">member_no</span><input value={form.memberNo} onChange={(event) => setField("memberNo", event.target.value)} maxLength={100} className={INPUT_CLASS} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">full_name</span><input value={form.fullName} onChange={(event) => setField("fullName", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">gender（可空）</span><input value={form.gender} onChange={(event) => setField("gender", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">school（可空）</span><input value={form.school} onChange={(event) => setField("school", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">department（可空）</span><input value={form.department} onChange={(event) => setField("department", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">game_mode（可空）</span><input value={form.gameMode} onChange={(event) => setField("gameMode", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">interest_tags（逗号或换行分隔）</span><textarea value={form.interestTags} onChange={(event) => setField("interestTags", event.target.value)} rows={3} className={`${INPUT_CLASS} py-2`} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">social_tags（逗号或换行分隔）</span><textarea value={form.socialTags} onChange={(event) => setField("socialTags", event.target.value)} rows={3} className={`${INPUT_CLASS} py-2`} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">compatibility_score（0–5，可空）</span><input type="number" min={0} max={5} step="any" value={form.compatibilityScore} onChange={(event) => setField("compatibilityScore", event.target.value)} className={INPUT_CLASS} disabled={pending} /></label>
-        <label><span className="mb-1 block text-xs text-rose-900">session_count（可空）</span><input type="number" min={0} max={1_000_000} step={1} value={form.sessionCount} onChange={(event) => setField("sessionCount", event.target.value)} className={INPUT_CLASS} disabled={pending} /></label>
-        <label className="lg:col-span-2"><span className="mb-1 block text-xs text-rose-900">claim_status</span><select value={form.claimStatus} onChange={(event) => setField("claimStatus", event.target.value)} className={INPUT_CLASS} disabled={pending}><option value="unclaimed">unclaimed</option><option value="pending">pending</option><option value="approved">approved</option><option value="rejected">rejected</option></select></label>
-        <label className="lg:col-span-2"><span className="mb-1 block text-xs text-rose-900">match_history JSON 数组或 null</span><textarea value={form.matchHistory} onChange={(event) => setField("matchHistory", event.target.value)} rows={7} className={`${INPUT_CLASS} min-h-36 py-2 font-mono text-xs`} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">历史会员编号（member_no）</span><input value={form.memberNo} onChange={(event) => setField("memberNo", event.target.value)} maxLength={100} className={INPUT_CLASS} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">姓名（full_name）</span><input value={form.fullName} onChange={(event) => setField("fullName", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">性别（gender，可空）</span><input value={form.gender} onChange={(event) => setField("gender", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">学校（school，可空）</span><input value={form.school} onChange={(event) => setField("school", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">学部／专业（department，可空）</span><input value={form.department} onChange={(event) => setField("department", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">游戏模式（game_mode，可空）</span><input value={form.gameMode} onChange={(event) => setField("gameMode", event.target.value)} maxLength={500} className={INPUT_CLASS} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">兴趣标签（interest_tags，逗号或换行分隔）</span><textarea value={form.interestTags} onChange={(event) => setField("interestTags", event.target.value)} rows={3} className={`${INPUT_CLASS} py-2`} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">社交标签（social_tags，逗号或换行分隔）</span><textarea value={form.socialTags} onChange={(event) => setField("socialTags", event.target.value)} rows={3} className={`${INPUT_CLASS} py-2`} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">合拍分数（compatibility_score，0–5，可空）</span><input type="number" min={0} max={5} step="any" value={form.compatibilityScore} onChange={(event) => setField("compatibilityScore", event.target.value)} className={INPUT_CLASS} disabled={pending} /></label>
+        <label><span className="mb-1 block text-xs text-rose-900">参加次数（session_count，可空）</span><input type="number" min={0} max={1_000_000} step={1} value={form.sessionCount} onChange={(event) => setField("sessionCount", event.target.value)} className={INPUT_CLASS} disabled={pending} /></label>
+        <label className="lg:col-span-2"><span className="mb-1 block text-xs text-rose-900">认领状态（claim_status）</span><select value={form.claimStatus} onChange={(event) => setField("claimStatus", event.target.value)} className={INPUT_CLASS} disabled={pending}><option value="unclaimed">未认领</option><option value="pending">待审核</option><option value="approved">已通过</option><option value="rejected">已拒绝</option></select></label>
+        <label className="lg:col-span-2"><span className="mb-1 block text-xs text-rose-900">历史匹配记录（JSON 数组或空值）</span><textarea value={form.matchHistory} onChange={(event) => setField("matchHistory", event.target.value)} rows={7} className={`${INPUT_CLASS} min-h-36 py-2 font-mono text-xs`} disabled={pending} /></label>
         <div className="lg:col-span-2"><ReasonInput value={reason} onChange={setReason} disabled={pending} /></div>
         <div className="lg:col-span-2 flex justify-end"><Button type="submit" variant="destructive" disabled={pending || reason.trim().length < 4}><Save className="size-4" />{pending ? "保存中" : "保存历史原始记录"}</Button></div>
       </form>

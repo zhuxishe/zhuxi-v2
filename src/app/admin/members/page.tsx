@@ -39,7 +39,7 @@ export default async function AdminMembersPage({ searchParams }: Props) {
       <div className="p-6 space-y-4">
         <div>
           <h1 className="text-xl font-semibold">用户与成员目录</h1>
-          <p className="mt-1 text-sm text-muted-foreground">一个 canonical member ID 对应登录账号、申请资料和后续业务记录。</p>
+          <p className="mt-1 text-sm text-muted-foreground">一个成员主记录 ID（members.id）对应登录账号、申请资料和后续业务记录。</p>
         </div>
         <MemberListFilter
           key={params.search ?? ""}

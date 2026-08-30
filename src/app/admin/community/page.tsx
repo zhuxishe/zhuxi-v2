@@ -5,6 +5,7 @@ import { CommunityAdminPage } from "@/components/admin/community/CommunityAdminP
 import { CommunityMetricCard } from "@/components/admin/community/CommunityMetricCard"
 import { CommunitySetupWarning } from "@/components/admin/community/CommunitySetupWarning"
 import { CommunityStatusBadge } from "@/components/admin/community/CommunityStatusBadge"
+import { REPORT_REASON_LABELS } from "@/components/admin/community/ModerationQueue"
 import { formatAdminDate, formatProtectedMemberNumber } from "@/components/admin/community/community-admin-ui"
 import { fetchCommunityOverview } from "./data"
 
@@ -57,7 +58,7 @@ export default async function AdminCommunityPage() {
                         <CommunityStatusBadge status={report.status} />
                       </div>
                       <p className="mt-1 truncate text-xs text-muted-foreground">
-                        举报原因：{report.reason} · 举报人 {formatProtectedMemberNumber(report.reporter_number, canViewMemberNumber)}
+                        举报原因：{REPORT_REASON_LABELS[report.reason]} · 举报人 {formatProtectedMemberNumber(report.reporter_number, canViewMemberNumber)}
                       </p>
                     </div>
                     <time className="shrink-0 text-xs text-muted-foreground">{formatAdminDate(report.created_at)}</time>

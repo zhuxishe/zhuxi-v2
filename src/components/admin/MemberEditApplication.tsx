@@ -53,7 +53,7 @@ export function MemberEditApplication({ data, onChange }: Props) {
             })}
             className={INPUT_CLASS}
           />
-          <span className="mt-1 block text-xs text-muted-foreground">1–5；可清空为 null。评估记录变化仍可能按现有规则重新计算此值。</span>
+          <span className="mt-1 block text-xs text-muted-foreground">1–5；可以清空。评估记录变化仍可能按现有规则重新计算此值。</span>
         </td>
       </tr>
     </tbody></table>

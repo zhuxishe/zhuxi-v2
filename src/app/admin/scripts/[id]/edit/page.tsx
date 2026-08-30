@@ -21,7 +21,7 @@ export default async function AdminScriptEditPage({ params }: Props) {
 
   return (
     <div>
-      <AdminTopBar admin={admin} title={`编辑: ${script.title}`} />
+      <AdminTopBar admin={admin} title={`编辑：${script.title}`} />
       <div className="p-6">
         <ScriptEditForm script={{ ...script, roles: script.roles as ScriptData["roles"] }} />
       </div>

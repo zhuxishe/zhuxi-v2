@@ -46,7 +46,8 @@ export interface ConstraintItem {
 function displayGender(g: string | null): string {
   if (g === "male") return "男"
   if (g === "female") return "女"
-  return g || "未知"
+  if (g === "other") return "其他"
+  return "未知"
 }
 
 /** 构建双人硬约束条目列表 */
@@ -302,7 +303,12 @@ export async function manualPair(
     const bundle = await buildRoundCandidates(roundId, memberIds)
     candidates = bundle.candidates
   } catch (error) {
-    return { error: error instanceof Error ? error.message : "无法获取本轮问卷数据" }
+    console.error("[manualPair:buildRoundCandidates]", error)
+    return {
+      error: error instanceof Error && /[\u3400-\u9fff]/.test(error.message)
+        ? error.message
+        : "无法获取本轮问卷数据",
+    }
   }
 
   let totalScore = 0

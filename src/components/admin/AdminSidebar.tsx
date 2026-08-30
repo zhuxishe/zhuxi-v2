@@ -34,7 +34,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { href: "/admin/reviews", label: "大型活动", icon: Images },
       { href: "/admin/community", label: "社区管理", icon: MessagesSquare },
       { href: "/admin/feedback", label: "玩家反馈", icon: MessageSquareText },
-      { href: "/admin/staff", label: "Staff 管理", icon: UserRound },
+      { href: "/admin/staff", label: "团队成员", icon: UserRound },
       { href: "/admin/testimonials", label: "评论管理", icon: MessageCircle },
       { href: "/admin/activity-records", label: "活动记录", icon: Calendar },
     ],

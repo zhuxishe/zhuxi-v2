@@ -33,7 +33,7 @@ export function ScoreBreakdownChart({ breakdown }: Props) {
       if (item.weight === 0) continue // Skip zero-weight factors
       items.push({
         key: item.factor,
-        label: FACTOR_LABELS[item.factor] ?? item.label ?? item.factor,
+        label: FACTOR_LABELS[item.factor] ?? item.label ?? `未识别的评分因素（${item.factor}）`,
         raw: item.rawScore,
         weighted: item.weightedScore,
         maxWeight: item.weight,
@@ -43,7 +43,7 @@ export function ScoreBreakdownChart({ breakdown }: Props) {
     for (const [key, val] of Object.entries(breakdown)) {
       items.push({
         key,
-        label: FACTOR_LABELS[key] ?? key,
+        label: FACTOR_LABELS[key] ?? `未识别的评分因素（${key}）`,
         raw: val.raw,
         weighted: val.weighted,
         maxWeight: val.maxRaw,

@@ -60,9 +60,9 @@ function createAuthAdminGateway(): MemberLifecycleAuthAdmin {
 }
 
 function lifecycleSuccessMessage(authSync: MemberLifecycleAuthSync, operation: string) {
-  if (authSync === "synchronized") return `${operation}已写入本站数据库，并同步 Supabase Auth 登录状态。`
-  if (authSync === "deleted") return `${operation}已写入本站数据库，canonical user_id 已解除，Supabase Auth 用户已删除。`
-  return `${operation}已写入本站数据库；该成员未绑定 Auth user_id，无 Auth 账号需要同步。`
+  if (authSync === "synchronized") return `${operation}已写入本站数据库，并同步 Supabase 身份认证（Auth）登录状态。`
+  if (authSync === "deleted") return `${operation}已写入本站数据库，成员主记录的登录绑定字段 user_id 已解除，Supabase 身份认证用户已删除。`
+  return `${operation}已写入本站数据库；该成员未绑定身份认证字段 user_id，无身份认证账号需要同步。`
 }
 
 function lifecycleErrorMessage(error: unknown) {
@@ -160,7 +160,7 @@ export async function anonymizeMemberAction(input: {
   const admin = await requireAdmin()
   if (admin.role !== "super_admin") return { success: false, error: "仅超级管理员可以匿名化成员" }
   if (!UUID_PATTERN.test(input.memberId)) return { success: false, error: "成员 ID 无效" }
-  if (input.confirmation.trim() !== input.memberId) return { success: false, error: "确认文本与 canonical member ID 不一致" }
+  if (input.confirmation.trim() !== input.memberId) return { success: false, error: "确认文本与成员主记录 ID（members.id）不一致" }
   const reasonResult = validateReason(input.reason)
   if (!reasonResult.ok) return { success: false, error: reasonResult.error }
 
@@ -229,8 +229,8 @@ export async function resolveMemberDuplicateCandidateAction(input: {
     return {
       success: true,
       message: input.resolution === "confirmed_duplicate"
-        ? "已标记为 confirmed_duplicate；仅记录人工结论，未自动合并。"
-        : "已标记为 not_duplicate；未修改任何成员主记录。",
+        ? "已标记为确认重复；仅记录人工结论，未自动合并。"
+        : "已标记为非重复；未修改任何成员主记录。",
     }
   } catch (error) {
     console.error("[resolveMemberDuplicateCandidateAction]", error)
@@ -246,7 +246,7 @@ export async function hardDeleteBlankMemberAction(input: {
   const admin = await requireAdmin()
   if (admin.role !== "super_admin") return { success: false, error: "仅超级管理员可以硬删除空白测试壳记录" }
   if (!UUID_PATTERN.test(input.memberId)) return { success: false, error: "成员 ID 无效" }
-  if (input.confirmation.trim() !== input.memberId) return { success: false, error: "确认文本与 canonical member ID 不一致" }
+  if (input.confirmation.trim() !== input.memberId) return { success: false, error: "确认文本与成员主记录 ID（members.id）不一致" }
   const reasonResult = validateReason(input.reason)
   if (!reasonResult.ok) return { success: false, error: reasonResult.error }
 

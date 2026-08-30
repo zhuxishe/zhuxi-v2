@@ -19,13 +19,23 @@ type OperationalRpcClient = {
   }>
 }
 
+function roundStatusLabel(status: string) {
+  const labels: Record<string, string> = {
+    draft: "草稿",
+    open: "问卷进行中",
+    closed: "已截止",
+    matched: "已匹配",
+  }
+  return labels[status] ?? `未知状态（${status}）`
+}
+
 /** 更新轮次状态 */
 export async function updateRoundStatus(roundId: string, status: string) {
   await requireAdmin()
 
   const VALID_STATUSES = ['draft', 'open', 'closed', 'matched']
   if (!VALID_STATUSES.includes(status)) {
-    return { error: `无效状态: ${status}` }
+    return { error: "轮次状态无效" }
   }
 
   const supabase = await createClient()
@@ -37,7 +47,7 @@ export async function updateRoundStatus(roundId: string, status: string) {
 
   if (roundError || !round) return { error: "轮次不存在" }
   if (!canUpdateRoundStatus(round.status, status)) {
-    return { error: `当前轮次状态为「${round.status}」，不允许切换到「${status}」` }
+    return { error: `当前轮次状态为「${roundStatusLabel(round.status)}」，不允许切换到「${roundStatusLabel(status)}」` }
   }
 
   const { error } = await supabase
@@ -70,7 +80,7 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
 
   if (roundErr || !round) return { error: "轮次不存在" }
   if (round.status !== "closed") {
-    return { error: `当前轮次状态为「${round.status}」，只有「closed」状态才能执行匹配` }
+    return { error: `当前轮次状态为「${roundStatusLabel(round.status)}」，只有「已截止」状态才能执行匹配` }
   }
 
   // 1. 获取问卷提交（含用户资料）

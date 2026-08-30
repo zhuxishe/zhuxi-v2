@@ -12,22 +12,22 @@ export default async function AdminStaffPage() {
 
   return (
     <div>
-      <AdminTopBar admin={admin} title="Staff 管理" />
+      <AdminTopBar admin={admin} title="团队成员管理" />
       <div className="p-6 space-y-6">
         <div className="rounded-xl bg-card p-4 text-sm text-muted-foreground ring-1 ring-foreground/10">
-          Staff 会显示在公开页“关于我们”下方。头像可上传本地图片，也可选择系统预设；不选则显示姓名首字。
+          团队成员会显示在公开页“关于我们”下方。头像可上传本地图片，也可选择系统预设；不选则显示姓名首字。
         </div>
         {setupRequired ? (
           <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800">
             数据库还没有 <code>staff_profiles</code> 表。请先应用
             <code className="mx-1">supabase/migrations/036_staff_profiles.sql</code>
-            后再新增 Staff。
+            后再新增团队成员。
           </div>
         ) : (
           <StaffProfileForm />
         )}
         {staff.length === 0 ? (
-          <EmptyState icon={UserRound} title="暂无 Staff" description="添加第一位首页展示成员" />
+          <EmptyState icon={UserRound} title="暂无团队成员" description="添加第一位首页展示成员" />
         ) : (
           <StaffProfileList staff={staff} />
         )}

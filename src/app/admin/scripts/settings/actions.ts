@@ -24,7 +24,7 @@ export async function updatePlayerActivitySettings(socialHomeLimit: number) {
   if (error) {
     console.error("[updatePlayerActivitySettings]", error)
     if (error.code === "PGRST205" || error.message.includes("player_activity_settings")) {
-      return { error: "数据库尚未应用 Player Activity V1 迁移" }
+      return { error: "数据库尚未应用玩家端活动 V1 数据库迁移" }
     }
     return { error: "活动首页设置保存失败" }
   }

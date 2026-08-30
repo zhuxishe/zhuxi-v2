@@ -19,7 +19,7 @@ const PROFILE_OPTIONS = [
   ["submitted", "已提交"], ["complete", "已完成"],
 ] as const
 const SOURCE_OPTIONS = [
-  ["all", "全部来源"], ["app", "App 注册"], ["line", "LINE"],
+  ["all", "全部来源"], ["app", "玩家端登记"], ["line", "LINE"],
   ["legacy", "历史记录"], ["import", "批量导入"], ["admin", "后台建立"],
 ] as const
 
@@ -71,7 +71,7 @@ export function MemberListFilter({
           <input
             type="search"
             value={searchValue}
-            placeholder={canSearchHighRisk ? "姓名、昵称、邮箱、会员编号或 canonical ID" : "姓名、昵称、业务邮箱或 canonical ID"}
+            placeholder={canSearchHighRisk ? "姓名、昵称、邮箱、会员编号或成员主记录 ID" : "姓名、昵称、业务邮箱或成员主记录 ID"}
             className="min-h-10 w-full rounded-lg border border-border bg-background pl-9 pr-3 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
             onChange={(event) => {
               const value = event.target.value

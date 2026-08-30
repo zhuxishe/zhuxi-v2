@@ -25,7 +25,10 @@ export async function GET(request: NextRequest, { params }: Props) {
       },
     })
   } catch (error) {
-    const message = error instanceof Error ? error.message : "导出失败"
+    console.error("[matching export]", error)
+    const message = error instanceof Error && /[\u3400-\u9fff]/.test(error.message)
+      ? error.message
+      : "导出失败，请稍后重试"
     return NextResponse.json({ error: message }, { status: 400 })
   }
 }

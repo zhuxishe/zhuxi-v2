@@ -5,10 +5,10 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Eye, EyeOff, Gavel, ShieldAlert, Trash2, UserSearch } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { CommunityStatusBadge } from "./CommunityStatusBadge"
+import { CommunityStatusBadge, communityStatusLabel } from "./CommunityStatusBadge"
 import { CommunityAvatar } from "@/components/community/CommunityAvatar"
 import { COMMUNITY_ADMIN_INPUT_CLASS, COMMUNITY_ADMIN_LABEL_CLASS, formatAdminDate, formatProtectedMemberNumber } from "./community-admin-ui"
-import { REPORT_REASON_LABELS } from "./ModerationQueue"
+import { REPORT_REASON_LABELS, TARGET_LABELS } from "./ModerationQueue"
 import type { CommunityReportDetail, CommunityRevealedAuthor } from "./types"
 import { communityMediaUrl } from "@/lib/community/media"
 import {
@@ -133,7 +133,7 @@ export function ModerationReportDetail({
         <section className="rounded-xl border border-border bg-card p-4 shadow-sm sm:p-5">
           <div className="flex flex-wrap items-center gap-2">
             <CommunityStatusBadge status={report.status} />
-            <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">{report.target_type}</span>
+            <span className="rounded-full bg-muted px-2 py-1 text-xs text-muted-foreground">{TARGET_LABELS[report.target_type]}</span>
             {report.target_uses_snapshot ? (
               <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">举报时快照</span>
             ) : (
@@ -171,8 +171,8 @@ export function ModerationReportDetail({
             </div>
           ) : null}
           <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-            <div><dt className="text-xs text-muted-foreground">内容当前状态</dt><dd className="mt-1 font-medium">{report.target_status ?? "—"}</dd></div>
-            {report.target_uses_snapshot ? <div><dt className="text-xs text-muted-foreground">举报时状态</dt><dd className="mt-1 font-medium">{report.target_snapshot_status ?? "—"}</dd></div> : null}
+            <div><dt className="text-xs text-muted-foreground">内容当前状态</dt><dd className="mt-1 font-medium">{communityStatusLabel(report.target_status)}</dd></div>
+            {report.target_uses_snapshot ? <div><dt className="text-xs text-muted-foreground">举报时状态</dt><dd className="mt-1 font-medium">{communityStatusLabel(report.target_snapshot_status)}</dd></div> : null}
             <div><dt className="text-xs text-muted-foreground">举报提交时间</dt><dd className="mt-1 font-medium">{formatAdminDate(report.created_at)}</dd></div>
             {report.target_snapshot_captured_at ? <div><dt className="text-xs text-muted-foreground">快照记录时间</dt><dd className="mt-1 font-medium">{formatAdminDate(report.target_snapshot_captured_at)}</dd></div> : null}
             <div><dt className="text-xs text-muted-foreground">举报人会员编号</dt><dd className="mt-1 font-medium">{formatProtectedMemberNumber(report.reporter_number, adminRole === "super_admin")}</dd></div>
@@ -280,7 +280,7 @@ export function ModerationReportDetail({
             <ol className="mt-4 space-y-4 border-l border-border pl-4">
               {report.actions.map((action) => (
                 <li key={action.id}>
-                  <p className="text-sm font-medium">{ACTION_LABELS[action.action_type] ?? action.action_type}</p>
+                  <p className="text-sm font-medium">{ACTION_LABELS[action.action_type] ?? `未识别的处理动作（${action.action_type}）`}</p>
                   {action.internal_note ? <p className="mt-1 whitespace-pre-wrap text-xs leading-5 text-muted-foreground">{action.internal_note}</p> : null}
                   <time className="mt-1 block text-xs text-muted-foreground">{formatAdminDate(action.created_at)}</time>
                 </li>

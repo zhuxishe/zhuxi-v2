@@ -54,7 +54,7 @@ export default async function AdminFeedbackPage({
 
         {setupRequired ? (
           <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800">
-            数据库尚未应用 player_feedback migration，升级前暂不能接收和处理反馈。
+            数据库尚未应用玩家反馈数据库迁移（<code>player_feedback</code>），升级前暂不能接收和处理反馈。
           </div>
         ) : feedback.length === 0 ? (
           <div className="rounded-xl border border-dashed border-border bg-card px-4 py-14 text-center text-sm text-muted-foreground">
@@ -69,7 +69,7 @@ export default async function AdminFeedbackPage({
                     <p className="font-semibold text-foreground">{item.member_name_snapshot}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
                       {new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(new Date(item.created_at))}
-                      {` · ${item.locale.toUpperCase()} · ${item.page_path}`}
+                      {` · ${item.locale === "zh" ? "中文" : "日语"} · ${item.page_path}`}
                     </p>
                   </div>
                   <div className="flex gap-2 text-xs">

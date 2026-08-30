@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { EVAL_DIMENSIONS } from "@/lib/constants/interview"
 import type { InterviewEvaluationRow } from "@/types"
+import { memberDisplayLabel } from "./member-center-utils"
 
 interface Props { evaluations: InterviewEvaluationRow[] }
 
@@ -73,7 +74,7 @@ export function EvalTabView({ evaluations }: Props) {
         <div className="flex gap-4 text-xs text-muted-foreground">
           <span>日期: {evaluations[activeIdx]?.created_at?.split("T")[0] ?? "-"}</span>
           {evaluations[activeIdx]?.risk_level && (
-            <span>风险: {evaluations[activeIdx].risk_level}</span>
+            <span>风险：{memberDisplayLabel(evaluations[activeIdx].risk_level)}</span>
           )}
         </div>
       )}
@@ -92,10 +93,10 @@ export function EvalTabView({ evaluations }: Props) {
         return (
           <>
             {evalRow?.risk_notes && (
-              <p className="text-xs text-muted-foreground">风险备注: {evalRow.risk_notes}</p>
+              <p className="text-xs text-muted-foreground">风险备注：{evalRow.risk_notes}</p>
             )}
             {evalRow?.interviewer_notes && (
-              <p className="text-xs text-muted-foreground">面试备注: {evalRow.interviewer_notes}</p>
+              <p className="text-xs text-muted-foreground">面试备注：{evalRow.interviewer_notes}</p>
             )}
           </>
         )

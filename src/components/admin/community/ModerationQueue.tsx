@@ -12,7 +12,7 @@ export const REPORT_REASON_LABELS: Record<CommunityReport["reason"], string> = {
   other: "其他",
 }
 
-const TARGET_LABELS: Record<CommunityReport["target_type"], string> = {
+export const TARGET_LABELS: Record<CommunityReport["target_type"], string> = {
   post: "帖子／照片",
   comment: "评论／回复",
   profile: "社区身份",

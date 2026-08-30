@@ -124,7 +124,7 @@ function QueueRow({ title, desc, href }: { title: string; desc: string; href: st
 }
 
 function statusLabel(status: string) {
-  return ({ draft: "草稿", open: "问卷进行中", closed: "已截止", matched: "已匹配" } as Record<string, string>)[status] ?? status
+  return ({ draft: "草稿", open: "问卷进行中", closed: "已截止", matched: "已匹配" } as Record<string, string>)[status] ?? `未知状态（${status}）`
 }
 
 function formatDate(value: string) {

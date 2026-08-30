@@ -61,7 +61,7 @@ export function StaffProfileForm() {
   if (!open) {
     return (
       <Button onClick={() => setOpen(true)} size="sm">
-        <Plus className="size-4 mr-1" /> 添加 Staff
+        <Plus className="size-4 mr-1" /> 添加团队成员
       </Button>
     )
   }
@@ -95,7 +95,7 @@ export function StaffProfileForm() {
           minLength={4}
           maxLength={500}
           required
-          placeholder="例如：新增首页 Staff 展示资料"
+          placeholder="例如：新增首页团队成员展示资料"
           className={`${inputClass} w-full`}
         />
       </label>

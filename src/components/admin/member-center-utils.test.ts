@@ -4,7 +4,12 @@ import {
   canRestoreMemberAudit,
   formatMemberValue,
   hasRestorableMemberAuditSnapshot,
+  memberAuditActionLabel,
+  memberAuditSectionLabel,
+  memberDisplayLabel,
+  memberFieldLabel,
   memberLifecycleAvailability,
+  MEMBER_360_TABS,
   normalizeMember360Tab,
   parseMemberDirectoryPage,
 } from "./member-center-utils"
@@ -43,10 +48,47 @@ describe("member directory pagination", () => {
 })
 
 describe("member value formatting", () => {
-  it("does not collapse null and false", () => {
-    expect(formatMemberValue(null)).toBe("未填写（null）")
-    expect(formatMemberValue(false)).toBe("否（false）")
-    expect(formatMemberValue(true)).toBe("是（true）")
+  it("uses concise Chinese labels without collapsing null and false", () => {
+    expect(formatMemberValue(null)).toBe("未填写")
+    expect(formatMemberValue(false)).toBe("否")
+    expect(formatMemberValue(true)).toBe("是")
+    expect(formatMemberValue([])).toBe("空列表")
+  })
+
+  it("translates known member values while preserving unknown technical values", () => {
+    expect(memberDisplayLabel("active")).toBe("正常")
+    expect(memberDisplayLabel("in_progress")).toBe("填写中")
+    expect(memberDisplayLabel("super_admin")).toBe("超级管理员")
+    expect(memberDisplayLabel("unknown_technical_value")).toBe("unknown_technical_value")
+  })
+
+  it("only translates enum fields and preserves free text exactly", () => {
+    expect(formatMemberValue("active")).toBe("active")
+    expect(formatMemberValue("active", "nickname")).toBe("active")
+    expect(formatMemberValue(["admin", "open"], "interest_tags")).toBe("admin、open")
+    expect(formatMemberValue("active", "account_status")).toBe("正常")
+    expect(formatMemberValue("low", "risk_level")).toBe("低")
+    expect(formatMemberValue("pending", "member_status")).toBe("待面试")
+    expect(formatMemberValue("pending", "claim_status")).toBe("待审核")
+    expect(formatMemberValue("confirmed_duplicate", "status")).toBe("已确认重复")
+    expect(formatMemberValue("not_duplicate", "status")).toBe("已确认非重复")
+    expect(formatMemberValue("merged", "status")).toBe("已合并")
+  })
+
+  it("uses Chinese field labels and preserves unknown database keys for diagnosis", () => {
+    expect(memberFieldLabel("full_name")).toBe("姓名")
+    expect(memberFieldLabel("account_status")).toBe("账号状态")
+    expect(memberFieldLabel("member_status")).toBe("审批状态")
+    expect(memberFieldLabel("unknown_database_key")).toBe("unknown_database_key")
+  })
+
+  it("translates known audit actions and sections", () => {
+    expect(memberAuditActionLabel("profile_update")).toBe("更新个人资料")
+    expect(memberAuditActionLabel("admin_restore")).toBe("恢复历史版本")
+    expect(memberAuditActionLabel("unknown_audit_action")).toBe("unknown_audit_action")
+    expect(memberAuditSectionLabel("identity")).toBe("基本与学业信息")
+    expect(memberAuditSectionLabel("lifecycle")).toBe("账号生命周期")
+    expect(memberAuditSectionLabel("unknown_audit_section")).toBe("unknown_audit_section")
   })
 })
 
@@ -77,6 +119,17 @@ describe("member lifecycle permissions", () => {
 })
 
 describe("member 360 tabs", () => {
+  it("uses Chinese-first navigation labels", () => {
+    expect(MEMBER_360_TABS.map((tab) => tab.label)).toEqual([
+      "概览",
+      "个人资料",
+      "申请与核验",
+      "活动与匹配",
+      "社区与反馈",
+      "变更审计",
+    ])
+  })
+
   it("falls back to overview for unknown tabs", () => {
     expect(normalizeMember360Tab("unknown")).toBe("overview")
     expect(normalizeMember360Tab("audit")).toBe("audit")

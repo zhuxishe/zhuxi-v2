@@ -99,7 +99,7 @@ export function LargeActivityFields({ item }: { item?: PastEventReview }) {
         </div>
       </FieldSection>
 
-      <FieldSection title="发布与 Player 展示">
+      <FieldSection title="发布与玩家端展示">
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="状态">
             <select name="status" defaultValue={status} className={activityInputClass}>

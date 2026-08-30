@@ -44,7 +44,8 @@ export function ScriptPdfConverter({ scriptId, existingPages, onConverted }: Pro
       setStatus(`转换完成，共 ${urls.length} 页`)
       onConverted(urls)
     } catch (e) {
-      setError(e instanceof Error ? e.message : "转换失败")
+      console.error("[ScriptPdfConverter]", e)
+      setError("PDF 转换失败，请重试")
     } finally {
       setConverting(false)
     }

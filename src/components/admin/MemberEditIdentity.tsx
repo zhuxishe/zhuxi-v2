@@ -128,12 +128,12 @@ export function MemberEditIdentity({ data, onChange }: Props) {
       <InputRow label="入学年" name="enrollment_year" data={data} onChange={onChange} type="number" />
       <InputRow label="身高 / 体重" name="height_weight" data={data} onChange={onChange} />
       <InputRow label="电话" name="phone" data={data} onChange={onChange} type="tel" />
-      <JsonObjectRow label="SNS 账号" name="sns_accounts" data={data} onChange={onChange} />
+      <JsonObjectRow label="社交平台账号" name="sns_accounts" data={data} onChange={onChange} />
       <InputRow label="个人头像路径" name="personal_avatar_path" data={data} onChange={onChange} />
       <TagsRow label="爱好" name="hobby_tags" options={HOBBY_TAGS} data={data} onChange={onChange} />
       <TagsRow label="活动类型" name="activity_type_tags" options={ACTIVITY_TYPE_TAGS} data={data} onChange={onChange} />
       <TagsRow label="性格自评" name="personality_self_tags" options={PERSONALITY_SELF_TAGS} data={data} onChange={onChange} />
-      <TagsRow label="个人NG" name="taboo_tags" options={TABOO_TAGS} data={data} onChange={onChange} />
+      <TagsRow label="个人禁忌" name="taboo_tags" options={TABOO_TAGS} data={data} onChange={onChange} />
     </tbody></table>
   )
 }

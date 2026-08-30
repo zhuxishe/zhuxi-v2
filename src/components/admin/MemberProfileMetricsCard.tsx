@@ -33,9 +33,9 @@ interface MemberProfileMetricsCardProps {
 
 const INPUT_CLASS = "min-h-10 w-full rounded-lg border border-border bg-background px-3 text-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-60"
 const LEVEL_LABELS: Record<1 | 2 | 3, string> = {
-  1: "Lv.1 竹笋",
-  2: "Lv.2 青竹",
-  3: "Lv.3 熊猫竹王",
+  1: "等级 1 · 竹笋",
+  2: "等级 2 · 青竹",
+  3: "等级 3 · 熊猫竹王",
 }
 const AUDIT_FIELD_LABELS: Record<string, string> = {
   level: "会员等级",
@@ -264,9 +264,9 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
             <label>
               <span className="mb-1.5 block text-xs font-medium text-muted-foreground">会员等级</span>
               <select value={level} onChange={(event) => setLevel(Number(event.target.value) as 1 | 2 | 3)} className={INPUT_CLASS} disabled={savePending}>
-                <option value={1}>Lv.1 竹笋</option>
-                <option value={2}>Lv.2 青竹</option>
-                <option value={3}>Lv.3 熊猫竹王</option>
+                <option value={1}>等级 1 · 竹笋</option>
+                <option value={2}>等级 2 · 青竹</option>
+                <option value={3}>等级 3 · 熊猫竹王</option>
               </select>
             </label>
             <label>

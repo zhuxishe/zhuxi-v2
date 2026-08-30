@@ -106,7 +106,7 @@ function checkPairRelation(rel?: PairRelationship | null): ConstraintItem {
     avoid: { status: "warn", text: "建议避免重复（第一轮跳过）" },
   }
 
-  const info = STATUS_MAP[rel.status] ?? { status: "pass" as const, text: rel.status }
+  const info = STATUS_MAP[rel.status] ?? { status: "pass" as const, text: `未识别的关系状态（${rel.status}）` }
   const countText = `历史 ${rel.pair_count} 次`
   const scoreText = rel.avg_score != null ? ` · 均分 ${rel.avg_score.toFixed(1)}` : ""
 

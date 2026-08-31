@@ -82,6 +82,14 @@ const legacyServiceRoleAclMigration = readFileSync(
   "utf8",
 )
 
+const submissionTimestampBackfillMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260831164143_backfill_missing_member_submission_timestamps.sql",
+  ),
+  "utf8",
+)
+
 const releaseDependencyRelations = [
   "auth.users",
   "private.community_comment_authors",
@@ -476,10 +484,13 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(59)
-    expect(runbook).toContain("当前仓库共有 59 条 migration")
+    expect(migrationNames).toHaveLength(60)
+    expect(runbook).toContain("当前仓库共有 60 条 migration")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
+    )
+    expect(runbook).toContain(
+      "20260831164143_backfill_missing_member_submission_timestamps.sql",
     )
   })
 
@@ -1063,6 +1074,24 @@ describe("user/member master migration contract", () => {
       "GRANT EXECUTE ON FUNCTION public.admin_upsert_legacy_member(uuid, jsonb, text)",
     )
     expect(migration).toContain("MEMBER_MASTER_LEGACY_MUTATION_BOUNDARY_INVALID")
+  })
+
+  it("repairs missing historical submission timestamps with an audited deterministic fallback", () => {
+    expect(submissionTimestampBackfillMigration).toContain(
+      "app.member_master_audit_source",
+    )
+    expect(submissionTimestampBackfillMigration).toContain(
+      "补齐历史成员缺失的资料提交时间",
+    )
+    expect(submissionTimestampBackfillMigration).toContain(
+      "submitted_at = COALESCE(\n  last_profile_saved_at,\n  updated_at,\n  created_at,\n  statement_timestamp()",
+    )
+    expect(submissionTimestampBackfillMigration).toContain(
+      "profile_stage IN ('submitted', 'complete')",
+    )
+    expect(submissionTimestampBackfillMigration).toContain(
+      "MEMBER_MASTER_SUBMISSION_TIMESTAMP_BACKFILL_INCOMPLETE",
+    )
   })
 
   it("provides audited note maintenance and super-only raw-stat overrides", () => {

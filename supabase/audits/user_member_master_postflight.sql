@@ -1,5 +1,5 @@
 -- User/member master migration postflight (read-only, fail-closed)
--- Run only after all six member-master migrations listed in the migration
+-- Run only after all seven member-master migrations listed in the migration
 -- history assertion below. Retain the complete output alongside the preflight.
 -- Diagnostic result sets remain human-readable evidence; the final DO blocks
 -- independently re-check release-critical invariants and raise on any failure.
@@ -573,7 +573,8 @@ BEGIN
     ('20260830163614', 'fix_member_restore_and_quiz_answers'),
     ('20260830165712', 'restore_matching_table_acl'),
     ('20260830174115', 'fix_operational_audit_trigger_record_scope'),
-    ('20260830195942', 'explicit_data_api_acl_for_admin_surfaces')
+    ('20260830195942', 'explicit_data_api_acl_for_admin_surfaces'),
+    ('20260831164143', 'backfill_missing_member_submission_timestamps')
   ) AS required(version, migration_name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -588,7 +589,7 @@ BEGIN
       DETAIL = 'Missing migration history: ' || v_missing;
   END IF;
 
-  RAISE NOTICE 'PASS migration history: all 6 member-master migrations are applied';
+  RAISE NOTICE 'PASS migration history: all 7 member-master migrations are applied';
 END
 $postflight_history$;
 
@@ -1615,7 +1616,7 @@ END
 $postflight_data_api$;
 
 SELECT 'PASS' AS postflight_status,
-       6 AS migration_history_entries,
+       7 AS migration_history_entries,
        34 AS rpc_signatures,
        14 AS exact_acl_tables,
        27 AS required_rls_policies;

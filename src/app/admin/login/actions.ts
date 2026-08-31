@@ -43,15 +43,11 @@ export async function loginAdmin(formData: FormData) {
     return { error: "邮箱或密码错误" }
   }
 
-  // Verify this user is an admin
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return { error: "认证失败" }
-
-  const { data: admin } = await supabase
-    .from("admin_users")
-    .select("id")
-    .eq("user_id", user.id)
-    .single()
+  // Use the same admin resolver as protected admin routes. Besides checking an
+  // existing binding, it safely binds a pending email whitelist entry to the
+  // authenticated user's UID on their first login.
+  const { getAdmin } = await import("@/lib/auth/admin")
+  const admin = await getAdmin()
 
   if (!admin) {
     await supabase.auth.signOut()

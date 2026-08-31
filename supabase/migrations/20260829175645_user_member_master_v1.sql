@@ -5266,7 +5266,8 @@ DROP POLICY IF EXISTS member_master_legacy_members_super_delete ON public.legacy
 CREATE POLICY member_master_legacy_members_super_read
   ON public.legacy_members FOR SELECT TO authenticated
   USING ((SELECT private.member_master_is_super_admin()));
-REVOKE ALL ON TABLE public.legacy_members FROM PUBLIC, anon, authenticated;
+REVOKE ALL ON TABLE public.legacy_members
+  FROM PUBLIC, anon, authenticated, service_role;
 GRANT SELECT ON TABLE public.legacy_members TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON TABLE public.legacy_members TO service_role;
 

@@ -74,6 +74,14 @@ const releaseDependencyAndStaffViewMigration = readFileSync(
   "utf8",
 )
 
+const legacyServiceRoleAclMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260831160822_normalize_legacy_service_role_acl.sql",
+  ),
+  "utf8",
+)
+
 const releaseDependencyRelations = [
   "auth.users",
   "private.community_comment_authors",
@@ -468,8 +476,8 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(58)
-    expect(runbook).toContain("当前仓库共有 58 条 migration")
+    expect(migrationNames).toHaveLength(59)
+    expect(runbook).toContain("当前仓库共有 59 条 migration")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
     )
@@ -1031,7 +1039,19 @@ describe("user/member master migration contract", () => {
     expect(legacy).toContain("'created', v_created")
     expect(migration).toContain("GRANT SELECT ON TABLE public.legacy_members TO authenticated")
     expect(migration).toContain(
+      "FROM PUBLIC, anon, authenticated, service_role",
+    )
+    expect(migration).toContain(
       "GRANT SELECT, INSERT, UPDATE ON TABLE public.legacy_members TO service_role",
+    )
+    expect(legacyServiceRoleAclMigration).toContain(
+      "REVOKE ALL ON TABLE public.legacy_members FROM service_role",
+    )
+    expect(legacyServiceRoleAclMigration).toContain(
+      "MEMBER_MASTER_LEGACY_SERVICE_ROLE_ACL_INVALID",
+    )
+    expect(legacyServiceRoleAclMigration).toContain(
+      "has_table_privilege(\n    'service_role', 'public.legacy_members', 'DELETE'",
     )
     expect(migration).not.toMatch(
       /CREATE POLICY member_master_legacy_members_super_(?:insert|update|delete)/,

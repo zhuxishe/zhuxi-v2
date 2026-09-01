@@ -58,6 +58,7 @@ describe("member value formatting", () => {
   it("translates known member values while preserving unknown technical values", () => {
     expect(memberDisplayLabel("active")).toBe("正常")
     expect(memberDisplayLabel("in_progress")).toBe("填写中")
+    expect(memberDisplayLabel("unbound")).toBe("未绑定")
     expect(memberDisplayLabel("super_admin")).toBe("超级管理员")
     expect(memberDisplayLabel("unknown_technical_value")).toBe("unknown_technical_value")
   })

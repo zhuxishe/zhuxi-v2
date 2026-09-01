@@ -224,6 +224,7 @@ const MEMBER_VALUE_LABELS: Record<string, string> = {
   rejected: "已拒绝",
   inactive: "已停用",
   active: "正常",
+  unbound: "未绑定",
   suspended: "已暂停",
   closed: "已关闭",
   not_started: "未开始",

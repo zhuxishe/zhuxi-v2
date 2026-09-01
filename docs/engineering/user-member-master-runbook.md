@@ -99,10 +99,11 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 8. `20260830214322_complete_release_dependency_and_staff_view_security.sql`：终态重验相同的 46 relation、10 routine、7 条 trigger、12 个唯一不变量、审计 identity/sequence、Storage 三条策略的命令与谓词及管理员 Auth 绑定唯一索引；随后把公开教职员视图改为 `security_invoker`，通过列级授权与 RLS 仅公开已发布的安全字段。
 9. `20260831160822_normalize_legacy_service_role_acl.sql`：对已经应用成员主迁移的环境做 forward-only 权限归一化；先撤销 `service_role` 对 `legacy_members` 的全部历史表级权限，再只授予 `SELECT/INSERT/UPDATE`，并 fail-closed 断言没有 `DELETE/TRUNCATE/REFERENCES/TRIGGER`。成员主迁移本身也执行同一“先撤销、再最小授予”，保证全新环境不会在第 9 条之前失败。
 10. `20260831164143_backfill_missing_member_submission_timestamps.sql`：对历史 `submitted`/`complete` 资料中缺失的 `submitted_at` 做幂等前向修复，按 `last_profile_saved_at → updated_at → created_at → statement_timestamp()` 顺序保留最接近业务事实的时间；写入通过成员审计触发器记录中文迁移原因，并在事务内 fail-closed 断言不存在剩余缺口。
+11. `20260831234821_fix_member_readonly_authorization_lock.sql`：修复已批准玩家读取资料时的只读事务兼容性；把授权辅助函数的 `FOR KEY SHARE` 改为与 `ensure_my_member_record`、匿名化流程共用同一用户键的 shared advisory transaction lock。并发读取可以共享锁，匿名化/建档写入仍使用独占锁串行，且锁后重新查询 active、未匿名化主档。
 
 任何一步失败都必须停止；保存完整错误与已应用版本，不得在同一目标上反复重放大迁移。修正应使用新的、可审计的 forward migration。
 
-在迁移历史正常、按文件名执行的全新环境中，第 7、8、9、10 条在六条核心成员迁移之后运行并作为终态断言/归一化。Production 的历史已发生分叉，发布时必须在隔离 workdir 中先只放入 `20260809094500` 与第 7 条并执行、验证，再加入六条核心成员迁移，最后分别加入第 8、9、10 条；禁止从主工作区直接运行 `db push --include-all`。
+在迁移历史正常、按文件名执行的全新环境中，第 7–11 条在六条核心成员迁移之后运行并作为终态断言/归一化。Production 的历史已发生分叉，发布时必须在隔离 workdir 中先只放入 `20260809094500` 与第 7 条并执行、验证，再加入六条核心成员迁移，最后分别加入第 8–11 条；禁止从主工作区直接运行 `db push --include-all`。
 
 ## Production 只读对账（2026-08-31）
 
@@ -110,7 +111,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 ### 历史映射
 
-- 当前仓库共有 60 条 migration：原 `main` 的 50 条、本功能六条核心迁移、Production 基线前向迁移一条、发布依赖/公开视图安全迁移一条、legacy `service_role` ACL forward normalization 一条以及历史提交时间前向修复一条。隔离 Preview 必须登记全部 60 条。
+- 当前仓库共有 61 条 migration：原 `main` 的 50 条、本功能六条核心迁移、Production 基线前向迁移一条、发布依赖/公开视图安全迁移一条、legacy `service_role` ACL forward normalization 一条、历史提交时间前向修复一条以及只读授权锁热修复一条。隔离 Preview 必须登记全部 61 条。
 - Production 远端登记 45 条：34 条 `202604*`、10 条 `202607*` 和 `20260806140912`。仓库的 `001`–`038`、`20260809094500`、六条成员迁移和新基线前向迁移均未以本地版本登记在 Production。
 - 34 条 April 历史中，27 条去注释/空白后与本地对应 SQL 一致；`015`–`017` 只多幂等包装；远端 `022` 加后续独立 session policy 修复后等价于当前本地 `022`。
 - 远端 `008` 历史曾把 `social_goal_secondary` 转为 `text[]`，但实际 Production catalog 已是 nullable `text`、默认 `NULL`，与代码和 Preview 类型一致。远端 `011` 没有本地的姓名回填，但 Production 8 条面试记录均已填充且与当前管理员名称一致。
@@ -142,7 +143,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 2. 按上一节核对 `<PREVIEW_PROJECT_REF>`、Vercel Preview 环境与最终 Preview URL；确认与 `<PRODUCTION_PROJECT_REF>` 不同。
 3. 在任何迁移前运行 `supabase/audits/user_member_master_preflight.sql`，保存带时间、commit SHA 和 Preview ref 的完整结果。
 4. 人工确认 Auth 数量、成员数量、旧成员数量、重复候选、无效引用和现有 ACL；脚本不会按姓名、邮箱或昵称自动合并。存在未解释异常时停止。
-5. 按“本分支成员迁移顺序”只应用尚未登记的迁移，并再次核对目标迁移历史包含本功能完整且有序的 10 个版本、仓库与 Preview 合计 60 个版本。版本登记只证明 migration version 存在，不证明后来修改过的同版本 SQL 已执行；是否允许重放必须遵守下述边界。
+5. 按“本分支成员迁移顺序”只应用尚未登记的迁移，并再次核对目标迁移历史包含本功能完整且有序的 11 个版本、仓库与 Preview 合计 61 个版本。版本登记只证明 migration version 存在，不证明后来修改过的同版本 SQL 已执行；是否允许重放必须遵守下述边界。
 
    **同版本重放边界：** `migration repair` 不是通用的 SQL 重跑工具。本轮仅允许在可丢弃的隔离 Preview 中，把已经逐条确认可幂等重放、且后来增强了持久效果或终态断言的 `20260830213104` 与 `20260830214322` 标记为 reverted，再按依赖顺序重放并保存 `dry-run`、push、history 与 postflight 证据。`20260809094500` 和六条成员迁移后来新增的 `BEGIN`、`SET LOCAL lock_timeout`、`SET LOCAL statement_timeout` 只约束未来执行，不改变已落库终态，不得仅为这些执行时保护在现有 Preview 重放。若已登记的大迁移发生任何持久 DDL、DML、权限或函数逻辑变化，必须改用全新可丢弃数据库从头验证，或新增可审计的 forward migration；禁止在已有 Preview 通过 repair 重跑大迁移。
 6. 运行 `supabase/audits/user_member_master_postflight.sql` 并保存完整结果，确认：
@@ -190,8 +191,9 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 4. 加入并单独应用 `20260830214322_complete_release_dependency_and_staff_view_security.sql`；确认 46 relation、10 routine、7 条 trigger、12 个唯一不变量、审计 identity/sequence、Storage 精确谓词、管理员绑定唯一索引与 `security_invoker` 公开视图断言全部通过。
 5. 加入并单独应用 `20260831160822_normalize_legacy_service_role_acl.sql`；确认 `service_role` 对 `legacy_members` 只有 `SELECT/INSERT/UPDATE`，没有任何删除或结构级权限，并重新运行 Supabase Security Advisor。
 6. 加入并单独应用 `20260831164143_backfill_missing_member_submission_timestamps.sql`；确认历史已提交/完成资料不再缺少 `submitted_at`，且审计记录保留迁移原因。
-7. 运行并保存 Production postflight、14 张 Data API 表的显式 ACL/RLS 检查和关键只读查询；所有门禁通过后才进入阶段 2。
-8. 在旧 Production 应用仍在线时完成只读兼容性烟雾测试。若旧应用因新权限边界无法安全读取，保持维护页/写冻结并立即进入已批准的阶段 2，不能在半迁移状态开放写入。
+7. 加入并单独应用 `20260831234821_fix_member_readonly_authorization_lock.sql`；在 `READ ONLY` 事务中确认 shared advisory lock 可用，并以已批准玩家登录态重试 `/app`，不得再出现 SQLSTATE `25006`。
+8. 运行并保存 Production postflight、14 张 Data API 表的显式 ACL/RLS 检查和关键只读查询；所有门禁通过后才进入阶段 2。
+9. 在旧 Production 应用仍在线时完成只读兼容性烟雾测试。若旧应用因新权限边界无法安全读取，保持维护页/写冻结并立即进入已批准的阶段 2，不能在半迁移状态开放写入。
 
 ### 阶段 2：Production 应用
 
@@ -237,7 +239,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 - 本地 TypeScript、Vitest、静态 SQL 契约、lint 和 build 通过，只证明代码与迁移文本的静态一致性；它们不是数据库执行、数据回填或权限安全证明。
 - 2026-08-31 已从 Vercel Preview branch override 确认隔离 Preview project ref 为 `ijddkjejgkseujqrrndh`，与 Production ref 不同。迁移前只读基线为 Auth 3、members 3、linked 3、accountless 0、legacy 0、无效引用 0、重复成员邮箱组 0；其中 2 个测试成员缺少 identity，可由首次管理员编辑流程补建。
 - 同日已在该隔离 Preview 执行 `20260830195942_explicit_data_api_acl_for_admin_surfaces.sql`；迁移自身的 14 表 RLS、27 条 policy、PUBLIC 清零和精确 ACL 断言通过。`/admin/scripts`、`/admin/matching/cancellations`、`/admin/members` 及实际 Preview 成员 360 均可加载，原 `42501` 页面错误已消失。
-- 该 Preview 原为“schema 已存在、迁移历史全为空”的测试库。核验主档效果与 ACL 后，已使用 Supabase 官方 `migration repair --status applied` 对齐当时全部 56 个版本；新增的 forward migration 均由官方 `db push` 单独应用。最终增强依赖断言后，仅将确认幂等的 `20260830213104`、`20260830214322` 标记为 reverted 并按 dry-run 显示的精确两条顺序重放；46 relation、10 routine、7 trigger、12 unique invariant 与审计 identity/sequence 断言均在真实 Preview catalog 通过。2026-09-01 又分别通过官方 `db push` 单独应用 `20260831160822` ACL forward migration 和 `20260831164143` 历史提交时间修复；当前 60 个 local/remote 版本一一对应，`db push --dry-run --include-all` 返回 up to date。随后正式只读 postflight 返回 `PASS`（7 条成员迁移、34 RPC、14 ACL 表、27 policy），且 `legacy_members` 对 authenticated 无写权限、service role 仅有 `SELECT/INSERT/UPDATE`，没有手工写入迁移历史表。
+- 该 Preview 原为“schema 已存在、迁移历史全为空”的测试库。核验主档效果与 ACL 后，已使用 Supabase 官方 `migration repair --status applied` 对齐当时全部 56 个版本；新增的 forward migration 均由官方 `db push` 单独应用。最终增强依赖断言后，仅将确认幂等的 `20260830213104`、`20260830214322` 标记为 reverted 并按 dry-run 显示的精确两条顺序重放；46 relation、10 routine、7 trigger、12 unique invariant 与审计 identity/sequence 断言均在真实 Preview catalog 通过。2026-09-01 又分别通过官方 `db push` 单独应用 `20260831160822` ACL forward migration、`20260831164143` 历史提交时间修复和 `20260831234821` 只读授权锁热修复；当前 61 个 local/remote 版本一一对应，`db push --dry-run --include-all` 返回 up to date。只读授权函数探针与正式 postflight 均通过，后者返回 `PASS`（7 条成员迁移、34 RPC、14 ACL 表、27 policy），且 `legacy_members` 对 authenticated 无写权限、service role 仅有 `SELECT/INSERT/UPDATE`，没有手工写入迁移历史表。
 - 从 project ref `ijddkjejgkseujqrrndh` 只读重新生成 public schema 类型后的 SHA-256 与 `src/types/database.types.ts` 完全一致（`47166175ad6a0bf5d2b2c881c6ba2f1713a027d2cbe297dbd68db38f19366725`）。Production 类型是该契约的历史扩展：只多出 `legacy_member_sources` 和 `legacy_members` 的历史字段，并把 `member_no` 标记为 nullable；实际 119 条 legacy 中 23 条为空，后台统一通过空值安全的 `recordString` 展示/编辑，不能为追求类型哈希一致而删除历史列、来源表或伪造编号。
 - 使用公开 publishable key 与隔离测试账号完成了只读角色探针：在本次 ACL 表中 anon 只能读取 `scripts`，读取 `match_results`/`members` 分别返回 401；普通 admin 可读取剧本、匹配、统计、备注和问卷配置，但直接读取 `player_feedback`/`unmatched_diagnostics` 返回 403；玩家只能看到自己的 1 条成员主档，并且同样不能直接读取反馈或诊断表。
 - 最终 Staff 安全迁移重放后，匿名 Data API 读取 `published_staff_profiles` 返回 200；直接 `select *` 或读取基表 `member_id` / `audit_reason` 均返回 401 + PostgreSQL `42501`。当前 Preview 的 Staff 基表和安全视图均为 0 行，因此“未发布记录不泄露”由精确 RLS/列授权/`security_invoker` 迁移断言保证，尚未用写入测试 fixture 做动态行级证明。最终 Production Supabase Advisor 的 error 级检查为 0；当前 CLI 全级别汇总仍有 Production 217 warning/103 info、Preview 99 warning/131 info。没有迁移前 Production advisor 快照，不能把每一条都断言为存量；本功能 34 个 RPC 和 14 表 ACL/RLS 精确矩阵已由 fail-closed postflight 通过，其余提示作为独立技术债审查，不在发布窗口顺手扩范围。
@@ -245,4 +247,5 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 - 上一轮 commit `0fb4d5d` 的 Vercel Preview deployment `BHyeVLSL92STm8F113MVD8ztWNG2` 为 `Ready`；精确 URL `https://zhuxi-v2-53ozp7dj4-zhuxishe-6227s-projects.vercel.app` 上，普通管理员访问剧本、取消申请、成员目录和成员 360 均为 200。按该 deployment ID 过滤的运行日志为 Warning 0、Error 0、Fatal 0，且没有 `42501`、`PGRST` 或 500。最终 commit 的新 deployment ID、URL 与日志扫描保存在当次发布证据中，不把会变化的运行态标识固化为迁移契约。
 - 2026-09-01 Production 首批 Storage/基线迁移成功后，成员主迁移首次执行因 Production 历史遗留的 `service_role DELETE` 表级授权触发 `MEMBER_MASTER_LEGACY_MUTATION_BOUNDARY_INVALID` 而整事务回滚；远端历史仍为 47、members 仍为 39，生命周期列、canonical legacy 列和角色表均不存在，确认没有半迁移。修正采用核心迁移确定性撤权加新 forward migration 双保险；不得删除断言或用 migration repair 掩盖本次失败。
 - 同日修正版本经隔离 Preview 验证后，Production 六条核心迁移、第 8、9 条 forward migration 均按精确 dry-run 顺序成功。首次完整 postflight 进一步发现 1 条历史 LINE 成员处于 `complete` 但缺少 `submitted_at`；没有直接手工改数，而是新增 `20260831164143`，先在 Preview 单独验证，再在 Production 以既有 `updated_at` 回填并由成员审计触发器生成 1 条中文原因记录。最终 Production 迁移历史 56、Auth 33、members 175（linked 33/accountless 142）、legacy 119、Auth 缺档 0、legacy 缺 canonical 0、提交时间缺口 0；完整加密 postflight SHA-256 为 `2ffa0ff1a80005e1082661e91ec02ae6af3a0f85ca9a477b263b2777f50d4326`，返回 `PASS`（7/34/14/27），最终 dry-run 为 up to date。
+- `a62e64f` 首次上线后，已批准玩家访问 Production `/app` 暴露 SQLSTATE `25006`：`get_my_profile_summary` 是只读 RPC，但其授权辅助函数执行了 `FOR KEY SHARE`。`20260831234821` 改用与匿名化/建档相同用户键的 shared advisory transaction lock；该锁先由自动回滚的 Production `READ ONLY` 探针确认可用，再在隔离 Preview 应用并通过 postflight，最后单独应用 Production。修复后 Production 迁移历史 57、dry-run up to date、postflight 继续 `PASS`（7/34/14/27）；真实已批准成员的只读资料 RPC、社区授权及全新浏览器标签页 `/app` 均通过，未再出现错误面板或新控制台错误。
 - 尚未在 Preview 执行匿名化、Auth 删除、并发超级管理员降级等破坏性/高风险完整矩阵。Production 的实时迁移历史、postflight、应用部署与日志属于每次发布的动态证据，不在本手册中固化为“已可合并”；任何 release 都必须重新完成本节门禁。

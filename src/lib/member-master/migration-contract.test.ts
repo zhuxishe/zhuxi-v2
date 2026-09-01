@@ -90,6 +90,14 @@ const submissionTimestampBackfillMigration = readFileSync(
   "utf8",
 )
 
+const readonlyAuthorizationLockMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260831234821_fix_member_readonly_authorization_lock.sql",
+  ),
+  "utf8",
+)
+
 const releaseDependencyRelations = [
   "auth.users",
   "private.community_comment_authors",
@@ -484,13 +492,16 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(60)
-    expect(runbook).toContain("当前仓库共有 60 条 migration")
+    expect(migrationNames).toHaveLength(61)
+    expect(runbook).toContain("当前仓库共有 61 条 migration")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
     )
     expect(runbook).toContain(
       "20260831164143_backfill_missing_member_submission_timestamps.sql",
+    )
+    expect(runbook).toContain(
+      "20260831234821_fix_member_readonly_authorization_lock.sql",
     )
   })
 
@@ -1148,6 +1159,30 @@ describe("user/member master migration contract", () => {
     expect(migration).toContain(
       "REVOKE ALL ON FUNCTION private.member_master_lock_non_anonymized_subjects(uuid[])",
     )
+  })
+
+  it("keeps authenticated read authorization valid in read-only RPC transactions", () => {
+    const sql = stripSqlComments(readonlyAuthorizationLockMigration)
+    expect(sql).toContain("BEGIN;")
+    expect(sql).toContain("SET LOCAL lock_timeout = '5s'")
+    expect(sql).toContain("SET LOCAL statement_timeout = '2min'")
+    expect(sql).toMatch(/COMMIT;\s*$/)
+
+    for (const helper of [
+      "profile_current_approved_member_id",
+      "community_approved_member_id",
+    ]) {
+      const body = sql.match(
+        new RegExp(
+          `CREATE OR REPLACE FUNCTION private\\.${helper}\\(\\)[\\s\\S]*?\\$function\\$;`,
+        ),
+      )?.[0] ?? ""
+      expect(body).toContain("pg_advisory_xact_lock_shared")
+      expect(body).toContain("'member:' || v_user_id::text")
+      expect(body).toContain("member.account_status = 'active'")
+      expect(body).toContain("member.anonymized_at IS NULL")
+      expect(body).not.toContain("FOR KEY SHARE")
+    }
   })
 
   it("keeps player round submissions narrow while preserving admin-member self service", () => {

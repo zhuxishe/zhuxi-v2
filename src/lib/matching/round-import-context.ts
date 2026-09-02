@@ -11,6 +11,8 @@ export async function fetchCurrentImportMembers(db: SupabaseClient<any, any, any
   const { data, error } = await db
     .from("members")
     .select("id, member_number, member_identity(full_name, nickname)")
+    .eq("record_scope", "current")
+    .eq("account_status", "active")
     .eq("membership_type", "player")
   if (error) throw error
   return (data ?? [])

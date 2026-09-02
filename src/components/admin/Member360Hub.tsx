@@ -237,10 +237,11 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
     ? data.identity.full_name
     : typeof legacyName === "string" ? legacyName : "未填写姓名"
   const nickname = typeof data.identity?.nickname === "string" ? data.identity.nickname : null
-  const canRestore = canRestoreMemberAudit(adminRole, data.capabilities.isSuperAdmin)
-  const isSuperAdmin = canRestore
+  const isHistoricalRecord = data.member.recordSource === "legacy" || data.member.recordSource === "import"
+  const isSuperAdmin = canRestoreMemberAudit(adminRole, data.capabilities.isSuperAdmin)
+  const canRestore = isSuperAdmin && !isHistoricalRecord
   const isAnonymized = Boolean(data.account?.anonymizedAt)
-  const canModifyHighRisk = isSuperAdmin && !isAnonymized
+  const canModifyHighRisk = isSuperAdmin && !isAnonymized && !isHistoricalRecord
   const redactedFields = data.capabilities.redactedFields
   const auditEvents = auditPage?.items ?? data.audit
 
@@ -253,11 +254,16 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
               <h1 className="text-2xl font-semibold tracking-tight">{name}</h1>
               {nickname ? <span className="text-sm text-muted-foreground">（{nickname}）</span> : null}
               <MemberStatusBadge status={data.member.status} />
+              {isHistoricalRecord ? <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-800">旧记录</span> : null}
             </div>
             <p className="mt-2 break-all text-xs text-muted-foreground">成员主记录 ID（<span className="font-mono">members.id</span>）：<span className="font-mono">{memberId}</span></p>
             <p className="mt-1 text-xs text-muted-foreground">最后更新：{formatDate(data.member.updatedAt)}</p>
           </div>
-          {!isAnonymized ? <div className="flex flex-wrap gap-2">
+          {isHistoricalRecord ? (
+            <p className="max-w-xl rounded-lg bg-slate-100 px-3 py-2 text-xs leading-5 text-slate-800">
+              旧记录仅用于历史追溯或明确的导入来源，不参与登录绑定、当前成员目录或常规匹配候选；当前业务编辑入口已关闭。
+            </p>
+          ) : !isAnonymized ? <div className="flex flex-wrap gap-2">
             <Button size="sm" variant="outline" render={<Link href={`/admin/members/${memberId}/edit`} />}><Pencil className="size-4" />编辑资料</Button>
             <Button size="sm" render={<Link href={`/admin/members/${memberId}/interview`} />}><ClipboardList className="size-4" />面试评估</Button>
             <Button size="sm" variant="outline" render={<Link href={`/admin/members/${memberId}/verify`} />}><ShieldCheck className="size-4" />核验</Button>
@@ -298,10 +304,10 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
             <SummaryLink icon={MessagesSquare} title="社区与反馈" detail={`反馈：${formatMemberValue(data.feedback?.total)}`} href={`/admin/members/${memberId}?tab=community`} />
             <SummaryLink icon={History} title="审计" detail={data.audit ? `${data.audit.length}/${data.auditTotal} 条` : "审计数据暂不可用"} href={`/admin/members/${memberId}?tab=audit`} />
           </div>
-          {!isAnonymized ? <MemberStatusActions memberId={memberId} currentStatus={data.member.status} /> : null}
+          {!isAnonymized && !isHistoricalRecord ? <MemberStatusActions memberId={memberId} currentStatus={data.member.status} /> : null}
           {canModifyHighRisk ? <MemberNumberEditor memberId={memberId} memberNumber={data.account?.memberNumber ?? null} canEdit /> : null}
           {canModifyHighRisk ? <MemberAccountAdvancedEditor memberId={memberId} account={accountRecord(data, true) ?? {}} /> : null}
-          {isSuperAdmin ? (
+          {isSuperAdmin && !isHistoricalRecord ? (
             <MemberDeleteButton
               memberId={memberId}
               memberName={name}
@@ -434,7 +440,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
             <AuditEventCard key={String(event.id ?? event.event_id ?? index)} event={event} memberId={memberId} canRestore={canRestore} canViewHighRisk={isSuperAdmin} />
           )) : auditEvents ? <p className="rounded-xl border border-border bg-card p-6 text-sm text-muted-foreground">此页没有审计事件。</p> : <p role="alert" className="rounded-xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900">审计数据读取失败，请确认最新数据库迁移已部署。</p>}
           {auditPage ? <AuditPagination memberId={memberId} auditPage={auditPage} /> : null}
-          {isSuperAdmin && data.duplicateCandidates.length > 0 ? (
+          {isSuperAdmin && !isHistoricalRecord && data.duplicateCandidates.length > 0 ? (
             <section className="rounded-xl border border-border bg-card p-4">
               <h2 className="font-semibold">潜在重复记录</h2>
               <p className="mt-1 text-xs text-muted-foreground">仅供人工核对，不代表可自动合并。</p>

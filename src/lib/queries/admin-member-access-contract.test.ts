@@ -97,6 +97,25 @@ describe("legacy admin member-read compatibility contract", () => {
       expect(text).not.toContain("user_id")
       expect(text).not.toContain("personality_quiz_results")
     }
+    expect(candidates).toContain('.eq("record_scope", "current")')
+    expect(candidates).toContain('.eq("account_status", "active")')
+  })
+
+  it("excludes historical shells from every forward-looking member picker", () => {
+    const currentOnlyReads = [
+      source("src/lib/queries/members.ts"),
+      source("src/lib/queries/pool-members.ts"),
+      source("src/lib/matching/round-import-context.ts"),
+      source("src/app/admin/matching/blacklist/actions.ts"),
+      source("src/app/admin/scripts/[id]/page.tsx"),
+    ]
+    for (const text of currentOnlyReads) {
+      expect(text).toContain('.eq("record_scope", "current")')
+      expect(text).toContain('.eq("account_status", "active")')
+    }
+    const dashboard = source("src/lib/queries/admin.ts")
+    expect(dashboard).toContain('.eq("record_scope", "current")')
+    expect(dashboard).toContain('.neq("account_status", "unbound")')
   })
 
   it("uses safe service reads only after page/action administrator guards", () => {

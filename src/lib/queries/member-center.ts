@@ -79,6 +79,20 @@ function stringArray(value: unknown): string[] {
   return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : []
 }
 
+const HISTORICAL_DUPLICATE_SOURCES = new Set([
+  "legacy_member_number",
+  "legacy_name_school",
+  "legacy_claim",
+  "import",
+])
+
+function currentDuplicateCandidates(value: unknown): MemberCenterRecord[] {
+  return asRecordArray(value).filter((candidate) => (
+    typeof candidate.candidate_source !== "string"
+    || !HISTORICAL_DUPLICATE_SOURCES.has(candidate.candidate_source)
+  ))
+}
+
 function normalizeDirectoryItem(value: unknown): MemberDirectoryItem | null {
   const item = asRecord(value)
   if (!item) return null
@@ -206,7 +220,7 @@ export function normalizeMember360Response(value: unknown): Member360 {
     matching: asRecord(payload.matching),
     audit: payload.audit === null ? null : asRecordArray(payload.audit) as MemberAuditEvent[],
     auditTotal: nullableNumber(payload.audit_total) ?? 0,
-    duplicateCandidates: asRecordArray(payload.duplicate_candidates),
+    duplicateCandidates: currentDuplicateCandidates(payload.duplicate_candidates),
   }
 }
 

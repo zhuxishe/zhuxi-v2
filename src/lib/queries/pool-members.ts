@@ -30,6 +30,8 @@ export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]>
       member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
       member_boundaries (preferred_gender_mix)
     `)
+    .eq("record_scope", "current")
+    .eq("account_status", "active")
     .in("id", poolIds)
 
   if (mErr) throw mErr

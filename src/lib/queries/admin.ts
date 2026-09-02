@@ -11,10 +11,10 @@ export async function fetchDashboardStats() {
     { count: approvedMembers },
     { count: rejectedMembers },
   ] = await Promise.all([
-    supabase.from("members").select("id", { count: "exact", head: true }),
-    supabase.from("members").select("id", { count: "exact", head: true }).eq("status", "pending"),
-    supabase.from("members").select("id", { count: "exact", head: true }).eq("status", "approved"),
-    supabase.from("members").select("id", { count: "exact", head: true }).eq("status", "rejected"),
+    supabase.from("members").select("id", { count: "exact", head: true }).eq("record_scope", "current").neq("account_status", "unbound"),
+    supabase.from("members").select("id", { count: "exact", head: true }).eq("record_scope", "current").neq("account_status", "unbound").eq("status", "pending"),
+    supabase.from("members").select("id", { count: "exact", head: true }).eq("record_scope", "current").neq("account_status", "unbound").eq("status", "approved"),
+    supabase.from("members").select("id", { count: "exact", head: true }).eq("record_scope", "current").neq("account_status", "unbound").eq("status", "rejected"),
   ])
 
   return {

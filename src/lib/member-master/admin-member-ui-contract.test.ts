@@ -65,17 +65,39 @@ describe("admin member center UI contracts", () => {
     }
   })
 
-  it("uses only schema-supported directory filter values", () => {
+  it("keeps the current-member directory free of unbound historical sources", () => {
     const filters = source("src/components/admin/MemberListFilter.tsx")
+    const page = source("src/app/admin/members/page.tsx")
+    const normalization = source("src/lib/member-master/current-member-directory.ts")
     expect(filters).toContain('["in_progress", "填写中"]')
     expect(filters).not.toContain('["draft"')
-    for (const value of ["unbound", "active", "suspended", "closed"]) {
+    for (const value of ["active", "suspended", "closed"]) {
       expect(filters).toContain(`["${value}"`)
     }
-    for (const value of ["app", "line", "legacy", "import", "admin"]) {
+    expect(filters).not.toContain('["unbound"')
+    for (const value of ["app", "line", "admin"]) {
       expect(filters).toContain(`["${value}"`)
     }
+    expect(filters).not.toContain('["legacy"')
+    expect(filters).not.toContain('["import"')
     expect(filters).not.toContain("public_form")
+    expect(page).toContain("normalizeCurrentMemberDirectoryFilters(params)")
+    expect(normalization).toContain('ACCOUNT_STATUS_VALUES, "active"')
+    expect(normalization).not.toContain('"unbound",')
+    expect(normalization).not.toContain('"legacy",')
+    expect(normalization).not.toContain('"import",')
+  })
+
+  it("labels historical deep links and closes current-business actions", () => {
+    const hub = source("src/components/admin/Member360Hub.tsx")
+    const queries = source("src/lib/queries/member-center.ts")
+    expect(hub).toContain('data.member.recordSource === "legacy"')
+    expect(hub).toContain('data.member.recordSource === "import"')
+    expect(hub).toContain(">旧记录</span>")
+    expect(hub).toContain("旧记录仅用于历史追溯")
+    expect(hub).toContain("!isHistoricalRecord")
+    expect(queries).toContain("HISTORICAL_DUPLICATE_SOURCES")
+    expect(queries).toContain("currentDuplicateCandidates(payload.duplicate_candidates)")
   })
 
   it("gates blank-shell hard delete on preflight and canonical confirmation", () => {

@@ -25,6 +25,8 @@ export async function searchMembersForBlacklist(query: string) {
   const { data: allData } = await supabase
     .from("members")
     .select("id, member_identity(full_name, nickname)")
+    .eq("record_scope", "current")
+    .eq("account_status", "active")
     .eq("status", "approved")
     .limit(200)
 

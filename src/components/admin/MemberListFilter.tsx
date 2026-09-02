@@ -11,8 +11,7 @@ const STATUS_OPTIONS = [
   ["rejected", "已拒绝"], ["inactive", "已停用"],
 ] as const
 const ACCOUNT_OPTIONS = [
-  ["all", "全部账号状态"], ["unbound", "未绑定"], ["active", "正常"],
-  ["suspended", "已暂停"], ["closed", "已关闭"],
+  ["active", "正常"], ["suspended", "已暂停"], ["closed", "已关闭"],
 ] as const
 const PROFILE_OPTIONS = [
   ["all", "全部资料阶段"], ["not_started", "未开始"], ["in_progress", "填写中"],
@@ -20,7 +19,7 @@ const PROFILE_OPTIONS = [
 ] as const
 const SOURCE_OPTIONS = [
   ["all", "全部来源"], ["app", "玩家端登记"], ["line", "LINE"],
-  ["legacy", "历史记录"], ["import", "批量导入"], ["admin", "后台建立"],
+  ["admin", "后台建立"],
 ] as const
 
 interface Props {

@@ -8,6 +8,8 @@ export async function fetchMemberBriefList() {
   const { data } = await supabase
     .from("members")
     .select("id, member_identity(full_name)")
+    .eq("record_scope", "current")
+    .eq("account_status", "active")
     .eq("status", "approved")
     .order("created_at", { ascending: false })
   return (data ?? []).map((m) => {

@@ -2041,6 +2041,7 @@ export type Database = {
           membership_type: string
           onboarding_step: number
           profile_stage: string
+          record_scope: string
           record_source: string
           status: string
           submitted_at: string | null
@@ -2064,6 +2065,7 @@ export type Database = {
           membership_type?: string
           onboarding_step?: number
           profile_stage?: string
+          record_scope?: string
           record_source?: string
           status?: string
           submitted_at?: string | null
@@ -2087,6 +2089,7 @@ export type Database = {
           membership_type?: string
           onboarding_step?: number
           profile_stage?: string
+          record_scope?: string
           record_source?: string
           status?: string
           submitted_at?: string | null

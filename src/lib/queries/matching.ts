@@ -108,6 +108,8 @@ export async function fetchMatchCandidates() {
       member_boundaries (preferred_gender_mix, taboo_tags, deal_breakers),
       member_dynamic_stats (activity_count, late_count, no_show_count, replay_willing_rate, reliability_score)
     `)
+    .eq("record_scope", "current")
+    .eq("account_status", "active")
     .eq("status", "approved")
     .eq("membership_type", "player")
 

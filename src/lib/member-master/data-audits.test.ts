@@ -152,8 +152,11 @@ describe("user/member migration data audits", () => {
 
     expect(sql).toContain("auth_without_member_or_tombstone")
     expect(sql).toContain("invalid_member_state")
+    expect(sql).toContain("invalid historical record scope")
+    expect(sql).toContain("historical records retain active roles")
     expect(sql).toContain("tombstone_still_linked_to_member")
     expect(sql).toContain("member_duplicate_candidates")
+    expect(sql).toContain("member_master_skip_historical_duplicate_candidate")
     expect(sql).toContain("candidate_source")
     expect(sql).not.toContain("reason_code")
     expect(sql).toContain("member_role_assignments")

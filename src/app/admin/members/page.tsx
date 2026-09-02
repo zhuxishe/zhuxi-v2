@@ -5,6 +5,7 @@ import { MemberTable } from "@/components/admin/MemberTable"
 import { MemberListFilter } from "@/components/admin/MemberListFilter"
 import { Pagination } from "@/components/shared/Pagination"
 import { parseMemberDirectoryPage } from "@/components/admin/member-center-utils"
+import { normalizeCurrentMemberDirectoryFilters } from "@/lib/member-master/current-member-directory"
 
 interface Props {
   searchParams: Promise<{
@@ -23,11 +24,12 @@ export default async function AdminMembersPage({ searchParams }: Props) {
   const admin = await requireAdmin()
   const params = await searchParams
   const page = parseMemberDirectoryPage(params.page)
+  const filters = normalizeCurrentMemberDirectoryFilters(params)
   const directory = await fetchMemberDirectory({
-    status: params.status,
-    accountStatus: params.accountStatus,
-    profileStage: params.profileStage,
-    recordSource: params.source,
+    status: filters.status,
+    accountStatus: filters.accountStatus,
+    profileStage: filters.profileStage,
+    recordSource: filters.recordSource,
     search: params.search,
     page,
     pageSize: PAGE_SIZE,
@@ -39,14 +41,14 @@ export default async function AdminMembersPage({ searchParams }: Props) {
       <div className="p-6 space-y-4">
         <div>
           <h1 className="text-xl font-semibold">用户与成员目录</h1>
-          <p className="mt-1 text-sm text-muted-foreground">一个成员主记录 ID（members.id）对应登录账号、申请资料和后续业务记录。</p>
+          <p className="mt-1 text-sm text-muted-foreground">仅显示当前用户与成员；旧记录保留在数据库中供历史追溯，不参与登录绑定和新业务。</p>
         </div>
         <MemberListFilter
           key={params.search ?? ""}
-          currentStatus={params.status ?? "all"}
-          currentAccountStatus={params.accountStatus ?? "all"}
-          currentProfileStage={params.profileStage ?? "all"}
-          currentRecordSource={params.source ?? "all"}
+          currentStatus={filters.status}
+          currentAccountStatus={filters.accountStatus}
+          currentProfileStage={filters.profileStage}
+          currentRecordSource={filters.recordSource}
           currentSearch={params.search ?? ""}
           canSearchHighRisk={admin.role === "super_admin"}
         />

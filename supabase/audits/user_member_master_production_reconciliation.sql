@@ -386,7 +386,7 @@ SELECT count(*) AS expected_unique_arbiters,
 FROM unique_status;
 
 -- 5. Member-master objects. Production should report these as absent before
--- the six feature migrations and present after them.
+-- the feature migrations and present after them.
 WITH expected_migration(version, migration_name) AS (
   VALUES
     ('20260829175645', 'user_member_master_v1'),
@@ -394,12 +394,14 @@ WITH expected_migration(version, migration_name) AS (
     ('20260830163614', 'fix_member_restore_and_quiz_answers'),
     ('20260830165712', 'restore_matching_table_acl'),
     ('20260830174115', 'fix_operational_audit_trigger_record_scope'),
-    ('20260830195942', 'explicit_data_api_acl_for_admin_surfaces')
+    ('20260830195942', 'explicit_data_api_acl_for_admin_surfaces'),
+    ('20260902073905', 'archive_historical_member_records')
 ), expected_column(table_schema, table_name, column_name) AS (
   VALUES
     ('public', 'members', 'account_status'),
     ('public', 'members', 'profile_stage'),
     ('public', 'members', 'record_source'),
+    ('public', 'members', 'record_scope'),
     ('public', 'members', 'onboarding_step'),
     ('public', 'members', 'last_profile_saved_at'),
     ('public', 'members', 'submitted_at'),

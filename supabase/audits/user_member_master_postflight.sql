@@ -574,7 +574,8 @@ BEGIN
     ('20260830165712', 'restore_matching_table_acl'),
     ('20260830174115', 'fix_operational_audit_trigger_record_scope'),
     ('20260830195942', 'explicit_data_api_acl_for_admin_surfaces'),
-    ('20260831164143', 'backfill_missing_member_submission_timestamps')
+    ('20260831164143', 'backfill_missing_member_submission_timestamps'),
+    ('20260902073905', 'archive_historical_member_records')
   ) AS required(version, migration_name)
   WHERE NOT EXISTS (
     SELECT 1
@@ -589,7 +590,7 @@ BEGIN
       DETAIL = 'Missing migration history: ' || v_missing;
   END IF;
 
-  RAISE NOTICE 'PASS migration history: all 7 member-master migrations are applied';
+  RAISE NOTICE 'PASS migration history: all 8 member-master migrations are applied';
 END
 $postflight_history$;
 
@@ -710,6 +711,7 @@ BEGIN
       ('public', 'members', 'members_account_status_check', 'c'),
       ('public', 'members', 'members_profile_stage_check', 'c'),
       ('public', 'members', 'members_record_source_check', 'c'),
+      ('public', 'members', 'members_record_scope_state_check', 'c'),
       ('public', 'members', 'members_onboarding_step_check', 'c'),
       ('public', 'members', 'members_anonymized_state_check', 'c'),
       ('public', 'legacy_members', 'legacy_members_canonical_member_id_fkey', 'f'),
@@ -769,6 +771,8 @@ BEGIN
     FROM (VALUES
       ('public', 'members', 'member_master_sync_lifecycle'),
       ('public', 'members', 'member_master_audit_member_change'),
+      ('public', 'members', 'member_master_sync_member_roles'),
+      ('private', 'member_duplicate_candidates', 'member_master_skip_historical_duplicate_candidate'),
       ('private', 'member_profile_audit_log', 'member_profile_audit_append_only'),
       ('public', 'match_round_submissions', 'member_master_guard_round_submission_write'),
       ('public', 'match_results', 'member_master_capture_audit_reason'),
@@ -944,6 +948,31 @@ BEGIN
   END IF;
 
   SELECT count(*) INTO v_invalid
+  FROM public.members AS member
+  WHERE member.record_scope NOT IN ('current', 'historical')
+     OR (
+       member.record_scope = 'current'
+       AND member.record_source IN ('legacy', 'import')
+     )
+     OR (
+       member.record_scope = 'historical'
+       AND (
+         member.record_source NOT IN ('legacy', 'import')
+         OR member.user_id IS NOT NULL
+         OR member.email IS NOT NULL
+         OR member.line_user_id IS NOT NULL
+         OR member.wechat_openid IS NOT NULL
+         OR member.account_linked_at IS NOT NULL
+         OR member.account_status <> 'unbound'
+       )
+     );
+  IF v_invalid <> 0 THEN
+    v_failures := array_append(
+      v_failures, format('%s members have an invalid historical record scope', v_invalid)
+    );
+  END IF;
+
+  SELECT count(*) INTO v_invalid
   FROM (
     SELECT member.user_id
     FROM public.members AS member
@@ -1024,6 +1053,17 @@ BEGIN
   IF v_invalid <> 0 THEN
     v_failures := array_append(
       v_failures, format('%s member/role pairs have duplicate active grants', v_invalid)
+    );
+  END IF;
+
+  SELECT count(*) INTO v_invalid
+  FROM private.member_role_assignments AS assignment
+  JOIN public.members AS member ON member.id = assignment.member_id
+  WHERE member.record_scope = 'historical'
+    AND assignment.revoked_at IS NULL;
+  IF v_invalid <> 0 THEN
+    v_failures := array_append(
+      v_failures, format('%s historical records retain active roles', v_invalid)
     );
   END IF;
 
@@ -1169,7 +1209,7 @@ BEGIN
       DETAIL = array_to_string(v_failures, E'\n');
   END IF;
 
-  RAISE NOTICE 'PASS data: identity links, lifecycle, duplicates, audit snapshots, anonymization';
+  RAISE NOTICE 'PASS data: identity links, lifecycle, historical isolation, duplicates, audit snapshots, anonymization';
 END
 $postflight_data$;
 

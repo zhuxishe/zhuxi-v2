@@ -32,6 +32,8 @@ export default async function AdminScriptDetailPage({ params }: Props) {
   const { data: members } = await supabase
     .from("members")
     .select("id, member_identity(full_name)")
+    .eq("record_scope", "current")
+    .eq("account_status", "active")
     .eq("status", "approved")
     .eq("membership_type", "player")
   const allMembers = (members ?? []).map((m) => {

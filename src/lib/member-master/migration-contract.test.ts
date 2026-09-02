@@ -98,6 +98,14 @@ const readonlyAuthorizationLockMigration = readFileSync(
   "utf8",
 )
 
+const historicalRecordArchiveMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260902073905_archive_historical_member_records.sql",
+  ),
+  "utf8",
+)
+
 const releaseDependencyRelations = [
   "auth.users",
   "private.community_comment_authors",
@@ -492,8 +500,8 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(61)
-    expect(runbook).toContain("当前仓库共有 61 条 migration")
+    expect(migrationNames).toHaveLength(62)
+    expect(runbook).toContain("当前仓库共有 62 条 migration")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
     )
@@ -503,6 +511,27 @@ describe("user/member master migration contract", () => {
     expect(runbook).toContain(
       "20260831234821_fix_member_readonly_authorization_lock.sql",
     )
+    expect(runbook).toContain(
+      "20260902073905_archive_historical_member_records.sql",
+    )
+  })
+
+  it("archives reference-only shells without enabling name or email binding", () => {
+    expect(historicalRecordArchiveMigration).toContain("ADD COLUMN IF NOT EXISTS record_scope")
+    expect(historicalRecordArchiveMigration).toContain("members_record_scope_state_check")
+    expect(historicalRecordArchiveMigration).toContain("record_scope = 'historical'")
+    expect(historicalRecordArchiveMigration).toContain("record_source IN ('legacy', 'import')")
+    expect(historicalRecordArchiveMigration).toContain("MEMBER_MASTER_HISTORICAL_PREFLIGHT_FAILED")
+    expect(historicalRecordArchiveMigration).toContain("MEMBER_MASTER_HISTORICAL_IDENTITY_FORBIDDEN")
+    expect(historicalRecordArchiveMigration).toContain("MEMBER_MASTER_HISTORICAL_IDENTITY_IMMUTABLE")
+    for (const identityField of ["user_id", "email", "line_user_id", "wechat_openid"]) {
+      expect(historicalRecordArchiveMigration).toContain(`${identityField} IS NULL`)
+    }
+    expect(historicalRecordArchiveMigration).toContain("'record_scope', OLD.record_scope")
+    expect(historicalRecordArchiveMigration).toContain("'record_scope', NEW.record_scope")
+    expect(historicalRecordArchiveMigration).toContain("NEW.id, 'user', v_current")
+    expect(historicalRecordArchiveMigration).toContain("member_master_skip_historical_duplicate_candidate")
+    expect(historicalRecordArchiveMigration).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
   })
 
   it("lets an administrator create the first identity row only with onboarding-required fields", () => {

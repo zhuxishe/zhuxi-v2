@@ -550,6 +550,15 @@ describe("user/member master migration contract", () => {
         `FOR ${operation} TO anon, authenticated`,
       )
     }
+    for (const legacyPolicy of [
+      "public_read_covers",
+      "admin_upload_covers",
+      "admin_manage_covers",
+    ]) {
+      expect(directMediaUploadMigration).toContain(
+        `DROP POLICY IF EXISTS ${legacyPolicy} ON storage.objects`,
+      )
+    }
     expect(directMediaUploadMigration).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
   })
 

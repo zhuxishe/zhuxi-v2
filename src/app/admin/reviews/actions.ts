@@ -535,6 +535,9 @@ export async function preparePastEventReviewMediaUpload(
   expectedUpdatedAt: string,
 ) {
   await requireAdmin()
+  if (!(await contentMediaCleanupOutboxIsReady())) {
+    return { error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传活动图片" }
+  }
   const idError = validateReviewId(id)
   if (idError) return { error: idError }
   const reasonResult = validateReason(rawReason)
@@ -583,6 +586,9 @@ export async function finalizePastEventReviewMediaUpload(
   preparedUpdatedAt: string,
 ) {
   const admin = await requireAdmin()
+  if (!(await contentMediaCleanupOutboxIsReady())) {
+    return { error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传活动图片" }
+  }
   const idError = validateReviewId(id)
   if (idError) return { error: idError }
   const reasonResult = validateReason(rawReason)
@@ -690,6 +696,9 @@ export async function discardPastEventReviewMediaUpload(
   rawReason: string,
 ) {
   const admin = await requireAdmin()
+  if (!(await contentMediaCleanupOutboxIsReady())) {
+    return { error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传活动图片" }
+  }
   const idError = validateReviewId(id)
   if (idError) return { error: idError }
   const reasonResult = validateReason(rawReason)

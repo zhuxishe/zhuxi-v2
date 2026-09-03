@@ -4,6 +4,7 @@ const mocks = vi.hoisted(() => ({
   requireAdmin: vi.fn(),
   createClient: vi.fn(),
   createAdminClient: vi.fn(),
+  contentMediaCleanupOutboxIsReady: vi.fn(),
   removeStorageObjectsOrQueue: vi.fn(),
   runContentMediaCleanupJobsForContent: vi.fn(),
   validateDirectlyUploadedImage: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.requireAdmin }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.createAdminClient }))
 vi.mock("@/lib/content-media-cleanup", () => ({
+  contentMediaCleanupOutboxIsReady: mocks.contentMediaCleanupOutboxIsReady,
   removeStorageObjectsOrQueue: mocks.removeStorageObjectsOrQueue,
   runContentMediaCleanupJobsForContent: mocks.runContentMediaCleanupJobsForContent,
 }))
@@ -38,6 +40,7 @@ describe("script cover signed upload actions", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.requireAdmin.mockResolvedValue({ id: adminId, role: "admin" })
+    mocks.contentMediaCleanupOutboxIsReady.mockResolvedValue(true)
     mocks.removeStorageObjectsOrQueue.mockResolvedValue({ success: true, queued: false })
     mocks.runContentMediaCleanupJobsForContent.mockResolvedValue({ success: true, pending: 0 })
     mocks.validateDirectlyUploadedImage.mockResolvedValue({
@@ -45,6 +48,23 @@ describe("script cover signed upload actions", () => {
       size: 1024,
       type: "image/png",
     })
+  })
+
+  it("refuses to sign an upload before the Contract outbox exists", async () => {
+    mocks.contentMediaCleanupOutboxIsReady.mockResolvedValue(false)
+
+    const result = await prepareScriptCoverUpload(
+      scriptId,
+      { size: 1024, type: "image/png" },
+      reason,
+      null,
+    )
+
+    expect(result).toEqual({
+      error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传封面",
+    })
+    expect(mocks.createClient).not.toHaveBeenCalled()
+    expect(mocks.createAdminClient).not.toHaveBeenCalled()
   })
 
   it("signs one non-upsert path bound to the active script", async () => {

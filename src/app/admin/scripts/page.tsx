@@ -13,12 +13,16 @@ import { fetchPlayerActivitySettingsAdminState } from "@/lib/queries/admin-playe
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { PlayerActivitySettingsForm } from "@/components/admin/PlayerActivitySettingsForm"
 import { ContentMediaCleanupJobs } from "@/components/admin/ContentMediaCleanupJobs"
+import { LegacyScriptCoverMigration } from "@/components/admin/LegacyScriptCoverMigration"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Pagination } from "@/components/shared/Pagination"
 import { BookOpen, Search } from "lucide-react"
 import { rewriteStorageUrl } from "@/lib/storage-url"
 import { fetchPendingContentMediaCleanupJobs } from "@/lib/content-media-cleanup"
+import { fetchLegacyScriptCoverMigrationState } from "@/lib/legacy-script-cover-query"
+
+export const maxDuration = 60
 
 interface Props {
   searchParams: Promise<{
@@ -39,7 +43,7 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
   const status = oneOf(params.status, ["all", "published", "draft"] as const, "all")
   const surface = oneOf(params.surface, ["all", "public", "player", "hidden"] as const, "all")
   const kind = oneOf(params.kind, ["all", "social", "other"] as const, "all")
-  const [{ scripts, total }, settingsState, cleanupJobs] = await Promise.all([
+  const [{ scripts, total }, settingsState, cleanupJobs, legacyCoverState] = await Promise.all([
     fetchAdminScriptsV2({
       page,
       query: params.q,
@@ -52,6 +56,7 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
     admin.role === "super_admin"
       ? fetchPendingContentMediaCleanupJobs("script")
       : Promise.resolve([]),
+    fetchLegacyScriptCoverMigrationState(),
   ])
 
   return (
@@ -59,6 +64,10 @@ export default async function AdminScriptsPage({ searchParams }: Props) {
       <AdminTopBar admin={admin} title="剧本管理" />
       <div className="p-6 space-y-4">
         <ContentMediaCleanupJobs jobs={cleanupJobs} />
+        <LegacyScriptCoverMigration
+          initialCount={legacyCoverState.count}
+          initialError={legacyCoverState.error}
+        />
         {settingsState.setupRequired ? (
           <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-sm text-orange-800">
             数据库尚未应用内容管理 V2 扩展迁移，暂时不能配置玩家端栏目。

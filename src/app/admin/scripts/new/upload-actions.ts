@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/admin"
 import {
+  contentMediaCleanupOutboxIsReady,
   removeStorageObjectsOrQueue,
   runContentMediaCleanupJobsForContent,
 } from "@/lib/content-media-cleanup"
@@ -27,6 +28,9 @@ export async function prepareScriptCoverUpload(
   expectedCoverUrl: string | null,
 ) {
   await requireAdmin()
+  if (!(await contentMediaCleanupOutboxIsReady())) {
+    return { error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传封面" }
+  }
   if (!UUID_PATTERN.test(scriptId)) return { error: "剧本编号无效" }
   if (!isNullableString(expectedCoverUrl)) return { error: "封面版本信息无效，请刷新后重试" }
   const reasonResult = normalizeAdminAuditReason(rawReason)
@@ -69,6 +73,9 @@ export async function finalizeScriptCoverUpload(
   preparedUpdatedAt: string,
 ) {
   const admin = await requireAdmin()
+  if (!(await contentMediaCleanupOutboxIsReady())) {
+    return { error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传封面" }
+  }
   if (!UUID_PATTERN.test(scriptId) || !scriptCoverPathIsValid(objectPath, scriptId)) {
     return { error: "封面上传路径无效" }
   }
@@ -156,6 +163,9 @@ export async function discardScriptCoverUpload(
   rawReason: string,
 ) {
   const admin = await requireAdmin()
+  if (!(await contentMediaCleanupOutboxIsReady())) {
+    return { error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传封面" }
+  }
   if (!UUID_PATTERN.test(scriptId) || !scriptCoverPathIsValid(objectPath, scriptId)) {
     return { error: "封面上传路径无效" }
   }

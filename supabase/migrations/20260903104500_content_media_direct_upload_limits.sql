@@ -25,6 +25,13 @@ BEGIN
 END
 $do$;
 
+-- Public buckets serve known object URLs without a table-level SELECT grant.
+-- Remove legacy policies that otherwise expose object listings or direct
+-- authenticated writes; the application now uses server-signed upload URLs.
+DROP POLICY IF EXISTS public_read_covers ON storage.objects;
+DROP POLICY IF EXISTS admin_upload_covers ON storage.objects;
+DROP POLICY IF EXISTS admin_manage_covers ON storage.objects;
+
 -- Only a server-created signed upload URL may write these public delivery
 -- buckets. Restrictive guards remain effective if a future permissive policy
 -- accidentally grants broader direct Storage access.
@@ -98,7 +105,17 @@ BEGIN
       AND policy.permissive = 'RESTRICTIVE'
       AND policy.cmd IN ('INSERT', 'UPDATE', 'DELETE')
       AND policy.roles @> ARRAY['anon'::name, 'authenticated'::name]
-  ) <> 3 THEN
+  ) <> 3 OR EXISTS (
+    SELECT 1
+    FROM pg_policies AS policy
+    WHERE policy.schemaname = 'storage'
+      AND policy.tablename = 'objects'
+      AND policy.policyname IN (
+        'public_read_covers',
+        'admin_upload_covers',
+        'admin_manage_covers'
+      )
+  ) THEN
     RAISE EXCEPTION USING
       ERRCODE = '55000',
       MESSAGE = 'CONTENT_V2_DIRECT_UPLOAD_BUCKET_LIMIT_INVALID';

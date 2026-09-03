@@ -16,6 +16,7 @@ import {
   archivePastEventReview,
   createPastEventReview,
   permanentlyDeletePastEventReview,
+  preparePastEventReviewMediaUpload,
   removePastEventReviewGalleryImage,
   restorePastEventReview,
   updatePastEventReview,
@@ -50,6 +51,33 @@ describe("past event review V2 actions", () => {
 
     expect(result.success).not.toBe(true)
     expect(result.error).toContain("4")
+    expect(mocks.createClient).not.toHaveBeenCalled()
+  })
+
+  it("refuses to sign activity media before the Contract outbox exists", async () => {
+    const cleanupTable = {
+      select: vi.fn().mockReturnValue({
+        limit: vi.fn().mockResolvedValue({
+          data: null,
+          error: { code: "PGRST205", message: "content_media_cleanup_jobs not found" },
+        }),
+      }),
+    }
+    mocks.createAdminClient.mockReturnValue({
+      from: vi.fn().mockReturnValue(cleanupTable),
+    })
+
+    const result = await preparePastEventReviewMediaUpload(
+      reviewId,
+      "cover",
+      { size: 1024, type: "image/png" },
+      "上传大型活动封面并记录来源",
+      initialUpdatedAt,
+    )
+
+    expect(result).toEqual({
+      error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传活动图片",
+    })
     expect(mocks.createClient).not.toHaveBeenCalled()
   })
 

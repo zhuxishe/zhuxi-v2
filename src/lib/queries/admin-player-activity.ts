@@ -2,6 +2,10 @@ import { createClient } from "@/lib/supabase/server"
 
 export interface PlayerActivitySettings {
   id: number
+  large_activities_enabled: boolean
+  social_scripts_enabled: boolean
+  script_library_enabled: boolean
+  large_home_limit: number
   social_home_limit: number
   updated_at: string
   updated_by: string | null
@@ -20,7 +24,7 @@ export async function fetchPlayerActivitySettingsAdminState(): Promise<PlayerAct
   const supabase = await createClient()
   const { data, error } = await supabase
     .from("player_activity_settings")
-    .select("id, social_home_limit, updated_at, updated_by")
+    .select("id, large_activities_enabled, social_scripts_enabled, script_library_enabled, large_home_limit, social_home_limit, updated_at, updated_by")
     .eq("id", 1)
     .maybeSingle()
 

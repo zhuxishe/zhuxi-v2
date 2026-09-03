@@ -31,7 +31,7 @@ export function PlayerHomeFeaturedActivity({ activity, locale, labels }: Props) 
         className="group mt-1 grid h-[110px] grid-cols-[49%_51%] overflow-hidden rounded-[10px] border border-border bg-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
       >
         <span className="relative overflow-hidden bg-muted">
-          <Image src={cover} alt="" fill sizes="11rem" className="object-cover transition duration-500 group-hover:scale-[1.025] motion-reduce:transition-none" />
+          <Image src={cover} alt="" fill unoptimized={cover.startsWith("https://")} sizes="11rem" className="object-cover transition duration-500 group-hover:scale-[1.025] motion-reduce:transition-none" />
         </span>
         <span className="flex min-w-0 flex-col justify-center px-[15px] py-2.5">
           <span className="w-fit rounded-md bg-primary/10 px-2 py-1 text-[10px] font-semibold leading-3 text-primary">{labels.badge}</span>

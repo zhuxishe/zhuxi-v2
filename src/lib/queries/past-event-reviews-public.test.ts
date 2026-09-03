@@ -16,14 +16,17 @@ type QueryResponse = {
 function queryResult(response: QueryResponse) {
   const query: {
     eq: ReturnType<typeof vi.fn>
+    is: ReturnType<typeof vi.fn>
     order: ReturnType<typeof vi.fn>
     then: Promise<QueryResponse>["then"]
   } = {
     eq: vi.fn(),
+    is: vi.fn(),
     order: vi.fn(),
     then: Promise.resolve(response).then.bind(Promise.resolve(response)),
   }
   query.eq.mockReturnValue(query)
+  query.is.mockReturnValue(query)
   query.order.mockReturnValue(query)
   return query
 }
@@ -66,6 +69,8 @@ describe("fetchPublishedPastEventReviews", () => {
 
     expect(select).toHaveBeenCalledTimes(1)
     expect(select.mock.calls[0][0]).toContain("source_key")
+    const firstQuery = select.mock.results[0].value
+    expect(firstQuery.is).toHaveBeenCalledWith("archived_at", null)
     expect(result).toEqual([{
       id: "11111111-1111-4111-8111-111111111111",
       source_key: "red-packet-luck-battle",

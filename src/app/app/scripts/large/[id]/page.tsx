@@ -1,10 +1,10 @@
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import { getLocale, getTranslations } from "next-intl/server"
-import { CalendarDays, ExternalLink, MapPin, Ticket, Users } from "lucide-react"
+import { CalendarClock, CalendarDays, ExternalLink, MapPin, Ticket, Users } from "lucide-react"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerLargeActivity } from "@/lib/player-activity/queries"
-import { isUpcomingLargeActivity } from "@/lib/player-activity/selection"
+import { effectiveRegistrationStatus, isUpcomingLargeActivity } from "@/lib/player-activity/selection"
 import { rewriteStorageUrl } from "@/lib/storage-url"
 import { formatTokyoDateTimeRange } from "@/lib/player-activity/tokyo-datetime"
 import { ActivityPageIntro } from "@/components/player/activity/ActivityPageIntro"
@@ -29,6 +29,10 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
     ? t("badges.cancelled")
     : isUpcomingLargeActivity(activity) ? t("badges.upcoming") : t("badges.latest")
   const registrationUrl = safeExternalUrl(activity.registrationUrl)
+  const registrationStatus = effectiveRegistrationStatus(activity)
+  const registrationOpen = activity.status !== "cancelled"
+    && registrationStatus === "open"
+    && Boolean(registrationUrl)
   const gallery = activity.galleryUrls
     .map((url) => rewriteStorageUrl(url))
     .filter((url): url is string => Boolean(url && url !== cover))
@@ -42,7 +46,7 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
       />
 
       <div className="relative aspect-[4/3] overflow-hidden rounded-[22px] border border-border bg-ink shadow-soft">
-        <Image src={cover} alt="" fill priority sizes="(min-width: 448px) 416px, calc(100vw - 32px)" className="object-cover" />
+        <Image src={cover} alt="" fill unoptimized={cover.startsWith("https://")} priority sizes="(min-width: 448px) 416px, calc(100vw - 32px)" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/8" />
         <span className="absolute bottom-4 right-4 rounded-full border border-white/60 bg-white/92 px-3 py-1.5 text-xs font-semibold text-primary backdrop-blur-md">
           {badge}
@@ -59,6 +63,18 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
         <DetailMeta icon={MapPin} label={t("locationLabel")} value={activity.location ?? t("locationPending")} />
         <DetailMeta icon={Users} label={t("capacityLabel")} value={activity.capacityNote ?? t("detailPending")} />
         <DetailMeta icon={Ticket} label={t("feeLabel")} value={activity.feeNote ?? t("detailPending")} />
+        <DetailMeta
+          icon={Ticket}
+          label={t("registrationStatusLabel")}
+          value={t(`registrationStatuses.${registrationStatus}`)}
+        />
+        {activity.registrationDeadline && (
+          <DetailMeta
+            icon={CalendarClock}
+            label={t("registrationDeadlineLabel")}
+            value={formatDeadline(activity.registrationDeadline, locale)}
+          />
+        )}
       </section>
 
       {activity.tags.length > 0 ? (
@@ -82,7 +98,7 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
           <div className="grid grid-cols-2 gap-2">
             {gallery.map((url, index) => (
               <div key={url} className="relative aspect-square overflow-hidden rounded-2xl bg-secondary">
-                <Image src={url} alt={t("galleryImageAlt", { index: index + 1 })} fill sizes="(min-width: 448px) 202px, calc((100vw - 40px) / 2)" className="object-cover" />
+                <Image src={url} alt={t("galleryImageAlt", { index: index + 1 })} fill unoptimized={url.startsWith("https://")} sizes="(min-width: 448px) 202px, calc((100vw - 40px) / 2)" className="object-cover" />
               </div>
             ))}
           </div>
@@ -93,19 +109,23 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
         <p className="flex min-h-12 items-center justify-center rounded-xl bg-muted px-4 text-sm font-semibold text-muted-foreground" aria-disabled="true">
           {t("registrationCancelled")}
         </p>
-      ) : registrationUrl ? (
+      ) : registrationOpen && registrationUrl ? (
         <a
           href={registrationUrl}
           target="_blank"
           rel="noopener noreferrer"
           className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
-          {t("registerExternal")}
+          {activity.registrationLabel ?? t("registerExternal")}
           <ExternalLink className="size-4" aria-hidden="true" />
         </a>
       ) : (
         <p className="flex min-h-12 items-center justify-center rounded-xl bg-secondary px-4 text-sm font-semibold text-primary" aria-disabled="true">
-          {t("registrationPending")}
+          {registrationStatus === "closed"
+            ? t("registrationClosed")
+            : registrationStatus === "ended"
+              ? t("registrationEnded")
+              : t("registrationPending")}
         </p>
       )}
     </article>
@@ -143,4 +163,17 @@ function safeExternalUrl(value: string | null) {
 
 function plainText(value: string | null) {
   return value?.replace(/<[^>]*>/g, "").trim() ?? ""
+}
+
+function formatDeadline(value: string, locale: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return value
+  return new Intl.DateTimeFormat(locale === "ja" ? "ja-JP" : "zh-CN", {
+    timeZone: "Asia/Tokyo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  }).format(date)
 }

@@ -26,32 +26,38 @@ export default async function PlayerActivityPage() {
     <div className="space-y-3.5 px-4 pb-4 pt-2.5">
       <ActivityPageIntro title={t("title")} description={t("subtitle")} />
 
-      <section>
-        <ActivitySectionHeader title={t("largeTitle")} href="/app/scripts/large" actionLabel={t("viewAll")} />
-        {data.largeActivities.length > 0 ? (
-          <div className="space-y-2.5">
-            {data.largeActivities.map((activity, index) => (
-              <LargeActivityCard
-                key={activity.id}
-                activity={activity}
-                labels={cardLabels}
-                locale={locale}
-                compact
-                priority={index === 0}
-              />
-            ))}
-          </div>
-        ) : (
-          <ActivityEmptyState label={t("emptyLarge")} />
-        )}
-      </section>
+      {data.settings.largeActivitiesEnabled ? (
+        <section>
+          <ActivitySectionHeader title={t("largeTitle")} href="/app/scripts/large" actionLabel={t("viewAll")} />
+          {data.largeActivities.length > 0 ? (
+            <div className="space-y-2.5">
+              {data.largeActivities.map((activity, index) => (
+                <LargeActivityCard
+                  key={activity.id}
+                  activity={activity}
+                  labels={cardLabels}
+                  locale={locale}
+                  compact
+                  priority={index === 0}
+                />
+              ))}
+            </div>
+          ) : (
+            <ActivityEmptyState label={t("emptyLarge")} />
+          )}
+        </section>
+      ) : null}
 
-      <section>
-        <ActivitySectionHeader title={t("socialTitle")} href="/app/scripts/social" actionLabel={t("viewAll")} />
-        <SocialScriptShelf scripts={data.socialScripts} locale={locale} emptyLabel={t("emptySocial")} />
-      </section>
+      {data.settings.socialScriptsEnabled ? (
+        <section>
+          <ActivitySectionHeader title={t("socialTitle")} href="/app/scripts/social" actionLabel={t("viewAll")} />
+          <SocialScriptShelf scripts={data.socialScripts} locale={locale} emptyLabel={t("emptySocial")} />
+        </section>
+      ) : null}
 
-      <ScriptLibraryEntry title={t("libraryTitle")} description={t("libraryDescription")} />
+      {data.settings.scriptLibraryEnabled ? (
+        <ScriptLibraryEntry title={t("libraryTitle")} description={t("libraryDescription")} />
+      ) : null}
     </div>
   )
 }

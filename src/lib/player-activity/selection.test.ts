@@ -29,6 +29,9 @@ function activity(overrides: Partial<LargeActivitySummary> = {}): LargeActivityS
     feeNote: null,
     capacityNote: null,
     registrationUrl: null,
+    registrationStatus: "coming_soon",
+    registrationDeadline: null,
+    registrationLabel: null,
     status: "published",
     tags: [],
     showOnPlayerHome: false,
@@ -118,7 +121,7 @@ describe("Player activity adapters", () => {
 })
 
 describe("Player activity selection", () => {
-  it("keeps manual parent order first, auto-fills to two, and hides cancelled items", () => {
+  it("keeps explicit parent recommendations in configured order and hides cancelled items", () => {
     const result = selectLargeActivitiesForHome([
       activity({ id: "auto-upcoming", startAt: "2026-07-18T10:00:00+09:00" }),
       activity({ id: "manual-second", showOnPlayerHome: true, playerHomeOrder: 2 }),
@@ -129,14 +132,14 @@ describe("Player activity selection", () => {
     expect(result.map((item) => item.id)).toEqual(["manual-first", "manual-second"])
   })
 
-  it("auto-fills the remaining parent slot after manually selected activities", () => {
+  it("does not auto-fill unselected large-activity slots", () => {
     const result = selectLargeActivitiesForHome([
       activity({ id: "manual", showOnPlayerHome: true, playerHomeOrder: 1 }),
       activity({ id: "future-near", startAt: "2026-07-18T10:00:00+09:00" }),
       activity({ id: "future-far", startAt: "2026-08-20T10:00:00+09:00" }),
     ], NOW)
 
-    expect(result.map((item) => item.id)).toEqual(["manual", "future-near"])
+    expect(result.map((item) => item.id)).toEqual(["manual"])
   })
 
   it("treats an activity as current until endAt has passed", () => {
@@ -183,7 +186,7 @@ describe("Social script presentation", () => {
     expect(result.map((item) => item.id)).toEqual(["first"])
   })
 
-  it("auto-fills configured parent slots from the remaining social library", () => {
+  it("does not auto-fill unselected social-script slots", () => {
     const result = sortSocialScriptsForHome([
       script({ id: "manual", showOnPlayerActivity: true, playerActivityOrder: 1 }),
       script({ id: "pinned-fill", pinInSocialLibrary: true, socialLibraryOrder: 2 }),
@@ -191,7 +194,13 @@ describe("Social script presentation", () => {
       script({ id: "not-social", isSocialScript: false, createdAt: "2026-07-11T00:00:00Z" }),
     ], 3)
 
-    expect(result.map((item) => item.id)).toEqual(["manual", "pinned-fill", "regular-fill"])
+    expect(result.map((item) => item.id)).toEqual(["manual"])
+  })
+
+  it("allows a zero recommendation limit without leaking an item", () => {
+    expect(sortSocialScriptsForHome([
+      script({ id: "manual", showOnPlayerActivity: true }),
+    ], 0)).toEqual([])
   })
 
   it("does not duplicate pinned scripts in the more section", () => {

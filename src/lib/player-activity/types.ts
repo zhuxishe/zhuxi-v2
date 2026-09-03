@@ -1,6 +1,35 @@
 export type PlayerActivityLocale = "zh" | "ja"
 
 export type LargeActivityStatus = "draft" | "published" | "cancelled"
+export type LargeActivityRegistrationStatus = "open" | "closed" | "coming_soon" | "ended"
+
+export interface PlayerActivitySettings {
+  largeActivitiesEnabled: boolean
+  socialScriptsEnabled: boolean
+  scriptLibraryEnabled: boolean
+  largeHomeLimit: number
+  socialHomeLimit: number
+}
+
+export type PlayerScriptLibrarySort = "recommended" | "newest"
+
+export interface PlayerScriptLibraryFilters {
+  search?: string
+  genre?: string
+  headcount?: number | null
+  duration?: number | null
+  sort?: PlayerScriptLibrarySort
+  page?: number
+  pageSize?: number
+}
+
+export interface PlayerScriptLibraryPage {
+  items: PlayerScriptSummary[]
+  total: number
+  page: number
+  pageSize: number
+  totalPages: number
+}
 
 export interface LargeActivitySummary {
   id: string
@@ -17,6 +46,9 @@ export interface LargeActivitySummary {
   feeNote: string | null
   capacityNote: string | null
   registrationUrl: string | null
+  registrationStatus: LargeActivityRegistrationStatus
+  registrationDeadline: string | null
+  registrationLabel: string | null
   status: LargeActivityStatus
   tags: string[]
   showOnPlayerHome: boolean

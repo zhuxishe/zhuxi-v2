@@ -12,7 +12,6 @@ export async function PublicScriptLibrary({ showHeader = true }: { showHeader?: 
   const locale = await getLocale()
   const copy = landingCopy(locale).activities
   const scripts = (await fetchPublishedScripts().catch(() => []))
-    .filter((script) => !/飞镖|飛鏢|風個挖掘|探索同好會|1207/i.test(script.title))
     .slice(0, 8)
 
   return (
@@ -62,7 +61,7 @@ function ScriptPreviewCard({
     <Link href={`/scripts/${script.id}`} className="group grid overflow-hidden rounded-[1.25rem] border border-[#e9e2d6] bg-[#fffdf7] transition hover:-translate-y-0.5 hover:shadow-[0_12px_28px_rgba(43,53,35,0.12)] sm:grid-cols-[136px_1fr]">
       <div className="relative aspect-[4/3] bg-[#edf4e7] sm:aspect-auto">
         {cover ? (
-          <Image src={cover} alt="" fill sizes="(min-width: 768px) 136px, 100vw" className="object-cover" />
+          <Image src={cover} alt="" fill unoptimized={cover.startsWith("https://")} sizes="(min-width: 768px) 136px, 100vw" className="object-cover" />
         ) : (
           <div className="grid h-full place-items-center text-[#6b8f4e]">
             <BookOpen className="size-10" />

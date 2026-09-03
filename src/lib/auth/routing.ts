@@ -7,6 +7,7 @@ export interface PlayerRouteInput {
   /** null = no member record */
   status: string | null
   accountStatus: string | null
+  membershipType: string | null
   profileStage: string | null
   onboardingStep: number
   hasIdentity: boolean
@@ -54,6 +55,10 @@ export function resolvePlayerRoute(
   // Rejected
   if (player.status === "rejected") {
     return { action: "render", view: "rejected" }
+  }
+
+  if (player.status === "approved" && player.membershipType !== "player") {
+    return { action: "redirect", to: "/app/inactive" }
   }
 
   if (player.status === "approved") {

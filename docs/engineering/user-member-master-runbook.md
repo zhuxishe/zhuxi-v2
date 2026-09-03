@@ -101,6 +101,9 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 10. `20260831164143_backfill_missing_member_submission_timestamps.sql`：对历史 `submitted`/`complete` 资料中缺失的 `submitted_at` 做幂等前向修复，按 `last_profile_saved_at → updated_at → created_at → statement_timestamp()` 顺序保留最接近业务事实的时间；写入通过成员审计触发器记录中文迁移原因，并在事务内 fail-closed 断言不存在剩余缺口。
 11. `20260831234821_fix_member_readonly_authorization_lock.sql`：修复已批准玩家读取资料时的只读事务兼容性；把授权辅助函数的 `FOR KEY SHARE` 改为与 `ensure_my_member_record`、匿名化流程共用同一用户键的 shared advisory transaction lock。并发读取可以共享锁，匿名化/建档写入仍使用独占锁串行，且锁后重新查询 active、未匿名化主档。
 12. `20260902073905_archive_historical_member_records.sql`：为成员主档增加 `record_scope=current|historical`。将未绑定的 `legacy/import` 外壳归档为“旧记录”，保留历史外键、来源与审计，但撤销活动角色，禁止登录身份绑定及后续重复候选；异常身份数据会令迁移 fail-closed。当前成员目录、常规匹配候选、黑名单、剧本授权及新导入的既有成员匹配只使用当前记录；导入流程仍可为尚未注册者建立本轮专用历史外壳。
+13. `20260903062011_content_management_v2_expand.sql`：内容管理 V2 的兼容扩展阶段，建立官网与 Player 独立可见性、栏目开关、归档、到期授权、受保护剧本内容及媒体策略，并保留旧字段同步供应用分阶段发布。
+14. `20260903062012_content_management_v2_contract.sql`：内容管理 V2 的收口阶段；仅在兼容应用验收后执行。清空并封锁旧敏感剧本字段、私有化完整剧本 Storage、收紧列级 ACL/RLS、冻结归档内容，并为永久删除建立可恢复的媒体清理 outbox。
+15. `20260903094017_fix_admin_delete_admin_user_content_v2_audit_reason.sql`：修复成员主档管理员删除 RPC 与 Content V2 审计触发器的兼容性；在原有超级管理员、理由、并发锁、自删和最后一名超级管理员保护全部通过后，将同一理由设为事务级 Content V2 审计上下文，再执行会触发 `player_activity_settings.updated_by ON DELETE SET NULL` 的删除。RPC 签名与最小 ACL 不变。
 
 任何一步失败都必须停止；保存完整错误与已应用版本，不得在同一目标上反复重放大迁移。修正应使用新的、可审计的 forward migration。
 
@@ -112,7 +115,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 ### 历史映射
 
-- 当前仓库共有 62 条 migration：原 `main` 的 50 条、本功能六条核心迁移、Production 基线前向迁移一条、发布依赖/公开视图安全迁移一条、legacy `service_role` ACL forward normalization 一条、历史提交时间前向修复一条、只读授权锁热修复一条以及旧记录归档隔离一条。隔离 Preview 必须登记全部 62 条。
+- 当前仓库共有 65 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条，以及内容管理 V2 的 Expand/Contract 两条。隔离 Preview 必须按顺序登记全部 65 条；Contract 只能在兼容应用验收通过后执行，随后再应用第 15 条兼容修复。
 - Production 远端登记 45 条：34 条 `202604*`、10 条 `202607*` 和 `20260806140912`。仓库的 `001`–`038`、`20260809094500`、六条成员迁移和新基线前向迁移均未以本地版本登记在 Production。
 - 34 条 April 历史中，27 条去注释/空白后与本地对应 SQL 一致；`015`–`017` 只多幂等包装；远端 `022` 加后续独立 session policy 修复后等价于当前本地 `022`。
 - 远端 `008` 历史曾把 `social_goal_secondary` 转为 `text[]`，但实际 Production catalog 已是 nullable `text`、默认 `NULL`，与代码和 Preview 类型一致。远端 `011` 没有本地的姓名回填，但 Production 8 条面试记录均已填充且与当前管理员名称一致。

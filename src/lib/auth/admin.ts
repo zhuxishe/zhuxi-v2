@@ -57,6 +57,23 @@ export async function requireAdmin(): Promise<AdminUser> {
   redirect("/admin/login?error=not_admin")
 }
 
+/**
+ * Require the current administrator to hold the super-admin role.
+ *
+ * Server actions that call this helper should let the error propagate only
+ * for programmer-only entry points. User-facing actions normally call
+ * `requireAdmin()` and return their own localized permission message so the
+ * UI can render it inline. The database repeats this boundary for destructive
+ * and global-settings operations.
+ */
+export async function requireSuperAdmin(): Promise<AdminUser> {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") {
+    throw new Error("SUPER_ADMIN_REQUIRED")
+  }
+  return admin
+}
+
 /** Check if current user is an admin without redirecting. */
 export async function getAdmin(): Promise<AdminUser | null> {
   const supabase = await createClient()

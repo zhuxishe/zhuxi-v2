@@ -16,6 +16,7 @@ export default async function AppInterviewFormPage() {
   const route = resolvePlayerRoute({
     status: player.status,
     accountStatus: player.accountStatus,
+    membershipType: player.membershipType,
     profileStage: player.profileStage,
     onboardingStep: player.onboardingStep,
     hasIdentity: player.hasIdentity,

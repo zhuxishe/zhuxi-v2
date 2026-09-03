@@ -684,8 +684,18 @@
     "activityGallery": "イベント写真",
     "galleryImageAlt": "イベント写真 {index}",
     "registerExternal": "今すぐ申し込む",
+    "registrationStatusLabel": "申込状況",
+    "registrationDeadlineLabel": "申込締切",
+    "registrationClosed": "受付を終了しました",
+    "registrationEnded": "申込期間は終了しました",
     "registrationPending": "スタッフにお問い合わせください",
     "registrationCancelled": "このイベントは中止になりました",
+    "registrationStatuses": {
+      "open": "受付中",
+      "closed": "受付終了",
+      "coming_soon": "受付準備中",
+      "ended": "終了"
+    },
     "badges": {
       "upcoming": "開催予定",
       "latest": "新着イベント",

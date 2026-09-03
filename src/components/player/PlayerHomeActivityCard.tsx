@@ -45,7 +45,7 @@ export function PlayerHomeActivityCard({ activity, labels }: Props) {
     <Link href={`/app/scripts/${activity.id}`} className="block overflow-hidden rounded-xl bg-card shadow-soft">
       <div className="relative min-h-52 bg-ink">
         {cover && (
-          <Image src={cover} alt="" fill sizes="28rem" className="object-cover" priority />
+          <Image src={cover} alt="" fill unoptimized={cover.startsWith("https://")} sizes="28rem" className="object-cover" priority />
         )}
         <div className="absolute inset-0 bg-gradient-to-b from-ink/15 via-ink/25 to-ink/85" />
         <div className="absolute inset-x-0 bottom-0 p-4 text-white">

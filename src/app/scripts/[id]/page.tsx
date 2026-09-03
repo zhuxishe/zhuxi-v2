@@ -7,12 +7,11 @@ import { BambooLeaves } from "@/components/landing/BambooLeaves"
 import { LandingFooter } from "@/components/landing/LandingFooter"
 import { LandingNav } from "@/components/landing/LandingNav"
 import { TagBadge } from "@/components/shared/TagBadge"
-import { fetchScript } from "@/lib/queries/scripts"
+import { fetchPublicScript } from "@/lib/queries/scripts"
 import { rewriteStorageUrl } from "@/lib/storage-url"
-import type { Tables } from "@/types/database.types"
 import type { ReactNode } from "react"
 
-type Script = Tables<"scripts">
+type Script = NonNullable<Awaited<ReturnType<typeof fetchPublicScript>>>
 type Props = { params: Promise<{ id: string }> }
 
 export default async function PublicScriptDetailPage({ params }: Props) {
@@ -20,7 +19,7 @@ export default async function PublicScriptDetailPage({ params }: Props) {
   const script = await loadPublicScript(id)
   const t = await getTranslations("publicScript")
   const coverUrl = rewriteStorageUrl(script.cover_url)
-  const intro = stripHtml(script.content_html) || script.description
+  const intro = script.description
 
   return (
     <>
@@ -56,8 +55,8 @@ export default async function PublicScriptDetailPage({ params }: Props) {
 
 async function loadPublicScript(id: string) {
   try {
-    const script = await fetchScript(id)
-    if (!script.is_published) notFound()
+    const script = await fetchPublicScript(id)
+    if (!script) notFound()
     return script
   } catch {
     notFound()
@@ -66,7 +65,7 @@ async function loadPublicScript(id: string) {
 
 function CoverImage({ url, title }: { url: string | null; title: string }) {
   if (!url) return <div className="landing-card grid aspect-[4/3] place-items-center bg-white text-bamboo"><Sparkles className="size-12" /></div>
-  return <Image src={url} alt={title} width={1200} height={900} sizes="(min-width: 1024px) 46vw, 100vw" className="landing-card aspect-[4/3] w-full object-cover" />
+  return <Image src={url} alt={title} width={1200} height={900} unoptimized={url.startsWith("https://")} sizes="(min-width: 1024px) 46vw, 100vw" className="landing-card aspect-[4/3] w-full object-cover" />
 }
 
 function InfoChips({ script, durationLabel, peopleLabel }: { script: Script; durationLabel: string; peopleLabel: string }) {
@@ -104,8 +103,4 @@ function Gallery({ heading, empty, cta }: { heading: string; empty: string; cta:
       </div>
     </section>
   )
-}
-
-function stripHtml(value: string | null) {
-  return value?.replace(/<[^>]*>/g, "").trim() ?? ""
 }

@@ -47,6 +47,7 @@ export function LargeActivityCard({
         src={cover}
         alt=""
         fill
+        unoptimized={cover.startsWith("https://")}
         priority={priority}
         sizes="(min-width: 448px) 416px, calc(100vw - 32px)"
         className={cn(

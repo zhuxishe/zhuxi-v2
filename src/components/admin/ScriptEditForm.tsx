@@ -3,12 +3,17 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateScript } from "@/app/admin/scripts/[id]/edit/actions"
-import { uploadScriptCover } from "@/app/admin/scripts/new/upload-actions"
+import {
+  removeScriptCover,
+  replaceScriptCoverWithExternalUrl,
+  uploadScriptCover,
+} from "@/app/admin/scripts/new/upload-actions"
 import { Button } from "@/components/ui/button"
 import { ScriptEditBasicFields } from "@/components/admin/ScriptEditBasicFields"
 import { ScriptContentFields } from "@/components/admin/ScriptContentFields"
 import { ScriptActivityPlacementFields } from "@/components/admin/ScriptActivityPlacementFields"
 import type { ScriptRole } from "@/components/admin/ScriptRoleEditor"
+import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 export interface ScriptData {
   id: string
@@ -28,8 +33,11 @@ export interface ScriptData {
   cover_url: string | null
   pdf_url: string | null
   page_images: string[] | null
+  page_image_paths: string[] | null
+  pdf_storage_path: string | null
   is_published: boolean | null
   is_featured: boolean | null
+  is_player_visible: boolean | null
   budget: string | null
   location: string | null
   is_social_script: boolean | null
@@ -37,6 +45,8 @@ export interface ScriptData {
   player_activity_order: number | null
   pin_in_social_library: boolean | null
   social_library_order: number | null
+  updated_at: string
+  protected_updated_at: string | null
 }
 
 export function ScriptEditForm({ script }: { script: ScriptData }) {
@@ -57,13 +67,20 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
   const [budget, setBudget] = useState(script.budget ?? "")
   const [location, setLocation] = useState(script.location ?? "")
   const [isFeatured, setIsFeatured] = useState(script.is_featured ?? false)
+  const [isPlayerVisible, setIsPlayerVisible] = useState(script.is_player_visible ?? false)
   const [isSocialScript, setIsSocialScript] = useState(script.is_social_script ?? false)
   const [showOnPlayerActivity, setShowOnPlayerActivity] = useState(script.show_on_player_activity ?? false)
   const [playerActivityOrder, setPlayerActivityOrder] = useState(script.player_activity_order ?? 0)
   const [pinInSocialLibrary, setPinInSocialLibrary] = useState(script.pin_in_social_library ?? false)
   const [socialLibraryOrder, setSocialLibraryOrder] = useState(script.social_library_order ?? 0)
   const [coverFile, setCoverFile] = useState<File | null>(null)
+  const [coverExternalUrl, setCoverExternalUrl] = useState("")
+  const [coverRemoved, setCoverRemoved] = useState(false)
   const [pageImages, setPageImages] = useState<string[] | null>(script.page_images)
+  const [pageImagePaths, setPageImagePaths] = useState<string[] | null>(script.page_image_paths)
+  const [pdfStoragePath, setPdfStoragePath] = useState<string | null>(script.pdf_storage_path)
+  const [protectedUpdatedAt, setProtectedUpdatedAt] = useState<string | null>(script.protected_updated_at)
+  const [auditReason, setAuditReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -82,12 +99,16 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
       genre_tags: genreTags, theme_tags: themeTags,
       content_html: contentHtml, warnings, roles: JSON.parse(JSON.stringify(roles)),
       is_published: script.is_published ?? false, is_featured: isFeatured,
+      is_player_visible: isPlayerVisible,
       budget: budget || null, location: location || null,
       is_social_script: isSocialScript,
       show_on_player_activity: isSocialScript && showOnPlayerActivity,
       player_activity_order: playerActivityOrder,
       pin_in_social_library: isSocialScript && pinInSocialLibrary,
       social_library_order: socialLibraryOrder,
+    }, auditReason, {
+      scriptUpdatedAt: script.updated_at,
+      protectedUpdatedAt,
     })
 
     if (result.error) { setSubmitting(false); setError(result.error); return }
@@ -101,9 +122,15 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
 
   async function uploadFiles(): Promise<string | null> {
     if (coverFile) {
-      const fd = new FormData(); fd.append("file", coverFile)
-      const res = await uploadScriptCover(script.id, fd)
+      const fd = new FormData(); fd.append("file", coverFile); fd.append("auditReason", auditReason)
+      const res = await uploadScriptCover(script.id, fd, script.cover_url)
       if (res?.error) return `封面上传失败: ${res.error}`
+    } else if (coverExternalUrl.trim()) {
+      const res = await replaceScriptCoverWithExternalUrl(script.id, coverExternalUrl, auditReason, script.cover_url)
+      if (res?.error) return `外部封面保存失败: ${res.error}`
+    } else if (coverRemoved) {
+      const res = await removeScriptCover(script.id, auditReason, script.cover_url)
+      if (res?.error) return `封面删除失败: ${res.error}`
     }
     return null
   }
@@ -129,12 +156,26 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
         contentHtml={contentHtml} onContentHtmlChange={setContentHtml}
         warnings={warnings} onWarningsChange={setWarnings}
         roles={roles} onRolesChange={setRoles}
-        coverUrl={script.cover_url} onCoverUpload={setCoverFile}
+        coverUrl={coverRemoved || coverExternalUrl ? null : script.cover_url}
+        onCoverUpload={(file) => { setCoverFile(file); setCoverExternalUrl(""); setCoverRemoved(false) }}
+        coverExternalUrl={coverExternalUrl}
+        onCoverExternalUrlChange={(url) => { setCoverExternalUrl(url); if (url) setCoverFile(null); setCoverRemoved(false) }}
+        onCoverRemove={() => { setCoverFile(null); setCoverExternalUrl(""); setCoverRemoved(true) }}
+        auditReason={auditReason}
         scriptId={script.id}
         existingPages={pageImages}
-        onConverted={setPageImages}
+        existingPagePaths={pageImagePaths}
+        existingPdfStoragePath={pdfStoragePath}
+        onConverted={(paths, urls, nextProtectedUpdatedAt, nextPdfStoragePath = pdfStoragePath) => {
+          setPageImagePaths(paths)
+          setPageImages(urls)
+          setProtectedUpdatedAt(nextProtectedUpdatedAt)
+          setPdfStoragePath(nextPdfStoragePath)
+        }}
       />
       <ScriptActivityPlacementFields
+        isPlayerVisible={isPlayerVisible}
+        onIsPlayerVisibleChange={setIsPlayerVisible}
         isSocialScript={isSocialScript}
         onIsSocialScriptChange={setIsSocialScript}
         showOnPlayerActivity={showOnPlayerActivity}
@@ -146,9 +187,21 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
         socialLibraryOrder={socialLibraryOrder}
         onSocialLibraryOrderChange={setSocialLibraryOrder}
       />
+      <label className="block rounded-xl bg-card p-5 text-sm ring-1 ring-foreground/10">
+        <span className="mb-1 block font-medium">本次修改理由（必填）</span>
+        <textarea
+          value={auditReason}
+          onChange={(event) => setAuditReason(event.target.value)}
+          minLength={4}
+          maxLength={500}
+          rows={2}
+          placeholder="4–500 字，将写入操作审计"
+          className="w-full rounded-lg border border-border bg-background px-3 py-2 outline-none focus:border-primary"
+        />
+      </label>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-3">
-        <Button onClick={handleSubmit} disabled={submitting}>
+        <Button onClick={handleSubmit} disabled={submitting || !adminAuditReasonIsValid(auditReason)}>
           {submitting ? "保存中..." : "保存修改"}
         </Button>
         <Button variant="outline" onClick={() => router.back()}>取消</Button>

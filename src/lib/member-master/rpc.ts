@@ -45,6 +45,7 @@ interface MemberIdentityResult extends Record<string, unknown> {
 interface MemberSnapshotResult extends Record<string, unknown> {
   id?: unknown
   member_number?: unknown
+  membership_type?: unknown
   status?: unknown
   account_status?: unknown
   profile_stage?: unknown
@@ -110,7 +111,7 @@ export async function fetchCanonicalMemberSnapshot(
   const { data, error } = await queryClient
     .from("members")
     .select(
-      "id, member_number, status, account_status, profile_stage, onboarding_step, last_profile_saved_at, submitted_at, member_identity(full_name)"
+      "id, member_number, membership_type, status, account_status, profile_stage, onboarding_step, last_profile_saved_at, submitted_at, member_identity(full_name)"
     )
     .eq("id", memberId)
     .maybeSingle()
@@ -125,6 +126,7 @@ export async function fetchCanonicalMemberSnapshot(
   return {
     memberId: readUuid(row, "id"),
     memberNumber: readNullableString(row, "member_number"),
+    membershipType: readNullableString(row, "membership_type"),
     status: readString(row, "status"),
     accountStatus: readString(row, "account_status"),
     profileStage: readString(row, "profile_stage"),
@@ -151,6 +153,7 @@ export async function resolveMemberRouteSnapshot(
     return {
       memberId: ensured.memberId,
       memberNumber: null,
+      membershipType: null,
       status: ensured.status,
       accountStatus: ensured.accountStatus,
       profileStage: ensured.profileStage,

@@ -3,6 +3,7 @@ import type {
   LargeActivityStatus,
   LargeActivitySummary,
   PlayerActivityLocale,
+  LargeActivityRegistrationStatus,
   PlayerScriptSummary,
   SocialScriptSections,
 } from "./types"
@@ -47,6 +48,13 @@ function resolveLargeStatus(row: DataRow): LargeActivityStatus {
   return booleanValue(row, "is_published") ? "published" : "draft"
 }
 
+function resolveRegistrationStatus(row: DataRow): LargeActivityRegistrationStatus {
+  const status = text(row, "registration_status")
+  return status === "open" || status === "closed" || status === "ended" || status === "coming_soon"
+    ? status
+    : "coming_soon"
+}
+
 export function mapLargeActivityRow(
   raw: DataRow,
   locale: PlayerActivityLocale,
@@ -74,6 +82,9 @@ export function mapLargeActivityRow(
     feeNote: localizedText(raw, locale, "fee_note"),
     capacityNote: localizedText(raw, locale, "capacity_note"),
     registrationUrl: text(raw, "registration_url"),
+    registrationStatus: resolveRegistrationStatus(raw),
+    registrationDeadline: text(raw, "registration_deadline"),
+    registrationLabel: text(raw, "registration_label"),
     status: resolveLargeStatus(raw),
     tags: stringArray(raw, "tags"),
     showOnPlayerHome: hasHomeFlag
@@ -162,21 +173,27 @@ export function isUpcomingLargeActivity(activity: LargeActivitySummary, now = ne
   return value >= startOfTodayInTokyo
 }
 
+export function effectiveRegistrationStatus(
+  activity: Pick<LargeActivitySummary, "registrationStatus" | "registrationDeadline">,
+  now = new Date(),
+): LargeActivityRegistrationStatus {
+  if (
+    activity.registrationStatus === "open"
+    && activity.registrationDeadline
+    && Date.parse(activity.registrationDeadline) <= now.getTime()
+  ) return "closed"
+  return activity.registrationStatus
+}
+
 export function selectLargeActivitiesForHome(
   activities: LargeActivitySummary[],
-  now = new Date(),
+  _now = new Date(),
   limit = 2,
 ): LargeActivitySummary[] {
-  const visible = activities.filter((activity) => activity.status === "published")
-  const manual = visible
-    .filter((activity) => activity.showOnPlayerHome)
+  return activities
+    .filter((activity) => activity.status === "published" && activity.showOnPlayerHome)
     .sort((a, b) => a.playerHomeOrder - b.playerHomeOrder || compareNewest(a, b))
-  const manualIds = new Set(manual.map((activity) => activity.id))
-  const autoFill = visible
-    .filter((activity) => !manualIds.has(activity.id))
-    .sort((a, b) => compareAutomatic(a, b, now))
-
-  return [...manual, ...autoFill].slice(0, Math.max(0, limit))
+    .slice(0, Math.max(0, limit))
 }
 
 export function buildLargeActivitySections(
@@ -192,15 +209,6 @@ export function buildLargeActivitySections(
       .filter((activity) => !isUpcomingLargeActivity(activity, now))
       .sort((a, b) => compareLibrary(a, b, false)),
   }
-}
-
-function compareAutomatic(a: LargeActivitySummary, b: LargeActivitySummary, now: Date): number {
-  const aUpcoming = isUpcomingLargeActivity(a, now)
-  const bUpcoming = isUpcomingLargeActivity(b, now)
-  if (aUpcoming !== bUpcoming) return aUpcoming ? -1 : 1
-  const aTime = timestamp(a) ?? 0
-  const bTime = timestamp(b) ?? 0
-  return aUpcoming ? aTime - bTime : bTime - aTime
 }
 
 function compareLibrary(a: LargeActivitySummary, b: LargeActivitySummary, upcoming: boolean): number {
@@ -221,20 +229,10 @@ export function sortSocialScriptsForHome(
   scripts: PlayerScriptSummary[],
   limit: number,
 ): PlayerScriptSummary[] {
-  const socialScripts = scripts.filter((script) => script.isSocialScript)
-  const manual = socialScripts
-    .filter((script) => script.showOnPlayerActivity)
+  return scripts
+    .filter((script) => script.isSocialScript && script.showOnPlayerActivity)
     .sort((a, b) => a.playerActivityOrder - b.playerActivityOrder || compareScriptNewest(a, b))
-  const manualIds = new Set(manual.map((script) => script.id))
-  const autoFill = socialScripts
-    .filter((script) => !manualIds.has(script.id))
-    .sort((a, b) => {
-      if (a.pinInSocialLibrary !== b.pinInSocialLibrary) return a.pinInSocialLibrary ? -1 : 1
-      if (a.socialLibraryOrder !== b.socialLibraryOrder) return a.socialLibraryOrder - b.socialLibraryOrder
-      return compareScriptNewest(a, b)
-    })
-
-  return [...manual, ...autoFill].slice(0, Math.max(1, limit))
+    .slice(0, Math.max(0, limit))
 }
 
 export function buildSocialScriptSections(scripts: PlayerScriptSummary[]): SocialScriptSections {

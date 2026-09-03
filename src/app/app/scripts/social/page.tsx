@@ -1,4 +1,5 @@
 import { getLocale, getTranslations } from "next-intl/server"
+import { notFound } from "next/navigation"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerSocialLibrary } from "@/lib/player-activity/queries"
 import { ActivityPageIntro } from "@/components/player/activity/ActivityPageIntro"
@@ -12,6 +13,7 @@ export default async function SocialScriptLibraryPage() {
     getTranslations("activity"),
   ])
   const sections = await fetchPlayerSocialLibrary(locale)
+  if (!sections) notFound()
 
   return (
     <div className="space-y-7 px-4 pb-7 pt-3">

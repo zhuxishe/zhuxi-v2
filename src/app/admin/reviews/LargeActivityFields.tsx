@@ -1,11 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import type { ReviewInput } from "./actions"
 import type { PastEventReview } from "@/lib/queries/past-event-reviews"
 import {
   formatTokyoDateTimeLocal,
   parseTokyoDateTimeLocal,
 } from "@/lib/player-activity/tokyo-datetime"
+import { ActivityMediaManager } from "./ActivityMediaManager"
 
 export const activityInputClass = "rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 
@@ -31,8 +33,12 @@ export function reviewInputFromFormData(formData: FormData): ReviewInput {
     capacity_note: text(formData, "capacity_note"),
     capacity_note_ja: text(formData, "capacity_note_ja"),
     registration_url: text(formData, "registration_url"),
+    registration_status: (text(formData, "registration_status") || "coming_soon") as ReviewInput["registration_status"],
+    registration_deadline: parseTokyoDateTimeLocal(text(formData, "registration_deadline")),
+    registration_label: text(formData, "registration_label"),
     status: (text(formData, "status") || "draft") as ReviewInput["status"],
     is_published: formData.get("is_published") === "on",
+    is_player_visible: formData.get("is_player_visible") === "on",
     sort_order: numberValue(formData, "sort_order"),
     show_on_player_home: formData.get("show_on_player_home") === "on",
     player_home_order: numberValue(formData, "player_home_order"),
@@ -58,6 +64,9 @@ function splitValues(value: FormDataEntryValue | null) {
 }
 
 export function LargeActivityFields({ item }: { item?: PastEventReview }) {
+  const [coverUrl, setCoverUrl] = useState(item?.cover_url ?? "")
+  const [galleryUrlText, setGalleryUrlText] = useState((item?.gallery_urls ?? []).join("\n"))
+  const galleryUrls = splitValues(galleryUrlText)
   const status = item
     ? item.status ?? (item.is_published === false ? "draft" : "published")
     : "draft"
@@ -82,6 +91,16 @@ export function LargeActivityFields({ item }: { item?: PastEventReview }) {
           <Field label="结束时间（日本时间）"><input name="end_at" type="datetime-local" defaultValue={formatTokyoDateTimeLocal(item?.end_at)} className={activityInputClass} /></Field>
           <Field label="官网兼容日期" hint="官网往期回顾仍用此日期排序"><input name="event_date" type="date" defaultValue={item?.event_date ?? ""} className={activityInputClass} /></Field>
           <Field label="报名链接"><input name="registration_url" type="url" defaultValue={item?.registration_url ?? ""} className={activityInputClass} /></Field>
+          <Field label="报名状态">
+            <select name="registration_status" defaultValue={item?.registration_status ?? "coming_soon"} className={activityInputClass}>
+              <option value="coming_soon">即将开放</option>
+              <option value="open">报名开放</option>
+              <option value="closed">报名关闭</option>
+              <option value="ended">报名结束</option>
+            </select>
+          </Field>
+          <Field label="报名截止时间（日本时间）"><input name="registration_deadline" type="datetime-local" defaultValue={formatTokyoDateTimeLocal(item?.registration_deadline)} className={activityInputClass} /></Field>
+          <Field label="报名按钮文字" hint="留空时使用玩家端默认文字"><input name="registration_label" maxLength={80} defaultValue={item?.registration_label ?? ""} className={activityInputClass} /></Field>
           <Field label="地点（中文）"><input name="location" defaultValue={item?.location ?? ""} className={activityInputClass} /></Field>
           <Field label="地点（日文）"><input name="location_ja" defaultValue={item?.location_ja ?? ""} className={activityInputClass} /></Field>
           <Field label="费用说明（中文）"><input name="fee_note" defaultValue={item?.fee_note ?? ""} className={activityInputClass} /></Field>
@@ -93,10 +112,22 @@ export function LargeActivityFields({ item }: { item?: PastEventReview }) {
 
       <FieldSection title="图片与来源">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="封面图 URL" required className="sm:col-span-2"><input name="cover_url" required defaultValue={item?.cover_url ?? ""} className={activityInputClass} /></Field>
-          <Field label="更多图片 URL" hint="每行一个" className="sm:col-span-2"><textarea name="gallery_urls" defaultValue={(item?.gallery_urls ?? []).join("\n")} rows={3} className={activityInputClass} /></Field>
+          <Field label="封面图 URL" required className="sm:col-span-2"><input name="cover_url" required value={coverUrl} onChange={(event) => setCoverUrl(event.target.value)} className={activityInputClass} /></Field>
+          <Field label="更多图片 URL" hint="每行一个" className="sm:col-span-2"><textarea name="gallery_urls" value={galleryUrlText} onChange={(event) => setGalleryUrlText(event.target.value)} rows={3} className={activityInputClass} /></Field>
           <Field label="来源链接" className="sm:col-span-2"><input name="source_url" type="url" defaultValue={item?.source_url ?? ""} className={activityInputClass} /></Field>
         </div>
+        {item ? (
+          <ActivityMediaManager
+            reviewId={item.id}
+            updatedAt={item.updated_at}
+            coverUrl={coverUrl}
+            galleryUrls={galleryUrls}
+            onCoverUrlChange={setCoverUrl}
+            onGalleryUrlsChange={(urls) => setGalleryUrlText(urls.join("\n"))}
+          />
+        ) : (
+          <p className="text-xs text-muted-foreground">首次保存后可直接上传、替换封面或追加活动图片；外部图片 URL 仍可使用。</p>
+        )}
       </FieldSection>
 
       <FieldSection title="发布与玩家端展示">
@@ -119,6 +150,7 @@ export function LargeActivityFields({ item }: { item?: PastEventReview }) {
           <Field label="活动父菜单排序"><input name="player_home_order" type="number" defaultValue={item?.player_home_order ?? 0} className={activityInputClass} /></Field>
           <Field label="大型活动库排序"><input name="player_library_order" type="number" defaultValue={item?.player_library_order ?? 0} className={activityInputClass} /></Field>
           <div className="flex flex-col justify-end gap-2">
+            <Checkbox name="is_player_visible" defaultChecked={item?.is_player_visible ?? false} label="在 Player App 显示" />
             <Checkbox name="show_on_player_home" defaultChecked={item?.show_on_player_home ?? false} label="在活动父菜单展示" />
             <Checkbox name="pin_in_player_library" defaultChecked={item?.pin_in_player_library ?? false} label="在大型活动库置顶" />
             <Checkbox name="is_published" defaultChecked={item?.is_published ?? false} label="同时在官网往期回顾展示" />

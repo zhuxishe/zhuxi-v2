@@ -21,6 +21,7 @@ export default async function PlayerHomePage() {
   const route = resolvePlayerRoute(player ? {
     status: player.status,
     accountStatus: player.accountStatus,
+    membershipType: player.membershipType,
     profileStage: player.profileStage,
     onboardingStep: player.onboardingStep,
     hasIdentity: player.hasIdentity,

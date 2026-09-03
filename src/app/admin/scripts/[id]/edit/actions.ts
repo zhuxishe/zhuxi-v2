@@ -1,12 +1,16 @@
 "use server"
 
 import { revalidatePath } from "next/cache"
-import { createClient } from "@/lib/supabase/server"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
+import {
+  contentMediaCleanupOutboxIsReady,
+  runContentMediaCleanupJobsForContent,
+} from "@/lib/content-media-cleanup"
+import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
+import { createClient } from "@/lib/supabase/server"
 import type { Json, TablesUpdate } from "@/types/database.types"
 
-const ALLOWED_FIELDS = [
+const ALLOWED_METADATA_FIELDS = [
   "title",
   "title_ja",
   "author",
@@ -15,16 +19,14 @@ const ALLOWED_FIELDS = [
   "player_count_max",
   "duration_minutes",
   "difficulty",
-  "content_html",
-  "content_warnings",
   "genre_tags",
   "theme_tags",
   "is_published",
   "is_featured",
   "budget",
   "location",
-  "roles",
   "warnings",
+  "is_player_visible",
   "is_social_script",
   "show_on_player_activity",
   "player_activity_order",
@@ -33,151 +35,304 @@ const ALLOWED_FIELDS = [
 ] as const
 
 type UpdateData = Record<string, string | number | boolean | string[] | Json | null>
+interface ExpectedScriptVersions {
+  scriptUpdatedAt: string
+  protectedUpdatedAt: string | null
+}
 
-export async function updateScript(scriptId: string, data: UpdateData) {
+export async function updateScript(
+  scriptId: string,
+  data: UpdateData,
+  rawReason: string,
+  expectedVersions: ExpectedScriptVersions,
+) {
   await requireAdmin()
-
-  // 服务端数值校验
-  const min = data.player_count_min as number | undefined
-  const max = data.player_count_max as number | undefined
-  const dur = data.duration_minutes as number | undefined
-  if (min !== undefined && min < 1) return { error: "最少人数不能小于 1" }
-  if (min !== undefined && max !== undefined && max < min) return { error: "最多人数不能小于最少人数" }
-  if (dur !== undefined && dur < 1) return { error: "时长不能小于 1 分钟" }
-  const playerActivityOrder = data.player_activity_order as number | undefined
-  const socialLibraryOrder = data.social_library_order as number | undefined
-  if (playerActivityOrder !== undefined && (!Number.isInteger(playerActivityOrder) || Math.abs(playerActivityOrder) > 999_999)) {
-    return { error: "活动父菜单排序必须是 -999999 到 999999 之间的整数" }
-  }
-  if (socialLibraryOrder !== undefined && (!Number.isInteger(socialLibraryOrder) || Math.abs(socialLibraryOrder) > 999_999)) {
-    return { error: "社交剧本库排序必须是 -999999 到 999999 之间的整数" }
-  }
+  if (!validExpectedVersions(expectedVersions)) return { error: "页面版本信息无效，请刷新后重试" }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  const validationError = validateScriptNumbers(data)
+  if (validationError) return { error: validationError }
 
   const supabase = await createClient()
-
-  // 白名单过滤
-  const filtered: UpdateData = {}
-  for (const key of Object.keys(data)) {
-    if ((ALLOWED_FIELDS as readonly string[]).includes(key)) {
-      filtered[key] = data[key]
-    }
+  const [scriptLookup, protectedLookup] = await Promise.all([
+    supabase
+      .from("scripts")
+      .select("id, updated_at")
+      .eq("id", scriptId)
+      .is("archived_at", null)
+      .maybeSingle(),
+    supabase
+      .from("script_protected_content")
+      .select("updated_at")
+      .eq("script_id", scriptId)
+      .maybeSingle(),
+  ])
+  const { data: current, error: lookupError } = scriptLookup
+  const { data: currentProtected, error: protectedLookupError } = protectedLookup
+  if (lookupError || protectedLookupError) return { error: "读取剧本状态失败" }
+  if (!current) return { error: "剧本不存在或已进入回收站" }
+  if (current.updated_at !== expectedVersions.scriptUpdatedAt) {
+    return { error: "基本信息已被其他管理员修改，请刷新后重试" }
+  }
+  if ((currentProtected?.updated_at ?? null) !== expectedVersions.protectedUpdatedAt) {
+    return { error: "完整剧本内容已被其他管理员修改，请刷新后重试" }
+  }
+  const protectedPayload = {
+    script_id: scriptId,
+    core_content_html: typeof data.content_html === "string" ? data.content_html : null,
+    roles: (data.roles ?? []) as Json,
+    audit_reason: reasonResult.reason,
   }
 
-  if (filtered.is_social_script === false) {
+  // Protected content is stored separately from public/player metadata.
+  const protectedResult = currentProtected
+    ? await supabase
+        .from("script_protected_content")
+        .update(protectedPayload)
+        .eq("script_id", scriptId)
+        .eq("updated_at", expectedVersions.protectedUpdatedAt!)
+        .select("updated_at")
+        .maybeSingle()
+    : await supabase
+        .from("script_protected_content")
+        .insert(protectedPayload)
+        .select("updated_at")
+        .maybeSingle()
+  if (protectedResult.error || !protectedResult.data) {
+    console.error("[updateScript:protected]", protectedResult.error)
+    if (!protectedResult.data && !protectedResult.error) {
+      return { error: "完整剧本内容已被其他管理员修改，请刷新后重试" }
+    }
+    return { error: "完整剧本内容保存失败，其他修改未提交" }
+  }
+
+  const filtered: UpdateData = {}
+  for (const key of Object.keys(data)) {
+    if ((ALLOWED_METADATA_FIELDS as readonly string[]).includes(key)) filtered[key] = data[key]
+  }
+  if (filtered.is_player_visible === false || filtered.is_social_script === false) {
     filtered.show_on_player_activity = false
     filtered.pin_in_social_library = false
   }
+  filtered.audit_reason = reasonResult.reason
 
-  // roles 需要转换为 Json 类型
-  if (filtered.roles) {
-    filtered.roles = filtered.roles as Json
-  }
-
-  const payload = filtered as TablesUpdate<"scripts">
-
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("scripts")
-    .update(payload)
+    .update(filtered as TablesUpdate<"scripts">)
     .eq("id", scriptId)
+    .eq("updated_at", expectedVersions.scriptUpdatedAt)
+    .is("archived_at", null)
+    .select("id, updated_at")
+    .maybeSingle()
 
   if (error) {
     console.error("[updateScript]", error)
-    return { error: "操作失败" }
+    return { error: "基本信息保存失败；完整内容已安全保存，请重试本页" }
   }
-  revalidatePath("/admin/scripts")
-  revalidatePath(`/admin/scripts/${scriptId}`)
-  revalidatePath("/app/scripts")
+  if (!updated) return { error: "基本信息已被其他管理员修改；完整内容已安全保存，请刷新后确认" }
+  revalidateScriptPaths(scriptId)
+  return {
+    success: true,
+    updatedAt: updated.updated_at,
+    protectedUpdatedAt: protectedResult.data.updated_at,
+  }
+}
+
+export async function toggleScriptPublish(
+  scriptId: string,
+  isPublished: boolean,
+  rawReason: string,
+  expectedUpdatedAt: string,
+) {
+  return updateScriptFlags(scriptId, { is_published: !isPublished }, rawReason, expectedUpdatedAt, "官网发布状态修改失败")
+}
+
+export async function toggleScriptFeatured(
+  scriptId: string,
+  isFeatured: boolean,
+  rawReason: string,
+  expectedUpdatedAt: string,
+) {
+  return updateScriptFlags(scriptId, { is_featured: !isFeatured }, rawReason, expectedUpdatedAt, "官网精选状态修改失败")
+}
+
+export async function archiveScript(scriptId: string, rawReason: string, expectedUpdatedAt: string) {
+  const admin = await requireAdmin()
+  if (!validRevision(expectedUpdatedAt)) return { error: "页面版本信息无效，请刷新后重试" }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("scripts")
+    .update({
+      archived_at: new Date().toISOString(),
+      archived_by: admin.id,
+      archive_reason: reasonResult.reason,
+      is_published: false,
+      is_player_visible: false,
+      show_on_player_activity: false,
+      pin_in_social_library: false,
+      audit_reason: reasonResult.reason,
+    })
+    .eq("id", scriptId)
+    .eq("updated_at", expectedUpdatedAt)
+    .is("archived_at", null)
+    .select("id")
+    .maybeSingle()
+
+  if (error) {
+    console.error("[archiveScript]", error)
+    return { error: "移入回收站失败" }
+  }
+  if (!data) return { error: "剧本已被其他管理员修改，请刷新后重试" }
+  revalidateScriptPaths(scriptId)
   return { success: true }
 }
 
-export async function toggleScriptPublish(scriptId: string, isPublished: boolean) {
-  await requireAdmin()
+export async function restoreScript(scriptId: string, rawReason: string, expectedUpdatedAt: string) {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "只有超级管理员可以恢复剧本" }
+  if (!validRevision(expectedUpdatedAt)) return { error: "页面版本信息无效，请刷新后重试" }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
   const supabase = await createClient()
-
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("scripts")
-    .update({ is_published: !isPublished })
+    .update({
+      archived_at: null,
+      archived_by: null,
+      archive_reason: null,
+      audit_reason: reasonResult.reason,
+    })
     .eq("id", scriptId)
+    .eq("updated_at", expectedUpdatedAt)
+    .not("archived_at", "is", null)
+    .select("id")
+    .maybeSingle()
 
   if (error) {
-    console.error("[toggleScriptPublish]", error)
-    return { error: "操作失败" }
+    console.error("[restoreScript]", error)
+    return { error: "恢复失败" }
   }
-  revalidatePath("/admin/scripts")
-  revalidatePath(`/admin/scripts/${scriptId}`)
+  if (!data) return { error: "剧本已被其他管理员修改，请刷新后重试" }
+  revalidateScriptPaths(scriptId)
   return { success: true }
 }
 
-export async function toggleScriptFeatured(scriptId: string, isFeatured: boolean) {
-  await requireAdmin()
-  const supabase = await createClient()
-
-  const { error } = await supabase
-    .from("scripts")
-    .update({ is_featured: !isFeatured })
-    .eq("id", scriptId)
-
-  if (error) {
-    console.error("[toggleScriptFeatured]", error)
-    return { error: "操作失败" }
-  }
-  revalidatePath("/")
-  revalidatePath("/admin/scripts")
-  revalidatePath(`/admin/scripts/${scriptId}`)
-  return { success: true }
-}
-
-/** 删除剧本（关联记录 CASCADE 清理） + Storage 文件清理 */
-export async function deleteScript(scriptId: string) {
-  await requireAdmin()
-  const supabase = await createClient()
-
-  // 先读取文件路径，删除后无法获取
-  const { data: script } = await supabase
-    .from("scripts")
-    .select("cover_url, pdf_url")
-    .eq("id", scriptId)
-    .single()
-
-  const { error } = await supabase
-    .from("scripts")
-    .delete()
-    .eq("id", scriptId)
-
-  if (error) {
-    console.error("[deleteScript]", error)
-    return { error: "操作失败" }
+export async function permanentlyDeleteScript(
+  scriptId: string,
+  rawReason: string,
+  expectedUpdatedAt: string,
+) {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "只有超级管理员可以永久删除剧本" }
+  if (!validRevision(expectedUpdatedAt)) return { error: "页面版本信息无效，请刷新后重试" }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  if (!(await contentMediaCleanupOutboxIsReady())) {
+    return { error: "数据库尚未应用内容管理 V2 Contract，已停止永久删除" }
   }
 
-  // 尝试清理 Storage 文件（失败不阻止操作）
-  if (script) {
-    const filePaths = [script.cover_url, script.pdf_url]
-      .filter((url): url is string => !!url)
-      .map(extractStoragePath)
-      .filter((p): p is string => !!p)
+  const supabase = await createClient()
+  const { data: script, error: lookupError } = await supabase
+    .from("scripts")
+    .select("archived_at, updated_at")
+    .eq("id", scriptId)
+    .maybeSingle()
+  if (lookupError) return { error: "删除前读取剧本状态失败" }
+  if (!script?.archived_at) return { error: "请先将剧本移入回收站" }
+  if (script.updated_at !== expectedUpdatedAt) return { error: "剧本已被其他管理员修改，请刷新后重试" }
 
-    if (filePaths.length > 0) {
-      try {
-        const admin = createAdminClient()
-        await admin.storage.from("scripts").remove(filePaths)
-      } catch (e) {
-        console.warn("Storage cleanup failed for script", scriptId, e)
-      }
+  const { error } = await supabase.rpc("admin_hard_delete_script_v2", {
+    p_script_id: scriptId,
+    p_reason: reasonResult.reason,
+    p_expected_updated_at: expectedUpdatedAt,
+  })
+  if (error) {
+    console.error("[permanentlyDeleteScript]", error)
+    if (error.code === "40001" || error.message?.includes("CONTENT_MANAGEMENT_VERSION_CONFLICT")) {
+      return { error: "剧本已被其他管理员修改，请刷新后重试" }
+    }
+    if (error.message?.includes("CONTENT_MANAGEMENT_NOT_ARCHIVED")) {
+      return { error: "剧本已被恢复或状态已变化，请刷新后重试" }
+    }
+    return { error: "永久删除失败" }
+  }
+
+  revalidateScriptPaths(scriptId)
+  const cleanupResult = await runContentMediaCleanupJobsForContent("script", scriptId)
+  if (cleanupResult.error) {
+    return {
+      success: true,
+      warning: "记录已永久删除，但仍有文件待清理；任务已保存在回收站页面，可安全重试。",
     }
   }
-
-  revalidatePath("/admin/scripts")
   return { success: true }
 }
 
-/** 从 Supabase Storage public URL 中提取 bucket 内的相对路径 */
-function extractStoragePath(url: string): string | null {
-  try {
-    const marker = "/storage/v1/object/public/scripts/"
-    const idx = url.indexOf(marker)
-    if (idx !== -1) return url.slice(idx + marker.length)
-    return null
-  } catch {
-    return null
+async function updateScriptFlags(
+  scriptId: string,
+  flags: Pick<TablesUpdate<"scripts">, "is_published" | "is_featured">,
+  rawReason: string,
+  expectedUpdatedAt: string,
+  failureMessage: string,
+) {
+  await requireAdmin()
+  if (!validRevision(expectedUpdatedAt)) return { error: "页面版本信息无效，请刷新后重试" }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("scripts")
+    .update({ ...flags, audit_reason: reasonResult.reason })
+    .eq("id", scriptId)
+    .eq("updated_at", expectedUpdatedAt)
+    .is("archived_at", null)
+    .select("id, updated_at")
+    .maybeSingle()
+  if (error) {
+    console.error("[updateScriptFlags]", error)
+    return { error: failureMessage }
   }
+  if (!data) return { error: "剧本已被其他管理员修改，请刷新后重试" }
+  revalidateScriptPaths(scriptId)
+  return { success: true, updatedAt: data.updated_at }
+}
+
+function validExpectedVersions(value: unknown): value is ExpectedScriptVersions {
+  if (!value || typeof value !== "object") return false
+  const candidate = value as Partial<ExpectedScriptVersions>
+  return validRevision(candidate.scriptUpdatedAt)
+    && (candidate.protectedUpdatedAt === null || validRevision(candidate.protectedUpdatedAt))
+}
+
+function validRevision(value: unknown): value is string {
+  return typeof value === "string" && value.length >= 20 && value.length <= 50 && !Number.isNaN(Date.parse(value))
+}
+
+function validateScriptNumbers(data: UpdateData) {
+  const min = data.player_count_min as number | undefined
+  const max = data.player_count_max as number | undefined
+  const duration = data.duration_minutes as number | undefined
+  if (min !== undefined && min < 1) return "最少人数不能小于 1"
+  if (min !== undefined && max !== undefined && max < min) return "最多人数不能小于最少人数"
+  if (duration !== undefined && duration < 1) return "时长不能小于 1 分钟"
+  for (const [value, label] of [
+    [data.player_activity_order, "活动父菜单排序"],
+    [data.social_library_order, "社交剧本库排序"],
+  ] as const) {
+    if (value !== undefined && (typeof value !== "number" || !Number.isInteger(value) || Math.abs(value) > 999_999)) {
+      return `${label}必须是 -999999 到 999999 之间的整数`
+    }
+  }
+  return null
+}
+
+function revalidateScriptPaths(scriptId: string) {
+  for (const path of [
+    "/", "/scripts", "/scripts/library", "/admin/scripts",
+    `/admin/scripts/${scriptId}`, `/admin/scripts/${scriptId}/edit`,
+    "/app/scripts", "/app/scripts/large", "/app/scripts/social", "/app/scripts/library",
+    `/app/scripts/${scriptId}`,
+  ]) revalidatePath(path)
 }

@@ -105,6 +105,7 @@ function ScriptCover({
         src={cover}
         alt=""
         fill
+        unoptimized={cover.startsWith("https://")}
         priority={priority}
         sizes={sizes}
         className="object-cover transition duration-500 group-hover:scale-[1.025] motion-reduce:transition-none"

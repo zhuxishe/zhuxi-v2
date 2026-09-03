@@ -12,7 +12,8 @@ export default async function InactivePlayerPage() {
     player.status === "inactive" ||
     player.accountStatus === "suspended" ||
     player.accountStatus === "closed" ||
-    player.accountStatus !== "active"
+    player.accountStatus !== "active" ||
+    (player.status === "approved" && player.membershipType !== "player")
 
   if (!blocked) redirect("/app")
 

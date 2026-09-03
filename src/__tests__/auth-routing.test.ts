@@ -5,6 +5,7 @@ function player(overrides: Partial<PlayerRouteInput> = {}): PlayerRouteInput {
   return {
     status: "pending",
     accountStatus: "active",
+    membershipType: "player",
     profileStage: "submitted",
     onboardingStep: 4,
     hasIdentity: true,
@@ -47,6 +48,15 @@ describe("resolvePlayerRoute", () => {
       profileStage: "complete",
     }))
     expect(result).toEqual({ action: "render", view: "home" })
+  })
+
+  it("approved non-player membership cannot enter Player routes", () => {
+    const result = resolvePlayerRoute(player({
+      status: "approved",
+      profileStage: "complete",
+      membershipType: "staff",
+    }))
+    expect(result).toEqual({ action: "redirect", to: "/app/inactive" })
   })
 
   it("approved without identity cannot fall through to home", () => {

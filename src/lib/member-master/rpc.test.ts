@@ -61,6 +61,7 @@ describe("member master RPC helpers", () => {
       profileStage: result.profileStage,
       onboardingStep: result.onboardingStep,
       hasIdentity: true,
+      membershipType: "player",
     })).toEqual({ action: "redirect", to: "/app/inactive" })
   })
 
@@ -91,6 +92,7 @@ describe("member master RPC helpers", () => {
         onboardingStep: 4,
         fullName: null,
         hasIdentity: false,
+        membershipType: null,
       })
       expect(resolvePlayerRoute(result)).toEqual({
         action: "redirect",
@@ -120,6 +122,7 @@ describe("member master RPC helpers", () => {
       data: {
         id: MEMBER_ID,
         member_number: "ZX-001",
+        membership_type: "player",
         status: "pending",
         account_status: "active",
         profile_stage: "in_progress",
@@ -146,6 +149,7 @@ describe("member master RPC helpers", () => {
       accountStatus: "active",
       fullName: "山田 花子",
       hasIdentity: true,
+      membershipType: "player",
     })
   })
 
@@ -203,6 +207,7 @@ describe("member master RPC helpers", () => {
       data: {
         id: MEMBER_ID,
         member_number: "ZX-001",
+        membership_type: "player",
         status: "pending",
         account_status: "active",
         profile_stage: "in_progress",
@@ -228,6 +233,7 @@ describe("member master RPC helpers", () => {
       onboardingStep: 2,
       fullName: "山田 花子",
       hasIdentity: true,
+      membershipType: "player",
     })
   })
 })

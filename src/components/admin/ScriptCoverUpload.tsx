@@ -2,13 +2,17 @@
 
 import Image from "next/image"
 import { useRef, useState, useCallback } from "react"
+import { Trash2 } from "lucide-react"
 
 interface Props {
   coverUrl: string | null
   onUpload: (file: File) => void
+  externalUrl?: string
+  onExternalUrlChange?: (url: string) => void
+  onRemove?: () => void
 }
 
-export function ScriptCoverUpload({ coverUrl, onUpload }: Props) {
+export function ScriptCoverUpload({ coverUrl, onUpload, externalUrl = "", onExternalUrlChange, onRemove }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [dragging, setDragging] = useState(false)
@@ -20,14 +24,17 @@ export function ScriptCoverUpload({ coverUrl, onUpload }: Props) {
       reader.onload = (e) => setPreview(e.target?.result as string)
       reader.readAsDataURL(file)
       onUpload(file)
+      onExternalUrlChange?.("")
     },
-    [onUpload]
+    [onExternalUrlChange, onUpload]
   )
 
-  const displayUrl = preview ?? coverUrl
+  const externalPreview = /^https:\/\//i.test(externalUrl.trim()) ? externalUrl.trim() : null
+  const displayUrl = preview ?? externalPreview ?? coverUrl
 
   return (
-    <div
+    <div className="space-y-3">
+      <div
       className={`relative flex flex-col items-center justify-center rounded-xl border-2 border-dashed transition-colors cursor-pointer aspect-[3/4] max-w-[200px] ${
         dragging
           ? "border-primary bg-primary/5"
@@ -45,7 +52,7 @@ export function ScriptCoverUpload({ coverUrl, onUpload }: Props) {
         const file = e.dataTransfer.files[0]
         if (file) handleFile(file)
       }}
-    >
+      >
       <input
         ref={inputRef}
         type="file"
@@ -94,6 +101,35 @@ export function ScriptCoverUpload({ coverUrl, onUpload }: Props) {
         <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-black/40 opacity-0 hover:opacity-100 transition-opacity">
           <span className="text-xs text-white font-medium">点击更换</span>
         </div>
+      )}
+      </div>
+      {displayUrl && onRemove && (
+        <button
+          type="button"
+          onClick={() => {
+            setPreview(null)
+            onRemove()
+          }}
+          className="inline-flex items-center gap-1 text-xs text-destructive hover:underline"
+        >
+          <Trash2 className="size-3" /> 删除封面
+        </button>
+      )}
+      {onExternalUrlChange && (
+        <label className="block max-w-lg text-xs text-muted-foreground">
+          或使用外部图片链接（HTTPS）
+          <input
+            type="url"
+            inputMode="url"
+            value={externalUrl}
+            onChange={(event) => {
+              setPreview(null)
+              onExternalUrlChange(event.target.value)
+            }}
+            placeholder="https://example.com/cover.jpg"
+            className="mt-1 h-9 w-full rounded-lg border border-border bg-background px-3 text-sm text-foreground outline-none focus:border-primary"
+          />
+        </label>
       )}
     </div>
   )

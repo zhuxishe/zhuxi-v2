@@ -500,8 +500,8 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(62)
-    expect(runbook).toContain("当前仓库共有 62 条 migration")
+    expect(migrationNames).toHaveLength(65)
+    expect(runbook).toContain("当前仓库共有 65 条 migration")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
     )
@@ -513,6 +513,15 @@ describe("user/member master migration contract", () => {
     )
     expect(runbook).toContain(
       "20260902073905_archive_historical_member_records.sql",
+    )
+    expect(runbook).toContain(
+      "20260903062011_content_management_v2_expand.sql",
+    )
+    expect(runbook).toContain(
+      "20260903062012_content_management_v2_contract.sql",
+    )
+    expect(runbook).toContain(
+      "20260903094017_fix_admin_delete_admin_user_content_v2_audit_reason.sql",
     )
   })
 

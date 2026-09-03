@@ -45,6 +45,7 @@ export function PastReviewCard({ review, sourceLabel, photoUnitLabel, framed = t
             alt={review.title}
             width={coverWidth}
             height={coverHeight}
+            unoptimized={review.cover_url.startsWith("https://")}
             sizes="(min-width: 1024px) 760px, 92vw"
             className={coverClass}
           />
@@ -56,6 +57,7 @@ export function PastReviewCard({ review, sourceLabel, photoUnitLabel, framed = t
               alt={`${review.title} ${index + 1}`}
               width={900}
               height={1200}
+              unoptimized={url.startsWith("https://")}
               sizes="(min-width: 1024px) 260px, (min-width: 768px) 30vw, 46vw"
               className="mb-2 w-full break-inside-avoid rounded-[1rem] bg-[#f4f0e8] shadow-[0_8px_20px_rgba(43,53,35,0.10)] md:mb-3"
             />

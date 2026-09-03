@@ -1,4 +1,5 @@
 import { getLocale, getTranslations } from "next-intl/server"
+import { notFound } from "next/navigation"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerLargeActivityLibrary } from "@/lib/player-activity/queries"
 import { ActivityPageIntro } from "@/components/player/activity/ActivityPageIntro"
@@ -12,6 +13,7 @@ export default async function LargeActivityLibraryPage() {
     getTranslations("activity"),
   ])
   const sections = await fetchPlayerLargeActivityLibrary(locale)
+  if (!sections) notFound()
   const labels = {
     upcoming: t("badges.upcoming"),
     latest: t("badges.latest"),

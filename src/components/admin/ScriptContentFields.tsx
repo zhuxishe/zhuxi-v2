@@ -15,10 +15,21 @@ interface Props {
   onRolesChange: (v: ScriptRole[]) => void
   coverUrl: string | null
   onCoverUpload: (file: File) => void
+  coverExternalUrl: string
+  onCoverExternalUrlChange: (url: string) => void
+  onCoverRemove?: () => void
+  auditReason: string
   /** Edit mode: scriptId available for PDF conversion */
   scriptId?: string
   existingPages?: string[] | null
-  onConverted?: (urls: string[]) => void
+  existingPagePaths?: string[] | null
+  existingPdfStoragePath?: string | null
+  onConverted?: (
+    paths: string[],
+    previewUrls: string[],
+    protectedUpdatedAt: string | null,
+    pdfStoragePath?: string | null,
+  ) => void
 }
 
 export function ScriptContentFields({
@@ -30,21 +41,27 @@ export function ScriptContentFields({
   onRolesChange,
   coverUrl,
   onCoverUpload,
+  coverExternalUrl,
+  onCoverExternalUrlChange,
+  onCoverRemove,
+  auditReason,
   scriptId,
   existingPages,
+  existingPagePaths,
+  existingPdfStoragePath,
   onConverted,
 }: Props) {
   return (
     <>
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-        <h3 className="text-sm font-semibold">活动介绍</h3>
+        <h3 className="text-sm font-semibold">完整剧本内容（受保护）</h3>
         <div>
-          <label className="text-sm font-medium mb-1 block">介绍内容</label>
+          <label className="text-sm font-medium mb-1 block">正文内容</label>
           <textarea
             value={contentHtml}
             onChange={(e) => onContentHtmlChange(e.target.value)}
             rows={5}
-            placeholder="请输入剧本的详细介绍..."
+            placeholder="仅获授权且未过期的玩家可以查看..."
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary"
           />
         </div>
@@ -60,7 +77,7 @@ export function ScriptContentFields({
       </div>
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-        <h3 className="text-sm font-semibold">角色列表</h3>
+        <h3 className="text-sm font-semibold">角色列表（受保护）</h3>
         <ScriptRoleEditor roles={roles} onChange={onRolesChange} />
       </div>
 
@@ -68,7 +85,13 @@ export function ScriptContentFields({
         <h3 className="text-sm font-semibold">文件上传</h3>
         <div>
           <label className="text-sm font-medium mb-2 block">封面图</label>
-          <ScriptCoverUpload coverUrl={coverUrl} onUpload={onCoverUpload} />
+          <ScriptCoverUpload
+            coverUrl={coverUrl}
+            onUpload={onCoverUpload}
+            externalUrl={coverExternalUrl}
+            onExternalUrlChange={onCoverExternalUrlChange}
+            onRemove={onCoverRemove}
+          />
         </div>
         <div>
           <label className="text-sm font-medium mb-2 block">剧本内容</label>
@@ -76,6 +99,9 @@ export function ScriptContentFields({
             <ScriptPdfConverter
               scriptId={scriptId}
               existingPages={existingPages ?? null}
+              existingPagePaths={existingPagePaths ?? null}
+              existingPdfStoragePath={existingPdfStoragePath ?? null}
+              auditReason={auditReason}
               onConverted={onConverted}
             />
           ) : (

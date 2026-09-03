@@ -127,6 +127,7 @@ export async function GET(req: NextRequest) {
     {
       status: member.status,
       accountStatus: member.accountStatus,
+      membershipType: member.membershipType,
       profileStage: member.profileStage,
       onboardingStep: member.onboardingStep,
       hasIdentity: member.hasIdentity,

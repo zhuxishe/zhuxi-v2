@@ -1,7 +1,8 @@
 import Image from "next/image"
 import { notFound } from "next/navigation"
 import { requirePlayer } from "@/lib/auth/player"
-import { fetchScript, checkScriptAccess } from "@/lib/queries/scripts"
+import { fetchPlayerActivitySettings } from "@/lib/player-activity/queries"
+import { fetchAuthorizedScriptContent, fetchPlayerScriptMetadata } from "@/lib/queries/scripts"
 import { getTranslations, getLocale } from "next-intl/server"
 import { TagBadge } from "@/components/shared/TagBadge"
 import { ScriptRoleList } from "@/components/player/ScriptRoleList"
@@ -19,23 +20,25 @@ export default async function ScriptDetailPage({ params }: Props) {
   const player = await requirePlayer()
   const { id } = await params
 
-  let script
-  try {
-    script = await fetchScript(id)
-  } catch {
-    notFound()
-  }
+  const [script, settings] = await Promise.all([
+    fetchPlayerScriptMetadata(id),
+    fetchPlayerActivitySettings(),
+  ]).catch(() => notFound())
 
-  if (!script.is_published) notFound()
+  if (!script) notFound()
+  const detailEnabled = settings.scriptLibraryEnabled
+    || (settings.socialScriptsEnabled && script.is_social_script)
+  if (!detailEnabled) notFound()
 
-  const canViewFull = await checkScriptAccess(id, player.memberId)
+  const protectedContent = await fetchAuthorizedScriptContent(id, player.memberId)
+  const canViewFull = protectedContent.canViewFull
   const t = await getTranslations("scriptDetail")
   const locale = await getLocale()
   const diffRaw = SCRIPT_DIFFICULTY_OPTIONS.find((d) => d.value === script.difficulty)?.label ?? script.difficulty ?? ""
   const diffLabel = localizeTag(diffRaw, locale)
   const coverUrl = rewriteStorageUrl(script.cover_url)
-  const pdfUrl = rewriteStorageUrl(script.pdf_url)
-  const pageImages = script.page_images?.map((url) => rewriteStorageUrl(url) ?? url) ?? []
+  const pdfUrl = protectedContent.pdfUrl
+  const pageImages = protectedContent.pageImageUrls
 
   return (
     <div className="p-4 max-w-lg mx-auto space-y-5 pb-24">
@@ -74,23 +77,25 @@ export default async function ScriptDetailPage({ params }: Props) {
         </div>
       )}
 
-      {/* Content HTML */}
-      {script.content_html && (
+      {/* Public Player metadata */}
+      {script.description && (
         <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
           <h3 className="text-sm font-semibold mb-2">{t("intro")}</h3>
-          <div className="text-sm leading-relaxed whitespace-pre-wrap">{script.content_html.replace(/<[^>]*>/g, "")}</div>
+          <div className="text-sm leading-relaxed whitespace-pre-wrap">{script.description}</div>
         </div>
       )}
 
-      {/* Description fallback */}
-      {!script.content_html && script.description && (
+      {/* Authorized core content */}
+      {canViewFull && protectedContent.coreContentHtml && (
         <div className="rounded-xl bg-card p-4 ring-1 ring-foreground/10">
-          <p className="text-sm leading-relaxed">{script.description}</p>
+          <div className="text-sm leading-relaxed whitespace-pre-wrap">{plainText(protectedContent.coreContentHtml)}</div>
         </div>
       )}
 
       {/* Roles */}
-      <ScriptRoleList roles={script.roles as { name: string; gender?: string; description?: string }[] | null} />
+      {canViewFull ? (
+        <ScriptRoleList roles={protectedContent.roles as { name: string; gender?: string; description?: string }[] | null} />
+      ) : null}
 
       {/* 翻页书阅读器 / 权限控制 */}
       {canViewFull && pageImages.length > 0 ? (
@@ -114,6 +119,7 @@ function CoverImage({ url, title }: { url: string | null; title: string }) {
         alt={title}
         width={900}
         height={1200}
+        unoptimized={url.startsWith("https://")}
         sizes="(min-width: 1024px) 32rem, 100vw"
         className="aspect-[3/4] w-full rounded-xl object-cover"
       />
@@ -154,10 +160,16 @@ function AccessSection({ canViewFull, pdfUrl, viewFullLabel, needAccessLabel }: 
     )
   }
 
+  if (canViewFull) return null
+
   return (
     <div className="flex items-center gap-2 rounded-xl bg-muted p-4 text-sm text-muted-foreground">
       <Lock className="size-4 shrink-0" />
       <span>{needAccessLabel}</span>
     </div>
   )
+}
+
+function plainText(value: string) {
+  return value.replace(/<[^>]*>/g, "").trim()
 }

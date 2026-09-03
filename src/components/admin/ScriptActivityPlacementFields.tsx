@@ -3,6 +3,8 @@
 import { NumInput } from "@/components/admin/FormInputs"
 
 interface Props {
+  isPlayerVisible: boolean
+  onIsPlayerVisibleChange: (value: boolean) => void
   isSocialScript: boolean
   onIsSocialScriptChange: (value: boolean) => void
   showOnPlayerActivity: boolean
@@ -26,6 +28,19 @@ export function ScriptActivityPlacementFields(props: Props) {
       </div>
 
       <ToggleField
+        checked={props.isPlayerVisible}
+        onChange={(value) => {
+          props.onIsPlayerVisibleChange(value)
+          if (!value) {
+            props.onShowOnPlayerActivityChange(false)
+            props.onPinInSocialLibraryChange(false)
+          }
+        }}
+        label="在玩家端显示"
+        hint="这是玩家端总开关，与官网发布状态互不影响。"
+      />
+
+      <ToggleField
         checked={props.isSocialScript}
         onChange={(value) => {
           props.onIsSocialScriptChange(value)
@@ -40,15 +55,15 @@ export function ScriptActivityPlacementFields(props: Props) {
       <ToggleField
         checked={props.showOnPlayerActivity}
         onChange={props.onShowOnPlayerActivityChange}
-        disabled={!props.isSocialScript}
+        disabled={!props.isPlayerVisible || !props.isSocialScript}
         label="在活动父菜单展示"
-        hint="仍需保持剧本为“已发布”，并受首页展示数量限制。"
+        hint="只依赖玩家端总开关与社交剧本类别，并受首页展示数量限制。"
       />
       <NumInput label="活动父菜单排序" value={props.playerActivityOrder} onChange={props.onPlayerActivityOrderChange} />
       <ToggleField
         checked={props.pinInSocialLibrary}
         onChange={props.onPinInSocialLibraryChange}
-        disabled={!props.isSocialScript}
+        disabled={!props.isPlayerVisible || !props.isSocialScript}
         label="在社交剧本库置顶"
         hint="置顶内容会优先于普通剧本显示。"
       />

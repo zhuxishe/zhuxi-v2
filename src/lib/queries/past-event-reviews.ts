@@ -1,6 +1,7 @@
 import type { Json } from "@/types/database.types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
+import { sanitizePostgrestValue } from "@/lib/sanitize"
 
 export interface PastEventReview {
   id: string
@@ -25,13 +26,21 @@ export interface PastEventReview {
   capacity_note: string | null
   capacity_note_ja: string | null
   registration_url: string | null
+  registration_status: "open" | "closed" | "coming_soon" | "ended"
+  registration_deadline: string | null
+  registration_label: string | null
   status: string
   is_published: boolean
+  is_player_visible: boolean
   sort_order: number
   show_on_player_home: boolean
   player_home_order: number
   pin_in_player_library: boolean
   player_library_order: number
+  archived_at: string | null
+  archived_by: string | null
+  archive_reason: string | null
+  audit_reason: string | null
   created_at: string
   updated_at: string
 }
@@ -49,6 +58,17 @@ export type PastEventReviewPublic = Pick<
 export interface PastEventReviewAdminState {
   reviews: PastEventReview[]
   setupRequired: boolean
+  total: number
+  page: number
+  pageSize: number
+}
+
+export interface PastEventReviewAdminOptions {
+  search?: string
+  status?: "draft" | "published" | "cancelled"
+  archived?: boolean
+  page?: number
+  pageSize?: number
 }
 
 export interface PastEventReviewsPublicState {
@@ -140,6 +160,7 @@ async function queryPublishedPastEventReviews(supabase: ServerSupabaseClient, co
     .from("past_event_reviews")
     .select(columns)
     .eq("is_published", true)
+    .is("archived_at", null)
     .order("sort_order", { ascending: true })
     .order("event_date", { ascending: false })
     .order("created_at", { ascending: false })
@@ -150,9 +171,9 @@ export async function fetchPublishedPastEventReviewsState(locale = "zh"): Promis
   let result = await queryPublishedPastEventReviews(supabase, SHARED_PUBLIC_REVIEW_COLUMNS)
   let sharedCatalogueReady = true
 
-  // Deployments can serve the new app before the shared activity columns have
-  // reached Supabase. Retry with the legacy projection so /reviews keeps its
-  // existing database rows and static fallback instead of failing the page.
+  // During the Expand rollout, retry the older projection when only the shared
+  // catalogue columns are missing. A successful empty database result stays
+  // empty; the public page no longer resurrects bundled static reviews.
   if (result.error && isMissingSharedReviewColumns(result.error)) {
     sharedCatalogueReady = false
     result = await queryPublishedPastEventReviews(supabase, LEGACY_PUBLIC_REVIEW_COLUMNS)
@@ -169,14 +190,41 @@ export async function fetchPublishedPastEventReviews(locale = "zh"): Promise<Pas
   return (await fetchPublishedPastEventReviewsState(locale)).reviews
 }
 
-export async function fetchPastEventReviewAdminState(): Promise<PastEventReviewAdminState> {
+export async function fetchPastEventReviewAdminState(
+  options: PastEventReviewAdminOptions = {},
+): Promise<PastEventReviewAdminState> {
   const supabase = createAdminClient()
+  const requestedPage = Number.isSafeInteger(options.page) && (options.page ?? 0) > 0 ? options.page! : 1
+  const pageSize = Number.isSafeInteger(options.pageSize) && (options.pageSize ?? 0) > 0
+    ? Math.min(options.pageSize!, 100)
+    : 20
+  const from = (requestedPage - 1) * pageSize
+  const to = from + pageSize - 1
+  let query = supabase
+    .from("past_event_reviews")
+    .select("*", { count: "exact" })
+    .order("sort_order", { ascending: true })
+    .order("event_date", { ascending: false })
+    .order("created_at", { ascending: false })
+    .range(from, to)
+
+  query = options.archived
+    ? query.not("archived_at", "is", null)
+    : query.is("archived_at", null)
+  if (options.status) query = query.eq("status", options.status)
+  const search = sanitizePostgrestValue((options.search?.trim() ?? "").slice(0, 100))
+  if (search) {
+    query = query.or([
+      `title.ilike.%${search}%`,
+      `title_ja.ilike.%${search}%`,
+      `summary.ilike.%${search}%`,
+      `location.ilike.%${search}%`,
+      `source_key.ilike.%${search}%`,
+    ].join(","))
+  }
+
   const [reviewsResult, settingsResult] = await Promise.all([
-    supabase
-      .from("past_event_reviews")
-      .select("*")
-      .order("sort_order", { ascending: true })
-      .order("event_date", { ascending: false }),
+    query,
     supabase
       .from("player_activity_settings")
       .select("id")
@@ -185,11 +233,25 @@ export async function fetchPastEventReviewAdminState(): Promise<PastEventReviewA
   ])
   const { data, error } = reviewsResult
 
-  if (error && isMissingReviewsTable(error)) return { reviews: [], setupRequired: true }
+  if (error && (isMissingReviewsTable(error) || isMissingPlayerActivitySchema(error))) {
+    return { reviews: [], setupRequired: true, total: 0, page: requestedPage, pageSize }
+  }
   if (error) throw error
   if (settingsResult.error && isMissingPlayerActivitySchema(settingsResult.error)) {
-    return { reviews: (data ?? []).map((row) => mapReview(row)), setupRequired: true }
+    return {
+      reviews: (data ?? []).map((row) => mapReview(row)),
+      setupRequired: true,
+      total: reviewsResult.count ?? 0,
+      page: requestedPage,
+      pageSize,
+    }
   }
   if (settingsResult.error) throw settingsResult.error
-  return { reviews: (data ?? []).map((row) => mapReview(row)), setupRequired: false }
+  return {
+    reviews: (data ?? []).map((row) => mapReview(row)),
+    setupRequired: false,
+    total: reviewsResult.count ?? 0,
+    page: requestedPage,
+    pageSize,
+  }
 }

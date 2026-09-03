@@ -10,6 +10,7 @@ import { cache } from "react"
 export interface PlayerInfo {
   memberId: string
   memberNumber: string | null
+  membershipType: string | null
   name: string
   status: string
   accountStatus: string
@@ -48,6 +49,7 @@ export const getPlayerInfo = cache(async (): Promise<PlayerInfo | null> => {
     return {
       memberId: member.memberId,
       memberNumber: member.memberNumber,
+      membershipType: member.membershipType,
       name: member.fullName ?? "Player",
       status: member.status,
       accountStatus: member.accountStatus,
@@ -76,6 +78,7 @@ export async function requirePlayer(): Promise<PlayerInfo> {
   if (player.accountStatus !== "active") redirect("/app/inactive")
   if (player.status === "inactive") redirect("/app/inactive")
   if (player.status !== "approved") redirect("/app")
+  if (player.membershipType !== "player") redirect("/app/inactive")
   return player
 }
 

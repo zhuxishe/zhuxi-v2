@@ -82,6 +82,7 @@ export function FlipBookViewer({ pages, title }: Props) {
               alt={t("pageAlt", { title: title ?? "", page: i + 1 })}
               width={900}
               height={1200}
+              unoptimized
               sizes="100vw"
               priority={i === 0}
               className="w-full h-auto shrink-0"

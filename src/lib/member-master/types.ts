@@ -23,6 +23,7 @@ export interface OnboardingSaveRecord extends MemberMasterRecord {
 export interface CanonicalMemberSnapshot {
   memberId: string
   memberNumber: string | null
+  membershipType: string | null
   status: string
   accountStatus: AccountStatus | string
   profileStage: ProfileStage | string

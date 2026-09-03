@@ -1023,6 +1023,53 @@ export type Database = {
         }
         Relationships: []
       }
+      content_media_cleanup_jobs: {
+        Row: {
+          bucket_id: string
+          content_id: string
+          content_kind: string
+          created_at: string
+          created_by: string | null
+          id: string
+          last_attempted_at: string | null
+          last_error: string | null
+          object_paths: string[]
+          reason: string
+        }
+        Insert: {
+          bucket_id: string
+          content_id: string
+          content_kind: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_attempted_at?: string | null
+          last_error?: string | null
+          object_paths: string[]
+          reason: string
+        }
+        Update: {
+          bucket_id?: string
+          content_id?: string
+          content_kind?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_attempted_at?: string | null
+          last_error?: string | null
+          object_paths?: string[]
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_media_cleanup_jobs_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       homepage_school_stats: {
         Row: {
           featured_schools: Json
@@ -2250,6 +2297,10 @@ export type Database = {
       }
       past_event_reviews: {
         Row: {
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
+          audit_reason: string | null
           capacity_note: string | null
           capacity_note_ja: string | null
           content: string | null
@@ -2262,12 +2313,16 @@ export type Database = {
           fee_note_ja: string | null
           gallery_urls: Json
           id: string
+          is_player_visible: boolean
           is_published: boolean
           location: string | null
           location_ja: string | null
           pin_in_player_library: boolean
           player_home_order: number
           player_library_order: number
+          registration_deadline: string | null
+          registration_label: string | null
+          registration_status: string
           registration_url: string | null
           show_on_player_home: boolean
           sort_order: number
@@ -2283,6 +2338,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          audit_reason?: string | null
           capacity_note?: string | null
           capacity_note_ja?: string | null
           content?: string | null
@@ -2295,12 +2354,16 @@ export type Database = {
           fee_note_ja?: string | null
           gallery_urls?: Json
           id?: string
+          is_player_visible?: boolean
           is_published?: boolean
           location?: string | null
           location_ja?: string | null
           pin_in_player_library?: boolean
           player_home_order?: number
           player_library_order?: number
+          registration_deadline?: string | null
+          registration_label?: string | null
+          registration_status?: string
           registration_url?: string | null
           show_on_player_home?: boolean
           sort_order?: number
@@ -2316,6 +2379,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          audit_reason?: string | null
           capacity_note?: string | null
           capacity_note_ja?: string | null
           content?: string | null
@@ -2328,12 +2395,16 @@ export type Database = {
           fee_note_ja?: string | null
           gallery_urls?: Json
           id?: string
+          is_player_visible?: boolean
           is_published?: boolean
           location?: string | null
           location_ja?: string | null
           pin_in_player_library?: boolean
           player_home_order?: number
           player_library_order?: number
+          registration_deadline?: string | null
+          registration_label?: string | null
+          registration_status?: string
           registration_url?: string | null
           show_on_player_home?: boolean
           sort_order?: number
@@ -2348,7 +2419,15 @@ export type Database = {
           title_ja?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "past_event_reviews_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       personality_quiz_config: {
         Row: {
@@ -2438,20 +2517,35 @@ export type Database = {
       }
       player_activity_settings: {
         Row: {
+          audit_reason: string | null
           id: number
+          large_activities_enabled: boolean
+          large_home_limit: number
+          script_library_enabled: boolean
           social_home_limit: number
+          social_scripts_enabled: boolean
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          audit_reason?: string | null
           id?: number
+          large_activities_enabled?: boolean
+          large_home_limit?: number
+          script_library_enabled?: boolean
           social_home_limit?: number
+          social_scripts_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          audit_reason?: string | null
           id?: number
+          large_activities_enabled?: boolean
+          large_home_limit?: number
+          script_library_enabled?: boolean
           social_home_limit?: number
+          social_scripts_enabled?: boolean
           updated_at?: string
           updated_by?: string | null
         }
@@ -2531,11 +2625,17 @@ export type Database = {
           can_view_full: boolean
           comment: string | null
           created_at: string
+          expires_at: string | null
+          granted_at: string
+          granted_by: string | null
           id: string
           member_id: string
           played_at: string | null
           rating: number | null
+          revoked_at: string | null
+          revoked_by: string | null
           script_id: string
+          updated_at: string
         }
         Insert: {
           activity_id?: string | null
@@ -2543,11 +2643,17 @@ export type Database = {
           can_view_full?: boolean
           comment?: string | null
           created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string | null
           id?: string
           member_id: string
           played_at?: string | null
           rating?: number | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           script_id: string
+          updated_at?: string
         }
         Update: {
           activity_id?: string | null
@@ -2555,11 +2661,17 @@ export type Database = {
           can_view_full?: boolean
           comment?: string | null
           created_at?: string
+          expires_at?: string | null
+          granted_at?: string
+          granted_by?: string | null
           id?: string
           member_id?: string
           played_at?: string | null
           rating?: number | null
+          revoked_at?: string | null
+          revoked_by?: string | null
           script_id?: string
+          updated_at?: string
         }
         Relationships: [
           {
@@ -2570,10 +2682,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "script_play_records_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "script_play_records_member_id_fkey"
             columns: ["member_id"]
             isOneToOne: false
             referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "script_play_records_revoked_by_fkey"
+            columns: ["revoked_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
             referencedColumns: ["id"]
           },
           {
@@ -2585,8 +2711,66 @@ export type Database = {
           },
         ]
       }
+      script_protected_content: {
+        Row: {
+          audit_reason: string | null
+          core_content_html: string | null
+          created_at: string
+          page_count: number
+          page_image_paths: string[]
+          pdf_storage_path: string | null
+          roles: Json | null
+          script_id: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          audit_reason?: string | null
+          core_content_html?: string | null
+          created_at?: string
+          page_count?: number
+          page_image_paths?: string[]
+          pdf_storage_path?: string | null
+          roles?: Json | null
+          script_id: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          audit_reason?: string | null
+          core_content_html?: string | null
+          created_at?: string
+          page_count?: number
+          page_image_paths?: string[]
+          pdf_storage_path?: string | null
+          roles?: Json | null
+          script_id?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "script_protected_content_script_id_fkey"
+            columns: ["script_id"]
+            isOneToOne: true
+            referencedRelation: "scripts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "script_protected_content_updated_by_fkey"
+            columns: ["updated_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scripts: {
         Row: {
+          archive_reason: string | null
+          archived_at: string | null
+          archived_by: string | null
+          audit_reason: string | null
           author: string | null
           budget: string | null
           content_html: string | null
@@ -2599,6 +2783,7 @@ export type Database = {
           genre_tags: string[]
           id: string
           is_featured: boolean
+          is_player_visible: boolean
           is_published: boolean
           is_social_script: boolean
           language: string | null
@@ -2622,6 +2807,10 @@ export type Database = {
           warnings: string[]
         }
         Insert: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          audit_reason?: string | null
           author?: string | null
           budget?: string | null
           content_html?: string | null
@@ -2634,6 +2823,7 @@ export type Database = {
           genre_tags?: string[]
           id?: string
           is_featured?: boolean
+          is_player_visible?: boolean
           is_published?: boolean
           is_social_script?: boolean
           language?: string | null
@@ -2657,6 +2847,10 @@ export type Database = {
           warnings?: string[]
         }
         Update: {
+          archive_reason?: string | null
+          archived_at?: string | null
+          archived_by?: string | null
+          audit_reason?: string | null
           author?: string | null
           budget?: string | null
           content_html?: string | null
@@ -2669,6 +2863,7 @@ export type Database = {
           genre_tags?: string[]
           id?: string
           is_featured?: boolean
+          is_player_visible?: boolean
           is_published?: boolean
           is_social_script?: boolean
           language?: string | null
@@ -2692,6 +2887,13 @@ export type Database = {
           warnings?: string[]
         }
         Relationships: [
+          {
+            foreignKeyName: "scripts_archived_by_fkey"
+            columns: ["archived_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "scripts_created_by_fkey"
             columns: ["created_by"]
@@ -2909,6 +3111,38 @@ export type Database = {
           p_reason: string
         }
         Returns: Json
+      }
+      admin_hard_delete_past_event_review_v2: {
+        Args: {
+          p_expected_updated_at: string
+          p_reason: string
+          p_review_id: string
+        }
+        Returns: undefined
+      }
+      admin_hard_delete_script_v2: {
+        Args: {
+          p_expected_updated_at: string
+          p_reason: string
+          p_script_id: string
+        }
+        Returns: undefined
+      }
+      content_media_cleanup_complete_claims_v2: {
+        Args: {
+          p_bucket_id: string
+          p_job_id: string
+          p_object_paths: string[]
+        }
+        Returns: undefined
+      }
+      content_media_cleanup_referenced_paths_v2: {
+        Args: {
+          p_bucket_id: string
+          p_job_id: string
+          p_object_paths: string[]
+        }
+        Returns: string[]
       }
       admin_list_member_audit: {
         Args: { p_member_id: string; p_page?: number; p_page_size?: number }
@@ -3388,12 +3622,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3417,11 +3651,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3442,11 +3676,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3467,11 +3701,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -3484,11 +3718,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }

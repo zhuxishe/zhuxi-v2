@@ -6,28 +6,33 @@ import {
   removeStorageObjectsOrQueue,
   runContentMediaCleanupJobsForContent,
 } from "@/lib/content-media-cleanup"
-import { validateSafeImageFile, imageExtension } from "@/lib/file-validation"
 import { managedContentImageUrlIsCanonical } from "@/lib/content-media-url"
+import {
+  type DirectImageUploadMetadata,
+  validateDirectImageUploadMetadata,
+  validateDirectlyUploadedImage,
+} from "@/lib/direct-image-upload"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 
-export async function uploadScriptCover(
+const SCRIPT_COVER_BUCKET = "scripts-covers"
+const MAX_SCRIPT_COVER_BYTES = 5 * 1024 * 1024
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+export async function prepareScriptCoverUpload(
   scriptId: string,
-  formData: FormData,
+  fileMetadata: DirectImageUploadMetadata,
+  rawReason: string,
   expectedCoverUrl: string | null,
 ) {
-  const admin = await requireAdmin()
+  await requireAdmin()
+  if (!UUID_PATTERN.test(scriptId)) return { error: "剧本编号无效" }
   if (!isNullableString(expectedCoverUrl)) return { error: "封面版本信息无效，请刷新后重试" }
-  const reasonResult = normalizeAdminAuditReason(String(formData.get("auditReason") ?? ""))
+  const reasonResult = normalizeAdminAuditReason(rawReason)
   if (!reasonResult.ok) return { error: reasonResult.error }
-  const file = formData.get("file") as File | null
-  if (!file) return { error: "文件不能为空" }
-  const validation = await validateSafeImageFile(file)
-  if (!validation.valid) return { error: validation.error }
-  if (file.size > 5 * 1024 * 1024) return { error: "文件大小不能超过 5MB" }
-  const ext = imageExtension(file.type)
-  if (!ext) return { error: "仅支持 JPG / PNG / WebP" }
+  const metadata = validateDirectImageUploadMetadata(fileMetadata, MAX_SCRIPT_COVER_BYTES)
+  if (!metadata.ok) return { error: metadata.error }
 
   const db = await createClient()
   const { data: current, error: lookupError } = await db
@@ -39,51 +44,102 @@ export async function uploadScriptCover(
   if (current.archived_at) return { error: "回收站中的剧本不能更换封面" }
   if (current.cover_url !== expectedCoverUrl) return { error: "封面已被其他管理员修改，请刷新后重试" }
 
-  const storage = createAdminClient().storage.from("scripts-covers")
-  const path = `covers/${scriptId}/${crypto.randomUUID()}.${ext}`
-  const { error: uploadError } = await storage.upload(path, file, {
-    contentType: file.type,
-    upsert: false,
-  })
-  if (uploadError) {
-    const cleanup = await removeStorageObjectsOrQueue({
-      contentKind: "script",
-      contentId: scriptId,
-      bucketId: "scripts-covers",
-      objectPaths: [path],
-      reason: reasonResult.reason,
-      createdBy: admin.id,
-    })
-    console.error("[uploadScriptCover]", uploadError)
-    return { error: cleanup.success ? "封面上传失败" : `封面上传失败；${cleanup.error}` }
+  const path = `covers/${scriptId}/${crypto.randomUUID()}.${metadata.extension}`
+  const { data: signed, error: signedError } = await createAdminClient().storage
+    .from(SCRIPT_COVER_BUCKET)
+    .createSignedUploadUrl(path, { upsert: false })
+  if (signedError || !signed) {
+    console.error("[prepareScriptCoverUpload]", signedError)
+    return { error: "无法准备封面上传，请稍后重试" }
+  }
+  return {
+    success: true,
+    bucket: SCRIPT_COVER_BUCKET,
+    path,
+    token: signed.token,
+    preparedUpdatedAt: current.updated_at,
+  }
+}
+
+export async function finalizeScriptCoverUpload(
+  scriptId: string,
+  objectPath: string,
+  rawReason: string,
+  expectedCoverUrl: string | null,
+  preparedUpdatedAt: string,
+) {
+  const admin = await requireAdmin()
+  if (!UUID_PATTERN.test(scriptId) || !scriptCoverPathIsValid(objectPath, scriptId)) {
+    return { error: "封面上传路径无效" }
+  }
+  if (!isNullableString(expectedCoverUrl) || !validRevision(preparedUpdatedAt)) {
+    return { error: "封面版本信息无效，请刷新后重试" }
+  }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+
+  const storage = createAdminClient().storage.from(SCRIPT_COVER_BUCKET)
+  const { data: urlData } = storage.getPublicUrl(objectPath)
+  const db = await createClient()
+  const { data: current, error: lookupError } = await db
+    .from("scripts")
+    .select("cover_url, archived_at, updated_at")
+    .eq("id", scriptId)
+    .maybeSingle()
+
+  // The database may have committed even if the browser lost the response.
+  if (current?.cover_url && managedScriptCoverPath(current.cover_url, scriptId) === objectPath) {
+    return { success: true, url: current.cover_url, updatedAt: current.updated_at }
+  }
+  if (lookupError || !current || current.archived_at) {
+    const cleanup = await discardPreparedScriptCover(admin.id, scriptId, objectPath, reasonResult.reason)
+    return { error: cleanup.success ? "剧本不存在或已进入回收站" : `剧本不存在或已进入回收站；${cleanup.error}` }
+  }
+  if (current.cover_url !== expectedCoverUrl || current.updated_at !== preparedUpdatedAt) {
+    const cleanup = await discardPreparedScriptCover(admin.id, scriptId, objectPath, reasonResult.reason)
+    return { error: cleanup.success ? "封面已被其他管理员修改，请刷新后重试" : `封面已被其他管理员修改；${cleanup.error}` }
   }
 
-  const { data: urlData } = storage.getPublicUrl(path)
+  const validation = await validateDirectlyUploadedImage(
+    SCRIPT_COVER_BUCKET,
+    objectPath,
+    MAX_SCRIPT_COVER_BYTES,
+  )
+  if (!validation.ok) {
+    const cleanup = await discardPreparedScriptCover(admin.id, scriptId, objectPath, reasonResult.reason)
+    return { error: cleanup.success ? validation.error : `${validation.error}；${cleanup.error}` }
+  }
+
   const { data: updated, error: dbError } = await db
     .from("scripts")
     .update({ cover_url: urlData.publicUrl, audit_reason: reasonResult.reason })
     .eq("id", scriptId)
-    .eq("updated_at", current.updated_at)
+    .eq("updated_at", preparedUpdatedAt)
     .is("archived_at", null)
     .select("id, updated_at")
     .maybeSingle()
   if (dbError || !updated) {
-    const cleanup = await removeStorageObjectsOrQueue({
-      contentKind: "script",
-      contentId: scriptId,
-      bucketId: "scripts-covers",
-      objectPaths: [path],
-      reason: reasonResult.reason,
-      createdBy: admin.id,
-    })
-    console.error("[uploadScriptCover:db]", dbError)
+    if (dbError) console.error("[finalizeScriptCoverUpload:db]", dbError)
+    const { data: committed, error: confirmError } = await db
+      .from("scripts")
+      .select("cover_url, updated_at")
+      .eq("id", scriptId)
+      .maybeSingle()
+    if (committed?.cover_url && managedScriptCoverPath(committed.cover_url, scriptId) === objectPath) {
+      revalidateScriptPaths(scriptId)
+      return { success: true, url: committed.cover_url, updatedAt: committed.updated_at }
+    }
+    if (confirmError) {
+      return { error: "封面保存结果无法确认，请刷新页面核对后再操作" }
+    }
+    const cleanup = await discardPreparedScriptCover(admin.id, scriptId, objectPath, reasonResult.reason)
     return {
       error: `${dbError ? "封面记录保存失败" : "剧本状态已经变化，封面未保存"}${cleanup.success ? "" : `；${cleanup.error}`}`,
     }
   }
 
   const oldPath = current.cover_url ? managedScriptCoverPath(current.cover_url, scriptId) : null
-  if (oldPath && oldPath !== path) {
+  if (oldPath && oldPath !== objectPath) {
     const cleanup = await runContentMediaCleanupJobsForContent("script", scriptId)
     if (cleanup.error) {
       revalidateScriptPaths(scriptId)
@@ -92,6 +148,21 @@ export async function uploadScriptCover(
   }
   revalidateScriptPaths(scriptId)
   return { success: true, url: urlData.publicUrl, updatedAt: updated.updated_at }
+}
+
+export async function discardScriptCoverUpload(
+  scriptId: string,
+  objectPath: string,
+  rawReason: string,
+) {
+  const admin = await requireAdmin()
+  if (!UUID_PATTERN.test(scriptId) || !scriptCoverPathIsValid(objectPath, scriptId)) {
+    return { error: "封面上传路径无效" }
+  }
+  const reasonResult = normalizeAdminAuditReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  const cleanup = await discardPreparedScriptCover(admin.id, scriptId, objectPath, reasonResult.reason)
+  return cleanup.success ? { success: true } : { error: cleanup.error }
 }
 
 export async function removeScriptCover(
@@ -314,6 +385,42 @@ function isAllowedExternalImageUrl(value: string) {
   } catch {
     return false
   }
+}
+
+function scriptCoverPathIsValid(path: string, scriptId: string) {
+  if (!path.startsWith(`covers/${scriptId}/`) || path.length > 500) return false
+  const filename = path.slice(`covers/${scriptId}/`.length)
+  const dot = filename.lastIndexOf(".")
+  if (dot < 1) return false
+  return UUID_PATTERN.test(filename.slice(0, dot))
+    && ["jpg", "png", "webp"].includes(filename.slice(dot + 1))
+    && !path.includes("..")
+    && !path.includes("\\")
+    && !path.includes("?")
+    && !path.includes("#")
+}
+
+function validRevision(value: unknown): value is string {
+  return typeof value === "string"
+    && value.length >= 20
+    && value.length <= 40
+    && Number.isFinite(Date.parse(value))
+}
+
+async function discardPreparedScriptCover(
+  adminId: string,
+  scriptId: string,
+  objectPath: string,
+  reason: string,
+) {
+  return removeStorageObjectsOrQueue({
+    contentKind: "script",
+    contentId: scriptId,
+    bucketId: SCRIPT_COVER_BUCKET,
+    objectPaths: [objectPath],
+    reason,
+    createdBy: adminId,
+  })
 }
 
 function isNullableString(value: unknown): value is string | null {

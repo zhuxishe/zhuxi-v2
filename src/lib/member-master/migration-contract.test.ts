@@ -106,6 +106,14 @@ const historicalRecordArchiveMigration = readFileSync(
   "utf8",
 )
 
+const directMediaUploadMigration = readFileSync(
+  join(
+    process.cwd(),
+    "supabase/migrations/20260903104500_content_media_direct_upload_limits.sql",
+  ),
+  "utf8",
+)
+
 const releaseDependencyRelations = [
   "auth.users",
   "private.community_comment_authors",
@@ -500,8 +508,8 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(65)
-    expect(runbook).toContain("当前仓库共有 65 条 migration")
+    expect(migrationNames).toHaveLength(66)
+    expect(runbook).toContain("当前仓库共有 66 条 migration")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
     )
@@ -523,6 +531,26 @@ describe("user/member master migration contract", () => {
     expect(runbook).toContain(
       "20260903094017_fix_admin_delete_admin_user_content_v2_audit_reason.sql",
     )
+    expect(runbook).toContain(
+      "20260903104500_content_media_direct_upload_limits.sql",
+    )
+  })
+
+  it("keeps direct media uploads contract-gated and Storage-enforced", () => {
+    expect(directMediaUploadMigration).toContain(
+      "CONTENT_V2_DIRECT_UPLOAD_REQUIRES_CONTRACT",
+    )
+    expect(directMediaUploadMigration).toContain("file_size_limit = 5242880")
+    expect(directMediaUploadMigration).toContain("file_size_limit = 8388608")
+    expect(directMediaUploadMigration).toContain(
+      "ARRAY['image/jpeg', 'image/png', 'image/webp']::text[]",
+    )
+    for (const operation of ["INSERT", "UPDATE", "DELETE"]) {
+      expect(directMediaUploadMigration).toContain(
+        `FOR ${operation} TO anon, authenticated`,
+      )
+    }
+    expect(directMediaUploadMigration).toMatch(/BEGIN;[\s\S]*COMMIT;\s*$/)
   })
 
   it("archives reference-only shells without enabling name or email binding", () => {

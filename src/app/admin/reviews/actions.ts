@@ -7,7 +7,11 @@ import {
   removeStorageObjectsOrQueue,
   runContentMediaCleanupJobsForContent,
 } from "@/lib/content-media-cleanup"
-import { validateSafeImageFile, imageExtension } from "@/lib/file-validation"
+import {
+  type DirectImageUploadMetadata,
+  validateDirectImageUploadMetadata,
+  validateDirectlyUploadedImage,
+} from "@/lib/direct-image-upload"
 import { managedContentImageUrlIsCanonical } from "@/lib/content-media-url"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -523,14 +527,14 @@ export async function permanentlyDeletePastEventReview(id: string, rawReason: st
   return { success: true }
 }
 
-export async function uploadPastEventReviewMedia(
+export async function preparePastEventReviewMediaUpload(
   id: string,
   kind: "cover" | "gallery",
-  formData: FormData,
+  fileMetadata: DirectImageUploadMetadata,
   rawReason: string,
   expectedUpdatedAt: string,
 ) {
-  const admin = await requireAdmin()
+  await requireAdmin()
   const idError = validateReviewId(id)
   if (idError) return { error: idError }
   const reasonResult = validateReason(rawReason)
@@ -538,17 +542,10 @@ export async function uploadPastEventReviewMedia(
   const revisionResult = validateExpectedUpdatedAt(expectedUpdatedAt)
   if (!revisionResult.ok) return { error: revisionResult.error }
   if (kind !== "cover" && kind !== "gallery") return { error: "图片类型无效" }
-
-  const file = formData.get("file")
-  if (!(file instanceof File) || file.size === 0) return { error: "请选择图片文件" }
-  const validation = await validateSafeImageFile(file)
-  if (!validation.valid) return { error: validation.error }
-  if (file.size > MAX_ACTIVITY_IMAGE_BYTES) return { error: "图片不能超过 8MB" }
-  const extension = imageExtension(file.type)
-  if (!extension) return { error: "仅支持 JPG / PNG / WebP" }
+  const metadata = validateDirectImageUploadMetadata(fileMetadata, MAX_ACTIVITY_IMAGE_BYTES)
+  if (!metadata.ok) return { error: metadata.error }
 
   const supabase = await createClient()
-  const storageAdmin = createAdminClient()
   const { data: review, error: reviewError } = await supabase
     .from("past_event_reviews")
     .select("cover_url, gallery_urls, archived_at, updated_at")
@@ -561,24 +558,81 @@ export async function uploadPastEventReviewMedia(
   const currentGallery = normalizeGalleryUrls(review.gallery_urls as unknown as string[])
   if (kind === "gallery" && currentGallery.length >= 30) return { error: "活动图片最多 30 张" }
 
-  const objectPath = `activities/${id}/${kind}/${crypto.randomUUID()}.${extension}`
-  const { error: uploadError } = await storageAdmin.storage
+  const objectPath = `activities/${id}/${kind}/${crypto.randomUUID()}.${metadata.extension}`
+  const { data: signed, error: signedError } = await createAdminClient().storage
     .from(ACTIVITY_MEDIA_BUCKET)
-    .upload(objectPath, file, { contentType: file.type, upsert: false })
-  if (uploadError) {
-    const cleanup = await removeStorageObjectsOrQueue({
-      contentKind: "past_event_review",
-      contentId: id,
-      bucketId: ACTIVITY_MEDIA_BUCKET,
-      objectPaths: [objectPath],
-      reason: reasonResult.reason,
-      createdBy: admin.id,
-    })
-    console.error("[uploadPastEventReviewMedia]", uploadError)
-    return { error: cleanup.success ? "图片上传失败" : `图片上传失败；${cleanup.error}` }
+    .createSignedUploadUrl(objectPath, { upsert: false })
+  if (signedError || !signed) {
+    console.error("[preparePastEventReviewMediaUpload]", signedError)
+    return { error: "无法准备图片上传，请稍后重试" }
+  }
+  return {
+    success: true,
+    bucket: ACTIVITY_MEDIA_BUCKET,
+    path: objectPath,
+    token: signed.token,
+    preparedUpdatedAt: review.updated_at,
+  }
+}
+
+export async function finalizePastEventReviewMediaUpload(
+  id: string,
+  kind: "cover" | "gallery",
+  objectPath: string,
+  rawReason: string,
+  preparedUpdatedAt: string,
+) {
+  const admin = await requireAdmin()
+  const idError = validateReviewId(id)
+  if (idError) return { error: idError }
+  const reasonResult = validateReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  const revisionResult = validateExpectedUpdatedAt(preparedUpdatedAt)
+  if (!revisionResult.ok) return { error: revisionResult.error }
+  if ((kind !== "cover" && kind !== "gallery") || !reviewMediaPathIsValid(objectPath, id, kind)) {
+    return { error: "图片上传路径无效" }
   }
 
-  const { data: urlData } = storageAdmin.storage.from(ACTIVITY_MEDIA_BUCKET).getPublicUrl(objectPath)
+  const storage = createAdminClient().storage.from(ACTIVITY_MEDIA_BUCKET)
+  const { data: urlData } = storage.getPublicUrl(objectPath)
+  const supabase = await createClient()
+  const { data: review, error: reviewError } = await supabase
+    .from("past_event_reviews")
+    .select("cover_url, gallery_urls, archived_at, updated_at")
+    .eq("id", id)
+    .maybeSingle()
+  const currentGallery = normalizeGalleryUrls(review?.gallery_urls as unknown as string[])
+
+  // A retry after a lost response must not delete the successfully committed object.
+  if (kind === "cover" && review?.cover_url === urlData.publicUrl) {
+    return { success: true, url: urlData.publicUrl, updatedAt: review.updated_at }
+  }
+  if (kind === "gallery" && currentGallery.includes(urlData.publicUrl)) {
+    return { success: true, url: urlData.publicUrl, updatedAt: review?.updated_at }
+  }
+  if (reviewError || !review || review.archived_at) {
+    const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
+    return { error: cleanup.success ? "大型活动不存在或已进入回收站" : `大型活动不存在或已进入回收站；${cleanup.error}` }
+  }
+  if (review.updated_at !== revisionResult.updatedAt) {
+    const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
+    return { error: cleanup.success ? STALE_REVIEW_ERROR : `${STALE_REVIEW_ERROR}；${cleanup.error}` }
+  }
+  if (kind === "gallery" && currentGallery.length >= 30) {
+    const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
+    return { error: cleanup.success ? "活动图片最多 30 张" : `活动图片最多 30 张；${cleanup.error}` }
+  }
+
+  const validation = await validateDirectlyUploadedImage(
+    ACTIVITY_MEDIA_BUCKET,
+    objectPath,
+    MAX_ACTIVITY_IMAGE_BYTES,
+  )
+  if (!validation.ok) {
+    const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
+    return { error: cleanup.success ? validation.error : `${validation.error}；${cleanup.error}` }
+  }
+
   const nextGallery = kind === "gallery"
     ? [...currentGallery, urlData.publicUrl]
     : undefined
@@ -589,20 +643,29 @@ export async function uploadPastEventReviewMedia(
     .from("past_event_reviews")
     .update(payload)
     .eq("id", id)
-    .eq("updated_at", revisionResult.updatedAt)
+    .eq("updated_at", preparedUpdatedAt)
     .is("archived_at", null)
     .select("id, updated_at")
     .maybeSingle()
 
   if (error || !data) {
-    const cleanup = await removeStorageObjectsOrQueue({
-      contentKind: "past_event_review",
-      contentId: id,
-      bucketId: ACTIVITY_MEDIA_BUCKET,
-      objectPaths: [objectPath],
-      reason: reasonResult.reason,
-      createdBy: admin.id,
-    })
+    const { data: committed, error: confirmError } = await supabase
+      .from("past_event_reviews")
+      .select("cover_url, gallery_urls, updated_at")
+      .eq("id", id)
+      .maybeSingle()
+    const committedGallery = normalizeGalleryUrls(committed?.gallery_urls as unknown as string[])
+    const objectWasCommitted = kind === "cover"
+      ? committed?.cover_url === urlData.publicUrl
+      : committedGallery.includes(urlData.publicUrl)
+    if (objectWasCommitted) {
+      revalidateReviewPaths(id)
+      return { success: true, url: urlData.publicUrl, updatedAt: committed?.updated_at }
+    }
+    if (confirmError) {
+      return { error: "图片保存结果无法确认，请刷新页面核对后再操作" }
+    }
+    const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
     return {
       error: `${error ? formatReviewDbError(error) : STALE_REVIEW_ERROR}${cleanup.success ? "" : `；${cleanup.error}`}`,
     }
@@ -618,6 +681,24 @@ export async function uploadPastEventReviewMedia(
   }
   revalidateReviewPaths(id)
   return { success: true, url: urlData.publicUrl, updatedAt: data.updated_at, warning }
+}
+
+export async function discardPastEventReviewMediaUpload(
+  id: string,
+  kind: "cover" | "gallery",
+  objectPath: string,
+  rawReason: string,
+) {
+  const admin = await requireAdmin()
+  const idError = validateReviewId(id)
+  if (idError) return { error: idError }
+  const reasonResult = validateReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  if ((kind !== "cover" && kind !== "gallery") || !reviewMediaPathIsValid(objectPath, id, kind)) {
+    return { error: "图片上传路径无效" }
+  }
+  const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
+  return cleanup.success ? { success: true } : { error: cleanup.error }
 }
 
 export async function removePastEventReviewGalleryImage(
@@ -693,4 +774,38 @@ function managedActivityMediaPaths(
     const path = url ? managedActivityMediaPath(url) : null
     return path && path.startsWith(`activities/${reviewId}/`) ? [path] : []
   }))]
+}
+
+function reviewMediaPathIsValid(
+  path: string,
+  reviewId: string,
+  kind: "cover" | "gallery",
+) {
+  const prefix = `activities/${reviewId}/${kind}/`
+  if (!path.startsWith(prefix) || path.length > 500) return false
+  const filename = path.slice(prefix.length)
+  const dot = filename.lastIndexOf(".")
+  if (dot < 1) return false
+  return UUID_PATTERN.test(filename.slice(0, dot))
+    && ["jpg", "png", "webp"].includes(filename.slice(dot + 1))
+    && !path.includes("..")
+    && !path.includes("\\")
+    && !path.includes("?")
+    && !path.includes("#")
+}
+
+async function discardPreparedReviewMedia(
+  adminId: string,
+  reviewId: string,
+  objectPath: string,
+  reason: string,
+) {
+  return removeStorageObjectsOrQueue({
+    contentKind: "past_event_review",
+    contentId: reviewId,
+    bucketId: ACTIVITY_MEDIA_BUCKET,
+    objectPaths: [objectPath],
+    reason,
+    createdBy: adminId,
+  })
 }

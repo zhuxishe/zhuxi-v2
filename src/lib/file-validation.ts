@@ -17,7 +17,7 @@ function startsWithBytes(bytes: Uint8Array, signature: readonly number[]) {
   return signature.every((byte, index) => bytes[index] === byte)
 }
 
-function hasValidImageSignature(type: string, bytes: Uint8Array) {
+export function hasValidImageSignature(type: string, bytes: Uint8Array) {
   const signatures = IMAGE_SIGNATURES[type as keyof typeof IMAGE_SIGNATURES]
   if (!signatures?.some((signature) => startsWithBytes(bytes, signature))) return false
   if (type !== "image/webp") return true

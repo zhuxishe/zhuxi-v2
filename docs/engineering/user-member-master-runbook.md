@@ -104,6 +104,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 13. `20260903062011_content_management_v2_expand.sql`：内容管理 V2 的兼容扩展阶段，建立官网与 Player 独立可见性、栏目开关、归档、到期授权、受保护剧本内容及媒体策略，并保留旧字段同步供应用分阶段发布。
 14. `20260903062012_content_management_v2_contract.sql`：内容管理 V2 的收口阶段；仅在兼容应用验收后执行。清空并封锁旧敏感剧本字段、私有化完整剧本 Storage、收紧列级 ACL/RLS、冻结归档内容，并为永久删除建立可恢复的媒体清理 outbox。
 15. `20260903094017_fix_admin_delete_admin_user_content_v2_audit_reason.sql`：修复成员主档管理员删除 RPC 与 Content V2 审计触发器的兼容性；在原有超级管理员、理由、并发锁、自删和最后一名超级管理员保护全部通过后，将同一理由设为事务级 Content V2 审计上下文，再执行会触发 `player_activity_settings.updated_by ON DELETE SET NULL` 的删除。RPC 签名与最小 ACL 不变。
+16. `20260903104500_content_media_direct_upload_limits.sql`：在确认 Contract 已完成后，为浏览器签名直传设置 Storage 端硬限制；剧本封面最大 5MiB、大型活动图片最大 8MiB，且仅允许 JPEG、PNG、WebP。匿名及已登录客户端对两个公开媒体桶的普通写入由 restrictive policy 拒绝，应用仍须在 finalize 阶段复验实际大小、MIME、扩展名与文件魔数。
 
 任何一步失败都必须停止；保存完整错误与已应用版本，不得在同一目标上反复重放大迁移。修正应使用新的、可审计的 forward migration。
 
@@ -115,7 +116,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 ### 历史映射
 
-- 当前仓库共有 65 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条，以及内容管理 V2 的 Expand/Contract 两条。隔离 Preview 必须按顺序登记全部 65 条；Contract 只能在兼容应用验收通过后执行，随后再应用第 15 条兼容修复。
+- 当前仓库共有 66 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条，以及媒体签名直传限制一条。隔离 Preview 必须按顺序登记全部 66 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条前向修复。
 - Production 远端登记 45 条：34 条 `202604*`、10 条 `202607*` 和 `20260806140912`。仓库的 `001`–`038`、`20260809094500`、六条成员迁移和新基线前向迁移均未以本地版本登记在 Production。
 - 34 条 April 历史中，27 条去注释/空白后与本地对应 SQL 一致；`015`–`017` 只多幂等包装；远端 `022` 加后续独立 session policy 修复后等价于当前本地 `022`。
 - 远端 `008` 历史曾把 `social_goal_secondary` 转为 `text[]`，但实际 Production catalog 已是 nullable `text`、默认 `NULL`，与代码和 Preview 类型一致。远端 `011` 没有本地的姓名回填，但 Production 8 条面试记录均已填充且与当前管理员名称一致。

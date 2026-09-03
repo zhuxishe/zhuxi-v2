@@ -7,7 +7,14 @@ import { ArrowDown, ArrowUp, ImagePlus, RefreshCw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import { rewriteStorageUrl } from "@/lib/storage-url"
-import { removePastEventReviewGalleryImage, updatePastEventReview, uploadPastEventReviewMedia } from "./actions"
+import { createClient } from "@/lib/supabase/client"
+import {
+  discardPastEventReviewMediaUpload,
+  finalizePastEventReviewMediaUpload,
+  preparePastEventReviewMediaUpload,
+  removePastEventReviewGalleryImage,
+  updatePastEventReview,
+} from "./actions"
 
 interface Props {
   reviewId: string
@@ -51,25 +58,22 @@ export function ActivityMediaManager({
     startTransition(async () => {
       setError(null)
       setMessage(null)
-      const formData = new FormData()
-      formData.set("file", coverFile)
-      const result = await uploadPastEventReviewMedia(
-        reviewId,
-        "cover",
-        formData,
-        auditReason,
-        revisionRef.current,
-      )
-      if (result.error) {
-        setError(result.error)
-        return
+      try {
+        const result = await uploadMedia("cover", coverFile)
+        if (result.error) {
+          setError(result.error)
+          return
+        }
+        adoptRevision(result)
+        setCoverFile(null)
+        if (coverInput.current) coverInput.current.value = ""
+        if (result.url) onCoverUrlChange(result.url)
+        setMessage(result.warning ?? "封面已替换")
+        router.refresh()
+      } catch (caught) {
+        console.error("[ActivityMediaManager:cover]", caught)
+        setError("图片上传响应中断，请重试；系统不会覆盖原封面。")
       }
-      adoptRevision(result)
-      setCoverFile(null)
-      if (coverInput.current) coverInput.current.value = ""
-      if (result.url) onCoverUrlChange(result.url)
-      setMessage(result.warning ?? "封面已替换")
-      router.refresh()
     })
   }
 
@@ -79,31 +83,81 @@ export function ActivityMediaManager({
       setError(null)
       setMessage(null)
       const nextGallery = [...galleryUrls]
-      for (const file of galleryFiles) {
-        const formData = new FormData()
-        formData.set("file", file)
-        const result = await uploadPastEventReviewMedia(
-          reviewId,
-          "gallery",
-          formData,
-          auditReason,
-          revisionRef.current,
-        )
-        if (result.error) {
-          onGalleryUrlsChange(nextGallery)
-          setError(`已上传部分图片；${result.error}`)
-          router.refresh()
-          return
+      try {
+        for (const file of galleryFiles) {
+          const result = await uploadMedia("gallery", file)
+          if (result.error) {
+            onGalleryUrlsChange(nextGallery)
+            setError(`已上传部分图片；${result.error}`)
+            router.refresh()
+            return
+          }
+          adoptRevision(result)
+          if (result.url && !nextGallery.includes(result.url)) nextGallery.push(result.url)
         }
-        adoptRevision(result)
-        if (result.url && !nextGallery.includes(result.url)) nextGallery.push(result.url)
+        onGalleryUrlsChange(nextGallery)
+        setGalleryFiles([])
+        if (galleryInput.current) galleryInput.current.value = ""
+        setMessage("活动图片已追加")
+        router.refresh()
+      } catch (caught) {
+        console.error("[ActivityMediaManager:gallery]", caught)
+        onGalleryUrlsChange(nextGallery)
+        setError("图片上传响应中断，已成功的图片会保留；请刷新后重试其余图片。")
+        router.refresh()
       }
-      onGalleryUrlsChange(nextGallery)
-      setGalleryFiles([])
-      if (galleryInput.current) galleryInput.current.value = ""
-      setMessage("活动图片已追加")
-      router.refresh()
     })
+  }
+
+  async function uploadMedia(
+    kind: "cover" | "gallery",
+    file: File,
+  ): Promise<{ error?: string; url?: string; updatedAt?: string; warning?: string }> {
+    const prepared = await preparePastEventReviewMediaUpload(
+      reviewId,
+      kind,
+      { size: file.size, type: file.type },
+      auditReason,
+      revisionRef.current,
+    )
+    if (prepared.error || !prepared.path || !prepared.token || !prepared.preparedUpdatedAt) {
+      return { error: prepared.error ?? "无法准备图片上传" }
+    }
+    try {
+      const { error: uploadError } = await createClient().storage
+        .from(prepared.bucket ?? "activity-media")
+        .uploadToSignedUrl(prepared.path, prepared.token, file, {
+          contentType: file.type,
+          cacheControl: "31536000",
+        })
+      if (uploadError) {
+        await discardPastEventReviewMediaUpload(reviewId, kind, prepared.path, auditReason)
+        return { error: `图片上传失败: ${uploadError.message}` }
+      }
+    } catch (caught) {
+      console.error("[ActivityMediaManager:directUpload]", caught)
+      try {
+        await discardPastEventReviewMediaUpload(reviewId, kind, prepared.path, auditReason)
+      } catch { /* retry via cleanup outbox */ }
+      return { error: "图片上传响应中断，请重试" }
+    }
+    try {
+      return await finalizePastEventReviewMediaUpload(
+        reviewId,
+        kind,
+        prepared.path,
+        auditReason,
+        prepared.preparedUpdatedAt,
+      )
+    } catch {
+      return finalizePastEventReviewMediaUpload(
+        reviewId,
+        kind,
+        prepared.path,
+        auditReason,
+        prepared.preparedUpdatedAt,
+      )
+    }
   }
 
   function removeGalleryImage(url: string) {

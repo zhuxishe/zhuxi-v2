@@ -3,7 +3,11 @@
 import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { createScript } from "@/app/admin/scripts/new/actions"
-import { uploadScriptCover } from "@/app/admin/scripts/new/upload-actions"
+import {
+  discardScriptCoverUpload,
+  finalizeScriptCoverUpload,
+  prepareScriptCoverUpload,
+} from "@/app/admin/scripts/new/upload-actions"
 import { Button } from "@/components/ui/button"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { SingleSelect } from "@/components/shared/SingleSelect"
@@ -12,6 +16,7 @@ import { ScriptActivityPlacementFields } from "@/components/admin/ScriptActivity
 import { TextInput, NumInput } from "@/components/admin/FormInputs"
 import type { ScriptRole } from "@/components/admin/ScriptRoleEditor"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
+import { createClient } from "@/lib/supabase/client"
 import {
   SCRIPT_GENRE_OPTIONS,
   SCRIPT_THEME_OPTIONS,
@@ -129,10 +134,49 @@ export function ScriptUploadForm() {
 
   async function uploadFiles(scriptId: string): Promise<string | null> {
     if (coverFile) {
-      const fd = new FormData()
-      fd.append("file", coverFile)
-      fd.append("auditReason", auditReason)
-      const res = await uploadScriptCover(scriptId, fd, null)
+      const prepared = await prepareScriptCoverUpload(
+        scriptId,
+        { size: coverFile.size, type: coverFile.type },
+        auditReason,
+        null,
+      )
+      if (prepared.error || !prepared.path || !prepared.token || !prepared.preparedUpdatedAt) {
+        return `封面上传失败: ${prepared.error ?? "无法准备上传"}`
+      }
+      try {
+        const { error: uploadError } = await createClient().storage
+          .from(prepared.bucket ?? "scripts-covers")
+          .uploadToSignedUrl(prepared.path, prepared.token, coverFile, {
+            contentType: coverFile.type,
+            cacheControl: "31536000",
+          })
+        if (uploadError) {
+          await discardScriptCoverUpload(scriptId, prepared.path, auditReason)
+          return `封面上传失败: ${uploadError.message}`
+        }
+      } catch (caught) {
+        console.error("[ScriptUploadForm:cover]", caught)
+        try { await discardScriptCoverUpload(scriptId, prepared.path, auditReason) } catch { /* retry via cleanup outbox */ }
+        return "封面上传响应中断，请在编辑页重试"
+      }
+      let res
+      try {
+        res = await finalizeScriptCoverUpload(
+          scriptId,
+          prepared.path,
+          auditReason,
+          null,
+          prepared.preparedUpdatedAt,
+        )
+      } catch {
+        res = await finalizeScriptCoverUpload(
+          scriptId,
+          prepared.path,
+          auditReason,
+          null,
+          prepared.preparedUpdatedAt,
+        )
+      }
       if (res?.error) return `封面上传失败: ${res.error}`
     }
     return null

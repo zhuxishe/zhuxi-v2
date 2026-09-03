@@ -4,9 +4,11 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateScript } from "@/app/admin/scripts/[id]/edit/actions"
 import {
+  discardScriptCoverUpload,
+  finalizeScriptCoverUpload,
+  prepareScriptCoverUpload,
   removeScriptCover,
   replaceScriptCoverWithExternalUrl,
-  uploadScriptCover,
 } from "@/app/admin/scripts/new/upload-actions"
 import { Button } from "@/components/ui/button"
 import { ScriptEditBasicFields } from "@/components/admin/ScriptEditBasicFields"
@@ -14,6 +16,7 @@ import { ScriptContentFields } from "@/components/admin/ScriptContentFields"
 import { ScriptActivityPlacementFields } from "@/components/admin/ScriptActivityPlacementFields"
 import type { ScriptRole } from "@/components/admin/ScriptRoleEditor"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
+import { createClient } from "@/lib/supabase/client"
 
 export interface ScriptData {
   id: string
@@ -79,6 +82,7 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
   const [pageImages, setPageImages] = useState<string[] | null>(script.page_images)
   const [pageImagePaths, setPageImagePaths] = useState<string[] | null>(script.page_image_paths)
   const [pdfStoragePath, setPdfStoragePath] = useState<string | null>(script.pdf_storage_path)
+  const [scriptUpdatedAt, setScriptUpdatedAt] = useState(script.updated_at)
   const [protectedUpdatedAt, setProtectedUpdatedAt] = useState<string | null>(script.protected_updated_at)
   const [auditReason, setAuditReason] = useState("")
   const [submitting, setSubmitting] = useState(false)
@@ -92,38 +96,88 @@ export function ScriptEditForm({ script }: { script: ScriptData }) {
     setSubmitting(true)
     setError(null)
 
-    const result = await updateScript(script.id, {
-      title, title_ja: titleJa, description, author,
-      player_count_min: playerMin, player_count_max: playerMax,
-      duration_minutes: duration, difficulty,
-      genre_tags: genreTags, theme_tags: themeTags,
-      content_html: contentHtml, warnings, roles: JSON.parse(JSON.stringify(roles)),
-      is_published: script.is_published ?? false, is_featured: isFeatured,
-      is_player_visible: isPlayerVisible,
-      budget: budget || null, location: location || null,
-      is_social_script: isSocialScript,
-      show_on_player_activity: isSocialScript && showOnPlayerActivity,
-      player_activity_order: playerActivityOrder,
-      pin_in_social_library: isSocialScript && pinInSocialLibrary,
-      social_library_order: socialLibraryOrder,
-    }, auditReason, {
-      scriptUpdatedAt: script.updated_at,
-      protectedUpdatedAt,
-    })
+    try {
+      const result = await updateScript(script.id, {
+        title, title_ja: titleJa, description, author,
+        player_count_min: playerMin, player_count_max: playerMax,
+        duration_minutes: duration, difficulty,
+        genre_tags: genreTags, theme_tags: themeTags,
+        content_html: contentHtml, warnings, roles: JSON.parse(JSON.stringify(roles)),
+        is_published: script.is_published ?? false, is_featured: isFeatured,
+        is_player_visible: isPlayerVisible,
+        budget: budget || null, location: location || null,
+        is_social_script: isSocialScript,
+        show_on_player_activity: isSocialScript && showOnPlayerActivity,
+        player_activity_order: playerActivityOrder,
+        pin_in_social_library: isSocialScript && pinInSocialLibrary,
+        social_library_order: socialLibraryOrder,
+      }, auditReason, {
+        scriptUpdatedAt,
+        protectedUpdatedAt,
+      })
 
-    if (result.error) { setSubmitting(false); setError(result.error); return }
+      if (result.error) { setError(result.error); return }
+      if (result.updatedAt) setScriptUpdatedAt(result.updatedAt)
+      if (result.protectedUpdatedAt) setProtectedUpdatedAt(result.protectedUpdatedAt)
 
-    // 上传文件（如果有变更）
-    const uploadErr = await uploadFiles()
-    setSubmitting(false)
-    if (uploadErr) { setError(uploadErr); return }
-    router.push(`/admin/scripts/${script.id}`)
+      const uploadErr = await uploadFiles()
+      if (uploadErr) { setError(uploadErr); return }
+      router.push(`/admin/scripts/${script.id}`)
+    } catch (caught) {
+      console.error("[ScriptEditForm]", caught)
+      setError("网络响应中断，请直接重试；已保存的基本信息不会重复写入。")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   async function uploadFiles(): Promise<string | null> {
     if (coverFile) {
-      const fd = new FormData(); fd.append("file", coverFile); fd.append("auditReason", auditReason)
-      const res = await uploadScriptCover(script.id, fd, script.cover_url)
+      const prepared = await prepareScriptCoverUpload(
+        script.id,
+        { size: coverFile.size, type: coverFile.type },
+        auditReason,
+        script.cover_url,
+      )
+      if (prepared.error || !prepared.path || !prepared.token || !prepared.preparedUpdatedAt) {
+        return `封面上传失败: ${prepared.error ?? "无法准备上传"}`
+      }
+      try {
+        const { error: uploadError } = await createClient().storage
+          .from(prepared.bucket ?? "scripts-covers")
+          .uploadToSignedUrl(prepared.path, prepared.token, coverFile, {
+            contentType: coverFile.type,
+            cacheControl: "31536000",
+          })
+        if (uploadError) {
+          await discardScriptCoverUpload(script.id, prepared.path, auditReason)
+          return `封面上传失败: ${uploadError.message}`
+        }
+      } catch (caught) {
+        console.error("[ScriptEditForm:upload]", caught)
+        try { await discardScriptCoverUpload(script.id, prepared.path, auditReason) } catch { /* retry via cleanup outbox */ }
+        return "封面上传响应中断，原封面未被覆盖，请重试"
+      }
+      let res
+      try {
+        res = await finalizeScriptCoverUpload(
+          script.id,
+          prepared.path,
+          auditReason,
+          script.cover_url,
+          prepared.preparedUpdatedAt,
+        )
+      } catch {
+        // A lost response can occur after the database commit. Retrying the
+        // same path exercises the server-side idempotency check.
+        res = await finalizeScriptCoverUpload(
+          script.id,
+          prepared.path,
+          auditReason,
+          script.cover_url,
+          prepared.preparedUpdatedAt,
+        )
+      }
       if (res?.error) return `封面上传失败: ${res.error}`
     } else if (coverExternalUrl.trim()) {
       const res = await replaceScriptCoverWithExternalUrl(script.id, coverExternalUrl, auditReason, script.cover_url)

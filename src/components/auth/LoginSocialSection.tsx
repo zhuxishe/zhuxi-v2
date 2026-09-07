@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { buildPublicUrl } from "@/lib/site-url"
 import { skipAppLaunchSplashOnce } from "@/lib/app-launch-splash"
+import { LegalLinks } from "@/components/legal/LegalLinks"
 
 interface LoginSocialSectionProps {
   onError: (message: string | null) => void
@@ -112,6 +113,9 @@ export function LoginSocialSection({ onError, nextPath = "/app" }: LoginSocialSe
         <LineIcon />
         {t("lineLogin")}
       </Button>
+      <div className="pb-1 pt-2 text-muted-foreground">
+        <LegalLinks />
+      </div>
     </div>
   )
 }

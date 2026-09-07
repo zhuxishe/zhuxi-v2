@@ -150,7 +150,7 @@ export function LargeActivityFields({ item }: { item?: PastEventReview }) {
           <Field label="活动父菜单排序"><input name="player_home_order" type="number" defaultValue={item?.player_home_order ?? 0} className={activityInputClass} /></Field>
           <Field label="大型活动库排序"><input name="player_library_order" type="number" defaultValue={item?.player_library_order ?? 0} className={activityInputClass} /></Field>
           <div className="flex flex-col justify-end gap-2">
-            <Checkbox name="is_player_visible" defaultChecked={item?.is_player_visible ?? false} label="在 Player App 显示" />
+            <Checkbox name="is_player_visible" defaultChecked={item?.is_player_visible ?? false} label="在交互工具显示" />
             <Checkbox name="show_on_player_home" defaultChecked={item?.show_on_player_home ?? false} label="在活动父菜单展示" />
             <Checkbox name="pin_in_player_library" defaultChecked={item?.pin_in_player_library ?? false} label="在大型活动库置顶" />
             <Checkbox name="is_published" defaultChecked={item?.is_published ?? false} label="同时在官网往期回顾展示" />

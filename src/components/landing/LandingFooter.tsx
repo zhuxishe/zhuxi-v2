@@ -2,6 +2,7 @@ import Image from "next/image"
 import Link from "next/link"
 import { getTranslations } from "next-intl/server"
 import { publicContactHandle } from "@/lib/public-contact"
+import { LegalLinks } from "@/components/legal/LegalLinks"
 
 export async function LandingFooter() {
   const t = await getTranslations("home")
@@ -30,6 +31,9 @@ export async function LandingFooter() {
           </Link>
         </div>
         <p className="text-xs font-semibold text-[#49643d]">{t("contactHandleLabel")}：{publicContactHandle}</p>
+        <div className="py-2 text-[#49643d]">
+          <LegalLinks />
+        </div>
         <p className="text-[11px] tracking-wider text-[#49643d]/80">
           {t("footerCopyright")}
         </p>

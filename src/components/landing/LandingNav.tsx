@@ -72,7 +72,7 @@ export function LandingNav() {
           </div>
           <div className="mt-3 flex items-center justify-between border-t border-[#e6eadf] pt-3">
             <LocaleSwitcher />
-            <Link href="/login" className="rounded-full bg-[#6b9a51] px-5 py-2 text-sm font-semibold text-white" onClick={() => setOpen(false)}>
+            <Link href="/login" prefetch={false} className="rounded-full bg-[#6b9a51] px-5 py-2 text-sm font-semibold text-white" onClick={() => setOpen(false)}>
               {t("navLogin")}
             </Link>
           </div>

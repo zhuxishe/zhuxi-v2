@@ -82,7 +82,7 @@ function ReviewItem({ item, archived, canManageRecycleBin }: { item: PastEventRe
   }
 
   async function handleArchive() {
-    if (!confirm(`将「${item.title}」移入回收站？归档后官网与 Player App 都会隐藏。`)) return
+    if (!confirm(`将「${item.title}」移入回收站？归档后官网与交互工具都会隐藏。`)) return
     beginOperation()
     finishOperation(await archivePastEventReview(item.id, auditReason, item.updated_at))
   }
@@ -99,7 +99,7 @@ function ReviewItem({ item, archived, canManageRecycleBin }: { item: PastEventRe
     beginOperation()
     finishOperation(
       await togglePastEventReviewPlayerVisible(item.id, !item.is_player_visible, auditReason, item.updated_at),
-      item.is_player_visible ? "已从 Player App 隐藏" : "已在 Player App 显示",
+      item.is_player_visible ? "已从交互工具隐藏" : "已在交互工具显示",
     )
   }
 
@@ -148,7 +148,7 @@ function ReviewItem({ item, archived, canManageRecycleBin }: { item: PastEventRe
             <StatusBadge status={item.status ?? (item.is_published ? "published" : "draft")} />
             {archived && <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-700">已归档</span>}
             {item.is_published && <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-700">官网展示</span>}
-            {item.is_player_visible && <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-700">Player 展示</span>}
+            {item.is_player_visible && <span className="rounded bg-violet-100 px-1.5 py-0.5 text-xs text-violet-700">交互工具展示</span>}
             {item.show_on_player_home && <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs text-blue-700">活动首页</span>}
             {item.pin_in_player_library && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-700">活动库置顶</span>}
           </div>
@@ -171,8 +171,8 @@ function ReviewItem({ item, archived, canManageRecycleBin }: { item: PastEventRe
             <Button
               variant="ghost"
               size="icon"
-              aria-label={item.is_player_visible ? "从 Player App 隐藏" : "在 Player App 显示"}
-              title={item.is_player_visible ? "从 Player App 隐藏" : "在 Player App 显示"}
+              aria-label={item.is_player_visible ? "从交互工具隐藏" : "在交互工具显示"}
+              title={item.is_player_visible ? "从交互工具隐藏" : "在交互工具显示"}
               onClick={handlePlayerVisibility}
               disabled={loading || !reasonValid}
             >

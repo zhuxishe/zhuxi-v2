@@ -1,13 +1,12 @@
 "use client"
 
 import Image from "next/image"
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useTranslations } from "next-intl"
 import Link from "next/link"
 import { Menu, X } from "lucide-react"
 import { LocaleSwitcher } from "@/components/LocaleSwitcher"
 import { HOME_SKIP_INTRO_HREF, rememberLandingIntroSeen } from "@/lib/landing-intro"
-import { createClient } from "@/lib/supabase/client"
 
 const NAV_LINKS = [
   { key: "navHome", href: "/" },
@@ -20,22 +19,6 @@ const NAV_LINKS = [
 export function LandingNav() {
   const t = useTranslations("home")
   const [open, setOpen] = useState(false)
-  const [signedIn, setSignedIn] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    const supabase = createClient()
-    // INITIAL_SESSION reads the shared auth cookie; SDK sign-in and sign-out
-    // events keep the displayed account link in sync afterward.
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSignedIn(Boolean(session))
-    })
-    return () => subscription.unsubscribe()
-  }, [])
-
-  const accountHref = signedIn === false ? "/login" : "/app"
-  const accountLabel = signedIn === null
-    ? t("navPlayerApp")
-    : t(signedIn ? "navReturnToApp" : "navLogin")
 
   return (
     <nav className="pointer-events-none fixed left-0 right-0 top-0 z-50 px-5 py-3 md:py-5">
@@ -44,7 +27,7 @@ export function LandingNav() {
         <Link
           href={HOME_SKIP_INTRO_HREF}
           onClick={rememberLandingIntroSeen}
-          className="pointer-events-auto group flex items-center gap-2 sm:gap-3"
+          className="pointer-events-auto group flex items-center gap-3"
         >
           <Image
             src="/logo.svg"
@@ -52,7 +35,7 @@ export function LandingNav() {
             width={44}
             height={44}
             loading="eager"
-            className="size-9 transition-transform duration-300 group-hover:rotate-6 sm:size-11"
+            className="size-11 transition-transform duration-300 group-hover:rotate-6"
           />
           <span className="leading-none">
             <span className="block font-display text-2xl font-bold tracking-[0.08em] text-[#111]">
@@ -64,30 +47,17 @@ export function LandingNav() {
           </span>
         </Link>
 
-        <div className="pointer-events-auto flex shrink-0 items-center gap-1 sm:gap-3">
-          <Link
-            href="/app"
-            prefetch={false}
-            aria-label={signedIn ? t("navReturnToApp") : t("navPlayerApp")}
-            onClick={() => setOpen(false)}
-            className="rounded-full bg-[#6b9a51] px-3 py-2 text-xs font-semibold whitespace-nowrap text-white transition hover:bg-[#4f7d3c] sm:px-4 sm:text-sm"
-          >
-            {t("navPlayerApp")}
-          </Link>
-          <button
-            className="grid size-10 place-items-center rounded-full text-[#4f7d3c] transition hover:bg-[#edf4e7] sm:size-12"
-            onClick={() => setOpen(!open)}
-            aria-label="Toggle menu"
-            aria-expanded={open}
-            aria-controls="landing-menu"
-          >
-            {open ? <X size={28} /> : <Menu size={30} />}
-          </button>
-        </div>
+        <button
+          className="pointer-events-auto grid size-12 place-items-center rounded-full text-[#4f7d3c] transition hover:bg-[#edf4e7]"
+          onClick={() => setOpen(!open)}
+          aria-label="Toggle menu"
+        >
+          {open ? <X size={28} /> : <Menu size={30} />}
+        </button>
       </div>
 
       {open && (
-        <div id="landing-menu" className="pointer-events-auto mx-auto mt-4 max-w-5xl rounded-[2rem] border border-[#dce5d0] bg-white/95 p-4 shadow-[0_20px_60px_rgba(44,62,34,0.18)] backdrop-blur-xl animate-fade-in">
+        <div className="pointer-events-auto mx-auto mt-4 max-w-5xl rounded-[2rem] border border-[#dce5d0] bg-white/95 p-4 shadow-[0_20px_60px_rgba(44,62,34,0.18)] backdrop-blur-xl animate-fade-in">
           <div className="grid gap-2 sm:grid-cols-2">
             {NAV_LINKS.map(({ key, href }) => (
               <Link
@@ -100,10 +70,10 @@ export function LandingNav() {
               </Link>
             ))}
           </div>
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#e6eadf] pt-3">
+          <div className="mt-3 flex items-center justify-between border-t border-[#e6eadf] pt-3">
             <LocaleSwitcher />
-            <Link href={accountHref} prefetch={false} className="rounded-full bg-[#6b9a51] px-5 py-2 text-sm font-semibold whitespace-nowrap text-white" onClick={() => setOpen(false)}>
-              {accountLabel}
+            <Link href="/login" prefetch={false} className="rounded-full bg-[#6b9a51] px-5 py-2 text-sm font-semibold text-white" onClick={() => setOpen(false)}>
+              {t("navLogin")}
             </Link>
           </div>
         </div>

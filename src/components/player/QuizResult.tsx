@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Download, RotateCcw, Sparkles } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
-import type { DimensionScores } from "@/lib/constants/personality-quiz"
+import { generatePersonalityType, type DimensionScores } from "@/lib/constants/personality-quiz"
 import type { Dimension, DimensionConfig, TypeLabelsConfig, TypeDescription } from "@/types/quiz-config"
 
 interface Props {
@@ -14,6 +14,7 @@ interface Props {
   dimensions?: Record<Dimension, DimensionConfig>
   typeLabels?: TypeLabelsConfig
   typeDescriptions?: Record<string, TypeDescription>
+  invertN?: boolean
   onRetake?: () => void
 }
 
@@ -31,26 +32,20 @@ function getDimDescription(dim: Dimension, value: number, dims?: Record<Dimensio
   return value <= 33 ? d.low : value <= 66 ? d.mid : d.high
 }
 
-function generateFunType(scores: DimensionScores, labels: TypeLabelsConfig): string {
-  const mapped = { E: scores.E, A: scores.A, O: scores.O, C: scores.C, ES: 100 - scores.N }
-  const sorted = Object.entries(mapped).sort(([, a], [, b]) => b - a)
-  return `${labels.fun.prefix[sorted[0][0]] ?? ""}${labels.fun.suffix[sorted[1][0]] ?? ""}`
-}
-
-export function QuizResult({ scores, personalityType, dimensions: dimConfig, typeLabels, typeDescriptions, onRetake }: Props) {
+export function QuizResult({ scores, personalityType, dimensions: dimConfig, typeLabels, typeDescriptions, invertN = true, onRetake }: Props) {
   const router = useRouter()
   const t = useTranslations("quiz")
   const cardRef = useRef<HTMLDivElement>(null)
   const [showFun, setShowFun] = useState(false)
 
-  const funType = typeLabels ? generateFunType(scores, typeLabels) : null
+  const funType = typeLabels ? generatePersonalityType(scores, typeLabels.fun, invertN) : null
   const displayType = showFun && funType ? funType : personalityType
   const typeDesc = typeDescriptions?.[personalityType]
 
   const dims = (["E", "A", "O", "C", "N"] as const).map((key) => ({
     key,
-    value: key === "N" ? 100 - scores[key] : scores[key],
-    displayLabel: key === "N"
+    value: key === "N" && invertN ? 100 - scores[key] : scores[key],
+    displayLabel: key === "N" && invertN
       ? t("emotionalStability")
       : (dimConfig?.[key]?.name ?? t(`dimensionLabels.${key}`)),
     color: DIM_COLORS[key],

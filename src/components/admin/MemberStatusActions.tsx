@@ -9,6 +9,7 @@ import { Check, RotateCcw, X } from "lucide-react"
 interface Props {
   memberId: string
   currentStatus: string
+  approvalBlockReason?: string | null
 }
 
 const ACTIONS = [
@@ -18,7 +19,7 @@ const ACTIONS = [
   { status: "inactive", label: "标记非活动", icon: X, variant: "outline" as const },
 ] as const
 
-export function MemberStatusActions({ memberId, currentStatus }: Props) {
+export function MemberStatusActions({ memberId, currentStatus, approvalBlockReason }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -36,12 +37,13 @@ export function MemberStatusActions({ memberId, currentStatus }: Props) {
   }
 
   // Filter out the current status from available actions
-  const available = ACTIONS.filter(a => a.status !== currentStatus)
+  const available = ACTIONS.filter(a => a.status !== currentStatus && !(a.status === "approved" && approvalBlockReason))
 
   return (
     <section className="rounded-xl border border-border bg-card p-4" aria-labelledby="approval-actions-title">
       <h2 id="approval-actions-title" className="font-semibold">审批状态</h2>
       <p className="mt-1 text-xs text-muted-foreground">账号暂停属于生命周期操作，不在审批状态中处理；“非活动”只改变申请/业务状态，不影响登录。</p>
+      {approvalBlockReason ? <p role="status" className="mt-2 text-sm text-amber-800">{approvalBlockReason}</p> : null}
       <div className="mt-3 flex flex-col gap-2 lg:flex-row lg:items-end">
         <label className="min-w-0 flex-1">
           <span className="mb-1 block text-xs font-medium text-muted-foreground">状态变更原因（必填）</span>

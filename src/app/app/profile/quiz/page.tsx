@@ -11,14 +11,16 @@ export default async function QuizPage() {
   const t = await getTranslations("quiz")
   const supabase = await createClient()
 
-  const [{ data: existing }, quizConfig] = await Promise.all([
+  const [{ data: existing, error }, quizConfig] = await Promise.all([
     supabase
       .from("personality_quiz_results")
       .select("score_e, score_a, score_o, score_c, score_n, personality_type")
       .eq("member_id", player.memberId)
-      .single(),
+      .maybeSingle(),
     getQuizConfig(),
   ])
+
+  if (error) throw new Error("Unable to load the saved personality assessment")
 
   const initialResult = existing
     ? {

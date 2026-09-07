@@ -36,6 +36,7 @@ describe("interview form server actions", () => {
 
   it("shapes and atomically saves one step without direct table writes", async () => {
     mocks.saveMyOnboardingStep.mockResolvedValue({
+      memberId: "canonical-member-id",
       onboardingStep: 1,
       lastProfileSavedAt: "2026-08-30T01:02:03.000Z",
     })
@@ -69,6 +70,11 @@ describe("interview form server actions", () => {
       lastSavedAt: "2026-08-30T01:02:03.000Z",
     })
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/app/interview-form")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/app")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/app/profile")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/members")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/members/canonical-member-id")
   })
 
   it("rejects malformed input before opening a database client", async () => {
@@ -99,7 +105,7 @@ describe("interview form server actions", () => {
   })
 
   it("final submission calls only the submit RPC and revalidates player routes", async () => {
-    mocks.submitMyOnboarding.mockResolvedValue({ status: "pending" })
+    mocks.submitMyOnboarding.mockResolvedValue({ memberId: "canonical-member-id", status: "pending" })
 
     const result = await submitPreInterviewForm()
 
@@ -108,5 +114,17 @@ describe("interview form server actions", () => {
     expect(mocks.saveMyOnboardingStep).not.toHaveBeenCalled()
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/app/interview-form")
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/app")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/app/profile")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/members")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/members/canonical-member-id")
+  })
+
+  it("does not invalidate saved views after a failed final submission", async () => {
+    mocks.submitMyOnboarding.mockRejectedValue(new Error("database unavailable"))
+    mocks.toMemberMasterActionError.mockReturnValue("submitFailed")
+
+    expect(await submitPreInterviewForm()).toEqual({ success: false, error: "submitFailed" })
+    expect(mocks.revalidatePath).not.toHaveBeenCalled()
   })
 })

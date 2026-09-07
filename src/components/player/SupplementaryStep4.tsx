@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import type { SupplementaryFormData } from "@/types"
+import type { SupplementaryDraft as SupplementaryFormData } from "@/lib/forms/player-enrichment"
 import { SingleSelect } from "@/components/shared/SingleSelect"
 import { SOCIAL_GOAL_OPTIONS } from "@/lib/constants/supplementary"
 import { cn } from "@/lib/utils"
@@ -12,11 +12,12 @@ interface Props {
   setField: <K extends keyof SupplementaryFormData>(key: K, val: SupplementaryFormData[K]) => void
 }
 
-function ToggleButton({ label, value, onChange }: { label: string; value: boolean; onChange: (v: boolean) => void }) {
+function ToggleButton({ label, value, onSelect }: { label: string; value: boolean; onSelect: () => void }) {
   return (
     <button
       type="button"
-      onClick={() => onChange(!value)}
+      onClick={onSelect}
+      aria-pressed={value}
       className={cn(
         "rounded-full px-4 py-2 text-sm font-medium transition-colors",
         value
@@ -58,16 +59,16 @@ export function SupplementaryStep4({ data, setField }: Props) {
       <div>
         <label className="text-sm font-medium mb-2 block">{t("acceptBeginners")}</label>
         <div className="flex gap-2">
-          <ToggleButton label={t("yes")} value={data.accept_beginners} onChange={(v) => setField("accept_beginners", v)} />
-          <ToggleButton label={t("no")} value={!data.accept_beginners} onChange={(v) => setField("accept_beginners", !v)} />
+          <ToggleButton label={t("yes")} value={data.accept_beginners === true} onSelect={() => setField("accept_beginners", true)} />
+          <ToggleButton label={t("no")} value={data.accept_beginners === false} onSelect={() => setField("accept_beginners", false)} />
         </div>
       </div>
 
       <div>
         <label className="text-sm font-medium mb-2 block">{t("acceptCrossSchool")}</label>
         <div className="flex gap-2">
-          <ToggleButton label={t("yes")} value={data.accept_cross_school} onChange={(v) => setField("accept_cross_school", v)} />
-          <ToggleButton label={t("no")} value={!data.accept_cross_school} onChange={(v) => setField("accept_cross_school", !v)} />
+          <ToggleButton label={t("yes")} value={data.accept_cross_school === true} onSelect={() => setField("accept_cross_school", true)} />
+          <ToggleButton label={t("no")} value={data.accept_cross_school === false} onSelect={() => setField("accept_cross_school", false)} />
         </div>
       </div>
     </div>

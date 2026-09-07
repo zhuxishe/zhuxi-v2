@@ -105,10 +105,23 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 14. `20260903062012_content_management_v2_contract.sql`：内容管理 V2 的收口阶段；仅在兼容应用验收后执行。清空并封锁旧敏感剧本字段、私有化完整剧本 Storage、收紧列级 ACL/RLS、冻结归档内容，并为永久删除建立可恢复的媒体清理 outbox。
 15. `20260903094017_fix_admin_delete_admin_user_content_v2_audit_reason.sql`：修复成员主档管理员删除 RPC 与 Content V2 审计触发器的兼容性；在原有超级管理员、理由、并发锁、自删和最后一名超级管理员保护全部通过后，将同一理由设为事务级 Content V2 审计上下文，再执行会触发 `player_activity_settings.updated_by ON DELETE SET NULL` 的删除。RPC 签名与最小 ACL 不变。
 16. `20260903104500_content_media_direct_upload_limits.sql`：在确认 Contract 已完成后，为浏览器签名直传设置 Storage 端硬限制；剧本封面最大 5MiB、大型活动图片最大 8MiB，且仅允许 JPEG、PNG、WebP。匿名及已登录客户端对两个公开媒体桶的普通写入由 restrictive policy 拒绝，应用仍须在 finalize 阶段复验实际大小、MIME、扩展名与文件魔数。
+17. `20260907194820_player_profile_consistency.sql`：补充资料通过 `save_my_supplementary(jsonb)` 原子保存语言和兴趣两张表，保持 `auth.uid()` 本人及已批准玩家门禁；可选学校不再阻止基本资料完成，未回答的接纳偏好保留 `NULL`，新注册玩家首次批准前必须已提交完整必填资料。既有 `complete` 档案的重新审批保留兼容路径。
+18. `20260907200452_preserve_personality_score_insert_defaults.sql`：恢复性格自评三个 `NOT NULL` 分数列的默认值 `3`，保持后台插入占位记录的既有契约；玩家界面根据是否存在实际自评回答识别占位记录，不改写历史分数。第 17 条曾暂设这些默认值为 `NULL`，因此第 17–19 条是一次不可拆开的发布批次，不能在第 17 条完成后开放业务写入。
+19. `20260907203032_reject_blank_personality_completion.sql`：用新的前向迁移修正资料摘要中五个性格单选字段的完成判断；空字符串和仅空格的历史回答均为未填写。保留原摘要结构、授权辅助函数和权限，不改写已经应用的第 17、18 条或任何历史回答。
 
 任何一步失败都必须停止；保存完整错误与已应用版本，不得在同一目标上反复重放大迁移。修正应使用新的、可审计的 forward migration。
 
 在迁移历史正常、按文件名执行的全新环境中，第 7–12 条在六条核心成员迁移之后运行并作为终态断言/归一化。Production 的历史已发生分叉，发布时必须在隔离 workdir 中先只放入 `20260809094500` 与第 7 条并执行、验证，再加入六条核心成员迁移，最后分别加入第 8–12 条；禁止从主工作区直接运行 `db push --include-all`。
+
+## 玩家资料一致性增量发布（2026-09-08）
+
+本节适用于已完成上述成员主档及 Content V2 基线的目标环境，只新增第 17、18、19 条；下文保留的历史分叉校准与首次 Production 发布指南不应在已完成基线的环境中重放。隔离 Preview 已应用第 17、18 条的情况下，仅追加第 19 条，不修改或重新执行已登记的迁移。
+
+1. 固定本次代码与三条迁移的文件内容，核对隔离 Preview 与 Production project ref、迁移历史和实际 catalog。Production 本次三条必须在同一事务中按第 17 → 18 → 19 条应用；使用同一连接的 `BEGIN` / `COMMIT` 事务边界，任一语句失败必须整体 `ROLLBACK`。不能用三个自动提交的迁移调用代替此事务；分数列默认值暂为 `NULL` 的中间状态必须对业务连接不可见，不得在此状态开放后台写入。
+2. 在隔离 Preview 验证最终数据库状态，随后运行 `supabase/audits/player_profile_consistency_smoke.sql`。该脚本在一个事务中建立临时 Auth/成员、填写四步、拒绝草稿批准、检验已提交本人只读和批准后补充资料保存；逐个将五个性格单选回答替换为空字符串和仅空格，验证均不会标记完成，并检查恢复真实回答后完成状态恢复；还刻意令第二张表写入失败，验证第一张表一并回滚，并检查跨用户读取、匿名 RPC 与私有触发器权限。脚本成功输出 `PASS` 后也必须以 `ROLLBACK` 结束，所有测试成员、回答及失败注入触发器均不保留。若中途失败，显式回滚该会话；这个脚本回滚测试数据，不撤销已应用的迁移。
+3. 完成对应代码的单元测试、类型检查、lint、构建和隔离 Preview 浏览器验收。覆盖未提交草稿、pending/rejected 本人资料回看、已批准玩家完整资料显示、补充资料/自评/测评保存，以及 `/admin` 待审队列和 `/admin/members` 同一成员记录。
+4. 在本轮已授权的 Production 发布窗口，保留可验证恢复点并暂停受影响写入，按第 1 步事务化应用这三条迁移。提交后核对三个版本与函数/触发器终态：三个性格分数列仍为 `NOT NULL DEFAULT 3`，两个接纳偏好默认 `NULL`，五个性格单选字段的完成条件均拒绝空白字符串，补充 RPC 的权限与本人授权、首次批准门禁均符合 Preview 证据。不在 Production 运行上述写入 fixture 脚本。
+5. 数据库终态确认后再 push 并部署同一份已验收代码；新应用依赖 `save_my_supplementary`，不能在 RPC 尚未存在时先上线。Vercel `Ready` 后完成真实只读页面/RPC、目录对应关系与准确 deployment 日志核对，再恢复写入。失败时遵守下文回滚边界，不以回退应用替代数据库恢复或前向修复。
 
 ## Production 只读对账（2026-08-31）
 
@@ -116,7 +129,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 ### 历史映射
 
-- 当前仓库共有 66 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条，以及媒体签名直传限制一条。隔离 Preview 必须按顺序登记全部 66 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条前向修复。
+- 当前仓库共有 69 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条、媒体签名直传限制一条，以及本次玩家资料一致性、性格分数默认值兼容和空白回答完成判断修复三条。全新隔离 Preview 必须按依赖顺序登记全部 69 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条，最后按上述增量发布要求应用第 17、18、19 条。
 - Production 远端登记 45 条：34 条 `202604*`、10 条 `202607*` 和 `20260806140912`。仓库的 `001`–`038`、`20260809094500`、六条成员迁移和新基线前向迁移均未以本地版本登记在 Production。
 - 34 条 April 历史中，27 条去注释/空白后与本地对应 SQL 一致；`015`–`017` 只多幂等包装；远端 `022` 加后续独立 session policy 修复后等价于当前本地 `022`。
 - 远端 `008` 历史曾把 `social_goal_secondary` 转为 `text[]`，但实际 Production catalog 已是 nullable `text`、默认 `NULL`，与代码和 Preview 类型一致。远端 `011` 没有本地的姓名回填，但 Production 8 条面试记录均已填充且与当前管理员名称一致。
@@ -148,7 +161,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 2. 按上一节核对 `<PREVIEW_PROJECT_REF>`、Vercel Preview 环境与最终 Preview URL；确认与 `<PRODUCTION_PROJECT_REF>` 不同。
 3. 在任何迁移前运行 `supabase/audits/user_member_master_preflight.sql`，保存带时间、commit SHA 和 Preview ref 的完整结果。
 4. 人工确认 Auth 数量、成员数量、旧成员数量、重复候选、无效引用和现有 ACL；脚本不会按姓名、邮箱或昵称自动合并。存在未解释异常时停止。
-5. 按“本分支成员迁移顺序”只应用尚未登记的迁移，并再次核对目标迁移历史包含本功能完整且有序的 12 个版本、仓库与 Preview 合计 62 个版本。版本登记只证明 migration version 存在，不证明后来修改过的同版本 SQL 已执行；是否允许重放必须遵守下述边界。
+5. 按“本分支成员迁移顺序”只应用尚未登记的迁移，并再次核对完整目标包含上述 19 个版本、仓库与全新隔离 Preview 合计 69 个版本。已有 Preview 仅应用尚缺版本；第 17、18、19 条按“玩家资料一致性增量发布”处理，并运行其回滚式 smoke。版本登记只证明 migration version 存在，不证明后来修改过的同版本 SQL 已执行；是否允许重放必须遵守下述边界。
 
    **同版本重放边界：** `migration repair` 不是通用的 SQL 重跑工具。本轮仅允许在可丢弃的隔离 Preview 中，把已经逐条确认可幂等重放、且后来增强了持久效果或终态断言的 `20260830213104` 与 `20260830214322` 标记为 reverted，再按依赖顺序重放并保存 `dry-run`、push、history 与 postflight 证据。`20260809094500` 和六条成员迁移后来新增的 `BEGIN`、`SET LOCAL lock_timeout`、`SET LOCAL statement_timeout` 只约束未来执行，不改变已落库终态，不得仅为这些执行时保护在现有 Preview 重放。若已登记的大迁移发生任何持久 DDL、DML、权限或函数逻辑变化，必须改用全新可丢弃数据库从头验证，或新增可审计的 forward migration；禁止在已有 Preview 通过 repair 重跑大迁移。
 6. 运行 `supabase/audits/user_member_master_postflight.sql` 并保存完整结果，确认：

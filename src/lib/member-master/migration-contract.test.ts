@@ -508,8 +508,8 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(66)
-    expect(runbook).toContain("当前仓库共有 66 条 migration")
+    expect(migrationNames).toHaveLength(69)
+    expect(runbook).toContain("当前仓库共有 69 条 migration")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
     )
@@ -534,6 +534,17 @@ describe("user/member master migration contract", () => {
     expect(runbook).toContain(
       "20260903104500_content_media_direct_upload_limits.sql",
     )
+    expect(runbook).toContain(
+      "20260907194820_player_profile_consistency.sql",
+    )
+    expect(runbook).toContain(
+      "20260907200452_preserve_personality_score_insert_defaults.sql",
+    )
+    expect(runbook).toContain(
+      "20260907203032_reject_blank_personality_completion.sql",
+    )
+    expect(runbook).toContain("supabase/audits/player_profile_consistency_smoke.sql")
+    expect(runbook).toContain("Production 本次三条必须在同一事务中按第 17 → 18 → 19 条应用")
   })
 
   it("keeps direct media uploads contract-gated and Storage-enforced", () => {

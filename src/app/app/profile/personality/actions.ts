@@ -3,32 +3,32 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
-import type { PersonalitySelfData } from "@/types"
+import { parsePersonality, type PersonalityDraft } from "@/lib/forms/player-enrichment"
 
-export async function submitPersonality(data: PersonalitySelfData) {
+export async function submitPersonality(data: PersonalityDraft) {
   const player = await requirePlayer()
+  const payload = parsePersonality(data)
+  if (!payload) return { error: "incompletePersonality" }
   const supabase = await createClient()
 
-  const { error } = await supabase
+  const { data: saved, error } = await supabase
     .from("member_personality")
     .upsert({
       member_id: player.memberId,
-      extroversion: data.extroversion,
-      initiative: data.initiative,
-      expression_style_tags: data.expression_style_tags,
-      group_role_tags: data.group_role_tags,
-      warmup_speed: data.warmup_speed,
-      planning_style: data.planning_style,
-      coop_compete_tendency: data.coop_compete_tendency,
-      emotional_stability: data.emotional_stability,
-      boundary_strength: data.boundary_strength,
-      reply_speed: data.reply_speed,
+      ...payload,
     }, { onConflict: "member_id" })
+    .select("member_id")
+    .single()
 
-  if (error) {
-    console.error("[submitPersonality]", error)
+  if (error || saved?.member_id !== player.memberId) {
+    console.error("[submitPersonality]", error?.code ?? "missing_saved_member")
     return { error: "saveFailed" }
   }
+  revalidatePath("/app")
   revalidatePath("/app/profile")
+  revalidatePath("/app/profile/personality")
+  revalidatePath("/admin")
+  revalidatePath("/admin/members")
+  revalidatePath(`/admin/members/${player.memberId}`)
   return { success: true }
 }

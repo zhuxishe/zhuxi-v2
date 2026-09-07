@@ -126,10 +126,11 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
 export function calculateScores(
   answers: { questionId: number; score: number }[],
   scoring?: { minRaw: number; maxRaw: number },
+  questions: QuizQuestion[] = QUIZ_QUESTIONS,
 ): DimensionScores {
   const raw: Record<string, number[]> = { E: [], A: [], O: [], C: [], N: [] }
   for (const a of answers) {
-    const q = QUIZ_QUESTIONS.find((q) => q.id === a.questionId)
+    const q = questions.find((q) => q.id === a.questionId)
     if (q) raw[q.dimension].push(a.score)
   }
   const min = scoring?.minRaw ?? 4.5
@@ -145,9 +146,13 @@ export function calculateScores(
 const DIM_PRIORITY = ["E", "A", "O", "C", "ES"] as const
 
 /** 生成性格类型标签（最高维度前缀 + 次高维度后缀） */
-export function generatePersonalityType(scores: DimensionScores): string {
+export function generatePersonalityType(
+  scores: DimensionScores,
+  labels?: QuizConfig["typeLabels"]["formal"],
+  invertN = true,
+): string {
   // N 维度转换为情绪稳定性 ES
-  const mapped = { E: scores.E, A: scores.A, O: scores.O, C: scores.C, ES: 100 - scores.N }
+  const mapped = { E: scores.E, A: scores.A, O: scores.O, C: scores.C, ES: invertN ? 100 - scores.N : scores.N }
   const sorted = Object.entries(mapped).sort(([ka, a], [kb, b]) =>
     b - a || DIM_PRIORITY.indexOf(ka as typeof DIM_PRIORITY[number]) - DIM_PRIORITY.indexOf(kb as typeof DIM_PRIORITY[number])
   )
@@ -157,7 +162,7 @@ export function generatePersonalityType(scores: DimensionScores): string {
   const prefix: Record<string, string> = { E: "热情", A: "温暖", O: "好奇", C: "稳健", ES: "从容" }
   const suffix: Record<string, string> = { E: "行动派", A: "守护者", O: "探索者", C: "规划者", ES: "安定者" }
 
-  return `${prefix[first]}${suffix[second]}`
+  return `${labels?.prefix[first] ?? prefix[first]}${labels?.suffix[second] ?? suffix[second]}`
 }
 
 /** 从硬编码常量构建默认配置（DB 无数据时使用） */

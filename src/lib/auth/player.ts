@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { getVerifiedUser } from "./verified-user"
 import {
   ensureMyMemberRecord,
   getMemberMasterDiagnostic,
@@ -24,7 +25,7 @@ export interface PlayerInfo {
 /** Require auth. Redirects to /login if not logged in. */
 export async function requireAuth() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
   if (!user) redirect("/login")
   return user
 }
@@ -39,7 +40,7 @@ export async function requireAuth() {
  */
 export const getPlayerInfo = cache(async (): Promise<PlayerInfo | null> => {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getVerifiedUser(supabase)
   if (!user) return null
 
   try {

@@ -27,7 +27,7 @@ export async function signUp(email: string, password: string) {
     return { error: "email_exists_with_oauth" }
   }
 
-  return { success: true }
+  return { success: true, requiresEmailConfirmation: !data.session }
 }
 
 export async function signIn(email: string, password: string) {

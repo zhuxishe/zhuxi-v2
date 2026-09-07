@@ -9,6 +9,7 @@ import {
   type DimensionScores,
 } from "@/lib/constants/personality-quiz"
 import { getQuizConfig } from "@/lib/queries/quiz-config"
+import { parseQuizAnswers } from "@/lib/forms/player-enrichment"
 
 interface QuizResult {
   scores: DimensionScores
@@ -19,18 +20,22 @@ interface QuizResult {
 export async function submitQuiz(
   answers: { questionId: number; score: number }[]
 ): Promise<QuizResult> {
+  const player = await requirePlayer()
   try {
-    const player = await requirePlayer()
     const config = await getQuizConfig()
-    const scores = calculateScores(answers, config.scoring)
-    const personalityType = generatePersonalityType(scores)
+    const validatedAnswers = parseQuizAnswers(answers, config)
+    if (!validatedAnswers) {
+      return { scores: { E: 0, A: 0, O: 0, C: 0, N: 0 }, personalityType: "", error: "invalidQuizAnswers" }
+    }
+    const scores = calculateScores(validatedAnswers, config.scoring, config.questions)
+    const personalityType = generatePersonalityType(scores, config.typeLabels.formal, config.scoring.invertN)
     const supabase = await createClient()
 
-    const { error } = await supabase
+    const { data: saved, error } = await supabase
       .from("personality_quiz_results")
       .upsert({
         member_id: player.memberId,
-        answers,
+        answers: validatedAnswers,
         score_e: scores.E,
         score_a: scores.A,
         score_o: scores.O,
@@ -40,19 +45,26 @@ export async function submitQuiz(
         completed_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }, { onConflict: "member_id" })
+      .select("member_id")
+      .single()
 
-    if (error) {
-      console.error("[submitQuiz]", error)
+    if (error || saved?.member_id !== player.memberId) {
+      console.error("[submitQuiz]", error?.code ?? "missing_saved_member")
       return { scores, personalityType, error: "saveFailed" }
     }
 
+    revalidatePath("/app")
     revalidatePath("/app/profile")
+    revalidatePath("/app/profile/quiz")
+    revalidatePath("/admin")
+    revalidatePath("/admin/members")
+    revalidatePath(`/admin/members/${player.memberId}`)
     return { scores, personalityType }
   } catch {
     return {
       scores: { E: 0, A: 0, O: 0, C: 0, N: 0 },
       personalityType: "",
-      error: "quizSubmitFailed",
+      error: "submitFailed",
     }
   }
 }

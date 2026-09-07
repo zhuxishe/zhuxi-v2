@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import type { PreInterviewFormData } from "@/types"
@@ -53,6 +53,7 @@ export function PreInterviewForm({
   const [busy, setBusy] = useState<"saving" | "submitting" | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialLastSavedAt)
   const [error, setError] = useState<string | null>(null)
+  const operationPending = useRef(false)
 
   const formattedLastSavedAt = useMemo(() => {
     if (!lastSavedAt) return null
@@ -87,40 +88,56 @@ export function PreInterviewForm({
   }
 
   async function saveCurrentStep() {
-    setBusy("saving")
-    setError(null)
-    const result = await savePreInterviewStep((step + 1) as OnboardingStep, data)
-
-    if (result.success) {
-      setLastSavedAt(result.lastSavedAt ?? new Date().toISOString())
-      setBusy(null)
-      return true
+    try {
+      const result = await savePreInterviewStep((step + 1) as OnboardingStep, data)
+      if (result.success) {
+        setLastSavedAt(result.lastSavedAt ?? new Date().toISOString())
+        return true
+      }
+      setError(translateError(result.error))
+    } catch {
+      setError(t("saveError"))
     }
-
-    setError(translateError(result.error))
-    setBusy(null)
     return false
   }
 
   async function handleNext() {
-    if (!(await saveCurrentStep())) return
-    setStep((current) => Math.min(current + 1, 3) as 0 | 1 | 2 | 3)
+    if (operationPending.current) return
+    operationPending.current = true
+    setBusy("saving")
+    setError(null)
+    try {
+      if (!(await saveCurrentStep())) return
+      setStep((current) => Math.min(current + 1, 3) as 0 | 1 | 2 | 3)
+    } finally {
+      operationPending.current = false
+      setBusy(null)
+    }
   }
 
   async function handleSubmit() {
-    if (!(await saveCurrentStep())) return
+    if (operationPending.current) return
+    operationPending.current = true
+    setBusy("saving")
+    setError(null)
+    try {
+      if (!(await saveCurrentStep())) return
 
-    setBusy("submitting")
-    const result = await submitPreInterviewForm()
-    setBusy(null)
+      setBusy("submitting")
+      const result = await submitPreInterviewForm()
+      if (!result.success) {
+        setError(translateError(result.error))
+        return
+      }
 
-    if (!result.success) {
-      setError(translateError(result.error))
-      return
+      router.replace("/app")
+      router.refresh()
+    } catch {
+      setError(t("submitError"))
+    } finally {
+      operationPending.current = false
+      setBusy(null)
     }
-
-    router.replace("/app")
-    router.refresh()
   }
 
   return (
@@ -146,12 +163,12 @@ export function PreInterviewForm({
 
       <FormStepIndicator steps={STEPS} currentStep={step} className="mb-8" />
 
-      <div className="animate-fade-in">
+      <fieldset className="animate-fade-in min-w-0" disabled={busy !== null}>
         {step === 0 && <InterviewStep1 data={data} onChange={update} />}
         {step === 1 && <InterviewStep2 data={data} onChange={update} />}
         {step === 2 && <InterviewStep3 data={data} onChange={update} />}
         {step === 3 && <InterviewStep4 data={data} onChange={update} />}
-      </div>
+      </fieldset>
 
       {error && (
         <p className="mt-4 text-sm text-destructive" role="alert">{error}</p>

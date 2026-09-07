@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { AdminRole, Member360, MemberAuditEvent, MemberAuditPage, MemberCenterRecord } from "@/types"
+import { memberApprovalBlockReason } from "@/lib/member-master/approval"
 import {
   MemberAccountAdvancedEditor,
   MemberLegacyAdvancedEditor,
@@ -304,7 +305,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
             <SummaryLink icon={MessagesSquare} title="社区与反馈" detail={`反馈：${formatMemberValue(data.feedback?.total)}`} href={`/admin/members/${memberId}?tab=community`} />
             <SummaryLink icon={History} title="审计" detail={data.audit ? `${data.audit.length}/${data.auditTotal} 条` : "审计数据暂不可用"} href={`/admin/members/${memberId}?tab=audit`} />
           </div>
-          {!isAnonymized && !isHistoricalRecord ? <MemberStatusActions memberId={memberId} currentStatus={data.member.status} /> : null}
+          {!isAnonymized && !isHistoricalRecord ? <MemberStatusActions memberId={memberId} currentStatus={data.member.status} approvalBlockReason={memberApprovalBlockReason(data)} /> : null}
           {canModifyHighRisk ? <MemberNumberEditor memberId={memberId} memberNumber={data.account?.memberNumber ?? null} canEdit /> : null}
           {canModifyHighRisk ? <MemberAccountAdvancedEditor memberId={memberId} account={accountRecord(data, true) ?? {}} /> : null}
           {isSuperAdmin && !isHistoricalRecord ? (

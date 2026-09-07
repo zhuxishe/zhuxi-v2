@@ -3588,6 +3588,10 @@ export type Database = {
         Args: { p_payload: Json; p_step: number }
         Returns: Json
       }
+      save_my_supplementary: {
+        Args: { p_data: Json }
+        Returns: string
+      }
       service_set_member_line_identity: {
         Args: { p_line_user_id: string; p_operation: string; p_user_id: string }
         Returns: Json

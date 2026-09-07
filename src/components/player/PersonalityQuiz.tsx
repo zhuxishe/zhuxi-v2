@@ -31,17 +31,18 @@ export function PersonalityQuiz({ questions, onComplete }: Props) {
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const total = shuffledQuestions.length
   const question = shuffledQuestions[current]
-  const progress = Math.round(((current + 1) / total) * 100)
+  const progress = total > 0 ? Math.round(((current + 1) / total) * 100) : 0
 
   // Shuffle options per question (stable across re-renders)
   const shuffledOptions = useMemo(
-    () => shuffleWithSeed(question.options, question.id * 137),
+    () => question ? shuffleWithSeed(question.options, question.id * 137) : [],
     [question]
   )
 
   const selectOption = useCallback((score: number) => {
+    if (!question) return
     setAnswers((prev) => ({ ...prev, [question.id]: score }))
-  }, [question.id])
+  }, [question])
 
   function goNext() {
     if (current < total - 1) setCurrent((c) => c + 1)
@@ -52,16 +53,19 @@ export function PersonalityQuiz({ questions, onComplete }: Props) {
   }
 
   function handleFinish() {
+    if (!total || !shuffledQuestions.every((q) => answers[q.id] !== undefined)) return
     const result = shuffledQuestions.map((q) => ({
       questionId: q.id,
-      score: answers[q.id] ?? 3,
+      score: answers[q.id],
     }))
     onComplete(result)
   }
 
   const isLast = current === total - 1
-  const hasAnswer = answers[question.id] !== undefined
+  const hasAnswer = question ? answers[question.id] !== undefined : false
   const allAnswered = shuffledQuestions.every((q) => answers[q.id] !== undefined)
+
+  if (!question) return null
 
   return (
     <div className="max-w-lg mx-auto space-y-6">

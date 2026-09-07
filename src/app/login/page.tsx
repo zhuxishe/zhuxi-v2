@@ -56,19 +56,32 @@ export default function LoginPage() {
     setLoading(true)
     setError(null)
 
-    if (mode === "register") {
-      const result = await signUp(email, password)
-      setLoading(false)
-      if (result.error) setError(translateError(result.error))
-      else setRegistered(true)
-    } else {
-      const result = await signIn(email, password)
-      setLoading(false)
-      if (result.error) setError(translateError(result.error))
-      else {
-        skipAppLaunchSplashOnce()
-        router.push(nextPath)
+    try {
+      if (mode === "register") {
+        const result = await signUp(email, password)
+        if (result.error) {
+          setError(translateError(result.error))
+          return
+        }
+        if (result.requiresEmailConfirmation) {
+          setRegistered(true)
+          return
+        }
+      } else {
+        const result = await signIn(email, password)
+        if (result.error) {
+          setError(translateError(result.error))
+          return
+        }
       }
+
+      skipAppLaunchSplashOnce()
+      router.replace(nextPath)
+      router.refresh()
+    } catch {
+      setError(t(mode === "register" ? "signupFailed" : "loginError"))
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -104,11 +117,11 @@ export default function LoginPage() {
 
         {/* Email/Password Tabs */}
         <div className="flex rounded-lg bg-muted p-1">
-          <button type="button" onClick={() => setMode("login")}
+          <button type="button" onClick={() => setMode("login")} disabled={loading}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${mode === "login" ? "bg-background shadow-sm" : "text-muted-foreground"}`}>
             {t("loginTab")}
           </button>
-          <button type="button" onClick={() => setMode("register")}
+          <button type="button" onClick={() => setMode("register")} disabled={loading}
             className={`flex-1 rounded-md py-2 text-sm font-medium transition-colors ${mode === "register" ? "bg-background shadow-sm" : "text-muted-foreground"}`}>
             {t("registerTab")}
           </button>
@@ -116,10 +129,10 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
-            placeholder={t("emailPlaceholder")} required
+            placeholder={t("emailPlaceholder")} required disabled={loading}
             className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary transition-colors" />
           <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
-            placeholder={t("passwordPlaceholder")} required minLength={6}
+            placeholder={t("passwordPlaceholder")} required minLength={6} disabled={loading}
             className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:border-primary transition-colors" />
           {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" className="w-full" disabled={loading}>

@@ -28,7 +28,7 @@ export async function updateMyProfileAction(
   _previous: UpdateProfileActionState,
   formData: FormData,
 ): Promise<UpdateProfileActionState> {
-  await requirePlayer()
+  const player = await requirePlayer()
 
   const fullName = normalizeRequired(formData, "fullName")
   const gender = normalizeRequired(formData, "gender")
@@ -83,9 +83,11 @@ export async function updateMyProfileAction(
     return { error: "saveFailed" }
   }
 
+  revalidatePath("/app")
   revalidatePath("/app/profile")
   revalidatePath("/app/profile/edit")
   revalidatePath("/app/profile/community")
   revalidatePath("/admin/members")
+  revalidatePath(`/admin/members/${player.memberId}`)
   return { success: true }
 }

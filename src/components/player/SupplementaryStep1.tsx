@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import type { SupplementaryFormData } from "@/types"
+import type { SupplementaryDraft as SupplementaryFormData } from "@/lib/forms/player-enrichment"
 import { SingleSelect } from "@/components/shared/SingleSelect"
 import {
   ACTIVITY_AREA_OPTIONS,
@@ -43,7 +43,10 @@ export function SupplementaryStep1({ data, setField }: Props) {
       <div>
         <label className="text-sm font-medium mb-2 block">{t("graduationYear")}</label>
         <SingleSelect
-          options={GRADUATION_YEAR_OPTIONS.map(String)}
+          options={Array.from(new Set<number>([
+            ...GRADUATION_YEAR_OPTIONS,
+            ...(data.graduation_year === null ? [] : [data.graduation_year]),
+          ])).sort((a, b) => a - b).map(String)}
           value={data.graduation_year?.toString() ?? ""}
           onChange={(v) => setField("graduation_year", parseInt(v))}
         />

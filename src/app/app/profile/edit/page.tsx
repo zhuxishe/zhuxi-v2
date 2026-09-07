@@ -1,13 +1,19 @@
-import { getTranslations } from "next-intl/server"
+import { getLocale, getTranslations } from "next-intl/server"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchMyProfileSummary } from "@/lib/profile/queries"
 import { ProfileEditForm } from "@/components/player/profile/ProfileEditForm"
+import { ProfileDetailRows } from "@/components/player/profile/ProfileDetailsCard"
+import { loadMyProfileDetails } from "@/lib/profile/details-query"
+import { buildProfileDetailRows, REGISTRATION_READONLY_FIELDS } from "@/lib/profile/details"
 
 export default async function ProfileEditPage() {
   await requirePlayer()
-  const [profile, t] = await Promise.all([
+  const [profile, t, details, detailsT, locale] = await Promise.all([
     fetchMyProfileSummary(),
     getTranslations("profile.edit"),
+    loadMyProfileDetails(),
+    getTranslations("profile.details"),
+    getLocale(),
   ])
 
   return (
@@ -22,6 +28,15 @@ export default async function ProfileEditPage() {
         }
       `}</style>
       <ProfileEditForm
+        registrationDetails={
+          <section className="rounded-[22px] border border-border/90 bg-card p-4 shadow-soft">
+            <h2 className="text-sm font-semibold">{detailsT("registrationTitle")}</h2>
+            <p className="mt-1 text-xs leading-5 text-muted-foreground">{detailsT("registrationHint")}</p>
+            {details ? (
+              <ProfileDetailRows rows={buildProfileDetailRows(details.identity, REGISTRATION_READONLY_FIELDS, locale, detailsT)} />
+            ) : <p role="alert" className="mt-3 text-sm text-destructive">{detailsT("loadFailed")}</p>}
+          </section>
+        }
         initial={{
           fullName: profile.fullName,
           gender: profile.gender,

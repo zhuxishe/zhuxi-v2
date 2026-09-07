@@ -30,6 +30,15 @@ export interface SubmitResult {
   error?: MemberMasterActionError
 }
 
+function revalidateMemberViews(memberId: string) {
+  revalidatePath("/app/interview-form")
+  revalidatePath("/app")
+  revalidatePath("/app/profile")
+  revalidatePath("/admin")
+  revalidatePath("/admin/members")
+  revalidatePath(`/admin/members/${memberId}`)
+}
+
 /** Save exactly one UI step. The RPC owns row-level validation and atomicity. */
 export async function savePreInterviewStep(
   step: OnboardingStep,
@@ -51,7 +60,7 @@ export async function savePreInterviewStep(
     const supabase = await createClient()
     const saved = await saveMyOnboardingStep(supabase, step, payload)
 
-    revalidatePath("/app/interview-form")
+    revalidateMemberViews(saved.memberId)
     return {
       success: true,
       onboardingStep: saved.onboardingStep,
@@ -75,10 +84,9 @@ export async function submitPreInterviewForm(): Promise<SubmitResult> {
 
   try {
     const supabase = await createClient()
-    await submitMyOnboarding(supabase)
+    const submitted = await submitMyOnboarding(supabase)
 
-    revalidatePath("/app/interview-form")
-    revalidatePath("/app")
+    revalidateMemberViews(submitted.memberId)
     return { success: true }
   } catch (error) {
     console.error(

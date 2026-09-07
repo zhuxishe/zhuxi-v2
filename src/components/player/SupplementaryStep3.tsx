@@ -1,7 +1,7 @@
 "use client"
 
 import { useTranslations } from "next-intl"
-import type { SupplementaryFormData } from "@/types"
+import type { SupplementaryDraft as SupplementaryFormData } from "@/lib/forms/player-enrichment"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { SingleSelect } from "@/components/shared/SingleSelect"
 import {

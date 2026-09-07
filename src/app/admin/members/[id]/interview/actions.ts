@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/admin"
-import { memberCenterErrorMessage, updateMemberSection } from "@/lib/queries/member-center"
+import { fetchMember360, memberCenterErrorMessage, updateMemberSection } from "@/lib/queries/member-center"
+import { memberApprovalBlockReason } from "@/lib/member-master/approval"
 import type { InterviewEvalFormData } from "@/types"
 
 function normalizedReason(rawReason: string) {
@@ -61,6 +62,11 @@ export async function updateMemberStatus(memberId: string, status: string, rawRe
   if (!reasonResult.ok) return { error: reasonResult.error }
 
   try {
+    if (status === "approved") {
+      const currentMember = await fetchMember360(memberId)
+      const approvalError = memberApprovalBlockReason(currentMember)
+      if (approvalError) return { error: approvalError }
+    }
     await updateMemberSection({
       memberId,
       section: "application",
@@ -69,6 +75,9 @@ export async function updateMemberStatus(memberId: string, status: string, rawRe
     })
     revalidatePath("/admin/members")
     revalidatePath(`/admin/members/${memberId}`)
+    revalidatePath("/admin")
+    revalidatePath("/app")
+    revalidatePath("/app/profile")
     return { success: true }
   } catch (error) {
     console.error("[updateMemberStatus]", error)

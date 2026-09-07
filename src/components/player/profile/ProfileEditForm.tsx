@@ -1,6 +1,6 @@
 "use client"
 
-import { useActionState, useEffect, useId, useRef, useState } from "react"
+import { useActionState, useEffect, useId, useRef, useState, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Check, LoaderCircle, LockKeyhole, Trash2, X } from "lucide-react"
 import { updateMyProfileAction, type UpdateProfileActionState } from "@/app/app/profile/edit/actions"
@@ -72,6 +72,7 @@ export interface ProfileEditInitialValues {
 interface ProfileEditFormProps {
   initial: ProfileEditInitialValues
   labels: ProfileEditLabels
+  registrationDetails?: ReactNode
 }
 
 interface CropState {
@@ -83,7 +84,7 @@ interface CropState {
   offset: { x: number; y: number }
 }
 
-export function ProfileEditForm({ initial, labels }: ProfileEditFormProps) {
+export function ProfileEditForm({ initial, labels, registrationDetails }: ProfileEditFormProps) {
   const router = useRouter()
   const fileInputId = useId()
   const [actionState, formAction, pending] = useActionState(updateMyProfileAction, INITIAL_ACTION_STATE)
@@ -277,6 +278,8 @@ export function ProfileEditForm({ initial, labels }: ProfileEditFormProps) {
             </Field>
           </div>
         </section>
+
+        {registrationDetails}
 
         <section className="rounded-[22px] border border-border/90 bg-card p-4 shadow-soft">
           <div className="mb-4 flex items-start gap-2">

@@ -1,7 +1,11 @@
 import { CheckCircle2 } from "lucide-react"
-import { getTranslations } from "next-intl/server"
+import Link from "next/link"
+import { getLocale, getTranslations } from "next-intl/server"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchMyProfileSummary } from "@/lib/profile/queries"
+import { loadMyProfileDetails, requireProfileReader } from "@/lib/profile/details-query"
+import { buildProfileDetailSections } from "@/lib/profile/details"
+import { ProfileDetailsCard } from "@/components/player/profile/ProfileDetailsCard"
 import { ProfileMenuCard } from "@/components/player/profile/ProfileMenuCard"
 import { ProfileSettingsCard } from "@/components/player/profile/ProfileSettingsCard"
 import { ProfileSummaryCard } from "@/components/player/profile/ProfileSummaryCard"
@@ -11,11 +15,34 @@ interface ProfilePageProps {
 }
 
 export default async function ProfilePage({ searchParams }: ProfilePageProps) {
+  const player = await requireProfileReader()
+  const detailsPromise = loadMyProfileDetails()
+  const [locale, detailsT] = await Promise.all([getLocale(), getTranslations("profile.details")])
+
+  if (player.status !== "approved") {
+    const details = await detailsPromise
+    return (
+      <div className="space-y-4 px-4 pb-7 pt-4">
+        <h1 className="heading-display text-2xl font-semibold">{detailsT("submittedTitle")}</h1>
+        <p className="text-sm leading-6 text-muted-foreground">{detailsT("submittedHint")}</p>
+        {details ? (
+          <ProfileDetailsCard
+            title={detailsT("title")}
+            hint={detailsT("hint")}
+            sections={buildProfileDetailSections(details, locale, detailsT).filter((section) => section.key === "identity")}
+          />
+        ) : <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{detailsT("loadFailed")}</p>}
+        <Link href="/app" className="inline-flex min-h-11 items-center rounded-xl px-3 text-sm font-medium text-primary">{detailsT("backToApp")}</Link>
+      </div>
+    )
+  }
+
   await requirePlayer()
-  const [profile, t, params] = await Promise.all([
+  const [profile, t, params, details] = await Promise.all([
     fetchMyProfileSummary(),
     getTranslations("profile"),
     searchParams,
+    detailsPromise,
   ])
 
   const personalStatus = profile.identityComplete
@@ -72,6 +99,14 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           quiz: profile.quizComplete ? t("status.completed") : t("status.quizPending"),
         }}
       />
+
+      {details ? (
+        <ProfileDetailsCard
+          title={detailsT("title")}
+          hint={detailsT("hint")}
+          sections={buildProfileDetailSections(details, locale, detailsT)}
+        />
+      ) : <p role="alert" className="rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive">{detailsT("loadFailed")}</p>}
 
       <ProfileSettingsCard
         lineUserId={profile.lineUserId}

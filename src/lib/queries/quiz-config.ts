@@ -6,12 +6,13 @@ import { buildDefaultQuizConfig } from "@/lib/constants/personality-quiz"
 /** 读取问卷配置，DB 无数据时返回硬编码默认值 */
 export async function getQuizConfig(): Promise<QuizConfig> {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("personality_quiz_config")
     .select("questions, dimensions, type_labels, type_descriptions, scoring")
     .limit(1)
-    .single()
+    .maybeSingle()
 
+  if (error) throw new Error("Unable to load personality assessment configuration")
   if (!data) return buildDefaultQuizConfig()
 
   return {

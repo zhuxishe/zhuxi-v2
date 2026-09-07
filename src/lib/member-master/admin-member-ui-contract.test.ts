@@ -157,7 +157,7 @@ describe("admin member center UI contracts", () => {
   it("keeps player quiz answers as a JSON array and hides empty-snapshot restore", () => {
     const playerQuiz = source("src/app/app/profile/quiz/actions.ts")
     const hub = source("src/components/admin/Member360Hub.tsx")
-    expect(playerQuiz).toMatch(/member_id: player\.memberId,\s*answers,\s*score_e:/)
+    expect(playerQuiz).toMatch(/member_id: player\.memberId,\s*answers: validatedAnswers,\s*score_e:/)
     expect(playerQuiz).not.toContain("answers: JSON.stringify")
     expect(hub).toContain("hasRestorableMemberAuditSnapshot(before)")
   })

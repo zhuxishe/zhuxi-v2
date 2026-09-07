@@ -146,7 +146,7 @@ export default async function PlayerHomePage() {
               },
               content: t("feedback.content"),
               placeholder: t("feedback.placeholder"),
-              counter: t("feedback.counter"),
+              counter: t("feedback.counter", { count: "{count}" }),
               submit: t("feedback.submit"),
               submitting: t("feedback.submitting"),
               successTitle: t("feedback.successTitle"),

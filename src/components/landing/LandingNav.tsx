@@ -44,7 +44,7 @@ export function LandingNav() {
         <Link
           href={HOME_SKIP_INTRO_HREF}
           onClick={rememberLandingIntroSeen}
-          className="pointer-events-auto group flex items-center gap-3"
+          className="pointer-events-auto group flex items-center gap-2 sm:gap-3"
         >
           <Image
             src="/logo.svg"
@@ -52,7 +52,7 @@ export function LandingNav() {
             width={44}
             height={44}
             loading="eager"
-            className="size-11 transition-transform duration-300 group-hover:rotate-6"
+            className="size-9 transition-transform duration-300 group-hover:rotate-6 sm:size-11"
           />
           <span className="leading-none">
             <span className="block font-display text-2xl font-bold tracking-[0.08em] text-[#111]">
@@ -100,9 +100,9 @@ export function LandingNav() {
               </Link>
             ))}
           </div>
-          <div className="mt-3 flex items-center justify-between border-t border-[#e6eadf] pt-3">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 border-t border-[#e6eadf] pt-3">
             <LocaleSwitcher />
-            <Link href={accountHref} prefetch={false} className="rounded-full bg-[#6b9a51] px-5 py-2 text-sm font-semibold text-white" onClick={() => setOpen(false)}>
+            <Link href={accountHref} prefetch={false} className="rounded-full bg-[#6b9a51] px-5 py-2 text-sm font-semibold whitespace-nowrap text-white" onClick={() => setOpen(false)}>
               {accountLabel}
             </Link>
           </div>

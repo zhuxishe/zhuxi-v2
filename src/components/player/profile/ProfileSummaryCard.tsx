@@ -61,7 +61,7 @@ export function ProfileSummaryCard({
       </Link>
 
       <div className="grid min-h-[4.25rem] grid-cols-3 border-t border-border/80 bg-secondary/65 px-2 py-2.5">
-        <Stat label={labels.level} value={levelLabel} />
+        <Stat label={labels.level} value={levelLabel} href="/app/profile/stats" />
         <Stat
           label={labels.matchScore}
           value={matchScore == null ? labels.matchScorePending : matchScore.toFixed(1)}

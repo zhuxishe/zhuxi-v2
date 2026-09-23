@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation"
 import { type FormEvent, useState, useTransition } from "react"
 import {
   Activity,
-  Award,
   History,
   Mail,
   RefreshCw,
@@ -18,6 +17,7 @@ import {
   updateMemberProfileMetrics,
 } from "@/app/admin/members/[id]/profile-metrics/actions"
 import { Button } from "@/components/ui/button"
+import { MemberLevelIcon } from "@/components/MemberLevelIcon"
 import type { AdminMemberProfileMetrics } from "@/lib/profile/queries"
 
 interface MemberProfileMetricsCardProps {
@@ -106,12 +106,12 @@ function auditValue(values: Record<string, unknown>, field: string) {
 }
 
 function Metric({
-  icon: Icon,
+  icon,
   label,
   value,
   detail,
 }: {
-  icon: typeof Award
+  icon: React.ReactNode
   label: string
   value: string
   detail: React.ReactNode
@@ -119,7 +119,7 @@ function Metric({
   return (
     <div className="min-w-0 rounded-xl border border-border/80 bg-muted/25 p-4">
       <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        <Icon className="size-4 text-primary" aria-hidden="true" />
+        {icon}
         {label}
       </div>
       <p className="mt-2 text-2xl font-semibold tracking-tight text-foreground">{value}</p>
@@ -223,13 +223,13 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
 
         <div className="mt-6 grid gap-3 sm:grid-cols-3">
           <Metric
-            icon={Award}
+            icon={<MemberLevelIcon level={metrics.level} className="size-6 shrink-0" />}
             label="会员等级"
             value={LEVEL_LABELS[metrics.level]}
             detail={metrics.scoreSource === "manual" ? "人工设置" : "系统初始值"}
           />
           <Metric
-            icon={Sparkles}
+            icon={<Sparkles className="size-4 text-primary" aria-hidden="true" />}
             label="合拍分数"
             value={metrics.compatibilityScore.toFixed(1)}
             detail={
@@ -239,7 +239,7 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
             }
           />
           <Metric
-            icon={Activity}
+            icon={<Activity className="size-4 text-primary" aria-hidden="true" />}
             label="累计参加活动"
             value={`${metrics.activityCount} 次`}
             detail={metrics.lastActivityAt ? `最近参加：${formatDate(metrics.lastActivityAt)}` : "暂无活动记录"}

@@ -1,5 +1,8 @@
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
+import type { ReactNode } from "react"
+import type { MemberLevel } from "@/lib/profile/types"
+import { MemberLevelIcon } from "@/components/MemberLevelIcon"
 import { ProfileAvatar } from "./ProfileAvatar"
 
 export interface ProfileSummaryCardLabels {
@@ -21,6 +24,7 @@ interface ProfileSummaryCardProps {
   fullName: string
   schoolName: string | null
   memberNumber: string | null
+  level: MemberLevel
   levelLabel: string
   matchScore: number | null
   activityCount: number
@@ -33,6 +37,7 @@ export function ProfileSummaryCard({
   fullName,
   schoolName,
   memberNumber,
+  level,
   levelLabel,
   matchScore,
   activityCount,
@@ -61,7 +66,7 @@ export function ProfileSummaryCard({
       </Link>
 
       <div className="grid min-h-[4.25rem] grid-cols-3 border-t border-border/80 bg-secondary/65 px-2 py-2.5">
-        <Stat label={labels.level} value={levelLabel} href="/app/profile/stats" />
+        <Stat label={labels.level} value={levelLabel} href="/app/profile/stats" icon={<MemberLevelIcon level={level} className="size-5 shrink-0" />} />
         <Stat
           label={labels.matchScore}
           value={matchScore == null ? labels.matchScorePending : matchScore.toFixed(1)}
@@ -83,18 +88,20 @@ function Stat({
   label,
   value,
   href,
+  icon,
   bordered = false,
   compact = false,
 }: {
   label: string
   value: string
   href?: string
+  icon?: ReactNode
   bordered?: boolean
   compact?: boolean
 }) {
   const content = (
     <>
-      <span className="text-[11px] leading-4 text-muted-foreground">{label}</span>
+      <span className="flex items-center gap-1 text-[11px] leading-4 text-muted-foreground">{icon}{label}</span>
       <span className="mt-1 flex max-w-full items-center justify-center gap-0.5">
         <span className={`max-w-full break-words font-semibold leading-5 text-primary ${compact ? "text-xs" : "text-base"}`}>
           {value}

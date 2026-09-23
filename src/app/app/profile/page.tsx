@@ -66,6 +66,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
         fullName={profile.fullName}
         schoolName={profile.schoolName}
         memberNumber={profile.memberNumber}
+        level={profile.level}
         levelLabel={t(`levels.${profile.level}`)}
         matchScore={profile.compatibilityScore}
         activityCount={profile.activityCount}

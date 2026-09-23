@@ -1,15 +1,13 @@
-import { Award, Check, ChevronDown, Gift, Leaf, ShieldCheck, Sparkles, Sprout } from "lucide-react"
+import { Check, ChevronDown, Gift, Leaf, ShieldCheck, Sparkles } from "lucide-react"
+import { MemberLevelIcon } from "@/components/MemberLevelIcon"
 import type zh from "@/messages/zh.json"
 import type { MemberLevel } from "@/lib/profile/types"
 
 export type PlayerLevelGuideCopy = typeof zh.playerStats.levelGuide
 
 const LEVELS = [1, 2, 3] as const
-const LEVEL_ICONS = { 1: Sprout, 2: Leaf, 3: Award }
 
 export function PlayerLevelGuide({ level, copy }: { level: MemberLevel; copy: PlayerLevelGuideCopy }) {
-  const CurrentIcon = LEVEL_ICONS[level]
-
   return (
     <div className="space-y-5">
       <section className="player-profile-hero relative overflow-hidden rounded-[22px] p-5" aria-labelledby="current-level-title">
@@ -18,11 +16,8 @@ export function PlayerLevelGuide({ level, copy }: { level: MemberLevel; copy: Pl
           <div>
             <p className="text-xs font-medium tracking-wide text-white/80">{copy.currentLevel}</p>
             <h2 id="current-level-title" className="mt-2 text-xl font-semibold tracking-tight text-white min-[360px]:text-2xl">{copy.tiers[level].name}</h2>
-            <p className="mt-2 text-xs leading-5 text-white/80">{copy.levelNote}</p>
           </div>
-          <span className="grid size-12 shrink-0 place-items-center rounded-2xl border border-white/20 bg-white/10 min-[360px]:size-16">
-            <CurrentIcon className="size-6 text-white min-[360px]:size-8" strokeWidth={1.5} aria-hidden="true" />
-          </span>
+          <MemberLevelIcon level={level} className="size-12 shrink-0 min-[360px]:size-16" />
         </div>
         <p className="relative mt-4 flex items-start gap-2 border-t border-white/20 pt-3 text-xs leading-5 text-white/90">
           <Gift className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
@@ -38,14 +33,11 @@ export function PlayerLevelGuide({ level, copy }: { level: MemberLevel; copy: Pl
         <ol className="space-y-2.5">
           {LEVELS.map((tier) => {
             const item = copy.tiers[tier]
-            const Icon = LEVEL_ICONS[tier]
             const current = tier === level
             return (
               <li key={tier} aria-current={current ? "true" : undefined} className={`rounded-2xl border p-4 ${current ? "border-primary/40 bg-secondary" : "border-border bg-card"}`}>
                 <div className="flex items-start gap-3">
-                  <span className={`grid size-10 shrink-0 place-items-center rounded-xl ${current ? "bg-primary text-primary-foreground" : "bg-secondary text-primary"}`}>
-                    <Icon className="size-5" strokeWidth={1.7} aria-hidden="true" />
-                  </span>
+                  <MemberLevelIcon level={tier} className="size-11 shrink-0" />
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                       <h3 className="text-sm font-semibold">{item.name}</h3>

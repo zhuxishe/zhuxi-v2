@@ -14,7 +14,7 @@ import { PlayerHomeSurveyAction } from "./PlayerHomeSurveyAction"
 const action = { eyebrow: "next", title: "survey", description: "description", href: "/app/matching/survey", cta: "fill" }
 const fallbackAction = { ...action, title: "profile", href: "/app/profile/edit", cta: "complete" }
 const props = {
-  action, fallbackAction, hasSubmitted: false, initialNow: "2026-09-29T01:00:00Z",
+  action, fallbackAction, initialNow: "2026-09-29T01:00:00Z",
   round: { id: "round", status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-29T09:00:00Z" },
 }
 
@@ -26,29 +26,25 @@ describe("homepage survey availability", () => {
   })
   it("shows the survey action while the selected round accepts answers", () => {
     const view = PlayerHomeSurveyAction(props)
-    expect(view.props.children[0].props.action).toEqual(action)
-    expect(view.props.children[1]).toBe(false)
+    expect(view.props.action).toEqual(action)
     expect(mocks.refresh).not.toHaveBeenCalled()
   })
   it("falls back immediately at expiry and refreshes once to discover another open round", () => {
     mocks.window.mockReturnValue("expired")
     const view = PlayerHomeSurveyAction(props)
-    expect(view.props.children[0].props.action).toEqual(fallbackAction)
-    expect(view.props.children[1]).toBe(false)
+    expect(view.props.action).toEqual(fallbackAction)
     PlayerHomeSurveyAction(props)
     expect(mocks.refresh).toHaveBeenCalledOnce()
   })
-  it("offers submitted users an ordinary edit link without replacing their next action", () => {
-    const view = PlayerHomeSurveyAction({ ...props, action: fallbackAction, hasSubmitted: true })
-    expect(view.props.children[0].props.action).toEqual(fallbackAction)
-    expect(view.props.children[1].props.href).toBe("/app/matching/survey")
-    mocks.window.mockReturnValue("expired")
-    expect(PlayerHomeSurveyAction({ ...props, hasSubmitted: true }).props.children[1]).toBe(false)
+  it("leaves a submitted user's next action on the homepage without separate registration links", () => {
+    const view = PlayerHomeSurveyAction({ ...props, action: fallbackAction })
+    expect(view.props.action).toEqual(fallbackAction)
+    expect(view.props.children).toBeUndefined()
   })
   it("keeps the usual action when there is no available survey", () => {
     mocks.window.mockReturnValue("closed")
     const view = PlayerHomeSurveyAction({ ...props, action: fallbackAction, round: null })
-    expect(view.props.children[0].props.action).toEqual(fallbackAction)
+    expect(view.props.action).toEqual(fallbackAction)
     expect(mocks.refresh).not.toHaveBeenCalled()
   })
 })

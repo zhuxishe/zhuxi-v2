@@ -5,10 +5,12 @@ import { useState, type ComponentType } from "react"
 import { BookOpen, CalendarDays, ClipboardCheck, MessageSquareText } from "lucide-react"
 import { PlayerFeedbackDialog } from "./PlayerFeedbackDialog"
 import { PlayerRecruitingSheet } from "./PlayerRecruitingSheet"
-import type { PlayerHomeActivityItem } from "./types"
+import type { PlayerHomeActivityItem, PlayerHomeRoundItem } from "./types"
 
 interface Props {
   activities: PlayerHomeActivityItem[]
+  rounds: PlayerHomeRoundItem[]
+  initialNow: string
   locale: string
   pendingReviewCount: number
   pendingReviewHref: string
@@ -23,7 +25,7 @@ interface Props {
   }
 }
 
-export function PlayerHomeQuickActions({ activities, locale, pendingReviewCount, pendingReviewHref, labels }: Props) {
+export function PlayerHomeQuickActions({ activities, rounds, initialNow, locale, pendingReviewCount, pendingReviewHref, labels }: Props) {
   const [recruitingOpen, setRecruitingOpen] = useState(false)
   const [feedbackSubmissionId, setFeedbackSubmissionId] = useState<string | null>(null)
 
@@ -36,7 +38,7 @@ export function PlayerHomeQuickActions({ activities, locale, pendingReviewCount,
         <QuickButton icon={MessageSquareText} label={labels.feedback} onClick={() => setFeedbackSubmissionId(crypto.randomUUID())} />
       </nav>
 
-      {recruitingOpen && <PlayerRecruitingSheet activities={activities} locale={locale} labels={labels.recruitingSheet} onClose={() => setRecruitingOpen(false)} />}
+      {recruitingOpen && <PlayerRecruitingSheet activities={activities} rounds={rounds} initialNow={initialNow} locale={locale} labels={labels.recruitingSheet} onClose={() => setRecruitingOpen(false)} />}
       {feedbackSubmissionId && (
         <PlayerFeedbackDialog
           locale={locale}

@@ -5,14 +5,17 @@ import { requirePlayer } from "@/lib/auth/player"
 import { fetchMemberStats, fetchPlayerActivities } from "@/lib/queries/activities"
 import { fetchMyProfileSummary } from "@/lib/profile/queries"
 import { PlayerLevelGuide, type PlayerLevelGuideCopy } from "@/components/player/profile/PlayerLevelGuide"
+import { fetchPlayerParticipationRecords } from "@/lib/queries/player-participation"
+import { PlayerParticipationRecords } from "@/components/player/profile/PlayerParticipationRecords"
 
 export default async function PlayerStatsPage() {
   const player = await requirePlayer()
-  const [t, profile, stats, activities] = await Promise.all([
+  const [t, profile, stats, activities, participation] = await Promise.all([
     getTranslations("playerStats"),
     fetchMyProfileSummary(),
     fetchMemberStats(player.memberId),
     fetchPlayerActivities(player.memberId),
+    fetchPlayerParticipationRecords(player.memberId),
   ])
 
   return (
@@ -24,6 +27,8 @@ export default async function PlayerStatsPage() {
         <h1 className="heading-display mt-1 text-[2rem] font-semibold leading-tight tracking-tight">{t("title")}</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
       </header>
+
+      <PlayerParticipationRecords records={participation} initialNow={new Date().toISOString()} />
 
       <PlayerLevelGuide level={profile.level} copy={t.raw("levelGuide") as PlayerLevelGuideCopy} />
 

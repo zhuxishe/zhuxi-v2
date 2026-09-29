@@ -10,10 +10,11 @@ interface Props {
   purpose: RoundPurpose
   config: RoundContentConfig
   surveyEnd: string
+  showFormHeading?: boolean
 }
 
 /** Plain text content deliberately avoids treating administrator text as HTML. */
-export function RoundDetails({ roundName, purpose, config, surveyEnd }: Props) {
+export function RoundDetails({ roundName, purpose, config, surveyEnd, showFormHeading = true }: Props) {
   const t = useTranslations("survey")
   const locale = useLocale()
   const introduction = localizeRoundText(config.introduction, locale)
@@ -23,7 +24,7 @@ export function RoundDetails({ roundName, purpose, config, surveyEnd }: Props) {
     <div className="space-y-5">
       <div className="text-center">
         <h1 className="heading-display break-words text-xl">{locale === "ja" && config.titleJa.trim() ? config.titleJa : roundName}</h1>
-        {purpose !== "announcement" && <p className="mt-1.5 text-xs tracking-wide text-muted-foreground">
+        {showFormHeading && purpose !== "announcement" && <p className="mt-1.5 text-xs tracking-wide text-muted-foreground">
           {purpose === "matching" ? t("heading") : t("registration.heading")}
         </p>}
         <p className="mt-2 text-xs text-muted-foreground">

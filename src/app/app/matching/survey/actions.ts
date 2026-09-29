@@ -50,7 +50,7 @@ export async function submitSurvey(input: SubmitSurveyInput) {
     if (current?.purpose === "announcement") return { error: "surveyReadOnly" }
     return { error: "saveFailed" }
   }
-  revalidatePath("/app")
+  revalidatePath("/app", "layout")
   revalidatePath("/app/matching/survey")
   revalidatePath("/app/matching")
   revalidatePath(`/admin/matching/rounds/${input.roundId}`)

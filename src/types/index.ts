@@ -38,3 +38,5 @@ export type {
   PlayerFeedbackRow, PlayerFeedbackStatus,
 } from "./player-feedback"
 export { PLAYER_FEEDBACK_CATEGORIES, PLAYER_FEEDBACK_STATUSES } from "./player-feedback"
+
+export type { PlayerParticipationRecord, PlayerParticipationDetail } from "./player-participation"

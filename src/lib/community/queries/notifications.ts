@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { CommunityLocale, CommunityNotification, CommunityProfile } from "@/lib/community/types"
+import { participationRecordHref } from "@/lib/matching/participation-display"
 
 interface NotificationRow {
   id: string
@@ -9,6 +10,7 @@ interface NotificationRow {
   comment_id: string | null
   report_id: string | null
   announcement_id: string | null
+  round_id: string | null
   title_zh: string | null
   title_ja: string | null
   body_zh: string | null
@@ -36,6 +38,16 @@ export const COMMUNITY_SECURITY_NOTIFICATION_TYPES = [
   "permanent_ban",
 ] as const
 
+export const COMMUNITY_TRANSACTIONAL_NOTIFICATION_TYPES = [
+  "registration_submitted",
+  "matching_submitted",
+] as const
+
+export const COMMUNITY_RESTRICTED_NOTIFICATION_TYPES = [
+  ...COMMUNITY_SECURITY_NOTIFICATION_TYPES,
+  ...COMMUNITY_TRANSACTIONAL_NOTIFICATION_TYPES,
+] as const
+
 export async function fetchCommunityNotifications(
   memberId: string,
   locale: CommunityLocale,
@@ -55,11 +67,11 @@ export async function fetchCommunityNotifications(
   if (banResult.error) {
     throw new Error(`Failed to verify community notification access: ${banResult.error.message}`)
   }
-  const securityOnly = Boolean(banResult.data)
+  const hasCommunityBan = Boolean(banResult.data)
 
   let query = db
     .from("community_notifications")
-    .select("id, notification_type, actor_profile_id, post_id, comment_id, report_id, announcement_id, title_zh, title_ja, body_zh, body_ja, group_count, read_at, created_at")
+    .select("id, notification_type, actor_profile_id, post_id, comment_id, report_id, announcement_id, round_id, title_zh, title_ja, body_zh, body_ja, group_count, read_at, created_at")
     .eq("recipient_member_id", memberId)
     .gt("expires_at", nowIso)
     .order("created_at", { ascending: false })
@@ -70,9 +82,9 @@ export async function fetchCommunityNotifications(
     .eq("recipient_member_id", memberId)
     .is("read_at", null)
     .gt("expires_at", nowIso)
-  if (securityOnly) {
-    query = query.in("notification_type", [...COMMUNITY_SECURITY_NOTIFICATION_TYPES])
-    unreadQuery = unreadQuery.in("notification_type", [...COMMUNITY_SECURITY_NOTIFICATION_TYPES])
+  if (hasCommunityBan) {
+    query = query.in("notification_type", [...COMMUNITY_RESTRICTED_NOTIFICATION_TYPES])
+    unreadQuery = unreadQuery.in("notification_type", [...COMMUNITY_RESTRICTED_NOTIFICATION_TYPES])
   }
   if (options.unreadOnly) query = query.is("read_at", null)
 
@@ -90,7 +102,8 @@ export async function fetchCommunityNotifications(
   const postIds = [...new Set(rows.flatMap((row) => row.post_id ? [row.post_id] : []))]
   const commentIds = [...new Set(rows.flatMap((row) => row.comment_id ? [row.comment_id] : []))]
   const announcementIds = [...new Set(rows.flatMap((row) => row.announcement_id ? [row.announcement_id] : []))]
-  const [profilesResult, postsResult, commentsResult, announcementsResult] = await Promise.all([
+  const roundIds = [...new Set(rows.flatMap((row) => row.round_id ? [row.round_id] : []))]
+  const [profilesResult, postsResult, commentsResult, announcementsResult, submissionsResult] = await Promise.all([
     profileIds.length
       ? db.from("community_profiles").select("id, nickname, avatar_kind, avatar_path, preset_avatar, joined_at").in("id", profileIds)
       : Promise.resolve({ data: [], error: null }),
@@ -103,8 +116,11 @@ export async function fetchCommunityNotifications(
     announcementIds.length
       ? db.from("community_announcements").select("id, status, display_start_at, display_end_at").in("id", announcementIds)
       : Promise.resolve({ data: [], error: null }),
+    roundIds.length
+      ? db.from("match_round_submissions").select("round_id").eq("member_id", memberId).in("round_id", roundIds)
+      : Promise.resolve({ data: [], error: null }),
   ])
-  const relatedError = [profilesResult, postsResult, commentsResult, announcementsResult]
+  const relatedError = [profilesResult, postsResult, commentsResult, announcementsResult, submissionsResult]
     .find((result) => result.error)?.error
   if (relatedError) {
     throw new Error(`Failed to verify community notification targets: ${relatedError.message}`)
@@ -120,6 +136,7 @@ export async function fetchCommunityNotifications(
   const posts = new Map((postsResult.data ?? []).map((row: { id: string; post_type: string; status: string }) => [row.id, row]))
   const comments = new Map((commentsResult.data ?? []).map((row: { id: string; status: string }) => [row.id, row]))
   const announcements = new Map((announcementsResult.data ?? []).map((row: { id: string; status: string; display_start_at: string | null; display_end_at: string | null }) => [row.id, row]))
+  const submittedRoundIds = new Set((submissionsResult.data ?? []).map((row: { round_id: string }) => row.round_id))
 
   return {
     unreadCount: unreadResult.count ?? 0,
@@ -129,8 +146,10 @@ export async function fetchCommunityNotifications(
         commentId: row.comment_id,
         reportId: row.report_id,
         announcementId: row.announcement_id,
-      }, posts, comments, announcements)
-      const target = securityOnly && row.report_id
+        roundId: row.round_id,
+        notificationType: row.notification_type,
+      }, posts, comments, announcements, submittedRoundIds)
+      const target = hasCommunityBan && row.report_id
         ? { href: null, unavailable: false }
         : resolvedTarget
       return {
@@ -155,11 +174,19 @@ export function resolveCommunityNotificationTarget(
     commentId: string | null
     reportId: string | null
     announcementId: string | null
+    roundId?: string | null
+    notificationType?: string
   },
   posts: Map<string, { id: string; post_type: string; status: string }>,
   comments: Map<string, { id: string; status: string }>,
   announcements: Map<string, { id: string; status: string; display_start_at: string | null; display_end_at: string | null }>,
+  submittedRoundIds: Set<string> = new Set(),
 ): { href: string | null; unavailable: boolean } {
+  if (COMMUNITY_TRANSACTIONAL_NOTIFICATION_TYPES.some((type) => type === target.notificationType)) {
+    return target.roundId && submittedRoundIds.has(target.roundId)
+      ? { href: participationRecordHref(target.roundId), unavailable: false }
+      : { href: null, unavailable: true }
+  }
   if (target.commentId) {
     const comment = comments.get(target.commentId)
     if (!comment || comment.status !== "published") return { href: null, unavailable: true }

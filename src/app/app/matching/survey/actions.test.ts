@@ -45,13 +45,13 @@ describe("survey submission availability", () => {
     expect(mocks.upsert).not.toHaveBeenCalled()
   })
 
-  it("upserts the member's existing round answer and refreshes the home and form", async () => {
+  it("upserts the member's existing round answer and refreshes the notification layout and form", async () => {
     mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
     expect(await submitSurvey(input)).toEqual({ success: true })
     expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
       round_id: "round", member_id: "canonical-member", message: input.message, availability: input.availability,
     }), { onConflict: "round_id,member_id" })
-    expect(mocks.revalidate).toHaveBeenCalledWith("/app")
+    expect(mocks.revalidate).toHaveBeenCalledWith("/app", "layout")
     expect(mocks.revalidate).toHaveBeenCalledWith("/app/matching/survey")
   })
 

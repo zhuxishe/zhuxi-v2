@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   COMMUNITY_SECURITY_NOTIFICATION_TYPES,
+  COMMUNITY_RESTRICTED_NOTIFICATION_TYPES,
   resolveCommunityNotificationTarget,
 } from "./notifications"
 
@@ -25,6 +26,8 @@ function target(overrides: Partial<{
   commentId: string | null
   reportId: string | null
   announcementId: string | null
+  roundId: string | null
+  notificationType: string
 }> = {}) {
   return {
     postId: null,
@@ -50,9 +53,45 @@ describe("community notification visibility after a permanent ban", () => {
     expect(COMMUNITY_SECURITY_NOTIFICATION_TYPES).not.toContain("reply")
     expect(COMMUNITY_SECURITY_NOTIFICATION_TYPES).not.toContain("announcement")
   })
+
+  it("keeps submission receipts visible without allowing community interaction notices", () => {
+    expect(COMMUNITY_RESTRICTED_NOTIFICATION_TYPES).toEqual([
+      ...COMMUNITY_SECURITY_NOTIFICATION_TYPES,
+      "registration_submitted",
+      "matching_submitted",
+    ])
+    expect(COMMUNITY_RESTRICTED_NOTIFICATION_TYPES).not.toContain("like")
+    expect(COMMUNITY_RESTRICTED_NOTIFICATION_TYPES).not.toContain("announcement")
+  })
 })
 
 describe("community notification targets", () => {
+  it.each(["registration_submitted", "matching_submitted"])("links %s to the member's permanent record", (notificationType) => {
+    expect(resolveCommunityNotificationTarget(
+      target({ roundId: "closed-round", notificationType }),
+      publishedPosts,
+      publishedComments,
+      activeAnnouncements,
+      new Set(["closed-round"]),
+    )).toEqual({ href: "/app/profile/stats/rounds/closed-round", unavailable: false })
+  })
+
+  it("does not link a receipt to a missing or another member's submission", () => {
+    expect(resolveCommunityNotificationTarget(
+      target({ roundId: "other-round", notificationType: "registration_submitted" }),
+      publishedPosts,
+      publishedComments,
+      activeAnnouncements,
+      new Set(["my-round"]),
+    )).toEqual({ href: null, unavailable: true })
+    expect(resolveCommunityNotificationTarget(
+      target({ roundId: null, notificationType: "matching_submitted" }),
+      publishedPosts,
+      publishedComments,
+      activeAnnouncements,
+    )).toEqual({ href: null, unavailable: true })
+  })
+
   it("deep-links comment notifications to the post and comment anchor", () => {
     expect(resolveCommunityNotificationTarget(
       target({ postId: "treehole-post", commentId: "comment-id" }),

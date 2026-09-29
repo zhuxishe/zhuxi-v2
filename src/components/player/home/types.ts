@@ -1,3 +1,6 @@
+import type { SurveyWindow } from "@/lib/matching/survey-window"
+import type { RoundPurpose } from "@/types/matching-round"
+
 export interface PlayerHomeAction {
   eyebrow: string
   title: string
@@ -18,4 +21,13 @@ export interface PlayerHomeActivityItem {
 export interface PlayerHomeAnnouncementItem {
   id: string
   title: string
+}
+
+export interface PlayerHomeRoundItem extends SurveyWindow {
+  id: string
+  title: string
+  purpose: RoundPurpose
+  submitted: boolean
+  eventStart: string
+  location: string
 }

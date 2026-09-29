@@ -113,6 +113,8 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 21. `20260929123603_simplify_ideal_group_size.sql`：仅为补充资料保存校验增加“4-10人”，继续接受原有的人数答案，不改写历史记录或权限。先单独应用此迁移，再部署五个人数选项的界面。
 
+22. `20260929142902_round_submission_notifications.sql`：首次本人提交报名或匹配问卷时，在同一事务中生成一条双语站内通知；更新、重试、为他人导入和既有记录不重复通知。通知新增 `round_id` 关联和唯一索引，客户端仍没有通知写权限。先应用迁移再部署通知读取及永久参与记录入口；通知保留现有 90 天有效期，参与记录独立保留。
+
 任何一步失败都必须停止；保存完整错误与已应用版本，不得在同一目标上反复重放大迁移。修正应使用新的、可审计的 forward migration。
 
 在迁移历史正常、按文件名执行的全新环境中，第 7–12 条在六条核心成员迁移之后运行并作为终态断言/归一化。Production 的历史已发生分叉，发布时必须在隔离 workdir 中先只放入 `20260809094500` 与第 7 条并执行、验证，再加入六条核心成员迁移，最后分别加入第 8–12 条；禁止从主工作区直接运行 `db push --include-all`。
@@ -133,7 +135,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 ### 历史映射
 
-- 当前仓库共有 71 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条、媒体签名直传限制一条，以及本次玩家资料一致性、性格分数默认值兼容和空白回答完成判断修复三条，以及匹配管理内容编辑一条、理想活动人数选项兼容一条。全新隔离 Preview 必须按依赖顺序登记全部 71 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条，最后按上述增量发布要求应用第 17、18、19 条，再按独立发布说明应用第 20 条，随后应用第 21 条。
+- 当前仓库共有 72 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条、媒体签名直传限制一条，以及本次玩家资料一致性、性格分数默认值兼容和空白回答完成判断修复三条，以及匹配管理内容编辑一条、理想活动人数选项兼容一条、报名与匹配提交通知一条。全新隔离 Preview 必须按依赖顺序登记全部 72 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条，最后按上述增量发布要求应用第 17、18、19 条，再按独立发布说明应用第 20 条，随后应用第 21、22 条。
 - Production 远端登记 45 条：34 条 `202604*`、10 条 `202607*` 和 `20260806140912`。仓库的 `001`–`038`、`20260809094500`、六条成员迁移和新基线前向迁移均未以本地版本登记在 Production。
 - 34 条 April 历史中，27 条去注释/空白后与本地对应 SQL 一致；`015`–`017` 只多幂等包装；远端 `022` 加后续独立 session policy 修复后等价于当前本地 `022`。
 - 远端 `008` 历史曾把 `social_goal_secondary` 转为 `text[]`，但实际 Production catalog 已是 nullable `text`、默认 `NULL`，与代码和 Preview 类型一致。远端 `011` 没有本地的姓名回填，但 Production 8 条面试记录均已填充且与当前管理员名称一致。
@@ -165,7 +167,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 2. 按上一节核对 `<PREVIEW_PROJECT_REF>`、Vercel Preview 环境与最终 Preview URL；确认与 `<PRODUCTION_PROJECT_REF>` 不同。
 3. 在任何迁移前运行 `supabase/audits/user_member_master_preflight.sql`，保存带时间、commit SHA 和 Preview ref 的完整结果。
 4. 人工确认 Auth 数量、成员数量、旧成员数量、重复候选、无效引用和现有 ACL；脚本不会按姓名、邮箱或昵称自动合并。存在未解释异常时停止。
-5. 按“本分支成员迁移顺序”只应用尚未登记的迁移，并再次核对完整目标包含上述 20 个版本、仓库与全新隔离 Preview 合计 70 个版本。已有 Preview 仅应用尚缺版本；第 17、18、19 条按“玩家资料一致性增量发布”处理，并运行其回滚式 smoke。版本登记只证明 migration version 存在，不证明后来修改过的同版本 SQL 已执行；是否允许重放必须遵守下述边界。
+5. 按“本分支成员迁移顺序”只应用尚未登记的迁移，并再次核对完整目标包含上述 22 个版本、仓库与全新隔离 Preview 合计 72 个版本。已有 Preview 仅应用尚缺版本；第 17、18、19 条按“玩家资料一致性增量发布”处理，并运行其回滚式 smoke。版本登记只证明 migration version 存在，不证明后来修改过的同版本 SQL 已执行；是否允许重放必须遵守下述边界。
 
    **同版本重放边界：** `migration repair` 不是通用的 SQL 重跑工具。本轮仅允许在可丢弃的隔离 Preview 中，把已经逐条确认可幂等重放、且后来增强了持久效果或终态断言的 `20260830213104` 与 `20260830214322` 标记为 reverted，再按依赖顺序重放并保存 `dry-run`、push、history 与 postflight 证据。`20260809094500` 和六条成员迁移后来新增的 `BEGIN`、`SET LOCAL lock_timeout`、`SET LOCAL statement_timeout` 只约束未来执行，不改变已落库终态，不得仅为这些执行时保护在现有 Preview 重放。若已登记的大迁移发生任何持久 DDL、DML、权限或函数逻辑变化，必须改用全新可丢弃数据库从头验证，或新增可审计的 forward migration；禁止在已有 Preview 通过 repair 重跑大迁移。
 6. 运行 `supabase/audits/user_member_master_postflight.sql` 并保存完整结果，确认：

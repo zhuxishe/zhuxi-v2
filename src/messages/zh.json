@@ -528,10 +528,21 @@
       "feedback": "反馈"
     },
     "recruiting": {
-      "title": "近期活动",
-      "description": "以下活动即将举办，报名状态请在详情中确认",
-      "empty": "暂时没有即将举办的活动",
-      "viewAll": "进入活动页查看全部"
+      "title": "募集中",
+      "description": "查看开放中的报名、匹配问卷与近期活动",
+      "empty": "当前没有开放的报名、问卷或近期活动",
+      "viewAll": "浏览大型活动",
+      "roundsTitle": "报名与匹配",
+      "announcementsTitle": "活动公告",
+      "activitiesTitle": "近期大型活动",
+      "viewRounds": "浏览活动与匹配",
+      "viewRecord": "查看记录",
+      "registered": "已报名",
+      "submitted": "问卷已提交",
+      "matching": "匹配问卷",
+      "registration": "活动报名",
+      "announcement": "活动公告",
+      "eventTime": "活动时间（日本时间）：{time}"
     },
     "status": {
       "title": "我的状态",
@@ -709,14 +720,50 @@
     "submit": "提交评价",
     "submitting": "提交中..."
   },
+  "participation": {
+    "title": "我的报名与问卷",
+    "description": "查看已提交的报名与问卷，截止前可修改。",
+    "empty": "还没有报名或问卷记录",
+    "history": "历史记录 · {count}",
+    "browseAll": "浏览活动与匹配",
+    "viewRecord": "查看记录",
+    "editRegistration": "修改报名",
+    "editSurvey": "修改问卷",
+    "editableUntil": "可修改至 {time}（日本时间）",
+    "readOnlyShort": "记录已保存，可随时查看",
+    "readOnlyHint": "本期已停止收集，已提交的记录仍可查看，无法继续修改。",
+    "notOpenHint": "当前尚未开放修改，已提交的记录仍可查看。",
+    "matchingHint": "问卷提交仅表示参与本期匹配，匹配结果请在「匹配」中查看，不计为已参加活动。",
+    "answersTitle": "我的提交内容",
+    "notAnswered": "未填写",
+    "earlierQuestion": "历史问题 {number}",
+    "changedQuestion": "此回答已保存；原题目或选项已调整，暂无法完整显示。",
+    "registrationConfirmed": "你已提交报名，本期没有补充问题。",
+    "backToRecords": "返回参与记录",
+    "submittedAt": "首次提交：{time}",
+    "updatedAt": "最近修改：{time}",
+    "purpose": {
+      "registration": "活动报名",
+      "matching": "匹配问卷",
+      "announcement": "活动通知"
+    },
+    "status": {
+      "registrationClosed": "报名已截止",
+      "registered": "已报名",
+      "submitted": "已提交",
+      "collectionComplete": "收集已结束",
+      "notOpen": "暂未开放修改",
+      "closed": "已截止"
+    }
+  },
   "playerStats": {
-    "title": "等级与活动",
+    "title": "参与记录",
     "activities": "活动",
     "reviews": "评价",
     "avgScore": "平均分",
     "recentActivities": "最近活动",
     "noActivities": "还没有参加过活动",
-    "subtitle": "了解你的等级权益，记录每一次相聚。",
+    "subtitle": "查看报名与问卷，了解等级与活动记录。",
     "backToProfile": "返回个人资料",
     "statsTitle": "我的活动记录",
     "levelGuide": {

@@ -3,8 +3,8 @@ import { getLocale, getTranslations } from "next-intl/server"
 import { getPlayerInfo } from "@/lib/auth/player"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
 import { fetchPlayerRounds, fetchSubmittedRoundIds } from "@/lib/queries/player-rounds"
-import { getRoundPurpose } from "@/lib/matching/round-config"
-import { roundCardCopy, roundHref, selectHomeRound } from "@/lib/matching/round-display"
+import { getRoundPurpose, localizeRoundText, normalizeRoundConfig } from "@/lib/matching/round-config"
+import { roundCardCopy, roundDisplayName, roundHref, selectHomeRound } from "@/lib/matching/round-display"
 import { fetchMyProfileSummary } from "@/lib/profile/queries"
 import { fetchPlayerActivityHub } from "@/lib/player-activity/queries"
 import { isUpcomingLargeActivity } from "@/lib/player-activity/selection"
@@ -114,16 +114,27 @@ export default async function PlayerHomePage() {
           action={action}
           fallbackAction={fallbackAction}
           round={openRound ? { id: openRound.id, status: openRound.status, survey_start: openRound.survey_start, survey_end: openRound.survey_end } : null}
-          roundHref={openRound ? roundHref(openRound.id) : undefined}
-          purpose={purpose}
-          showAll={rounds.length > 0}
-          hasSubmitted={hasSubmitted}
           initialNow={new Date().toISOString()}
         />
       </div>
 
       <div className="mt-6">
         <PlayerHomeQuickActions
+          rounds={rounds.map((round) => {
+            const config = normalizeRoundConfig(round.content_config)
+            return {
+              id: round.id,
+              title: roundDisplayName(round, locale),
+              purpose: getRoundPurpose(round.purpose),
+              status: round.status,
+              survey_start: round.survey_start,
+              survey_end: round.survey_end,
+              submitted: submittedIds.includes(round.id),
+              eventStart: config.eventStart,
+              location: localizeRoundText(config.location, locale),
+            }
+          })}
+          initialNow={new Date().toISOString()}
           activities={recruitingActivities.map((activity) => ({
             id: activity.id,
             title: activity.title,
@@ -146,6 +157,10 @@ export default async function PlayerHomePage() {
               description: t("recruiting.description"),
               empty: t("recruiting.empty"),
               viewAll: t("recruiting.viewAll"),
+              roundsTitle: t("recruiting.roundsTitle"),
+              announcementsTitle: t("recruiting.announcementsTitle"),
+              activitiesTitle: t("recruiting.activitiesTitle"),
+              viewRounds: t("recruiting.viewRounds"),
               datePending: t("common.datePending"),
               locationPending: t("common.locationPending"),
               close: t("common.close"),

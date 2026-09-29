@@ -528,10 +528,21 @@
       "feedback": "ご意見"
     },
     "recruiting": {
-      "title": "近日開催の活動",
-      "description": "申込状況は各活動の詳細ページでご確認ください",
-      "empty": "近日開催予定の活動はありません",
-      "viewAll": "活動ページですべて見る"
+      "title": "参加受付中",
+      "description": "受付中のイベント・マッチングアンケートと今後のイベントを確認できます",
+      "empty": "現在受付中のイベント・アンケートや開催予定のイベントはありません",
+      "viewAll": "大型イベントを見る",
+      "roundsTitle": "イベント申込・マッチング",
+      "announcementsTitle": "イベントのお知らせ",
+      "activitiesTitle": "今後の大型イベント",
+      "viewRounds": "イベント・マッチングを見る",
+      "viewRecord": "申込内容を見る",
+      "registered": "申込済み",
+      "submitted": "回答済み",
+      "matching": "マッチングアンケート",
+      "registration": "イベント申込",
+      "announcement": "イベントのお知らせ",
+      "eventTime": "開催日時（日本時間）：{time}"
     },
     "status": {
       "title": "マイステータス",
@@ -709,14 +720,50 @@
     "submit": "評価を送信",
     "submitting": "送信中..."
   },
+  "participation": {
+    "title": "申込・アンケート履歴",
+    "description": "送信済みの申込内容やアンケートを確認できます。締切前は変更できます。",
+    "empty": "申込・アンケートの履歴はまだありません",
+    "history": "過去の記録 · {count}",
+    "browseAll": "イベント・マッチングを見る",
+    "viewRecord": "内容を確認",
+    "editRegistration": "申込内容を変更",
+    "editSurvey": "回答を変更",
+    "editableUntil": "変更期限：{time}（日本時間）",
+    "readOnlyShort": "保存済みの内容をいつでも確認できます",
+    "readOnlyHint": "受付は終了しました。送信済みの内容は確認できますが、変更はできません。",
+    "notOpenHint": "現在は変更受付期間外です。送信済みの内容は確認できます。",
+    "matchingHint": "アンケートの送信は今回のマッチングへの申込です。結果は「マッチング」から確認してください。イベント参加回数には加算されません。",
+    "answersTitle": "送信した内容",
+    "notAnswered": "未回答",
+    "earlierQuestion": "以前の質問 {number}",
+    "changedQuestion": "回答は保存されていますが、質問または選択肢が変更されたため、完全には表示できません。",
+    "registrationConfirmed": "申込は送信済みです。今回の追加質問はありません。",
+    "backToRecords": "参加履歴に戻る",
+    "submittedAt": "初回送信：{time}",
+    "updatedAt": "最終更新：{time}",
+    "purpose": {
+      "registration": "イベント申込",
+      "matching": "マッチングアンケート",
+      "announcement": "イベントのお知らせ"
+    },
+    "status": {
+      "registrationClosed": "申込受付終了",
+      "registered": "申込済み",
+      "submitted": "回答済み",
+      "collectionComplete": "受付終了",
+      "notOpen": "変更受付前",
+      "closed": "締切済み"
+    }
+  },
   "playerStats": {
-    "title": "レベルと活動",
+    "title": "参加履歴",
     "activities": "活動",
     "reviews": "評価",
     "avgScore": "平均点",
     "recentActivities": "最近の活動",
     "noActivities": "まだ活動に参加していません",
-    "subtitle": "レベルごとの特典と、これまでの活動を確認。",
+    "subtitle": "申込・アンケートやレベル、活動の記録を確認できます。",
     "backToProfile": "プロフィールに戻る",
     "statsTitle": "これまでの活動",
     "levelGuide": {

@@ -589,6 +589,7 @@ export type Database = {
           read_at: string | null
           recipient_member_id: string
           report_id: string | null
+          round_id: string | null
           title_ja: string | null
           title_zh: string | null
         }
@@ -607,6 +608,7 @@ export type Database = {
           read_at?: string | null
           recipient_member_id: string
           report_id?: string | null
+          round_id?: string | null
           title_ja?: string | null
           title_zh?: string | null
         }
@@ -625,6 +627,7 @@ export type Database = {
           read_at?: string | null
           recipient_member_id?: string
           report_id?: string | null
+          round_id?: string | null
           title_ja?: string | null
           title_zh?: string | null
         }
@@ -669,6 +672,13 @@ export type Database = {
             columns: ["report_id"]
             isOneToOne: false
             referencedRelation: "community_reports"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "community_notifications_round_id_fkey"
+            columns: ["round_id"]
+            isOneToOne: false
+            referencedRelation: "match_rounds"
             referencedColumns: ["id"]
           },
         ]

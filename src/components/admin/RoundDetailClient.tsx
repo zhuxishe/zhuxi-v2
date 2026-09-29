@@ -8,12 +8,16 @@ import { RoundStatsPanel } from "./RoundStatsPanel"
 import { SubmissionEditDialog } from "./SubmissionEditDialog"
 import { RoundImportPanel } from "./RoundImportPanel"
 import { canRunRoundMatching } from "./round-detail-rules"
-import { updateRoundStatus, runRoundMatching } from "@/app/admin/matching/rounds/[id]/actions"
+import { runRoundMatching } from "@/app/admin/matching/rounds/[id]/actions"
+import { updateRoundStatus } from "@/app/admin/matching/rounds/[id]/status-actions"
+import { RoundOpeningDialog } from "./RoundOpeningDialog"
+import { formatSurveyTime, type SurveyWindow } from "@/lib/matching/survey-window"
+import { useSurveyWindow } from "@/lib/matching/use-survey-window"
 import { Play, Eye, EyeOff, Plus } from "lucide-react"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
  
-type Round = Record<string, any>
+type Round = SurveyWindow & { id: string; round_name: string; activity_start: string; activity_end: string }
  
 type Sub = Record<string, any>
 
@@ -30,6 +34,7 @@ interface Props {
   allMembers: { id: string; name: string }[]
   canManageSubmissions: boolean
   canImportMembers: boolean
+  initialNow: string
 }
 
 export function RoundDetailClient({
@@ -39,11 +44,14 @@ export function RoundDetailClient({
   allMembers,
   canManageSubmissions,
   canImportMembers,
+  initialNow,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [matchingReason, setMatchingReason] = useState("")
+  const [opening, setOpening] = useState(false)
+  const windowState = useSurveyWindow(round, initialNow)
 
   // 编辑/新增 Dialog 状态
   const [editOpen, setEditOpen] = useState(false)
@@ -61,10 +69,15 @@ export function RoundDetailClient({
   async function handleStatusChange(status: string) {
     setLoading(true)
     setError(null)
-    const res = await updateRoundStatus(round.id, status)
-    setLoading(false)
-    if (res.error) { setError(res.error); return }
-    router.refresh()
+    try {
+      const res = await updateRoundStatus(round.id, status)
+      if (res.error) { setError(res.error); return }
+      router.refresh()
+    } catch {
+      setError("网络异常，请稍后重试")
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleRunMatch() {
@@ -93,19 +106,19 @@ export function RoundDetailClient({
         <div>
           <div className="flex items-center gap-2 mb-1">
             <h2 className="text-lg font-bold">{round.round_name}</h2>
-            <StatusBadge status={round.status} />
+            <StatusBadge status={windowState} />
           </div>
           <p className="text-xs text-muted-foreground">
-            问卷: {fmtDate(round.survey_start)} ~ {fmtDate(round.survey_end)}
+            问卷（日本时间）: {formatSurveyTime(round.survey_start)} ~ {formatSurveyTime(round.survey_end)}
           </p>
           <p className="text-xs text-muted-foreground">
             活动: {round.activity_start} ~ {round.activity_end}
           </p>
         </div>
         <div className="flex gap-2">
-          {round.status === "draft" && (
-            <Button size="sm" onClick={() => handleStatusChange("open")} disabled={loading}>
-              <Eye className="size-4 mr-1" />开放问卷
+          {(round.status === "draft" || round.status === "closed" || windowState === "expired") && (
+            <Button size="sm" onClick={() => setOpening(true)} disabled={loading}>
+              <Eye className="size-4 mr-1" />{round.status === "draft" ? "开放问卷" : "重新开放问卷"}
             </Button>
           )}
           {round.status === "open" && (
@@ -126,6 +139,7 @@ export function RoundDetailClient({
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {opening && <RoundOpeningDialog round={round} onClose={() => setOpening(false)} />}
 
       {canRunRoundMatching(round.status) && (
         <div className="rounded-lg border bg-muted/20 p-3 space-y-1">
@@ -203,13 +217,12 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; cls: string }> = {
     draft: { label: "草稿", cls: "bg-muted text-muted-foreground" },
     open: { label: "进行中", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
+    scheduled: { label: "待开放", cls: "bg-muted text-muted-foreground" },
+    expired: { label: "已到期", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
+    invalid: { label: "时间异常", cls: "bg-destructive/10 text-destructive" },
     closed: { label: "已截止", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
     matched: { label: "已匹配", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
   }
   const s = map[status] ?? map.draft
   return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
-}
-
-function fmtDate(iso: string) {
-  return new Date(iso).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 }

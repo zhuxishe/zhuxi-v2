@@ -15,6 +15,8 @@ describe("canUpdateRoundStatus", () => {
     expect(canUpdateRoundStatus("draft", "open")).toBe(true)
     expect(canUpdateRoundStatus("open", "closed")).toBe(true)
     expect(canUpdateRoundStatus("closed", "draft")).toBe(true)
+    expect(canUpdateRoundStatus("closed", "open")).toBe(true)
+    expect(canUpdateRoundStatus("unknown", "open")).toBe(false)
     expect(canUpdateRoundStatus("closed", "matched")).toBe(false)
     expect(canUpdateRoundStatus("matched", "draft")).toBe(false)
     expect(canUpdateRoundStatus("matched", "open")).toBe(false)

@@ -1,14 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { TimeGridSelector } from "./TimeGridSelector"
 import { submitSurvey } from "@/app/app/matching/survey/actions"
 import { Button } from "@/components/ui/button"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { SCRIPT_GENRE_OPTIONS } from "@/lib/constants/scripts"
 import { useTagLabels } from "@/lib/i18n/use-tag-labels"
+import { formatSurveyTime, surveySubmissionError } from "@/lib/matching/survey-window"
+import { useSurveyWindow } from "@/lib/matching/use-survey-window"
 
 /** DB enum values — never change these */
 const GAME_TYPE_VALUES = ["双人", "多人", "都可以"] as const
@@ -19,6 +21,9 @@ const SOCIAL_STYLE_VALUES = ["慢热", "活跃", "善于倾听", "话题广", "�
 interface Props {
   roundId: string
   roundName: string
+  surveyStart: string
+  surveyEnd: string
+  initialNow: string
   activityStart: string
   activityEnd: string
   existing?: {
@@ -31,8 +36,9 @@ interface Props {
   } | null
 }
 
-export function SurveyForm({ roundId, roundName, activityStart, activityEnd, existing }: Props) {
+export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initialNow, activityStart, activityEnd, existing }: Props) {
   const router = useRouter()
+  const locale = useLocale()
   const t = useTranslations("survey")
   const tErr = useTranslations("errors")
   const genreLabels = useTagLabels(SCRIPT_GENRE_OPTIONS)
@@ -44,25 +50,44 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
   const [message, setMessage] = useState(existing?.message ?? "")
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [serverClosed, setServerClosed] = useState(false)
+  const inFlight = useRef(false)
+  const window = { status: "open", survey_start: surveyStart, survey_end: surveyEnd }
+  const windowState = useSurveyWindow(window, initialNow)
+  const blocked = windowState !== "open" || serverClosed
 
   const totalSlots = Object.values(availability).reduce((s, v) => s + v.length, 0)
 
   async function handleSubmit() {
+    if (inFlight.current || blocked) return
+    const windowError = surveySubmissionError(window)
+    if (windowError) { setServerClosed(true); setError(tErr(windowError)); return }
     if (totalSlots === 0) { setError(t("noTimeSlot")); return }
+    inFlight.current = true
     setSubmitting(true)
     setError(null)
-    const res = await submitSurvey({
-      roundId,
-      gameTypePref: gameType,
-      genderPref,
-      availability,
-      interestTags,
-      socialStyle: socialStyle || null,
-      message: message.trim() || null,
-    })
-    setSubmitting(false)
-    if (res.error) { setError(tErr.has(res.error) ? tErr(res.error) : res.error); return }
-    router.push("/app/matching/survey/success")
+    try {
+      const res = await submitSurvey({
+        roundId,
+        gameTypePref: gameType,
+        genderPref,
+        availability,
+        interestTags,
+        socialStyle: socialStyle || null,
+        message: message.trim() || null,
+      })
+      if (res.error) {
+        if (["surveyExpired", "surveyClosed", "surveyNotStarted", "roundNotFound"].includes(res.error)) setServerClosed(true)
+        setError(tErr.has(res.error) ? tErr(res.error) : res.error)
+        return
+      }
+      router.push("/app/matching/survey/success")
+    } catch {
+      setError(tErr("networkError"))
+    } finally {
+      inFlight.current = false
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -70,8 +95,10 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
       <div className="text-center">
         <h1 className="heading-display text-xl">{roundName}</h1>
         <p className="text-xs text-muted-foreground mt-1.5 tracking-wide">{t("heading")}</p>
+        <p className="mt-2 text-xs text-muted-foreground">{t("deadline", { time: formatSurveyTime(surveyEnd, locale) })}</p>
       </div>
 
+      <fieldset disabled={blocked || submitting} className="space-y-6 disabled:opacity-70">
       {/* 游戏类型 */}
       <section className="space-y-3">
         <h2 className="heading-display text-sm">{t("gameType.title")}</h2>
@@ -179,13 +206,15 @@ export function SurveyForm({ roundId, roundName, activityStart, activityEnd, exi
         />
       </section>
 
+      </fieldset>
       {error && <p className="text-sm text-destructive text-center">{error}</p>}
 
       <div className="player-app-action-bar fixed bottom-16 left-0 right-0 z-40 border-t border-border bg-background/90 backdrop-blur-md p-4">
-        <Button onClick={handleSubmit} disabled={submitting || totalSlots === 0} className="w-full">
+        {blocked && <p role="status" className="mb-3 text-sm">{t("unavailableWhileFilling")}</p>}
+        <Button onClick={handleSubmit} disabled={blocked || submitting || totalSlots === 0} className="w-full">
           {submitting ? t("submitting") : existing ? t("update") : t("submit")}
         </Button>
-        {totalSlots === 0 && (
+        {!blocked && totalSlots === 0 && (
           <p className="text-xs text-muted-foreground text-center mt-2">{t("noTimeSlotHint")}</p>
         )}
       </div>

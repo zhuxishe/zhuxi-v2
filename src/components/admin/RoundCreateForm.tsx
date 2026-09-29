@@ -55,7 +55,7 @@ export function RoundCreateForm() {
       </div>
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-        <h3 className="text-sm font-semibold">问卷时间</h3>
+        <h3 className="text-sm font-semibold">问卷时间（日本时间）</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium mb-1 block">开放时间</label>

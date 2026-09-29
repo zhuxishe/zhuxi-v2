@@ -2,11 +2,13 @@ import Link from "next/link"
 import { ArrowRight, CalendarClock, CheckCircle2, Plus, Shuffle, Users, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/EmptyState"
+import { formatSurveyTime, getSurveyWindowState } from "@/lib/matching/survey-window"
 
 interface Round {
   id: string
   round_name: string
   status: string
+  survey_start: string
   survey_end: string
   activity_start: string
   activity_end: string
@@ -23,6 +25,9 @@ interface Session {
 const STATUS: Record<string, { label: string; cls: string }> = {
   draft: { label: "草稿", cls: "bg-muted text-muted-foreground" },
   open: { label: "问卷进行中", cls: "bg-green-100 text-green-700" },
+  scheduled: { label: "待开放", cls: "bg-muted text-muted-foreground" },
+  expired: { label: "已到期", cls: "bg-yellow-100 text-yellow-700" },
+  invalid: { label: "时间异常", cls: "bg-destructive/10 text-destructive" },
   closed: { label: "已截止", cls: "bg-yellow-100 text-yellow-700" },
   matched: { label: "已匹配", cls: "bg-blue-100 text-blue-700" },
 }
@@ -55,12 +60,12 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
             <h2 className="text-sm font-semibold">{current?.round_name ?? "当前轮次"}</h2>
             <p className="text-xs text-muted-foreground">轮次优先，历史匹配保留为次级入口。</p>
           </div>
-          {current && <StatusBadge status={current.status} />}
+          {current && <StatusBadge status={getSurveyWindowState(current)} />}
         </header>
         <div className="grid gap-3 p-4 sm:grid-cols-3">
-          <InfoCard icon={CalendarClock} label="问卷截止" value={current ? formatDate(current.survey_end) : "-"} />
+          <InfoCard icon={CalendarClock} label="问卷截止（日本时间）" value={current ? formatSurveyTime(current.survey_end) : "-"} />
           <InfoCard icon={Users} label="活动窗口" value={current ? `${shortDate(current.activity_start)} - ${shortDate(current.activity_end)}` : "-"} />
-          <InfoCard icon={CheckCircle2} label="运行状态" value={current ? statusText(current.status) : "-"} />
+          <InfoCard icon={CheckCircle2} label="运行状态" value={current ? statusText(getSurveyWindowState(current)) : "-"} />
         </div>
         <div className="border-t border-border p-4">
           <div className="mb-3 flex items-center justify-between">
@@ -125,7 +130,7 @@ function RoundLink({ round, active }: { round: Round; active: boolean }) {
         </span>
         <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
       </div>
-      <StatusBadge status={round.status} className="mt-2" />
+      <StatusBadge status={getSurveyWindowState(round)} className="mt-2" />
     </Link>
   )
 }
@@ -145,4 +150,3 @@ function CheckRow({ ok, label }: { ok: boolean; label: string }) {
 
 function statusText(status: string) { return STATUS[status]?.label ?? `未知状态（${status}）` }
 function shortDate(value: string) { return new Date(value).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }) }
-function formatDate(value: string) { return new Date(value).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }

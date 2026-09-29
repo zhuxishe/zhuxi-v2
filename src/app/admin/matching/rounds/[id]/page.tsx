@@ -40,6 +40,7 @@ export default async function RoundDetailPage({ params }: Props) {
         </Link>
         <RoundDetailClient
           round={round}
+          initialNow={new Date().toISOString()}
           submissions={submissions}
           stats={stats}
           allMembers={allMembers}

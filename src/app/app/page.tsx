@@ -9,7 +9,7 @@ import { isUpcomingLargeActivity } from "@/lib/player-activity/selection"
 import { fetchPublishedAnnouncements } from "@/lib/community/queries/official"
 import { normalizeCommunityLocale } from "@/lib/community/localize"
 import { PlayerPendingView } from "@/components/player/PlayerPendingView"
-import { PlayerHomeActionCard } from "@/components/player/home/PlayerHomeActionCard"
+import { PlayerHomeSurveyAction } from "@/components/player/home/PlayerHomeSurveyAction"
 import { PlayerHomeAnnouncements } from "@/components/player/home/PlayerHomeAnnouncements"
 import { PlayerHomeFeaturedActivity } from "@/components/player/home/PlayerHomeFeaturedActivity"
 import { PlayerHomeQuickActions } from "@/components/player/home/PlayerHomeQuickActions"
@@ -52,7 +52,7 @@ export default async function PlayerHomePage() {
   const pendingReviewHref = "/app/matches"
   const recruitingActivities = activityData.largeActivities.filter((activity) => isUpcomingLargeActivity(activity)).slice(0, 3)
   const priorityActivityId = recruitingActivities[0]?.id ?? null
-  const action = resolvePrimaryAction({
+  const actionInput = {
     labels: {
       eyebrow: t("action.eyebrow"),
       review: {
@@ -88,7 +88,9 @@ export default async function PlayerHomePage() {
     profile,
     featuredId: priorityActivityId,
     fallbackScriptId: activityData.socialScripts[0]?.id ?? null,
-  })
+  }
+  const action = resolvePrimaryAction(actionInput)
+  const fallbackAction = resolvePrimaryAction({ ...actionInput, openRound: false })
   const featured = recruitingActivities.find((activity) => action.href !== `/app/scripts/large/${activity.id}`) ?? null
   const displayName = profile.nickname || approvedPlayer.name || profile.fullName
 
@@ -102,7 +104,13 @@ export default async function PlayerHomePage() {
       </header>
 
       <div className="mt-[10px]">
-        <PlayerHomeActionCard action={action} />
+        <PlayerHomeSurveyAction
+          action={action}
+          fallbackAction={fallbackAction}
+          round={openRound ? { id: openRound.id, status: openRound.status, survey_start: openRound.survey_start, survey_end: openRound.survey_end } : null}
+          hasSubmitted={hasSubmitted}
+          initialNow={new Date().toISOString()}
+        />
       </div>
 
       <div className="mt-6">

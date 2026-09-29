@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
+import { parseSurveyOpening } from "@/lib/matching/survey-opening"
 
 interface CreateRoundInput {
   roundName: string
@@ -20,9 +21,8 @@ export async function createRound(input: CreateRoundInput) {
   if (!input.surveyStart || !input.surveyEnd) return { error: "请设置问卷时间" }
   if (!input.activityStart || !input.activityEnd) return { error: "请设置活动日期" }
 
-  if (new Date(input.surveyEnd) <= new Date(input.surveyStart)) {
-    return { error: "问卷截止时间必须晚于开放时间" }
-  }
+  const parsed = parseSurveyOpening(input)
+  if (parsed.error) return { error: parsed.error }
   if (new Date(input.activityEnd) <= new Date(input.activityStart)) {
     return { error: "活动结束日期必须晚于开始日期" }
   }
@@ -31,8 +31,7 @@ export async function createRound(input: CreateRoundInput) {
     .from("match_rounds")
     .insert({
       round_name: input.roundName,
-      survey_start: input.surveyStart,
-      survey_end: input.surveyEnd,
+      ...parsed.window,
       activity_start: input.activityStart,
       activity_end: input.activityEnd,
       status: "draft",

@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server"
 import { SurveyForm } from "@/components/player/SurveyForm"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { getSurveyWindowState } from "@/lib/matching/survey-window"
 
 function BackLink({ label }: { label: string }) {
   return (
@@ -33,11 +34,11 @@ export default async function SurveyPage() {
     let statusHint = t("noRoundHint")
 
     if (latest) {
-      const expired = latest.survey_end && new Date(latest.survey_end) < new Date()
-      if (latest.status === "draft") {
+      const state = getSurveyWindowState(latest)
+      if (state === "draft" || state === "scheduled") {
         statusText = t("roundDraft")
         statusHint = t("roundDraftHint")
-      } else if (latest.status === "closed" || expired) {
+      } else {
         statusText = t("roundClosed")
         statusHint = t("roundClosedHint")
       }
@@ -57,8 +58,12 @@ export default async function SurveyPage() {
     <div className="px-4 py-6">
       <BackLink label={t("backToHome")} />
       <SurveyForm
+        key={round.id}
         roundId={round.id}
         roundName={round.round_name}
+        surveyStart={round.survey_start}
+        surveyEnd={round.survey_end}
+        initialNow={new Date().toISOString()}
         activityStart={round.activity_start}
         activityEnd={round.activity_end}
         existing={existing ? {

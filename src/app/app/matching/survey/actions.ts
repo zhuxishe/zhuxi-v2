@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
+import { surveySubmissionError } from "@/lib/matching/survey-window"
 
 interface SubmitSurveyInput {
   roundId: string
@@ -21,7 +22,7 @@ export async function submitSurvey(input: SubmitSurveyInput) {
   // 验证轮次存在且 open
   const { data: round, error: roundErr } = await supabase
     .from("match_rounds")
-    .select("id, status, survey_end")
+    .select("id, status, survey_start, survey_end")
     .eq("id", input.roundId)
     .single()
 
@@ -29,12 +30,8 @@ export async function submitSurvey(input: SubmitSurveyInput) {
     if (roundErr) console.error("[submitSurvey] round query", roundErr)
     return { error: "roundNotFound" }
   }
-  if (round.status !== "open") return { error: "surveyClosed" }
-
-  // 检查截止时间
-  if (new Date(round.survey_end) < new Date()) {
-    return { error: "surveyExpired" }
-  }
+  const windowError = surveySubmissionError(round)
+  if (windowError) return { error: windowError }
 
   // 验证至少有一个时段
   const totalSlots = Object.values(input.availability).reduce((s, v) => s + v.length, 0)
@@ -59,8 +56,15 @@ export async function submitSurvey(input: SubmitSurveyInput) {
 
   if (error) {
     console.error("[submitSurvey] upsert", error)
+    // The administrator may close the round while this request is in flight.
+    const { data: current } = await supabase.from("match_rounds")
+      .select("status, survey_start, survey_end").eq("id", input.roundId).maybeSingle()
+    const currentError = current ? surveySubmissionError(current) : null
+    if (currentError) return { error: currentError }
     return { error: "saveFailed" }
   }
+  revalidatePath("/app")
+  revalidatePath("/app/matching/survey")
   revalidatePath("/app/matching")
   return { success: true }
 }

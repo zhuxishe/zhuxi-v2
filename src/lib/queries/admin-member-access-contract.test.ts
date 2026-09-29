@@ -43,7 +43,7 @@ describe("legacy admin member-read compatibility contract", () => {
       expect(text).not.toContain('.select("*")')
     }
     expect(rounds).toContain(
-      '.select("id, round_name, status, survey_end, activity_start, activity_end")',
+      '.select("id, round_name, status, survey_start, survey_end, activity_start, activity_end")',
     )
     expect(sessions).toContain(
       '.select("id, session_name, total_candidates, total_matched, created_at")',

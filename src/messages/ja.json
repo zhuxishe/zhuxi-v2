@@ -896,6 +896,8 @@
   },
   "survey": {
     "heading": "マッチング希望を入力",
+    "deadline": "締め切り（日本時間）：{time}",
+    "unavailableWhileFilling": "現在、アンケートの送信は受け付けていません。入力内容はこのページに残っていますが、未送信の変更は保存されていません。",
     "gameType": {
       "title": "どのタイプで遊びたい？",
       "duo": {
@@ -1212,6 +1214,7 @@
     "roundNotFound": "マッチングラウンドが見つかりません",
     "surveyClosed": "アンケートは終了しました",
     "surveyExpired": "アンケートの期限が過ぎました",
+    "surveyNotStarted": "アンケートの受付開始時刻になっていません",
     "noTimeSlot": "少なくとも1つの時間帯を選択してください",
     "invalidProfileInput": "入力内容と選択肢を確認してください",
     "incompletePersonality": "性格自己評価のすべての項目に回答してください",

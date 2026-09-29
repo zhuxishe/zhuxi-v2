@@ -896,6 +896,8 @@
   },
   "survey": {
     "heading": "填写你的匹配偏好",
+    "deadline": "截止时间（日本时间）：{time}",
+    "unavailableWhileFilling": "问卷当前不接受提交。已填写的内容仍保留在此页面，未提交的修改尚未保存。",
     "gameType": {
       "title": "想玩什么类型？",
       "duo": {
@@ -1212,6 +1214,7 @@
     "roundNotFound": "匹配轮次不存在",
     "surveyClosed": "问卷已关闭",
     "surveyExpired": "问卷已过期",
+    "surveyNotStarted": "问卷尚未到开放时间",
     "noTimeSlot": "请至少选择一个时间段",
     "invalidProfileInput": "请检查填写内容和选项",
     "incompletePersonality": "请完成全部性格自评题目",

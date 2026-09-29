@@ -7,7 +7,6 @@ import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { buildRoundCandidates } from "@/lib/matching/build-round-candidates"
 import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
-import { canUpdateRoundStatus } from "@/components/admin/round-detail-rules"
 import type { MatchingConfig } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
@@ -29,41 +28,6 @@ function roundStatusLabel(status: string) {
   return labels[status] ?? `未知状态（${status}）`
 }
 
-/** 更新轮次状态 */
-export async function updateRoundStatus(roundId: string, status: string) {
-  await requireAdmin()
-
-  const VALID_STATUSES = ['draft', 'open', 'closed', 'matched']
-  if (!VALID_STATUSES.includes(status)) {
-    return { error: "轮次状态无效" }
-  }
-
-  const supabase = await createClient()
-  const { data: round, error: roundError } = await supabase
-    .from("match_rounds")
-    .select("status")
-    .eq("id", roundId)
-    .single()
-
-  if (roundError || !round) return { error: "轮次不存在" }
-  if (!canUpdateRoundStatus(round.status, status)) {
-    return { error: `当前轮次状态为「${roundStatusLabel(round.status)}」，不允许切换到「${roundStatusLabel(status)}」` }
-  }
-
-  const { error } = await supabase
-    .from("match_rounds")
-    .update({ status })
-    .eq("id", roundId)
-
-  if (error) {
-    console.error("[updateRoundStatus]", error)
-    return { error: "操作失败" }
-  }
-  revalidatePath(`/admin/matching/rounds/${roundId}`)
-  revalidatePath("/admin/matching")
-  return { success: true }
-}
-
 /** 基于轮次问卷运行匹配 */
 export async function runRoundMatching(roundId: string, sessionName: string, rawReason: string) {
   const admin = await requireAdmin()
@@ -74,7 +38,7 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
   // 0. 前置状态校验：只有 closed 状态的轮次才能执行匹配
   const { data: round, error: roundErr } = await supabase
     .from("match_rounds")
-    .select("status")
+    .select("status, survey_start, survey_end")
     .eq("id", roundId)
     .single()
 
@@ -189,11 +153,16 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
   }
 
   // 8. 更新轮次状态为 matched
-  const { error: roundStatusError } = await supabase
+  const { data: matchedRound, error: roundStatusError } = await supabase
     .from("match_rounds")
     .update({ status: "matched" })
     .eq("id", roundId)
-  if (roundStatusError) {
+    .eq("status", "closed")
+    .eq("survey_start", round.survey_start)
+    .eq("survey_end", round.survey_end)
+    .select("id")
+    .maybeSingle()
+  if (roundStatusError || !matchedRound) {
     const rpc = supabase as unknown as OperationalRpcClient
     const { error: compensationError } = await rpc.rpc<unknown>(
       "admin_delete_operational_record",
@@ -208,11 +177,13 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
       console.error("[runRoundMatching:roundStatusCompensation]", compensationError)
       return { error: "轮次状态更新失败，且会话补偿删除失败，请立即人工检查" }
     }
-    return { error: "轮次状态更新失败，会话已补偿删除" }
+    return { error: "轮次状态已变更或更新失败，本次匹配已撤回，请刷新后重试" }
   }
 
   revalidatePath(`/admin/matching/rounds/${roundId}`)
   revalidatePath("/admin/matching")
+  revalidatePath("/app")
+  revalidatePath("/app/matching/survey")
   return { success: true, sessionId: session.id }
 }
 

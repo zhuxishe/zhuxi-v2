@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { useState } from "react"
 import { grantScriptAccess, revokeScriptAccess, fetchScriptAccessList } from "@/app/admin/scripts/[id]/actions"
 import { Button } from "@/components/ui/button"
@@ -119,7 +120,7 @@ export function ScriptAccessPanel({ scriptId, allMembers, initialAccessList }: P
                 <span className="text-sm">
                   <span className="font-medium">{identity?.full_name ?? a.member_id}</span>
                   <span className={`ml-2 text-xs ${active ? "text-emerald-700" : "text-muted-foreground"}`}>{state}</span>
-                  {a.expires_at && <span className="mt-0.5 block text-xs text-muted-foreground">到期：{formatDateTime(a.expires_at)}</span>}
+                  {a.expires_at && <span className="mt-0.5 block text-xs text-muted-foreground">到期：{formatAdminDateTime(a.expires_at)}</span>}
                 </span>
                 {active && (
                   <button
@@ -170,10 +171,4 @@ function isActiveAccess(record: AccessRecord) {
 function toDateTimeLocal(date: Date) {
   const offset = date.getTimezoneOffset() * 60_000
   return new Date(date.getTime() - offset).toISOString().slice(0, 16)
-}
-
-function formatDateTime(value: string) {
-  return new Intl.DateTimeFormat("zh-CN", {
-    year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
-  }).format(new Date(value))
 }

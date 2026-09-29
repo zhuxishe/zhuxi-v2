@@ -1,3 +1,4 @@
+import { formatAdminDate } from "@/lib/admin-datetime"
 import { Activity, Star, AlertTriangle, ThumbsUp } from "lucide-react"
 
 interface Stats {
@@ -47,7 +48,7 @@ export function StatsCard({ stats }: Props) {
       </div>
       {stats.last_activity_at && (
         <p className="text-xs text-muted-foreground">
-          最近活动: {new Date(stats.last_activity_at).toLocaleDateString("zh-CN")}
+          最近活动: {formatAdminDate(stats.last_activity_at)}
         </p>
       )}
     </div>

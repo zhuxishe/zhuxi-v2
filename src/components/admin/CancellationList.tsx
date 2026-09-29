@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { approveCancellation, rejectCancellation } from "@/app/admin/matching/cancellations/actions"
@@ -44,7 +45,7 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
 
   const session = unwrap(request.session) as { session_name?: string } | undefined
   const requestedAt = request.cancellation_requested_at
-    ? new Date(request.cancellation_requested_at).toLocaleString("zh-CN")
+    ? formatAdminDateTime(request.cancellation_requested_at)
     : ""
 
   async function handleAction(action: "approve" | "reject") {

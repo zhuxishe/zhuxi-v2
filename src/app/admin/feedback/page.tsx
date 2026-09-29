@@ -1,3 +1,4 @@
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { PlayerFeedbackStatusForm } from "@/components/admin/PlayerFeedbackStatusForm"
@@ -68,7 +69,7 @@ export default async function AdminFeedbackPage({
                   <div>
                     <p className="font-semibold text-foreground">{item.member_name_snapshot}</p>
                     <p className="mt-1 text-xs text-muted-foreground">
-                      {new Intl.DateTimeFormat("zh-CN", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Tokyo" }).format(new Date(item.created_at))}
+                      {formatAdminDateTime(item.created_at)}
                       {` · ${item.locale === "zh" ? "中文" : "日语"} · ${item.page_path}`}
                     </p>
                   </div>

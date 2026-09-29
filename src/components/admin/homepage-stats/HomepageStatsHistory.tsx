@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { History, RotateCcw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { HomepageSchoolStatsHistoryItem } from "./types"
@@ -8,21 +9,6 @@ const ACTION_LABELS: Record<HomepageSchoolStatsHistoryItem["action"], string> = 
   seed: "初始版本",
   publish: "直接发布",
   restore: "历史恢复",
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "—"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "—"
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date)
 }
 
 export function HomepageStatsHistory({
@@ -76,7 +62,7 @@ export function HomepageStatsHistory({
                       <div><dt className="text-xs text-muted-foreground">精选学校</dt><dd className="mt-0.5 font-medium">{item.featuredSchools.length}</dd></div>
                       <div><dt className="text-xs text-muted-foreground">发布者</dt><dd className="mt-0.5 truncate font-medium">{item.publishedByName}</dd></div>
                     </dl>
-                    <p className="mt-3 text-xs text-muted-foreground">{formatDate(item.publishedAt)}（日本时间）</p>
+                    <p className="mt-3 text-xs text-muted-foreground">{formatAdminDateTime(item.publishedAt)}（日本时间）</p>
                     <details className="mt-3 text-sm">
                       <summary className="w-fit cursor-pointer rounded text-primary outline-none hover:underline focus-visible:ring-2 focus-visible:ring-primary">查看该版本学校明细</summary>
                       <ul className="mt-2 grid gap-1.5 rounded-lg bg-muted/60 p-3 sm:grid-cols-2 lg:grid-cols-3">

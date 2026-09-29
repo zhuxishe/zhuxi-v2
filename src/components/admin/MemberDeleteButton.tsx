@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { useState, useTransition } from "react"
 import { AlertTriangle, Ban, LockKeyhole, PlayCircle, SearchCheck, UserX } from "lucide-react"
 import { useRouter } from "next/navigation"
@@ -128,7 +129,7 @@ export function MemberDeleteButton({ memberId, memberName, accountStatus, anonym
               对“{memberName}”执行暂停、重新启用、关闭或匿名化前，先核对关联记录与阻断条件。关闭不是级联删除；匿名化是独立操作。
             </p>
             <p className="mt-2 text-xs leading-5 text-amber-900">
-              当前本库状态：<strong>{accountStatusLabel(accountStatus)}</strong>；匿名化时间：<strong>{anonymizedAt ?? "未匿名化"}</strong>。
+              当前本库状态：<strong>{accountStatusLabel(accountStatus)}</strong>；匿名化时间：<strong>{formatAdminDateTime(anonymizedAt, "未匿名化")}</strong>。
             </p>
           </div>
         </div>

@@ -1,3 +1,4 @@
+import { formatAdminDate, formatAdminDateTime } from "@/lib/admin-datetime"
 import { TagBadge } from "@/components/shared/TagBadge"
 import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
 import { EvalTabView } from "./EvalTabView"
@@ -157,7 +158,7 @@ export function MemberDetailCard({ member, identity }: Props) {
                 <p className="mt-1 text-lg font-semibold">{quizResult.personality_type ?? "未生成"}</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                完成于 {new Intl.DateTimeFormat("zh-CN", { timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(quizResult.completed_at))}
+                完成于 {formatAdminDate(quizResult.completed_at)}
               </p>
             </div>
             <div className="grid gap-3 sm:grid-cols-5">
@@ -205,7 +206,7 @@ export function MemberDetailCard({ member, identity }: Props) {
           <table className="w-full"><tbody>
             <Row label="学生证" value={verification.student_id_verified ? "已验证" : "未验证"} />
             <Row label="照片" value={verification.photo_verified ? "已验证" : "未验证"} />
-            {verification.verified_at && <Row label="验证时间" value={verification.verified_at} />}
+            {verification.verified_at && <Row label="验证时间" value={formatAdminDateTime(verification.verified_at)} />}
           </tbody></table>
         )}
       </div>

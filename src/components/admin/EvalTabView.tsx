@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDate } from "@/lib/admin-datetime"
 import { useState } from "react"
 import { EVAL_DIMENSIONS } from "@/lib/constants/interview"
 import type { InterviewEvaluationRow } from "@/types"
@@ -72,7 +73,7 @@ export function EvalTabView({ evaluations }: Props) {
       {/* 面试官信息 */}
       {activeIdx < evaluations.length && (
         <div className="flex gap-4 text-xs text-muted-foreground">
-          <span>日期: {evaluations[activeIdx]?.created_at?.split("T")[0] ?? "-"}</span>
+          <span>日期: {formatAdminDate(evaluations[activeIdx]?.created_at, "-")}</span>
           {evaluations[activeIdx]?.risk_level && (
             <span>风险：{memberDisplayLabel(evaluations[activeIdx].risk_level)}</span>
           )}

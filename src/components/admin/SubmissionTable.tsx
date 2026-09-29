@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { useState } from "react"
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react"
 
@@ -123,7 +124,7 @@ export function SubmissionTable({ submissions, onEdit, editable = true, showRaw 
                   </div>
                 )}
                 <p className="text-[10px] text-muted-foreground">
-                  提交时间: {new Date(sub.created_at).toLocaleString("zh-CN")}
+                  提交时间: {formatAdminDateTime(sub.created_at)}
                 </p>
               </div>
             )}

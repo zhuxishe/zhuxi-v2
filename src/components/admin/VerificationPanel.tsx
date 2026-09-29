@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { updateVerification } from "@/app/admin/members/[id]/verify/actions"
@@ -57,7 +58,7 @@ export function VerificationPanel({ memberId, existing }: Props) {
 
         {existing?.verified_at && (
           <p className="text-xs text-muted-foreground">
-            核验完成于 {new Date(existing.verified_at).toLocaleString("zh-CN")}
+            核验完成于 {formatAdminDateTime(existing.verified_at)}
           </p>
         )}
       </div>

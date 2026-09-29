@@ -1,3 +1,4 @@
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
 import { requireAdmin } from "@/lib/auth/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -61,7 +62,7 @@ export default async function BlacklistPage() {
                         {r.notes || "-"}
                       </td>
                       <td className="px-4 py-3 text-muted-foreground">
-                        {new Date(r.created_at).toLocaleDateString("zh-CN")}
+                        {formatAdminDateTime(r.created_at)}
                       </td>
                       <td className="px-4 py-3">
                         <BlacklistRemoveButton relationId={r.id} />

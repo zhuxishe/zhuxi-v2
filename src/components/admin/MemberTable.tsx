@@ -1,3 +1,4 @@
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
 import type { MemberDirectoryItem } from "@/types"
 import { MemberStatusBadge } from "./MemberStatusBadge"
@@ -7,15 +8,6 @@ interface Props {
   members: MemberDirectoryItem[]
   canViewHighRisk: boolean
   redactedFields: string[]
-}
-
-function formatDate(value: string) {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "未记录"
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(date)
 }
 
 function StateBadge({ value, fallback = "未设置" }: { value: string | null; fallback?: string }) {
@@ -86,7 +78,7 @@ export function MemberTable({ members, canViewHighRisk, redactedFields }: Props)
                 </div>
               </td>
               <td className="px-4 py-3 font-mono text-xs">{highRiskVisible ? member.memberNumber ?? "未分配" : <span className="font-sans text-amber-700">因权限隐藏</span>}</td>
-              <td className="px-4 py-3 text-xs text-muted-foreground">{formatDate(member.updatedAt)}</td>
+              <td className="px-4 py-3 text-xs text-muted-foreground">{formatAdminDateTime(member.updatedAt, "未记录")}</td>
               <td className="px-4 py-3 text-right">
                 <Link href={`/admin/members/${member.memberId}`} className="font-medium text-primary hover:underline">查看详情</Link>
               </td>

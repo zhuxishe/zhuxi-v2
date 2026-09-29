@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -235,7 +236,7 @@ export function MemberStatsAdminEditor({ memberId, stats, notes, canOverrideRaw 
             />
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span className="text-xs text-muted-foreground">
-                {new Date(note.created_at).toLocaleString("zh-CN")}
+                {formatAdminDateTime(note.created_at)}
               </span>
               <div className="flex gap-2">
                 <Button

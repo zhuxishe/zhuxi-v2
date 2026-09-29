@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { useEffect, useMemo, useRef, useState, useTransition, type DragEvent, type FormEvent } from "react"
 import { useRouter } from "next/navigation"
 import { AlertTriangle, CheckCircle2, Plus, RotateCcw, Save, Sigma, UsersRound } from "lucide-react"
@@ -37,21 +38,6 @@ function toDraft(stats: HomepageSchoolStatsDraft): HomepageSchoolStatsDraft {
     totalSchools: stats.totalSchools,
     featuredSchools: stats.featuredSchools.map((school) => ({ ...school })),
   }
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "—"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "—"
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date)
 }
 
 function validateDraft(draft: HomepageSchoolStatsDraft) {
@@ -582,7 +568,7 @@ export function HomepageStatsEditor({
           <div className="sticky bottom-0 z-10 flex flex-col gap-3 rounded-xl border border-border bg-card/95 p-3 shadow-[0_-8px_24px_rgba(0,0,0,.06)] backdrop-blur sm:flex-row sm:items-center sm:justify-between">
             <div className="min-w-0">
               <p className={`text-sm font-medium ${isDirty ? "text-amber-700" : "text-muted-foreground"}`}>{isDirty ? "有尚未发布的修改" : `当前为版本 ${currentVersion}`}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">最近发布：{formatDate(published.publishedAt)}（日本时间）</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">最近发布：{formatAdminDateTime(published.publishedAt)}（日本时间）</p>
             </div>
             <div className="flex gap-2">
               <Button type="button" variant="outline" disabled={pending || !isDirty} onClick={() => { setDraft(toDraft(published)); setStatus(null) }}>

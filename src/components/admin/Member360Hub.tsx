@@ -1,3 +1,4 @@
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
 import {
   Activity,
@@ -42,16 +43,6 @@ interface Props {
   activeTab: Member360Tab
   adminRole: AdminRole
   auditPage: MemberAuditPage | null
-}
-
-function formatDate(value: string | null) {
-  if (!value) return "未填写"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return value
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Tokyo", year: "numeric", month: "2-digit", day: "2-digit",
-    hour: "2-digit", minute: "2-digit", hour12: false,
-  }).format(date)
 }
 
 function RecordPanel({ title, record, description }: {
@@ -198,7 +189,7 @@ function AuditEventCard({ event, memberId, canRestore, canViewHighRisk }: {
             {section ? <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">{section}</span> : null}
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {event.actor_name ?? "系统"} · {formatDate(event.created_at ?? null)}
+            {event.actor_name ?? "系统"} · {formatAdminDateTime(event.created_at, "未填写")}
           </p>
           <p className="mt-2 text-sm">原因：{event.reason ?? "未记录"}</p>
         </div>
@@ -258,7 +249,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
               {isHistoricalRecord ? <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs font-medium text-slate-800">旧记录</span> : null}
             </div>
             <p className="mt-2 break-all text-xs text-muted-foreground">成员主记录 ID（<span className="font-mono">members.id</span>）：<span className="font-mono">{memberId}</span></p>
-            <p className="mt-1 text-xs text-muted-foreground">最后更新：{formatDate(data.member.updatedAt)}</p>
+            <p className="mt-1 text-xs text-muted-foreground">最后更新：{formatAdminDateTime(data.member.updatedAt, "未填写")}</p>
           </div>
           {isHistoricalRecord ? (
             <p className="max-w-xl rounded-lg bg-slate-100 px-3 py-2 text-xs leading-5 text-slate-800">

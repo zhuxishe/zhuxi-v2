@@ -1,12 +1,13 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { updateRoundStatus } from "@/app/admin/matching/rounds/[id]/status-actions"
 import { formatTokyoDateTimeLocal } from "@/lib/player-activity/tokyo-datetime"
-import { formatSurveyTime, type SurveyWindow } from "@/lib/matching/survey-window"
+import { type SurveyWindow } from "@/lib/matching/survey-window"
 import { getRoundPurpose } from "@/lib/matching/round-config"
 
 interface Props {
@@ -47,7 +48,7 @@ export function RoundOpeningDialog({ round, onClose }: Props) {
       <DialogContent>
         <DialogTitle>{title}</DialogTitle>
         <DialogDescription>{purpose === "announcement" ? "请确认通知的展示时间（日本时间）。通知无需玩家提交。" : `请确认${subject}收集时间（日本时间）。已有提交会保留；开放期间，玩家可以提交或修改自己的内容。`}</DialogDescription>
-        <p className="text-xs text-muted-foreground">原截止时间：{formatSurveyTime(round.survey_end)}</p>
+        <p className="text-xs text-muted-foreground">原截止时间：{formatAdminDateTime(round.survey_end)}</p>
         <form onSubmit={submit} className="space-y-4">
           <label className="block text-sm">开放时间（日本时间）
             <input type="datetime-local" required value={surveyStart} onChange={(event) => setStart(event.target.value)} disabled={pending} className="mt-1 w-full rounded-md border bg-background px-3 py-2" />

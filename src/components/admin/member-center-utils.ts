@@ -1,4 +1,5 @@
 import type { AdminRole, MemberCenterRecord } from "@/types"
+import { formatAdminTimestampField } from "@/lib/admin-datetime"
 
 export const MEMBER_360_TABS = [
   { value: "overview", label: "概览" },
@@ -404,9 +405,11 @@ export function formatMemberValue(value: unknown, field?: string): string {
     }
     return value.map(formatCompactValue).join("、")
   }
-  if (typeof value === "object") return JSON.stringify(value, null, 2)
+  if (typeof value === "object") return JSON.stringify(value, formatAdminTimestampField, 2)
   if (value === "") return "空文本"
   if (typeof value !== "string") return String(value)
+  const timestamp = formatAdminTimestampField(field ?? "", value)
+  if (timestamp !== value) return String(timestamp)
   if (field === "action_type" || field === "action" || field === "operation") return memberAuditActionLabel(value)
   if (field === "section") return memberAuditSectionLabel(value)
   if (field === "member_status" && value === "pending") return "待面试"
@@ -418,7 +421,7 @@ function formatCompactValue(value: unknown): string {
   if (value === null) return "未填写"
   if (value === true) return "是"
   if (value === false) return "否"
-  if (typeof value === "object") return JSON.stringify(value)
+  if (typeof value === "object") return JSON.stringify(value, formatAdminTimestampField)
   return String(value)
 }
 

@@ -1,5 +1,6 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { type FormEvent, useState, useTransition } from "react"
@@ -65,21 +66,6 @@ function profileAvatarUrl(path: string | null) {
   return `/api/community/media?${params.toString()}`
 }
 
-function formatDate(value: string | null) {
-  if (!value) return "—"
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) return "—"
-  return new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Tokyo",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(date)
-}
-
 function formatAuditValue(field: string, value: unknown) {
   if (value === null || value === undefined || value === "") return "未设置"
   if (field === "compatibility_status" || field === "compatibilityStatus") {
@@ -96,7 +82,7 @@ function formatAuditValue(field: string, value: unknown) {
   if (field === "score_source" || field === "scoreSource") {
     return value === "manual" ? "人工设置" : "初始值"
   }
-  if (field === "last_activity_at") return formatDate(String(value))
+  if (field === "last_activity_at") return formatAdminDateTime(String(value))
   if (typeof value === "object") return JSON.stringify(value)
   return String(value)
 }
@@ -242,7 +228,7 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
             icon={<Activity className="size-4 text-primary" aria-hidden="true" />}
             label="累计参加活动"
             value={`${metrics.activityCount} 次`}
-            detail={metrics.lastActivityAt ? `最近参加：${formatDate(metrics.lastActivityAt)}` : "暂无活动记录"}
+            detail={metrics.lastActivityAt ? `最近参加：${formatAdminDateTime(metrics.lastActivityAt)}` : "暂无活动记录"}
           />
         </div>
       </div>
@@ -349,7 +335,7 @@ export function MemberProfileMetricsCard({ metrics, member }: MemberProfileMetri
           {audit ? (
             <div className="mt-4">
               <p className="text-sm font-medium">{audit.actorName ?? "系统"}</p>
-              <p className="mt-1 text-xs text-muted-foreground">{formatDate(audit.createdAt)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">{formatAdminDateTime(audit.createdAt)}</p>
               <div className="mt-4 space-y-3">
                 {audit.changedFields.length > 0 ? audit.changedFields.map((field: string) => (
                   <div key={field} className="rounded-lg border border-border/80 bg-card p-3">

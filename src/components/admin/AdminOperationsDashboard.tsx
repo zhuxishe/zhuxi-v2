@@ -1,3 +1,4 @@
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
 import { ArrowRight, ClipboardList, Clock, Plus, Shuffle, Users, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -71,7 +72,7 @@ export function AdminOperationsDashboard({
           {activeRound ? (
             <Link href={`/admin/matching/rounds/${activeRound.id}`} className="block p-4">
               <p className="text-sm font-semibold">{activeRound.round_name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">问卷截止：{formatDate(activeRound.survey_end)}</p>
+              <p className="mt-1 text-xs text-muted-foreground">问卷截止：{formatAdminDateTime(activeRound.survey_end)}</p>
               <p className="mt-1 text-xs text-muted-foreground">活动窗口：{activeRound.activity_start} ~ {activeRound.activity_end}</p>
               <div className="mt-4 h-2 rounded-full bg-muted">
                 <div className="h-full w-2/3 rounded-full bg-primary" />
@@ -125,8 +126,4 @@ function QueueRow({ title, desc, href }: { title: string; desc: string; href: st
 
 function statusLabel(status: string) {
   return ({ draft: "草稿", open: "问卷进行中", closed: "已截止", matched: "已匹配" } as Record<string, string>)[status] ?? `未知状态（${status}）`
-}
-
-function formatDate(value: string) {
-  return new Date(value).toLocaleString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })
 }

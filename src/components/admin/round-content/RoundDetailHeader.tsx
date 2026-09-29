@@ -1,11 +1,11 @@
 "use client"
 
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
 import { Eye, EyeOff, Pencil, Play } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { RoundRecord } from "@/types"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
-import { formatSurveyTime } from "@/lib/matching/survey-window"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import { canRunRoundMatching } from "../round-detail-rules"
 import { RoundStatusBadge } from "./RoundStatusBadge"
@@ -22,8 +22,8 @@ export function RoundDetailHeader({ round, windowState, loading, count, matching
   return <div className="flex flex-wrap items-start justify-between gap-4">
     <div>
       <div className="mb-1 flex items-center gap-2"><h2 className="text-lg font-bold">{round.round_name}</h2><RoundStatusBadge status={windowState} /></div>
-      <p className="text-xs text-muted-foreground">{noun}（日本时间）: {formatSurveyTime(round.survey_start)} ~ {formatSurveyTime(round.survey_end)}</p>
-      <p className="text-xs text-muted-foreground">活动: {purpose !== "matching" && config.eventStart ? `${formatSurveyTime(config.eventStart)} ~ ${formatSurveyTime(config.eventEnd)}（日本时间）` : `${round.activity_start} ~ ${round.activity_end}`}</p>
+      <p className="text-xs text-muted-foreground">{noun}（日本时间）: {formatAdminDateTime(round.survey_start)} ~ {formatAdminDateTime(round.survey_end)}</p>
+      <p className="text-xs text-muted-foreground">活动: {purpose !== "matching" && config.eventStart ? `${formatAdminDateTime(config.eventStart)} ~ ${formatAdminDateTime(config.eventEnd)}（日本时间）` : `${round.activity_start} ~ ${round.activity_end}`}</p>
     </div>
     <div className="flex flex-wrap gap-2">
       <Link href={`/admin/matching/rounds/${round.id}/edit`}><Button size="sm" variant="outline"><Pencil className="mr-1 size-4" />内容、问卷与预览</Button></Link>

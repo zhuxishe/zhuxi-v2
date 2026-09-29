@@ -1,8 +1,9 @@
+import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
 import { ArrowRight, CalendarClock, CheckCircle2, Plus, Shuffle, Users, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/EmptyState"
-import { formatSurveyTime, getSurveyWindowState } from "@/lib/matching/survey-window"
+import { getSurveyWindowState } from "@/lib/matching/survey-window"
 import { getRoundPurpose } from "@/lib/matching/round-config"
 
 interface Round {
@@ -65,7 +66,7 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
           {current && <StatusBadge status={getSurveyWindowState(current)} />}
         </header>
         <div className="grid gap-3 p-4 sm:grid-cols-3">
-          <InfoCard icon={CalendarClock} label="收集／展示截止（日本时间）" value={current ? formatSurveyTime(current.survey_end) : "-"} />
+          <InfoCard icon={CalendarClock} label="收集／展示截止（日本时间）" value={current ? formatAdminDateTime(current.survey_end) : "-"} />
           <InfoCard icon={Users} label="活动窗口" value={current ? `${shortDate(current.activity_start)} - ${shortDate(current.activity_end)}` : "-"} />
           <InfoCard icon={CheckCircle2} label="运行状态" value={current ? statusText(getSurveyWindowState(current)) : "-"} />
         </div>
@@ -81,7 +82,7 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
                   <span className="block text-sm font-semibold">{session.session_name ?? "未命名"}</span>
                   <span className="text-xs text-muted-foreground">{session.total_candidates ?? 0} 人参与 · {session.total_matched ?? 0} 人匹配</span>
                 </span>
-                <span className="text-xs text-muted-foreground">{shortDate(session.created_at)}</span>
+                <span className="text-xs text-muted-foreground">{formatAdminDateTime(session.created_at)}</span>
               </Link>
             ))}
             {sessions.length === 0 && <p className="px-3 py-8 text-center text-sm text-muted-foreground">还没有历史匹配记录</p>}
@@ -154,5 +155,5 @@ function CheckRow({ ok, label }: { ok: boolean; label: string }) {
 }
 
 function statusText(status: string) { return STATUS[status]?.label ?? `未知状态（${status}）` }
-function shortDate(value: string) { return new Date(value).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }) }
+function shortDate(value: string) { return new Date(value).toLocaleDateString("zh-CN", { timeZone: "Asia/Tokyo", month: "short", day: "numeric" }) }
 function purposeText(purpose?: string) { return { matching: "收集时间后匹配", registration: "固定时间活动报名", announcement: "活动通知" }[getRoundPurpose(purpose)] }

@@ -5,17 +5,14 @@ import { requirePlayer } from "@/lib/auth/player"
 import { fetchMemberStats, fetchPlayerActivities } from "@/lib/queries/activities"
 import { fetchMyProfileSummary } from "@/lib/profile/queries"
 import { PlayerLevelGuide, type PlayerLevelGuideCopy } from "@/components/player/profile/PlayerLevelGuide"
-import { fetchPlayerParticipationRecords } from "@/lib/queries/player-participation"
-import { PlayerParticipationRecords } from "@/components/player/profile/PlayerParticipationRecords"
 
 export default async function PlayerStatsPage() {
   const player = await requirePlayer()
-  const [t, profile, stats, activities, participation] = await Promise.all([
+  const [t, profile, stats, activities] = await Promise.all([
     getTranslations("playerStats"),
     fetchMyProfileSummary(),
     fetchMemberStats(player.memberId),
     fetchPlayerActivities(player.memberId),
-    fetchPlayerParticipationRecords(player.memberId),
   ])
 
   return (
@@ -28,11 +25,9 @@ export default async function PlayerStatsPage() {
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{t("subtitle")}</p>
       </header>
 
-      <PlayerParticipationRecords records={participation} initialNow={new Date().toISOString()} />
-
       <PlayerLevelGuide level={profile.level} copy={t.raw("levelGuide") as PlayerLevelGuideCopy} />
 
-      <section className="space-y-3 border-t border-border pt-5" aria-labelledby="activity-stats-title">
+      <section id="activity-stats" className="scroll-mt-24 space-y-3 border-t border-border pt-5" aria-labelledby="activity-stats-title">
         <h2 id="activity-stats-title" className="text-base font-semibold tracking-tight">{t("statsTitle")}</h2>
         <div className="grid grid-cols-3 gap-2">
           <StatBox icon={Activity} label={t("activities")} value={stats?.activity_count ?? 0} />

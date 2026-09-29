@@ -73,7 +73,7 @@ describe("community notification targets", () => {
       publishedComments,
       activeAnnouncements,
       new Set(["closed-round"]),
-    )).toEqual({ href: "/app/profile/stats/rounds/closed-round", unavailable: false })
+    )).toEqual({ href: "/app/matches/rounds/closed-round", unavailable: false })
   })
 
   it("does not link a receipt to a missing or another member's submission", () => {

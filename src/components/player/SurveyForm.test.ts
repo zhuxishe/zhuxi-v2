@@ -80,6 +80,11 @@ describe("survey form expiry and recovery", () => {
     expect(mocks.push).toHaveBeenCalledWith("/app/matching/survey/success?roundId=round")
   })
 
+  it("carries the fixed record source through a successful edit", async () => {
+    await submitButton(render({ fromParticipation: true })).onClick()
+    expect(mocks.push).toHaveBeenCalledWith("/app/matching/survey/success?roundId=round&from=participation")
+  })
+
   it("stops further submissions after the server reports manual closure", async () => {
     mocks.submit.mockResolvedValue({ error: "surveyClosed" })
     await submitButton().onClick()

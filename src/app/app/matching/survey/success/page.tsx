@@ -9,16 +9,18 @@ import { fetchMySubmission } from "@/lib/queries/rounds"
 import { getRoundPurpose } from "@/lib/matching/round-config"
 import { roundHref } from "@/lib/matching/round-display"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
+import { participationEditHref, participationRecordHref } from "@/lib/matching/participation-display"
 
-export default async function SurveySuccessPage({ searchParams }: { searchParams: Promise<{ roundId?: string }> }) {
+export default async function SurveySuccessPage({ searchParams }: { searchParams: Promise<{ roundId?: string; from?: string | string[] }> }) {
   const player = await requirePlayer()
-  const { roundId } = await searchParams
+  const { roundId, from } = await searchParams
   if (!roundId) redirect("/app/matching")
   const round = await fetchPlayerRound(roundId)
   if (!round || getRoundPurpose(round.purpose) === "announcement") redirect("/app/matching")
   const submission = await fetchMySubmission(roundId, player.memberId)
   if (!submission) redirect(roundHref(roundId))
   const t = await getTranslations("survey")
+  const participation = await getTranslations("participation")
   const registration = getRoundPurpose(round.purpose) === "registration"
 
   return (
@@ -28,13 +30,16 @@ export default async function SurveySuccessPage({ searchParams }: { searchParams
       <p className="text-sm text-muted-foreground mb-6">
         {t(registration ? "registration.successDescription" : "success.description")}
       </p>
-      <div className="flex gap-3">
-        <Link href="/app">
-          <Button>{t("success.backToHome")}</Button>
+      <div className="flex w-full max-w-sm flex-col gap-3">
+        <Link href={participationRecordHref(roundId)}>
+          <Button className="min-h-11 w-full">{participation("viewRecord")}</Button>
         </Link>
-        {getSurveyWindowState(round) === "open" && <Link href={roundHref(roundId)}>
-          <Button variant="outline">{t(registration ? "registration.update" : "success.editSurvey")}</Button>
+        {getSurveyWindowState(round) === "open" && <Link href={from === "participation" ? participationEditHref(roundId) : roundHref(roundId)}>
+          <Button variant="outline" className="min-h-11 w-full">{t(registration ? "registration.update" : "success.editSurvey")}</Button>
         </Link>}
+        <Link href="/app">
+          <Button variant="ghost" className="min-h-11 w-full">{t("success.backToHome")}</Button>
+        </Link>
       </div>
     </div>
   )

@@ -24,6 +24,7 @@ interface Props {
   purpose?: RoundPurpose
   config?: RoundContentConfig
   configRevision?: number
+  fromParticipation?: boolean
   existing?: {
     game_type_pref: string
     gender_pref: string
@@ -36,7 +37,7 @@ interface Props {
 }
 
 export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initialNow, activityStart, activityEnd,
-  existing, purpose = "matching", config = normalizeRoundConfig(undefined), configRevision = 0 }: Props) {
+  existing, purpose = "matching", config = normalizeRoundConfig(undefined), configRevision = 0, fromParticipation = false }: Props) {
   const router = useRouter()
   const locale = useLocale()
   const t = useTranslations("survey")
@@ -71,7 +72,7 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
         setError(tErr.has(res.error) ? tErr(res.error) : res.error)
         return
       }
-      router.push(`/app/matching/survey/success?roundId=${encodeURIComponent(roundId)}`)
+      router.push(`/app/matching/survey/success?roundId=${encodeURIComponent(roundId)}${fromParticipation ? "&from=participation" : ""}`)
     } catch {
       setError(tErr("networkError"))
     } finally {

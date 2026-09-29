@@ -40,7 +40,7 @@ describe("homepage recruiting entry destinations", () => {
 
   it("takes submitted users to their persistent record instead of an expiring edit URL", () => {
     const html = render([{ ...round, submitted: true }])
-    expect(html).toContain('href="/app/profile/stats/rounds/round-1"')
+    expect(html).toContain('href="/app/matches/rounds/round-1"')
     expect(html).toContain("registered")
     expect(html).toContain("viewRecord")
   })
@@ -50,7 +50,7 @@ describe("homepage recruiting entry destinations", () => {
     expect(html).toContain('id="recruiting-announcements-title"')
     expect(html).not.toContain('id="recruiting-rounds-title"')
     expect(html).toContain("cta.announcement")
-    expect(html).not.toContain("/app/profile/stats/rounds/")
+    expect(html).not.toContain("/app/matches/rounds/")
     expect(html).toContain('href="/app/scripts/large/large-1"')
     expect(html).toContain('href="/app/scripts/large"')
   })

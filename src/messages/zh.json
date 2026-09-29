@@ -688,7 +688,12 @@
     "cancelBadgeRejected": "已驳回",
     "groupMembers": "组员",
     "historyTitle": "历史记录",
-    "matchEnded": "已结束"
+    "matchEnded": "已结束",
+    "pageTitle": "参与记录",
+    "pageDescription": "查看你的报名、问卷与匹配安排。",
+    "matchingTitle": "玩家匹配",
+    "matchingDescription": "查看已有搭档、互评与取消申请状态。",
+    "matchingEmpty": "双人本与多人本匹配功能正在完善，后续安排会显示在这里。"
   },
   "reviews": {
     "title": "互评",
@@ -757,15 +762,15 @@
     }
   },
   "playerStats": {
-    "title": "参与记录",
+    "title": "等级制度",
     "activities": "活动",
     "reviews": "评价",
     "avgScore": "平均分",
     "recentActivities": "最近活动",
     "noActivities": "还没有参加过活动",
-    "subtitle": "查看报名与问卷，了解等级与活动记录。",
+    "subtitle": "了解当前等级、等级权益与成长规则。",
     "backToProfile": "返回个人资料",
-    "statsTitle": "我的活动记录",
+    "statsTitle": "活动与评价概览",
     "levelGuide": {
       "currentLevel": "当前等级",
       "currentBadge": "当前",
@@ -1025,7 +1030,8 @@
     "displayUntil": "展示截止时间（日本时间）：{time}",
     "requiredQuestion": "必填",
     "announcementHint": "这是一则活动通知，无需填写问卷。",
-    "clearAnswer": "清除选择"
+    "clearAnswer": "清除选择",
+    "backToRecord": "返回记录"
   },
   "timeGrid": {
     "date": "日期",

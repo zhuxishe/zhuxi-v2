@@ -5,8 +5,8 @@ import { CalendarDays, ChevronRight, ClipboardCheck, MapPin, Pencil } from "luci
 import { useLocale, useTranslations } from "next-intl"
 import type { PlayerParticipationRecord } from "@/types/player-participation"
 import { getRoundPurpose, localizeRoundText, normalizeRoundConfig } from "@/lib/matching/round-config"
-import { roundDisplayName, roundHref } from "@/lib/matching/round-display"
-import { canEditParticipation, participationRecordHref, participationStatus } from "@/lib/matching/participation-display"
+import { roundDisplayName } from "@/lib/matching/round-display"
+import { canEditParticipation, participationEditHref, participationRecordHref, participationStatus } from "@/lib/matching/participation-display"
 import { formatSurveyTime } from "@/lib/matching/survey-window"
 import { useSurveyWindow } from "@/lib/matching/use-survey-window"
 import { formatTokyoDateTimeRange } from "@/lib/player-activity/tokyo-datetime"
@@ -41,7 +41,7 @@ export function PlayerParticipationCard({ record, initialNow }: { record: Player
       <Link href={participationRecordHref(round.id)} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         {t("viewRecord")}<ChevronRight className="size-3.5" aria-hidden="true" />
       </Link>
-      {editable && <Link href={roundHref(round.id)} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
+      {editable && <Link href={participationEditHref(round.id)} className="inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-primary px-3 text-xs font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">
         <Pencil className="size-3" aria-hidden="true" />{t(purpose === "registration" ? "editRegistration" : "editSurvey")}
       </Link>}
     </div>

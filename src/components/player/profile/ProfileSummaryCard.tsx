@@ -78,7 +78,7 @@ export function ProfileSummaryCard({
         <Stat
           label={labels.activities}
           value={`${activityCount} ${labels.activityUnit}`}
-          href="/app/profile/stats"
+          href="/app/profile/stats#activity-stats"
           bordered
         />
       </div>

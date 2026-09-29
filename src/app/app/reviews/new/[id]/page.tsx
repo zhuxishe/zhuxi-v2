@@ -118,7 +118,7 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
   if (!revieweeId) notFound()
 
   const alreadyReviewed = await checkReviewExists(matchResultId, player.memberId)
-  if (alreadyReviewed) redirect("/app/matches")
+  if (alreadyReviewed) redirect("/app/matches#matching")
 
   return (
     <div className="p-6">

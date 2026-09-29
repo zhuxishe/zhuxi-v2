@@ -8,7 +8,7 @@ import { PlayerParticipationCard } from "./PlayerParticipationCard"
 export async function PlayerParticipationRecords({ records, initialNow }: { records: PlayerParticipationRecord[]; initialNow: string }) {
   const t = await getTranslations("participation")
   const { current, history } = groupParticipationRecords(records, new Date(initialNow))
-  return <section className="space-y-3" aria-labelledby="participation-title">
+  return <section id="participation" className="scroll-mt-24 space-y-3" aria-labelledby="participation-title">
     <div>
       <h2 id="participation-title" className="text-base font-semibold tracking-tight">{t("title")}</h2>
       <p className="mt-1 text-xs leading-5 text-muted-foreground">{t("description")}</p>

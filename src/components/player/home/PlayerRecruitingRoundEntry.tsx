@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl"
 import { ArrowRight, CalendarDays, ClipboardList, MapPin, Megaphone } from "lucide-react"
 import { formatSurveyTime } from "@/lib/matching/survey-window"
 import { roundHref } from "@/lib/matching/round-display"
+import { participationRecordHref } from "@/lib/matching/participation-display"
 import type { PlayerHomeRoundItem } from "./types"
 
 export function PlayerRecruitingRoundEntry({ round, locale, onClose }: { round: PlayerHomeRoundItem; locale: string; onClose: () => void }) {
@@ -12,7 +13,7 @@ export function PlayerRecruitingRoundEntry({ round, locale, onClose }: { round: 
   const roundT = useTranslations("rounds")
   const Icon = round.purpose === "matching" ? ClipboardList : round.purpose === "registration" ? CalendarDays : Megaphone
   const submitted = round.submitted && round.purpose !== "announcement"
-  const href = submitted ? `/app/profile/stats/rounds/${round.id}` : roundHref(round.id)
+  const href = submitted ? participationRecordHref(round.id) : roundHref(round.id)
 
   return (
     <Link href={href} onClick={onClose} className="block rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 transition-colors hover:bg-primary/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">

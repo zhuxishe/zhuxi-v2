@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest"
 import { normalizeRoundConfig } from "./round-config"
-import { canEditParticipation, groupParticipationRecords, participationAvailability, participationCustomAnswers, participationStatus } from "./participation-display"
+import { canEditParticipation, groupParticipationRecords, participationAvailability, participationCustomAnswers, participationEditHref, participationRecordHref, participationStatus } from "./participation-display"
 import { getSurveyWindowState } from "./survey-window"
 import type { RoundRecord } from "@/types/matching-round"
 
 const round: RoundRecord = { id: "round", round_name: "活动", purpose: "registration", status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-30T00:00:00Z", activity_start: "2026-10-01", activity_end: "2026-10-02" }
 
 describe("participation record presentation", () => {
+  it("keeps record and edit destinations inside the app with a fixed participation source", () => {
+    expect(participationRecordHref("round/id?from=outside")).toBe("/app/matches/rounds/round%2Fid%3Ffrom%3Doutside")
+    expect(participationEditHref("round&id=outside")).toBe("/app/matching/survey?round=round%26id%3Doutside&from=participation")
+  })
+
   it("stops offering edit at the exact deadline but retains the record in history", () => {
     const deadline = new Date(round.survey_end)
     const state = getSurveyWindowState(round, deadline)

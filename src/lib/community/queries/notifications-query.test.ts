@@ -61,7 +61,7 @@ describe("notification delivery with the real Supabase request builder", () => {
     expect(result.unreadCount).toBe(1)
     expect(result.items).toEqual([expect.objectContaining({
       id: "receipt", title: receipt.title_ja, body: receipt.body_ja,
-      href: "/app/profile/stats/rounds/closed-round", unavailable: false,
+      href: "/app/matches/rounds/closed-round", unavailable: false,
     })])
     expect(requests.find((url) => url.pathname.endsWith("/match_round_submissions"))?.searchParams.get("member_id")).toBe("eq.member")
   })
@@ -72,7 +72,7 @@ describe("notification delivery with the real Supabase request builder", () => {
     const result = await fetchCommunityNotifications("member", "zh", { limit: 8 })
     expect(result.items.map((item) => item.id)).toEqual(["receipt", "matching"])
     expect(result.unreadCount).toBe(2)
-    expect(result.items.every((item) => item.href === "/app/profile/stats/rounds/closed-round")).toBe(true)
+    expect(result.items.every((item) => item.href === "/app/matches/rounds/closed-round")).toBe(true)
   })
 
   it("marks a missing owned submission unavailable instead of linking another member's record", async () => {

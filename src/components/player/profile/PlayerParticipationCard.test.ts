@@ -21,11 +21,11 @@ describe("participation record controls", () => {
 
   it("keeps a permanent record link and offers a separate edit action only during collection", () => {
     const open = renderToStaticMarkup(createElement(PlayerParticipationCard, { record, initialNow: "2026-09-29T12:00:00Z" }))
-    expect(open).toContain('href="/app/profile/stats/rounds/round"')
-    expect(open).toContain('href="/app/matching/survey?round=round"')
+    expect(open).toContain('href="/app/matches/rounds/round"')
+    expect(open).toContain('href="/app/matching/survey?round=round&amp;from=participation"')
     mocks.state = "expired"
     const closed = renderToStaticMarkup(createElement(PlayerParticipationCard, { record, initialNow: "2026-09-29T12:00:00Z" }))
-    expect(closed).toContain('href="/app/profile/stats/rounds/round"')
+    expect(closed).toContain('href="/app/matches/rounds/round"')
     expect(closed).not.toContain("/app/matching/survey")
     expect(closed).toContain("status.registrationClosed")
   })

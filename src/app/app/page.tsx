@@ -58,7 +58,7 @@ export default async function PlayerHomePage() {
   // from confirmed matches: current match data has no review-open timestamp,
   // and group reviews are still tracked at match level rather than per person.
   const pendingReviewCount = 0
-  const pendingReviewHref = "/app/matches"
+  const pendingReviewHref = "/app/matches#matching"
   const recruitingActivities = activityData.largeActivities.filter((activity) => isUpcomingLargeActivity(activity)).slice(0, 3)
   const priorityActivityId = recruitingActivities[0]?.id ?? null
   const actionInput = {
@@ -199,7 +199,7 @@ export default async function PlayerHomePage() {
               ? t("status.scoreValue", { score: profile.compatibilityScore.toFixed(1) })
               : t("status.scorePending"),
             hint: profile.compatibilityStatus === "published" ? t("status.viewProfile") : t("status.viewMatches"),
-            href: profile.compatibilityStatus === "published" ? "/app/profile" : "/app/matches",
+            href: profile.compatibilityStatus === "published" ? "/app/profile" : "/app/matches#matching",
           }}
           growth={{
             label: t("status.growth"),

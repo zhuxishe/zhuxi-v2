@@ -34,7 +34,7 @@ export function PlayerHomeQuickActions({ activities, rounds, initialNow, locale,
       <nav aria-label={labels.ariaLabel} className="grid grid-cols-4 divide-x divide-border">
         <QuickButton icon={CalendarDays} label={labels.recruiting} onClick={() => setRecruitingOpen(true)} />
         <QuickLink icon={ClipboardCheck} label={labels.reviews} href={pendingReviewHref} badge={pendingReviewCount} />
-        <QuickLink icon={BookOpen} label={labels.history} href="/app/profile/stats" />
+        <QuickLink icon={BookOpen} label={labels.history} href="/app/matches#participation" />
         <QuickButton icon={MessageSquareText} label={labels.feedback} onClick={() => setFeedbackSubmissionId(crypto.randomUUID())} />
       </nav>
 

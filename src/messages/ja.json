@@ -688,7 +688,12 @@
     "cancelBadgeRejected": "却下",
     "groupMembers": "グループメンバー",
     "historyTitle": "履歴",
-    "matchEnded": "終了"
+    "matchEnded": "終了",
+    "pageTitle": "参加履歴",
+    "pageDescription": "申込み・アンケート・マッチングの状況を確認できます。",
+    "matchingTitle": "プレイヤーマッチング",
+    "matchingDescription": "既存の相手、相互評価、キャンセル申請の状況を確認できます。",
+    "matchingEmpty": "2人用・複数人用のマッチング機能を準備中です。今後の予定はこちらに表示されます。"
   },
   "reviews": {
     "title": "相互評価",
@@ -757,15 +762,15 @@
     }
   },
   "playerStats": {
-    "title": "参加履歴",
+    "title": "レベル制度",
     "activities": "活動",
     "reviews": "評価",
     "avgScore": "平均点",
     "recentActivities": "最近の活動",
     "noActivities": "まだ活動に参加していません",
-    "subtitle": "申込・アンケートやレベル、活動の記録を確認できます。",
+    "subtitle": "現在のレベル、特典、成長のルールを確認できます。",
     "backToProfile": "プロフィールに戻る",
-    "statsTitle": "これまでの活動",
+    "statsTitle": "活動・評価の概要",
     "levelGuide": {
       "currentLevel": "現在のレベル",
       "currentBadge": "現在",
@@ -1025,7 +1030,8 @@
     "displayUntil": "掲載終了（日本時間）：{time}",
     "requiredQuestion": "必須",
     "announcementHint": "これはイベントのお知らせです。アンケートへの回答は不要です。",
-    "clearAnswer": "選択をクリア"
+    "clearAnswer": "選択をクリア",
+    "backToRecord": "履歴に戻る"
   },
   "timeGrid": {
     "date": "日付",

@@ -7,11 +7,12 @@ import { ArrowLeft } from "lucide-react"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
 import { fetchPlayerRound } from "@/lib/queries/player-rounds"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
+import { participationRecordHref } from "@/lib/matching/participation-display"
 import type { RoundRecord } from "@/types/matching-round"
 
-function BackLink({ label }: { label: string }) {
+function BackLink({ label, href }: { label: string; href: string }) {
   return (
-    <Link href="/app" className="inline-flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground">
+    <Link href={href} className="inline-flex items-center gap-1 text-sm text-muted-foreground mb-4 hover:text-foreground">
       <ArrowLeft className="size-4" /> {label}
     </Link>
   )
@@ -26,13 +27,19 @@ function StatusMessage({ text, hint }: { text: string; hint?: string }) {
   )
 }
 
-export default async function SurveyPage({ searchParams }: { searchParams: Promise<{ round?: string }> }) {
+export default async function SurveyPage({ searchParams }: { searchParams: Promise<{ round?: string; from?: string | string[] }> }) {
   const player = await requirePlayer()
   const params = await searchParams
   const round: RoundRecord | null = params.round ? await fetchPlayerRound(params.round) : await fetchOpenRound()
   const t = await getTranslations("survey")
+  const state = round ? getSurveyWindowState(round) : null
+  const existing = round && (state === "open" || params.from === "participation")
+    ? await fetchMySubmission(round.id, player.memberId) : null
+  const fromParticipation = params.from === "participation" && Boolean(existing)
+  const backHref = fromParticipation && round ? participationRecordHref(round.id) : "/app"
+  const backLabel = t(fromParticipation ? "backToRecord" : "backToHome")
 
-  if (!round || getSurveyWindowState(round) !== "open") {
+  if (!round || state !== "open") {
     const latest = round ?? (params.round ? null : await fetchLatestRound())
     let statusText = t("noRound")
     let statusHint = t("noRoundHint")
@@ -50,17 +57,15 @@ export default async function SurveyPage({ searchParams }: { searchParams: Promi
 
     return (
       <div className="px-4 py-6">
-        <BackLink label={t("backToHome")} />
+        <BackLink label={backLabel} href={backHref} />
         <StatusMessage text={statusText} hint={statusHint} />
       </div>
     )
   }
 
-  const existing = await fetchMySubmission(round.id, player.memberId)
-
   return (
     <div className="px-4 py-6">
-      <BackLink label={t("backToHome")} />
+      <BackLink label={backLabel} href={backHref} />
       <SurveyForm
         key={round.id}
         roundId={round.id}
@@ -73,6 +78,7 @@ export default async function SurveyPage({ searchParams }: { searchParams: Promi
         purpose={getRoundPurpose(round.purpose)}
         config={normalizeRoundConfig(round.content_config)}
         configRevision={round.config_revision ?? 0}
+        fromParticipation={fromParticipation}
         existing={existing ? {
           game_type_pref: existing.game_type_pref,
           gender_pref: existing.gender_pref,

@@ -59,7 +59,7 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
     <div className="p-6 space-y-4">
       <div className="flex items-center gap-3">
         <Link
-          href="/app/matches"
+          href="/app/matches#matching"
           className="rounded-full p-1.5 hover:bg-muted transition-colors"
         >
           <ArrowLeft className="size-5" />

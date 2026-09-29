@@ -1,9 +1,14 @@
 import type { RoundContentConfig, RoundRecord } from "@/types/matching-round"
 import { getRoundPurpose, localizeRoundText, normalizeRoundConfig } from "./round-config"
 import { getSurveyWindowState, type SurveyWindowState } from "./survey-window"
+import { roundHref } from "./round-display"
 
 export function participationRecordHref(roundId: string) {
-  return `/app/profile/stats/rounds/${encodeURIComponent(roundId)}`
+  return `/app/matches/rounds/${encodeURIComponent(roundId)}`
+}
+
+export function participationEditHref(roundId: string) {
+  return `${roundHref(roundId)}&from=participation`
 }
 
 export function canEditParticipation(round: RoundRecord, state: SurveyWindowState) {

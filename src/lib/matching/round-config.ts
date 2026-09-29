@@ -22,6 +22,7 @@ export function normalizeRoundConfig(value: unknown): RoundContentConfig {
     version: 1, titleJa: string(input.titleJa),
     cardTitle: text(input.cardTitle), cardDescription: text(input.cardDescription), cardCta: text(input.cardCta),
     introduction: text(input.introduction), location: text(input.location), fee: text(input.fee), notice: text(input.notice),
+    recruitmentCount: text(input.recruitmentCount),
     eventStart: string(input.eventStart), eventEnd: string(input.eventEnd),
     modules: { interests: modules.interests !== false, social: modules.social !== false, message: modules.message !== false },
     labels: Object.fromEntries(ROUND_LABEL_KEYS.filter((key) => labels[key] !== undefined).map((key) => [key, text(labels[key])])),

@@ -17,7 +17,7 @@ export function RoundDetails({ roundName, purpose, config, surveyEnd }: Props) {
   const t = useTranslations("survey")
   const locale = useLocale()
   const introduction = localizeRoundText(config.introduction, locale)
-  const details = (["location", "fee", "notice"] as const)
+  const details = (["location", "recruitmentCount", "fee", "notice"] as const)
     .map((key) => ({ key, value: localizeRoundText(config[key], locale) })).filter((item) => item.value)
   return (
     <div className="space-y-5">

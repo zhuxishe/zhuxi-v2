@@ -20,19 +20,24 @@ export function RoundCopyFields({ config, locale, purpose, roundName, onChange }
     ["cardCta", "首页按钮文字", 40, false],
     ["introduction", "活动／本期介绍", 5000, true],
     ["location", "地点", 500, false],
+    ["recruitmentCount", "募集人数", 100, false],
     ["fee", "费用", 300, false],
     ["notice", "注意事项", 3000, true],
   ] as const
   return (
     <section className="space-y-4 rounded-xl border bg-card p-5">
       <h2 className="font-semibold">首页文案与活动详情</h2>
-      <p className="text-xs text-muted-foreground">输入框显示当前生效的文案，可直接修改或恢复默认。介绍、地点、费用和注意事项没有通用默认值，两种语言均未填写时不显示。</p>
+      <p className="text-xs text-muted-foreground">输入框显示当前生效的文案，可直接修改或恢复默认。介绍、地点、募集人数、费用和注意事项没有通用默认值，两种语言均未填写时不显示。</p>
       {locale === "ja" && <RoundTextField label="日文名称" value={{ zh: "", ja: config.titleJa }} locale={locale} maxLength={120}
         fallbackText={roundName} fallbackSource="沿用轮次名称" onChange={(value) => onChange({ ...config, titleJa: value.ja })} />}
       {fields.map(([key, label, maxLength, multiline]) => {
         const fallback = key === "cardTitle" || key === "cardDescription" || key === "cardCta" ? defaults[key] : undefined
-        return <RoundTextField key={key} label={label} value={config[key]} locale={locale} maxLength={maxLength} multiline={multiline}
-          fallbackText={fallback?.text} fallbackSource={fallback?.source} onChange={(value) => onChange({ ...config, [key]: value })} />
+        return <div key={key}>
+          <RoundTextField label={label} value={config[key]} locale={locale} maxLength={maxLength} multiline={multiline}
+            placeholder={key === "recruitmentCount" ? locale === "ja" ? "例：20名、20〜30名、定員なし" : "例如：20 人、20～30 人或不限" : undefined}
+            fallbackText={fallback?.text} fallbackSource={fallback?.source} onChange={(value) => onChange({ ...config, [key]: value })} />
+          {key === "recruitmentCount" && <p className="mt-1 text-xs text-muted-foreground">募集人数用于活动说明；报名开放和截止由轮次时间与状态控制。</p>}
+        </div>
       })}
     </section>
   )

@@ -971,6 +971,7 @@
     "details": {
       "time": "開催日時（日本時間）",
       "location": "開催場所",
+      "recruitmentCount": "募集人数",
       "fee": "参加費",
       "notice": "注意事項"
     },

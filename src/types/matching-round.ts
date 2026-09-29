@@ -16,6 +16,7 @@ export interface RoundContentConfig {
   cardCta: RoundText
   introduction: RoundText
   location: RoundText
+  recruitmentCount: RoundText
   fee: RoundText
   notice: RoundText
   eventStart: string

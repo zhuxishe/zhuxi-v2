@@ -27,6 +27,7 @@ export function validateRoundConfig(raw: unknown): { config: RoundContentConfig;
   const config = normalizeRoundConfig(raw)
   if (config.titleJa.length > 160 || !validText(config.cardTitle, 160) || !validText(config.cardDescription, 500) || !validText(config.cardCta, 40)) return { error: "首页文案过长，请缩短后重试" }
   if (!validText(config.introduction, 6000) || !validText(config.location, 500) || !validText(config.fee, 300) || !validText(config.notice, 4000)) return { error: "活动介绍、地点或注意事项过长" }
+  if (!validText(config.recruitmentCount, 100)) return { error: "募集人数说明过长，每种语言最多 100 字" }
   if (Object.values(config.labels).some((label) => label && !validText(label, 200))) return { error: "问题标题过长" }
   if (config.questions.length > 20) return { error: "最多添加 20 个补充问题" }
   const ids = new Set<string>()

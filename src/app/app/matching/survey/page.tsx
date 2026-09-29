@@ -5,6 +5,9 @@ import { SurveyForm } from "@/components/player/SurveyForm"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
+import { fetchPlayerRound } from "@/lib/queries/player-rounds"
+import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
+import type { RoundRecord } from "@/types/matching-round"
 
 function BackLink({ label }: { label: string }) {
   return (
@@ -23,13 +26,14 @@ function StatusMessage({ text, hint }: { text: string; hint?: string }) {
   )
 }
 
-export default async function SurveyPage() {
+export default async function SurveyPage({ searchParams }: { searchParams: Promise<{ round?: string }> }) {
   const player = await requirePlayer()
-  const round = await fetchOpenRound()
+  const params = await searchParams
+  const round: RoundRecord | null = params.round ? await fetchPlayerRound(params.round) : await fetchOpenRound()
   const t = await getTranslations("survey")
 
-  if (!round) {
-    const latest = await fetchLatestRound()
+  if (!round || getSurveyWindowState(round) !== "open") {
+    const latest = round ?? (params.round ? null : await fetchLatestRound())
     let statusText = t("noRound")
     let statusHint = t("noRoundHint")
 
@@ -66,6 +70,9 @@ export default async function SurveyPage() {
         initialNow={new Date().toISOString()}
         activityStart={round.activity_start}
         activityEnd={round.activity_end}
+        purpose={getRoundPurpose(round.purpose)}
+        config={normalizeRoundConfig(round.content_config)}
+        configRevision={round.config_revision ?? 0}
         existing={existing ? {
           game_type_pref: existing.game_type_pref,
           gender_pref: existing.gender_pref,
@@ -73,6 +80,7 @@ export default async function SurveyPage() {
           interest_tags: existing.interest_tags ?? [],
           social_style: existing.social_style,
           message: existing.message,
+          custom_answers: existing.custom_answers as Record<string, string | string[]> | undefined,
         } : null}
       />
     </div>

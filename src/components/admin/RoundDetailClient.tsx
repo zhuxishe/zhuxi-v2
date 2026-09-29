@@ -1,9 +1,6 @@
 "use client"
-
 import { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { SubmissionTable } from "./SubmissionTable"
 import { RoundStatsPanel } from "./RoundStatsPanel"
 import { SubmissionEditDialog } from "./SubmissionEditDialog"
 import { RoundImportPanel } from "./RoundImportPanel"
@@ -11,24 +8,19 @@ import { canRunRoundMatching } from "./round-detail-rules"
 import { runRoundMatching } from "@/app/admin/matching/rounds/[id]/actions"
 import { updateRoundStatus } from "@/app/admin/matching/rounds/[id]/status-actions"
 import { RoundOpeningDialog } from "./RoundOpeningDialog"
-import { formatSurveyTime, type SurveyWindow } from "@/lib/matching/survey-window"
 import { useSurveyWindow } from "@/lib/matching/use-survey-window"
-import { Play, Eye, EyeOff, Plus } from "lucide-react"
-import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
-
- 
-type Round = SurveyWindow & { id: string; round_name: string; activity_start: string; activity_end: string }
- 
+import type { RoundRecord } from "@/types"
+import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
+import { RoundDetailHeader } from "./round-content/RoundDetailHeader"
+import { RoundSubmissionRecords } from "./round-content/RoundSubmissionRecords"
 type Sub = Record<string, any>
-
 interface Stats {
   total: number
   gameTypeDist: { duo: number; multi: number; either: number }
   slotCounts: Record<string, number>
 }
-
 interface Props {
-  round: Round
+  round: RoundRecord
   submissions: Sub[]
   stats: Stats
   allMembers: { id: string; name: string }[]
@@ -36,7 +28,6 @@ interface Props {
   canImportMembers: boolean
   initialNow: string
 }
-
 export function RoundDetailClient({
   round,
   submissions,
@@ -52,20 +43,18 @@ export function RoundDetailClient({
   const [matchingReason, setMatchingReason] = useState("")
   const [opening, setOpening] = useState(false)
   const windowState = useSurveyWindow(round, initialNow)
-
-  // 编辑/新增 Dialog 状态
   const [editOpen, setEditOpen] = useState(false)
   const [editSub, setEditSub] = useState<Sub | null>(null)
   const [createOpen, setCreateOpen] = useState(false)
-
-  const editable = canManageSubmissions && round.status !== "matched"
-
-  // 新增时排除已提交的成员
+  const purpose = getRoundPurpose(round.purpose)
+  const matching = purpose === "matching"
+  const config = normalizeRoundConfig(round.content_config)
+  const requiresPlayerAnswers = config.questions.some((question) => question.required)
+  const editable = canManageSubmissions && round.status !== "matched" && matching
   const availableMembers = useMemo(() => {
     const submitted = new Set(submissions.map((s) => s.member_id))
     return allMembers.filter((m) => !submitted.has(m.id))
   }, [allMembers, submissions])
-
   async function handleStatusChange(status: string) {
     setLoading(true)
     setError(null)
@@ -79,69 +68,30 @@ export function RoundDetailClient({
       setLoading(false)
     }
   }
-
   async function handleRunMatch() {
     if (submissions.length < 2) { setError("至少需要 2 人提交问卷"); return }
     setLoading(true)
     setError(null)
-    const res = await runRoundMatching(round.id, `${round.round_name} 匹配`, matchingReason)
-    setLoading(false)
-    if (res.error) { setError(res.error); return }
-    router.push(`/admin/matching/${res.sessionId}`)
+    try {
+      const res = await runRoundMatching(round.id, `${round.round_name} 匹配`, matchingReason)
+      if (res.error) { setError(res.error); return }
+      router.push(`/admin/matching/${res.sessionId}`)
+    } catch { setError("运行失败，请稍后重试") }
+    finally { setLoading(false) }
   }
-
   function handleEdit(sub: Sub) {
     setEditSub(sub)
     setEditOpen(true)
   }
-
   function handleSaved() {
     router.refresh()
   }
-
   return (
     <div className="space-y-6">
-      {/* 轮次信息 + 操作按钮 */}
-      <div className="flex items-start justify-between">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-lg font-bold">{round.round_name}</h2>
-            <StatusBadge status={windowState} />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            问卷（日本时间）: {formatSurveyTime(round.survey_start)} ~ {formatSurveyTime(round.survey_end)}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            活动: {round.activity_start} ~ {round.activity_end}
-          </p>
-        </div>
-        <div className="flex gap-2">
-          {(round.status === "draft" || round.status === "closed" || windowState === "expired") && (
-            <Button size="sm" onClick={() => setOpening(true)} disabled={loading}>
-              <Eye className="size-4 mr-1" />{round.status === "draft" ? "开放问卷" : "重新开放问卷"}
-            </Button>
-          )}
-          {round.status === "open" && (
-            <Button size="sm" variant="outline" onClick={() => handleStatusChange("closed")} disabled={loading}>
-              <EyeOff className="size-4 mr-1" />截止问卷
-            </Button>
-          )}
-          {canRunRoundMatching(round.status) && (
-            <Button
-              size="sm"
-              onClick={handleRunMatch}
-              disabled={loading || submissions.length < 2 || !adminAuditReasonIsValid(matchingReason)}
-            >
-              <Play className="size-4 mr-1" />运行匹配
-            </Button>
-          )}
-        </div>
-      </div>
-
+      <RoundDetailHeader round={round} windowState={windowState} loading={loading} count={submissions.length} matchingReason={matchingReason} onOpen={() => setOpening(true)} onClose={() => handleStatusChange("closed")} onMatch={handleRunMatch} />
       {error && <p className="text-sm text-destructive">{error}</p>}
       {opening && <RoundOpeningDialog round={round} onClose={() => setOpening(false)} />}
-
-      {canRunRoundMatching(round.status) && (
+      {matching && canRunRoundMatching(round.status) && (
         <div className="rounded-lg border bg-muted/20 p-3 space-y-1">
           <label htmlFor="round-matching-reason" className="text-sm font-medium">
             运行匹配理由
@@ -157,72 +107,12 @@ export function RoundDetailClient({
           />
         </div>
       )}
-
-      {canImportMembers ? <RoundImportPanel roundId={round.id} roundStatus={round.status} /> : null}
-
-      {/* 统计面板 */}
-      <RoundStatsPanel stats={stats} activityStart={round.activity_start} activityEnd={round.activity_end} />
-
-      {/* 问卷列表 */}
-      <div className="relative z-0">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold">问卷提交 ({submissions.length})</h3>
-          {editable && (
-            <Button size="sm" variant="outline" onClick={() => setCreateOpen(true)}>
-              <Plus className="size-4 mr-1" />新增问卷
-            </Button>
-          )}
-        </div>
-        <SubmissionTable
-          submissions={submissions}
-          onEdit={handleEdit}
-          editable={editable}
-          showRaw={canManageSubmissions}
-        />
-      </div>
-
-      {/* 编辑 Dialog — key 保证切换问卷时状态重置 */}
-      {canManageSubmissions && editSub && (
-        <SubmissionEditDialog
-          key={editSub.id}
-          open={editOpen}
-          onOpenChange={setEditOpen}
-          roundId={round.id}
-          mode="edit"
-          submission={editSub}
-          activityStart={round.activity_start}
-          activityEnd={round.activity_end}
-          onSaved={handleSaved}
-        />
-      )}
-
-      {/* 新增 Dialog */}
-      {canManageSubmissions && (
-        <SubmissionEditDialog
-          open={createOpen}
-          onOpenChange={setCreateOpen}
-          roundId={round.id}
-          mode="create"
-          availableMembers={availableMembers}
-          activityStart={round.activity_start}
-          activityEnd={round.activity_end}
-          onSaved={handleSaved}
-        />
-      )}
+      {matching && requiresPlayerAnswers && <p className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">本期包含必填补充问题，请成员自行提交问卷；后台新增与 Excel 导入已暂停，已有问卷仍可编辑。</p>}
+      {matching && canImportMembers && !requiresPlayerAnswers ? <RoundImportPanel roundId={round.id} roundStatus={round.status} /> : null}
+      {matching && <RoundStatsPanel stats={stats} activityStart={round.activity_start} activityEnd={round.activity_end} />}
+      <RoundSubmissionRecords roundName={round.round_name} purpose={purpose} config={config} submissions={submissions} editable={editable} showRaw={canManageSubmissions} onEdit={handleEdit} onCreate={() => setCreateOpen(true)} />
+      {matching && canManageSubmissions && editSub && <SubmissionEditDialog key={editSub.id} open={editOpen} onOpenChange={setEditOpen} roundId={round.id} mode="edit" submission={editSub} activityStart={round.activity_start} activityEnd={round.activity_end} onSaved={handleSaved} />}
+      {matching && canManageSubmissions && <SubmissionEditDialog open={createOpen} onOpenChange={setCreateOpen} roundId={round.id} mode="create" availableMembers={availableMembers} activityStart={round.activity_start} activityEnd={round.activity_end} onSaved={handleSaved} />}
     </div>
   )
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, { label: string; cls: string }> = {
-    draft: { label: "草稿", cls: "bg-muted text-muted-foreground" },
-    open: { label: "进行中", cls: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" },
-    scheduled: { label: "待开放", cls: "bg-muted text-muted-foreground" },
-    expired: { label: "已到期", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
-    invalid: { label: "时间异常", cls: "bg-destructive/10 text-destructive" },
-    closed: { label: "已截止", cls: "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400" },
-    matched: { label: "已匹配", cls: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-  }
-  const s = map[status] ?? map.draft
-  return <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${s.cls}`}>{s.label}</span>
 }

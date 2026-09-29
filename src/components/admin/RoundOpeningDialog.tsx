@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { updateRoundStatus } from "@/app/admin/matching/rounds/[id]/status-actions"
 import { formatTokyoDateTimeLocal } from "@/lib/player-activity/tokyo-datetime"
 import { formatSurveyTime, type SurveyWindow } from "@/lib/matching/survey-window"
+import { getRoundPurpose } from "@/lib/matching/round-config"
 
 interface Props {
-  round: SurveyWindow & { id: string }
+  round: SurveyWindow & { id: string; purpose?: string }
   onClose: () => void
 }
 
@@ -20,7 +21,9 @@ export function RoundOpeningDialog({ round, onClose }: Props) {
   const [surveyEnd, setEnd] = useState(() => formatTokyoDateTimeLocal(round.survey_end))
   const [pending, setPending] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const title = reopening ? "重新开放问卷" : "开放问卷"
+  const purpose = getRoundPurpose(round.purpose)
+  const subject = purpose === "matching" ? "问卷" : purpose === "registration" ? "报名" : "展示"
+  const title = `${reopening ? "重新开放" : "开放"}${subject}`
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -33,7 +36,7 @@ export function RoundOpeningDialog({ round, onClose }: Props) {
       onClose()
       router.refresh()
     } catch {
-      setError("网络异常，请重试；原有问卷答案不会被清空")
+      setError("网络异常，请重试；已有记录不会被清空")
     } finally {
       setPending(false)
     }
@@ -43,7 +46,7 @@ export function RoundOpeningDialog({ round, onClose }: Props) {
     <Dialog open onOpenChange={(open) => { if (!open && !pending) onClose() }}>
       <DialogContent>
         <DialogTitle>{title}</DialogTitle>
-        <DialogDescription>请确认问卷收集时间（日本时间）。已有提交会保留；开放期间，玩家可以填写或修改自己的问卷。</DialogDescription>
+        <DialogDescription>{purpose === "announcement" ? "请确认通知的展示时间（日本时间）。通知无需玩家提交。" : `请确认${subject}收集时间（日本时间）。已有提交会保留；开放期间，玩家可以提交或修改自己的内容。`}</DialogDescription>
         <p className="text-xs text-muted-foreground">原截止时间：{formatSurveyTime(round.survey_end)}</p>
         <form onSubmit={submit} className="space-y-4">
           <label className="block text-sm">开放时间（日本时间）

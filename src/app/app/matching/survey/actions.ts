@@ -4,67 +4,55 @@ import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requirePlayer } from "@/lib/auth/player"
 import { surveySubmissionError } from "@/lib/matching/survey-window"
+import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
+import { validateSurveyAnswers } from "@/lib/matching/survey-answers"
+import type { SurveyAnswers } from "@/types/matching-round"
 
-interface SubmitSurveyInput {
+interface SubmitSurveyInput extends Omit<SurveyAnswers, "customAnswers"> {
   roundId: string
-  gameTypePref: string
-  genderPref: string
-  availability: Record<string, string[]>
-  interestTags: string[]
-  socialStyle: string | null
-  message: string | null
+  configRevision?: number
+  customAnswers?: SurveyAnswers["customAnswers"]
 }
 
 export async function submitSurvey(input: SubmitSurveyInput) {
   const player = await requirePlayer()
+  if (!input || typeof input.roundId !== "string") return { error: "invalidSurveyInput" }
   const supabase = await createClient()
-
-  // 验证轮次存在且 open
-  const { data: round, error: roundErr } = await supabase
-    .from("match_rounds")
-    .select("id, status, survey_start, survey_end")
-    .eq("id", input.roundId)
-    .single()
-
+  // Selecting the full row also permits unchanged legacy matching while a schema upgrade is pending.
+  const { data: round, error: roundErr } = await supabase.from("match_rounds").select("*").eq("id", input.roundId).single()
   if (roundErr || !round) {
     if (roundErr) console.error("[submitSurvey] round query", roundErr)
     return { error: "roundNotFound" }
   }
   const windowError = surveySubmissionError(round)
   if (windowError) return { error: windowError }
-
-  // 验证至少有一个时段
-  const totalSlots = Object.values(input.availability).reduce((s, v) => s + v.length, 0)
-  if (totalSlots === 0) return { error: "noTimeSlot" }
-
-  // Upsert（同一轮次同一用户只能提交一次）
-  const { error } = await supabase
-    .from("match_round_submissions")
-    .upsert(
-      {
-        round_id: input.roundId,
-        member_id: player.memberId,
-        game_type_pref: input.gameTypePref,
-        gender_pref: input.genderPref,
-        availability: input.availability,
-        interest_tags: input.interestTags,
-        social_style: input.socialStyle,
-        message: input.message,
-      },
-      { onConflict: "round_id,member_id" },
-    )
+  if ((input.configRevision ?? 0) !== (round.config_revision ?? 0)) return { error: "surveyUpdated" }
+  const validated = validateSurveyAnswers(input, getRoundPurpose(round.purpose), normalizeRoundConfig(round.content_config),
+    round.activity_start, round.activity_end)
+  if (!validated.data) return { error: validated.error }
+  const answers = validated.data
+  const contentFields = Object.hasOwn(round, "config_revision")
+    ? { custom_answers: answers.customAnswers, config_revision: round.config_revision } : {}
+  const { error } = await supabase.from("match_round_submissions").upsert({
+    round_id: input.roundId, member_id: player.memberId,
+    game_type_pref: answers.gameTypePref, gender_pref: answers.genderPref,
+    availability: answers.availability, interest_tags: answers.interestTags,
+    social_style: answers.socialStyle, message: answers.message, ...contentFields,
+  }, { onConflict: "round_id,member_id" })
 
   if (error) {
     console.error("[submitSurvey] upsert", error)
-    // The administrator may close the round while this request is in flight.
-    const { data: current } = await supabase.from("match_rounds")
-      .select("status, survey_start, survey_end").eq("id", input.roundId).maybeSingle()
+    // Explain admin closure or content changes which raced with the initial read.
+    const { data: current } = await supabase.from("match_rounds").select("*").eq("id", input.roundId).maybeSingle()
     const currentError = current ? surveySubmissionError(current) : null
     if (currentError) return { error: currentError }
+    if (current && (current.config_revision ?? 0) !== (input.configRevision ?? 0)) return { error: "surveyUpdated" }
+    if (current?.purpose === "announcement") return { error: "surveyReadOnly" }
     return { error: "saveFailed" }
   }
   revalidatePath("/app")
   revalidatePath("/app/matching/survey")
   revalidatePath("/app/matching")
+  revalidatePath(`/admin/matching/rounds/${input.roundId}`)
   return { success: true }
 }

@@ -2,7 +2,9 @@ import { redirect } from "next/navigation"
 import { getLocale, getTranslations } from "next-intl/server"
 import { getPlayerInfo } from "@/lib/auth/player"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
-import { fetchOpenRound, fetchMySubmission } from "@/lib/queries/rounds"
+import { fetchPlayerRounds, fetchSubmittedRoundIds } from "@/lib/queries/player-rounds"
+import { getRoundPurpose } from "@/lib/matching/round-config"
+import { roundCardCopy, roundHref, selectHomeRound } from "@/lib/matching/round-display"
 import { fetchMyProfileSummary } from "@/lib/profile/queries"
 import { fetchPlayerActivityHub } from "@/lib/player-activity/queries"
 import { isUpcomingLargeActivity } from "@/lib/player-activity/selection"
@@ -33,18 +35,25 @@ export default async function PlayerHomePage() {
 
   const approvedPlayer = player!
   const locale = await getLocale()
-  const [t, profileT, profile, openRound, activityData, announcements] = await Promise.all([
+  const [t, profileT, roundT, profile, rounds, activityData, announcements] = await Promise.all([
     getTranslations("playerHome"),
     getTranslations("profile"),
+    getTranslations("rounds"),
     fetchMyProfileSummary(),
-    fetchOpenRound(),
+    fetchPlayerRounds(),
     fetchPlayerActivityHub(locale, new Date(), { largeLimit: 200 }),
     fetchHomeAnnouncements(locale),
   ])
 
-  const hasSubmitted = openRound
-    ? Boolean(await fetchMySubmission(openRound.id, approvedPlayer.memberId))
-    : false
+  const submittedIds = await fetchSubmittedRoundIds(approvedPlayer.memberId, rounds.map((round) => round.id))
+  const openRound = selectHomeRound(rounds, submittedIds)
+  const hasSubmitted = Boolean(openRound && submittedIds.includes(openRound.id))
+  const purpose = getRoundPurpose(openRound?.purpose)
+  const surveyCopy = purpose === "matching" ? {
+    title: t("action.survey.title"), description: t("action.survey.description"), cta: t("action.survey.cta"),
+  } : {
+    title: roundT(`purpose.${purpose}`), description: roundT(`description.${purpose}`), cta: roundT(`cta.${purpose}`),
+  }
   // V1 keeps the mutual-review entry visible but does not infer eligibility
   // from confirmed matches: current match data has no review-open timestamp,
   // and group reviews are still tracked at match level rather than per person.
@@ -60,11 +69,7 @@ export default async function PlayerHomePage() {
         description: t("action.review.description"),
         cta: t("action.review.cta"),
       },
-      survey: {
-        title: t("action.survey.title"),
-        description: t("action.survey.description"),
-        cta: t("action.survey.cta"),
-      },
+      survey: openRound ? roundCardCopy(openRound, locale, surveyCopy) : surveyCopy,
       profile: {
         title: t("action.profile.title"),
         description: t("action.profile.description"),
@@ -84,6 +89,7 @@ export default async function PlayerHomePage() {
     pendingReviewCount,
     pendingReviewHref,
     openRound: Boolean(openRound),
+    surveyHref: openRound ? roundHref(openRound.id) : "/app/matching/survey",
     hasSubmitted,
     profile,
     featuredId: priorityActivityId,
@@ -108,6 +114,9 @@ export default async function PlayerHomePage() {
           action={action}
           fallbackAction={fallbackAction}
           round={openRound ? { id: openRound.id, status: openRound.status, survey_start: openRound.survey_start, survey_end: openRound.survey_end } : null}
+          roundHref={openRound ? roundHref(openRound.id) : undefined}
+          purpose={purpose}
+          showAll={rounds.length > 0}
           hasSubmitted={hasSubmitted}
           initialNow={new Date().toISOString()}
         />
@@ -227,6 +236,7 @@ function resolvePrimaryAction({
   pendingReviewCount,
   pendingReviewHref,
   openRound,
+  surveyHref,
   hasSubmitted,
   profile,
   featuredId,
@@ -243,6 +253,7 @@ function resolvePrimaryAction({
   pendingReviewCount: number
   pendingReviewHref: string
   openRound: boolean
+  surveyHref: string
   hasSubmitted: boolean
   profile: Awaited<ReturnType<typeof fetchMyProfileSummary>>
   featuredId: string | null
@@ -259,7 +270,7 @@ function resolvePrimaryAction({
     eyebrow: labels.eyebrow,
     title: labels.survey.title,
     description: labels.survey.description,
-    href: "/app/matching/survey",
+    href: surveyHref,
     cta: labels.survey.cta,
   }
   const incomplete = resolveIncompleteProfile(profile)

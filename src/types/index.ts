@@ -2,6 +2,8 @@
  * 类型集中导出 — re-export 入口
  */
 
+export type { RoundPurpose, RoundText, RoundQuestion, RoundContentConfig, RoundContentDraft, RoundLabelKey, RoundRecord, SurveyAnswers } from "./matching-round"
+
 // Member types
 export type { MemberStatus, Gender, DegreeLevel, PreInterviewFormData, PlayerProfile, PlayerMatchResult } from "./member-types"
 export { EMPTY_FORM } from "./member-types"

@@ -4,10 +4,12 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createRound } from "@/app/admin/matching/rounds/new/actions"
 import { Button } from "@/components/ui/button"
+import type { RoundPurpose } from "@/types"
 
 export function RoundCreateForm() {
   const router = useRouter()
   const [name, setName] = useState("")
+  const [purpose, setPurpose] = useState<RoundPurpose>("matching")
   const [surveyStart, setSurveyStart] = useState("")
   const [surveyEnd, setSurveyEnd] = useState("")
   const [actStart, setActStart] = useState("")
@@ -20,7 +22,7 @@ export function RoundCreateForm() {
     setActStart(v)
     if (v) {
       const d = new Date(v)
-      d.setDate(d.getDate() + 13)
+      if (purpose === "matching") d.setDate(d.getDate() + 13)
       setActEnd(d.toISOString().split("T")[0])
     }
   }
@@ -30,6 +32,7 @@ export function RoundCreateForm() {
     setError(null)
     const res = await createRound({
       roundName: name,
+      purpose,
       surveyStart,
       surveyEnd,
       activityStart: actStart,
@@ -37,13 +40,20 @@ export function RoundCreateForm() {
     })
     setSubmitting(false)
     if (res.error) { setError(res.error); return }
-    router.replace(`/admin/matching/rounds/${res.roundId}`)
+    router.replace(`/admin/matching/rounds/${res.roundId}${"contentSupported" in res && res.contentSupported === false ? "" : "/edit"}`)
   }
 
   return (
     <div className="max-w-lg space-y-5">
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
         <h3 className="text-sm font-semibold">轮次信息</h3>
+        <label className="block text-sm font-medium">用途
+          <select value={purpose} onChange={(event) => setPurpose(event.target.value as RoundPurpose)} className="mt-1 w-full rounded-lg border bg-background px-3 py-2">
+            <option value="matching">收集时间后匹配</option>
+            <option value="registration">固定时间活动报名</option>
+            <option value="announcement">仅发布活动通知</option>
+          </select>
+        </label>
         <div>
           <label className="text-sm font-medium mb-1 block">轮次名称</label>
           <input
@@ -55,7 +65,7 @@ export function RoundCreateForm() {
       </div>
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-        <h3 className="text-sm font-semibold">问卷时间（日本时间）</h3>
+        <h3 className="text-sm font-semibold">{purpose === "announcement" ? "展示" : "收集"}时间（日本时间）</h3>
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="text-sm font-medium mb-1 block">开放时间</label>
@@ -93,14 +103,14 @@ export function RoundCreateForm() {
           </div>
         </div>
         <p className="text-xs text-muted-foreground">
-          选择开始日期后自动填充14天，可修改结束日期调整天数
+          {purpose === "matching" ? "选择开始日期后自动填充14天，可修改结束日期调整天数" : "支持单日活动。创建草稿后继续设置活动的具体时间、地点和展示内容。"}
         </p>
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex gap-3">
         <Button onClick={handleSubmit} disabled={submitting}>
-          {submitting ? "创建中..." : "创建轮次"}
+          {submitting ? "创建中..." : "创建草稿并编辑内容"}
         </Button>
         <Button variant="outline" onClick={() => router.replace("/admin/matching")}>取消</Button>
       </div>

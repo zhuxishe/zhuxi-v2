@@ -6,12 +6,12 @@ vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }))
 import { submitSurvey } from "./actions"
 
-const round = { id: "round", status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-29T09:00:00Z" }
+const round = { id: "round", status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-29T09:00:00Z", activity_start: "2026-10-01", activity_end: "2026-10-14" }
 const input = {
   roundId: "round", gameTypePref: "都可以", genderPref: "都可以",
   availability: { "2026-10-01": ["下午"] }, interestTags: [], socialStyle: null, message: "existing answer",
 }
-function readRound(data: typeof round) {
+function readRound(data: typeof round & { purpose?: string; config_revision?: number; content_config?: unknown }) {
   const query = { select: vi.fn(), eq: vi.fn(), single: vi.fn(), maybeSingle: vi.fn() }
   query.select.mockReturnValue(query)
   query.eq.mockReturnValue(query)
@@ -67,5 +67,41 @@ describe("survey submission availability", () => {
     mocks.player.mockRejectedValue(new Error("redirect"))
     await expect(submitSurvey(input)).rejects.toThrow("redirect")
     expect(mocks.from).not.toHaveBeenCalled()
+  })
+
+  it("accepts a fixed activity registration without any availability and stores its schema revision", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration", config_revision: 2 }))
+      .mockReturnValueOnce({ upsert: mocks.upsert })
+    expect(await submitSurvey({ ...input, availability: {}, configRevision: 2 })).toEqual({ success: true })
+    expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      availability: {}, game_type_pref: "都可以", gender_pref: "都可以", custom_answers: {}, config_revision: 2,
+    }), expect.anything())
+  })
+
+  it("rejects submissions to announcements", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "announcement" }))
+    expect(await submitSurvey(input)).toEqual({ error: "surveyReadOnly" })
+    expect(mocks.upsert).not.toHaveBeenCalled()
+  })
+
+  it("requires the current configuration revision", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, config_revision: 2 }))
+    expect(await submitSurvey({ ...input, configRevision: 1 })).toEqual({ error: "surveyUpdated" })
+    expect(mocks.upsert).not.toHaveBeenCalled()
+  })
+
+  it("explains a configuration edit which raced with submission", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, config_revision: 0 })).mockReturnValueOnce({ upsert: mocks.upsert })
+      .mockReturnValueOnce(readRound({ ...round, config_revision: 1 }))
+    mocks.upsert.mockResolvedValue({ error: { code: "P0001" } })
+    expect(await submitSurvey(input)).toEqual({ error: "surveyUpdated" })
+  })
+
+  it("enforces activity questions on the server even when a client bypasses the form", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration", content_config: {
+      questions: [{ id: "need", type: "text", label: { zh: "必填", ja: "" }, required: true, options: [] }],
+    } }))
+    expect(await submitSurvey(input)).toEqual({ error: "customQuestionRequired" })
+    expect(mocks.upsert).not.toHaveBeenCalled()
   })
 })

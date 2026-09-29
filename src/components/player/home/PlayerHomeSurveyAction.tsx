@@ -8,6 +8,7 @@ import { useSurveyWindow } from "@/lib/matching/use-survey-window"
 import type { SurveyWindow } from "@/lib/matching/survey-window"
 import { PlayerHomeActionCard } from "./PlayerHomeActionCard"
 import type { PlayerHomeAction } from "./types"
+import type { RoundPurpose } from "@/types/matching-round"
 
 interface Props {
   action: PlayerHomeAction
@@ -15,11 +16,15 @@ interface Props {
   round: (SurveyWindow & { id: string }) | null
   hasSubmitted: boolean
   initialNow: string
+  roundHref?: string
+  purpose?: RoundPurpose
+  showAll?: boolean
 }
 
-export function PlayerHomeSurveyAction({ action, fallbackAction, round, hasSubmitted, initialNow }: Props) {
+export function PlayerHomeSurveyAction({ action, fallbackAction, round, hasSubmitted, initialNow, roundHref = "/app/matching/survey", purpose = "matching", showAll = false }: Props) {
   const router = useRouter()
   const t = useTranslations("survey")
+  const roundT = useTranslations("rounds")
   const state = useSurveyWindow(round ?? { status: "closed", survey_start: "", survey_end: "" }, initialNow)
   const refreshedRound = useRef<string | null>(null)
   const available = state === "open"
@@ -35,10 +40,11 @@ export function PlayerHomeSurveyAction({ action, fallbackAction, round, hasSubmi
     <div>
       <PlayerHomeActionCard action={round && !available ? fallbackAction : action} />
       {available && hasSubmitted && (
-        <Link href="/app/matching/survey" className="mt-3 inline-block text-sm text-primary underline underline-offset-4">
-          {t("status.submitted")}
+        <Link href={roundHref} className="mt-3 inline-block text-sm text-primary underline underline-offset-4">
+          {purpose === "registration" ? roundT("registeredEdit") : t("status.submitted")}
         </Link>
       )}
+      {showAll && <Link href="/app/matching" className="mt-3 block text-sm text-primary underline underline-offset-4">{roundT("viewAll")}</Link>}
     </div>
   )
 }

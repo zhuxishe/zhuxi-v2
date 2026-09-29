@@ -2,6 +2,11 @@ export interface MiniOpenRound {
   id: string
   round_name: string | null
   survey_end: string | null
+  survey_start?: string | null
+  status?: string | null
+  purpose?: string | null
+  content_config?: unknown
+  config_revision?: number
 }
 
 export interface MiniRoundCardState {

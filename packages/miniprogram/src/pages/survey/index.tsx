@@ -6,7 +6,9 @@ import { getMemberId } from '../../lib/member'
 import { requireAuth } from '../../lib/auth'
 import { fetchMiniOpenRound } from '../../lib/open-round'
 import { getNext14Days } from './survey-constants'
-import { getMiniSurveyRoundError } from './survey-submit'
+import { getMiniSurveyRoundError, miniSurveySubmitError } from './survey-submit'
+import type { MiniSurveyRoundGuardInput } from './survey-submit'
+import { miniSubmissionRevision } from '../../lib/round-compatibility'
 import { SurveyPreferenceCard } from './SurveyPreferenceCard'
 import { SurveyAvailabilityCard } from './SurveyAvailabilityCard'
 import { SurveyMessageCard } from './SurveyMessageCard'
@@ -15,6 +17,7 @@ import './index.scss'
 export default function Survey() {
   const [roundId, setRoundId] = useState('')
   const [roundName, setRoundName] = useState('')
+  const [roundRevision, setRoundRevision] = useState<number | undefined>(undefined)
   const [noRound, setNoRound] = useState(false)
   const [hasExistingSubmission, setHasExistingSubmission] = useState(false)
   const [gameType, setGameType] = useState('')
@@ -32,6 +35,7 @@ export default function Survey() {
   function resetForm() {
     setRoundId('')
     setRoundName('')
+    setRoundRevision(undefined)
     setGameType('')
     setGenderPref('')
     setAvailability({})
@@ -52,6 +56,7 @@ export default function Survey() {
         return
       }
       setRoundId(round.id)
+      setRoundRevision(round.config_revision)
       setRoundName(round.round_name || '当前轮次')
       const memberId = await getMemberId()
       const submissions = await supabaseQuery<any[]>('match_round_submissions', { select: '*', round_id: `eq.${round.id}`, member_id: `eq.${memberId}` })
@@ -94,22 +99,22 @@ export default function Survey() {
     if (!Object.values(availability).some((slots) => slots.length > 0)) return Taro.showToast({ title: '请至少选择一个可用时段', icon: 'none' })
     setSubmitting(true)
     try {
-      const round = await supabaseQuery<{ id: string; status: string | null; survey_end: string | null }>('match_rounds', {
-        select: 'id,status,survey_end',
+      const round = await supabaseQuery<MiniSurveyRoundGuardInput>('match_rounds', {
+        select: '*',
         id: `eq.${roundId}`,
       }, { single: true })
-      const roundError = getMiniSurveyRoundError(round)
+      const roundError = getMiniSurveyRoundError(round, new Date(), roundRevision)
       if (roundError) throw new Error(roundError)
 
       const memberId = await getMemberId()
       await supabaseQuery('match_round_submissions', { on_conflict: 'round_id,member_id' }, {
         method: 'POST',
-        body: { round_id: roundId, member_id: memberId, game_type_pref: gameType, gender_pref: genderPref, availability, interest_tags: interestTags, social_style: socialStyle || null, message: message.trim() || null },
+        body: { round_id: roundId, member_id: memberId, game_type_pref: gameType, gender_pref: genderPref, availability, interest_tags: interestTags, social_style: socialStyle || null, message: message.trim() || null, ...miniSubmissionRevision(roundRevision) },
       })
       Taro.showToast({ title: '提交成功', icon: 'success' })
       setTimeout(() => Taro.redirectTo({ url: '/pages/survey/success' }), 800)
     } catch (err: any) {
-      Taro.showToast({ title: err.message || '提交失败', icon: 'none' })
+      Taro.showToast({ title: miniSurveySubmitError(err.message), icon: 'none' })
     } finally {
       setSubmitting(false)
     }

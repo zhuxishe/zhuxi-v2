@@ -959,7 +959,25 @@
       "submitted": "已提交问卷 · 点击修改",
       "newRound": "新一期匹配开始了！点击填写问卷",
       "daysLeft": "剩{days}天"
-    }
+    },
+    "registration": {
+      "heading": "确认参加本次活动",
+      "confirmHint": "点击确认报名，即表示你可以在上述时间和地点参加活动。",
+      "submit": "确认报名",
+      "update": "更新报名",
+      "successTitle": "报名已提交！",
+      "successDescription": "你的报名信息已保存，请留意本次活动的安排。"
+    },
+    "details": {
+      "time": "活动时间（日本时间）",
+      "location": "活动地点",
+      "fee": "费用",
+      "notice": "注意事项"
+    },
+    "displayUntil": "展示截止时间（日本时间）：{time}",
+    "requiredQuestion": "必填",
+    "announcementHint": "这是一则活动通知，无需填写问卷。",
+    "clearAnswer": "清除选择"
   },
   "timeGrid": {
     "date": "日期",
@@ -1218,7 +1236,11 @@
     "noTimeSlot": "请至少选择一个时间段",
     "invalidProfileInput": "请检查填写内容和选项",
     "incompletePersonality": "请完成全部性格自评题目",
-    "invalidQuizAnswers": "题目或选项已更新，请刷新页面后重新作答"
+    "invalidQuizAnswers": "题目或选项已更新，请刷新页面后重新作答",
+    "invalidSurveyInput": "填写内容的格式或选项无效，请检查后重试。",
+    "customQuestionRequired": "请完成所有必填问题。",
+    "surveyUpdated": "本期内容已更新，请刷新页面后确认并提交。",
+    "surveyReadOnly": "本期仅发布通知，无需提交问卷。"
   },
   "pwa": {
     "install": "安装竹溪社",
@@ -1273,5 +1295,35 @@
     "stepAcademic": "学业信息",
     "stepInterests": "兴趣爱好",
     "stepPersonality": "自我评估"
+  },
+  "rounds": {
+    "title": "当前活动与匹配",
+    "intro": "选择你想了解或参与的一期内容。每项活动分别报名或填写。",
+    "viewAll": "查看全部活动与匹配",
+    "backHome": "返回首页",
+    "empty": "当前没有开放的活动或匹配问卷",
+    "registeredEdit": "已报名 · 查看或修改",
+    "submitted": "已提交",
+    "open": "开放中",
+    "closed": "已截止",
+    "edit": "查看或修改",
+    "closedHint": "本期已停止收集，无法继续提交。",
+    "deadline": "截止时间（日本时间）：{time}",
+    "displayEnd": "展示截止时间（日本时间）：{time}",
+    "purpose": {
+      "matching": "收集时间后匹配",
+      "registration": "固定时间活动报名",
+      "announcement": "活动通知"
+    },
+    "description": {
+      "matching": "告诉我们你的可用时间和偏好，寻找合适的伙伴。",
+      "registration": "查看活动安排，确认你可以参加后报名。",
+      "announcement": "查看本次活动的时间、地点和安排。"
+    },
+    "cta": {
+      "matching": "填写问卷",
+      "registration": "查看并报名",
+      "announcement": "查看详情"
+    }
   }
 }

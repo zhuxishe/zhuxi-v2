@@ -2,17 +2,24 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
+import { isRoundSetupError } from "@/lib/matching/round-config"
 
 /** 获取所有匹配轮次 */
 export async function fetchRounds() {
   await requireAdmin()
   const supabase = await createClient()
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from("match_rounds")
-    .select("id, round_name, status, survey_start, survey_end, activity_start, activity_end")
+    .select("id, round_name, status, survey_start, survey_end, activity_start, activity_end, purpose")
     .order("created_at", { ascending: false })
     .limit(100)
-
+  if (isRoundSetupError(error)) {
+    const legacy = await supabase.from("match_rounds")
+      .select("id, round_name, status, survey_start, survey_end, activity_start, activity_end")
+      .order("created_at", { ascending: false }).limit(100)
+    data = legacy.data?.map((round) => ({ ...round, purpose: "matching" })) ?? null
+    error = legacy.error
+  }
   if (error) throw error
   return data ?? []
 }
@@ -28,6 +35,14 @@ export async function fetchRound(id: string) {
 
   if (error) throw error
   return data
+}
+
+export async function fetchRoundHasSession(roundId: string): Promise<boolean> {
+  await requireAdmin()
+  const db = await createClient()
+  const { data, error } = await db.from("match_sessions").select("id").eq("round_id", roundId).limit(1).maybeSingle()
+  if (error) throw error
+  return Boolean(data)
 }
 
 /** 获取某轮次的所有问卷提交 */
@@ -50,13 +65,14 @@ export async function fetchRoundSubmissions(roundId: string) {
         member_identity (full_name, nickname, school_name)
       )
     `
-  const { data, error } = await supabase
+  const query = (select: string) => supabase
     .from("match_round_submissions")
-    .select(columns)
+    .select(select)
     .eq("round_id", roundId)
     .order("created_at", { ascending: false })
     .limit(500)
-
+  let { data, error } = await query(admin.role === "super_admin" ? `${columns}, custom_answers` : columns)
+  if (admin.role === "super_admin" && isRoundSetupError(error)) ({ data, error } = await query(columns))
   if (error) throw error
   return data ?? []
 }

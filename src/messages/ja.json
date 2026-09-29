@@ -959,7 +959,25 @@
       "submitted": "送信済み · タップして修正",
       "newRound": "新しいマッチングが始まりました！タップしてアンケートへ",
       "daysLeft": "残り{days}日"
-    }
+    },
+    "registration": {
+      "heading": "イベントへの参加確認",
+      "confirmHint": "参加申込みを確定すると、上記の日時・場所で参加できることを確認したものとなります。",
+      "submit": "参加申込みを確定",
+      "update": "申込内容を更新",
+      "successTitle": "申込みを受け付けました！",
+      "successDescription": "申込内容を保存しました。イベントの案内をご確認ください。"
+    },
+    "details": {
+      "time": "開催日時（日本時間）",
+      "location": "開催場所",
+      "fee": "参加費",
+      "notice": "注意事項"
+    },
+    "displayUntil": "掲載終了（日本時間）：{time}",
+    "requiredQuestion": "必須",
+    "announcementHint": "これはイベントのお知らせです。アンケートへの回答は不要です。",
+    "clearAnswer": "選択をクリア"
   },
   "timeGrid": {
     "date": "日付",
@@ -1218,7 +1236,11 @@
     "noTimeSlot": "少なくとも1つの時間帯を選択してください",
     "invalidProfileInput": "入力内容と選択肢を確認してください",
     "incompletePersonality": "性格自己評価のすべての項目に回答してください",
-    "invalidQuizAnswers": "質問または選択肢が更新されました。ページを再読み込みして回答してください"
+    "invalidQuizAnswers": "質問または選択肢が更新されました。ページを再読み込みして回答してください",
+    "invalidSurveyInput": "入力形式または選択肢が無効です。内容をご確認ください。",
+    "customQuestionRequired": "すべての必須項目に回答してください。",
+    "surveyUpdated": "募集内容が更新されました。ページを再読み込みして内容を確認してください。",
+    "surveyReadOnly": "この募集はお知らせのみです。回答の送信は不要です。"
   },
   "pwa": {
     "install": "竹渓社をインストール",
@@ -1273,5 +1295,35 @@
     "stepInterests": "趣味・興味",
     "stepPersonality": "自己評価",
     "successDescription": "ご記入ありがとうございます。面接の日程が決まり次第ご連絡いたします。"
+  },
+  "rounds": {
+    "title": "開催情報とマッチング",
+    "intro": "参加・閲覧したい募集を選んでください。各募集への申込み・回答は個別に行います。",
+    "viewAll": "すべてのイベント・マッチングを見る",
+    "backHome": "ホームへ戻る",
+    "empty": "現在受付中のイベントやマッチングアンケートはありません",
+    "registeredEdit": "申込済み・確認／変更",
+    "submitted": "回答済み",
+    "open": "受付中",
+    "closed": "締切済み",
+    "edit": "確認・変更",
+    "closedHint": "受付は終了しました。これ以降は送信できません。",
+    "deadline": "締切（日本時間）：{time}",
+    "displayEnd": "掲載終了（日本時間）：{time}",
+    "purpose": {
+      "matching": "日程調整とマッチング",
+      "registration": "日時確定イベントの申込み",
+      "announcement": "イベントのお知らせ"
+    },
+    "description": {
+      "matching": "参加可能な日時と希望を教えてください。相性のよい仲間を探します。",
+      "registration": "開催内容を確認し、参加できる場合にお申し込みください。",
+      "announcement": "イベントの日時・場所・内容をご確認ください。"
+    },
+    "cta": {
+      "matching": "アンケートに回答",
+      "registration": "詳細・参加申込み",
+      "announcement": "詳細を見る"
+    }
   }
 }

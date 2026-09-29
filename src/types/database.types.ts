@@ -1448,6 +1448,8 @@ export type Database = {
       match_round_submissions: {
         Row: {
           audit_reason: string | null
+          custom_answers: Json
+          config_revision: number
           availability: Json
           created_at: string | null
           game_type_pref: string
@@ -1463,6 +1465,8 @@ export type Database = {
         }
         Insert: {
           audit_reason?: string | null
+          custom_answers?: Json
+          config_revision?: number
           availability?: Json
           created_at?: string | null
           game_type_pref: string
@@ -1478,6 +1482,8 @@ export type Database = {
         }
         Update: {
           audit_reason?: string | null
+          custom_answers?: Json
+          config_revision?: number
           availability?: Json
           created_at?: string | null
           game_type_pref?: string
@@ -1515,6 +1521,9 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
+          purpose: string
+          content_config: Json
+          config_revision: number
           round_name: string
           status: string
           survey_end: string
@@ -1526,6 +1535,9 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          purpose?: string
+          content_config?: Json
+          config_revision?: number
           round_name: string
           status?: string
           survey_end: string
@@ -1537,6 +1549,9 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
+          purpose?: string
+          content_config?: Json
+          config_revision?: number
           round_name?: string
           status?: string
           survey_end?: string

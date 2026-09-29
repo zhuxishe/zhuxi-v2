@@ -3,6 +3,7 @@ import { ArrowRight, CalendarClock, CheckCircle2, Plus, Shuffle, Users, type Luc
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { formatSurveyTime, getSurveyWindowState } from "@/lib/matching/survey-window"
+import { getRoundPurpose } from "@/lib/matching/round-config"
 
 interface Round {
   id: string
@@ -12,6 +13,7 @@ interface Round {
   survey_end: string
   activity_start: string
   activity_end: string
+  purpose?: string
 }
 
 interface Session {
@@ -24,7 +26,7 @@ interface Session {
 
 const STATUS: Record<string, { label: string; cls: string }> = {
   draft: { label: "草稿", cls: "bg-muted text-muted-foreground" },
-  open: { label: "问卷进行中", cls: "bg-green-100 text-green-700" },
+  open: { label: "开放中", cls: "bg-green-100 text-green-700" },
   scheduled: { label: "待开放", cls: "bg-muted text-muted-foreground" },
   expired: { label: "已到期", cls: "bg-yellow-100 text-yellow-700" },
   invalid: { label: "时间异常", cls: "bg-destructive/10 text-destructive" },
@@ -40,14 +42,14 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
         <Link href="/admin/matching/rounds/new">
           <Button><Plus className="mr-1 size-4" />新建轮次</Button>
         </Link>
-        <EmptyState icon={Shuffle} title="暂无轮次" description="创建匹配轮次，收集玩家问卷后运行匹配" />
+        <EmptyState icon={Shuffle} title="暂无轮次" description="创建匹配问卷、固定时间活动报名或活动通知" />
       </div>
     )
   }
   return (
     <div className="grid gap-4 xl:grid-cols-[17rem_1fr_18rem]">
       <aside className="rounded-xl bg-card shadow-soft">
-        <Header title="匹配轮次" actionHref="/admin/matching/rounds/new" />
+        <Header title="轮次与活动" actionHref="/admin/matching/rounds/new" />
         <div className="divide-y divide-border/70">
           {rounds.map((round) => (
             <RoundLink key={round.id} round={round} active={round.id === current?.id} />
@@ -58,12 +60,12 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
         <header className="flex items-center justify-between border-b border-border px-4 py-3">
           <div>
             <h2 className="text-sm font-semibold">{current?.round_name ?? "当前轮次"}</h2>
-            <p className="text-xs text-muted-foreground">轮次优先，历史匹配保留为次级入口。</p>
+            <p className="text-xs text-muted-foreground">{purposeText(current?.purpose)} · 内容、问卷与提交记录均在详情内管理。</p>
           </div>
           {current && <StatusBadge status={getSurveyWindowState(current)} />}
         </header>
         <div className="grid gap-3 p-4 sm:grid-cols-3">
-          <InfoCard icon={CalendarClock} label="问卷截止（日本时间）" value={current ? formatSurveyTime(current.survey_end) : "-"} />
+          <InfoCard icon={CalendarClock} label="收集／展示截止（日本时间）" value={current ? formatSurveyTime(current.survey_end) : "-"} />
           <InfoCard icon={Users} label="活动窗口" value={current ? `${shortDate(current.activity_start)} - ${shortDate(current.activity_end)}` : "-"} />
           <InfoCard icon={CheckCircle2} label="运行状态" value={current ? statusText(getSurveyWindowState(current)) : "-"} />
         </div>
@@ -104,8 +106,10 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
         <section className="rounded-xl bg-card p-4 shadow-soft">
           <h3 className="text-sm font-semibold">运行前关注</h3>
           <CheckRow ok label="轮次状态清晰" />
-          <CheckRow ok={current?.status === "closed"} label="问卷已截止后再运行" />
-          <CheckRow ok label="Excel 导入需先补全性别" />
+          {getRoundPurpose(current?.purpose) === "matching" ? <>
+            <CheckRow ok={current?.status === "closed"} label="问卷已截止后再运行" />
+            <CheckRow ok label="Excel 导入需先补全性别" />
+          </> : <CheckRow ok label={current?.purpose === "announcement" ? "通知只展示内容，无需填写" : "固定时间活动直接收集报名"} />}
         </section>
       </aside>
     </div>
@@ -126,6 +130,7 @@ function RoundLink({ round, active }: { round: Round; active: boolean }) {
       <div className="flex items-center justify-between gap-2">
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold">{round.round_name}</span>
+          <span className="block text-[11px] text-muted-foreground">{purposeText(round.purpose)}</span>
           <span className="text-xs text-muted-foreground">{shortDate(round.activity_start)} - {shortDate(round.activity_end)}</span>
         </span>
         <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
@@ -150,3 +155,4 @@ function CheckRow({ ok, label }: { ok: boolean; label: string }) {
 
 function statusText(status: string) { return STATUS[status]?.label ?? `未知状态（${status}）` }
 function shortDate(value: string) { return new Date(value).toLocaleDateString("zh-CN", { month: "short", day: "numeric" }) }
+function purposeText(purpose?: string) { return { matching: "收集时间后匹配", registration: "固定时间活动报名", announcement: "活动通知" }[getRoundPurpose(purpose)] }

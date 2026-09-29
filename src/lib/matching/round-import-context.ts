@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { getRoundPurpose, normalizeRoundConfig } from "./round-config"
 import {
   normalizeLegacyCompatibilityScore,
   normalizeLegacySessionCount,
@@ -56,10 +57,12 @@ export async function loadRoundImportContext(roundId: string, buffer: Buffer): P
   const db = createAdminClient() as SupabaseClient<any, any, any>
   const { data: round, error: roundError } = await db
     .from("match_rounds")
-    .select("id, status, activity_start, activity_end")
+    .select("*")
     .eq("id", roundId)
     .single()
   if (roundError || !round) throw new Error("轮次不存在")
+  if (getRoundPurpose(round.purpose) !== "matching") throw new Error("活动报名和通知不支持导入匹配问卷")
+  if (normalizeRoundConfig(round.content_config).questions.some((question) => question.required)) throw new Error("本轮含必填补充问题，请成员自行填写问卷；Excel 导入无法代填补充答案")
   if (round.status === "matched") throw new Error("该轮次已完成匹配，禁止导入 Excel")
 
   const parsedRows = await parseRoundImportWorkbook(buffer, round.activity_start, round.activity_end)

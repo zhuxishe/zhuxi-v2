@@ -5,13 +5,15 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
 import { canUpdateRoundStatus } from "@/components/admin/round-detail-rules"
 import { parseSurveyOpening, type SurveyOpeningInput } from "@/lib/matching/survey-opening"
+import { normalizeRoundConfig } from "@/lib/matching/round-config"
+import { validateRoundPublishing } from "@/lib/matching/round-config-validation"
 
 export async function updateRoundStatus(roundId: string, status: string, opening?: SurveyOpeningInput) {
   await requireAdmin()
   if (!["draft", "open", "closed"].includes(status)) return { error: "轮次状态无效" }
   const supabase = await createClient()
   const { data: round, error: roundError } = await supabase.from("match_rounds")
-    .select("status, survey_start, survey_end").eq("id", roundId).single()
+    .select("*").eq("id", roundId).single()
   if (roundError || !round) return { error: "轮次不存在" }
   if (!canUpdateRoundStatus(round.status, status)) return { error: "该轮次已匹配或状态无效，无法更改问卷状态" }
 
@@ -21,6 +23,9 @@ export async function updateRoundStatus(roundId: string, status: string, opening
     const parsed = parseSurveyOpening(opening)
     if (parsed.error) return { error: parsed.error }
     window = parsed.window
+    const publishingError = validateRoundPublishing(round.purpose, normalizeRoundConfig(round.content_config))
+    if (publishingError) return { error: publishingError }
+    if (round.purpose === "registration" && Date.parse(window.survey_end) > Date.parse(normalizeRoundConfig(round.content_config).eventStart)) return { error: "报名截止时间不能晚于活动开始时间" }
     const { data: session, error } = await supabase.from("match_sessions")
       .select("id").eq("round_id", roundId).limit(1).maybeSingle()
     if (error) return { error: "无法确认匹配状态，请稍后重试" }

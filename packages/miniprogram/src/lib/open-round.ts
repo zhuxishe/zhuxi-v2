@@ -1,14 +1,18 @@
 import { supabaseQuery } from './supabase'
 import { MiniOpenRound } from './round-state'
+import { selectCompatibleMiniRound } from './round-compatibility'
 
-export async function fetchMiniOpenRound(): Promise<MiniOpenRound | null> {
-  const rounds = await supabaseQuery<MiniOpenRound[]>('match_rounds', {
-    select: 'id,round_name,survey_end',
-    status: 'eq.open',
-    order: 'survey_end.asc',
-    limit: '1',
-  })
-  return rounds?.[0] ?? null
+export async function fetchMiniOpenRound(now = new Date()): Promise<MiniOpenRound | null> {
+  for (let offset = 0; ; offset += 100) {
+    const rounds = await supabaseQuery<MiniOpenRound[]>('match_rounds', {
+      select: '*', status: 'eq.open',
+      survey_start: `lte.${now.toISOString()}`, survey_end: `gt.${now.toISOString()}`,
+      order: 'survey_end.asc,id.asc', limit: '100', offset: String(offset),
+    })
+    const compatible = selectCompatibleMiniRound(rounds ?? [], now)
+    if (compatible) return compatible
+    if (!rounds || rounds.length < 100) return null
+  }
 }
 
 export async function loadMiniRoundState(memberId: string) {

@@ -5,6 +5,7 @@ export interface PlayerParticipationRecord {
   id: string
   created_at: string | null
   updated_at: string | null
+  cancelled_at?: string | null
   round: RoundRecord
 }
 

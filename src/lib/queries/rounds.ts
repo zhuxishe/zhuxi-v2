@@ -52,14 +52,14 @@ export async function fetchRoundSubmissions(roundId: string) {
   const columns = admin.role === "super_admin"
     ? `
       id, round_id, member_id, game_type_pref, gender_pref, availability,
-      interest_tags, social_style, message, created_at, updated_at,
+      interest_tags, social_style, message, created_at, updated_at, cancelled_at,
       member:members (
         id,
         member_identity (full_name, nickname, school_name)
       )
     `
     : `
-      id, round_id, member_id, created_at, updated_at,
+      id, round_id, member_id, created_at, updated_at, cancelled_at,
       member:members (
         id,
         member_identity (full_name, nickname, school_name)
@@ -85,6 +85,7 @@ export async function fetchRoundStats(roundId: string) {
     .from("match_round_submissions")
     .select("game_type_pref, availability")
     .eq("round_id", roundId)
+    .is("cancelled_at", null)
     .limit(500)
 
   if (error) throw error

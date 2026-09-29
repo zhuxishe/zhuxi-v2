@@ -67,7 +67,7 @@ export default async function SurveyPage({ searchParams }: { searchParams: Promi
     <div className="px-4 py-6">
       <BackLink label={backLabel} href={backHref} />
       <SurveyForm
-        key={round.id}
+        key={`${round.id}:${existing?.updated_at ?? "new"}`}
         roundId={round.id}
         roundName={round.round_name}
         surveyStart={round.survey_start}
@@ -80,6 +80,8 @@ export default async function SurveyPage({ searchParams }: { searchParams: Promi
         configRevision={round.config_revision ?? 0}
         fromParticipation={fromParticipation}
         existing={existing ? {
+          updated_at: existing.updated_at,
+          cancelled_at: existing.cancelled_at,
           game_type_pref: existing.game_type_pref,
           gender_pref: existing.gender_pref,
           availability: existing.availability as Record<string, string[]>,

@@ -40,6 +40,6 @@ export function ParticipationAnswers({ record }: { record: PlayerParticipationDe
         </dd>
       </div>)}
     </dl>
-    {!matching && custom.length === 0 && <p className="mt-3 text-sm leading-6 text-muted-foreground">{t("registrationConfirmed")}</p>}
+    {!matching && custom.length === 0 && <p className="mt-3 text-sm leading-6 text-muted-foreground">{t(record.cancelled_at ? "registrationCancelledAnswers" : "registrationConfirmed")}</p>}
   </section>
 }

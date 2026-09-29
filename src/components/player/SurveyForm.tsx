@@ -4,7 +4,6 @@ import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { submitSurvey } from "@/app/app/matching/survey/actions"
-import { Button } from "@/components/ui/button"
 import { localizeRoundText, normalizeRoundConfig } from "@/lib/matching/round-config"
 import { validateSurveyAnswers } from "@/lib/matching/survey-answers"
 import { surveySubmissionError } from "@/lib/matching/survey-window"
@@ -12,6 +11,8 @@ import { useSurveyWindow } from "@/lib/matching/use-survey-window"
 import type { RoundContentConfig, RoundPurpose, SurveyAnswers } from "@/types/matching-round"
 import { RoundDetails } from "./RoundDetails"
 import { RoundFormFields } from "./RoundFormFields"
+import { SurveyActionBar } from "./SurveyActionBar"
+import { CancelRegistrationButton } from "./CancelRegistrationButton"
 
 interface Props {
   roundId: string
@@ -26,6 +27,8 @@ interface Props {
   configRevision?: number
   fromParticipation?: boolean
   existing?: {
+    updated_at?: string | null
+    cancelled_at?: string | null
     game_type_pref: string
     gender_pref: string
     availability: Record<string, string[]>
@@ -48,6 +51,7 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
     socialStyle: existing?.social_style ?? null, message: existing?.message ?? null, customAnswers: existing?.custom_answers ?? {},
   })
   const [submitting, setSubmitting] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [serverClosed, setServerClosed] = useState(false)
   const inFlight = useRef(false)
@@ -57,7 +61,7 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
   const needsTime = purpose === "matching" && !Object.values(value.availability).some((slots) => slots.length > 0)
 
   async function handleSubmit() {
-    if (inFlight.current || blocked || purpose === "announcement") return
+    if (inFlight.current || cancelling || blocked || purpose === "announcement") return
     const windowError = surveySubmissionError(window)
     if (windowError) { setServerClosed(true); setError(tErr(windowError)); return }
     const validated = validateSurveyAnswers(value, purpose, config, activityStart, activityEnd)
@@ -66,9 +70,12 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
     setSubmitting(true)
     setError(null)
     try {
-      const res = await submitSurvey({ roundId, configRevision, ...validated.data })
+      const res = await submitSurvey({ roundId, configRevision, ...validated.data,
+        ...(purpose === "registration" ? { registrationIntent: existing ? existing.cancelled_at ? "rejoin" : "update" : "create",
+          expectedUpdatedAt: existing?.updated_at ?? null } : {}),
+      })
       if (res.error) {
-        if (["surveyExpired", "surveyClosed", "surveyNotStarted", "roundNotFound", "surveyUpdated", "surveyReadOnly"].includes(res.error)) setServerClosed(true)
+        if (["surveyExpired", "surveyClosed", "surveyNotStarted", "roundNotFound", "surveyUpdated", "surveyReadOnly", "registrationChanged"].includes(res.error)) setServerClosed(true)
         setError(tErr.has(res.error) ? tErr(res.error) : res.error)
         return
       }
@@ -82,22 +89,22 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
   }
 
   return (
-    <div className="space-y-6 pb-40">
+    <div className="space-y-6 pb-4">
       <RoundDetails roundName={roundName} purpose={purpose} config={config} surveyEnd={surveyEnd} />
       {purpose !== "announcement" && <>
-        <fieldset disabled={blocked || submitting} className="space-y-6 disabled:opacity-70">
+        <fieldset disabled={blocked || submitting || cancelling} className="space-y-6 disabled:opacity-70">
           <RoundFormFields purpose={purpose} config={config} activityStart={activityStart} activityEnd={activityEnd}
             value={value} onChange={setValue} />
         </fieldset>
-        {error && <p role="alert" className="text-center text-sm text-destructive">{error}</p>}
-        <div className="player-app-action-bar fixed bottom-16 left-0 right-0 z-40 border-t border-border bg-background/90 p-4 backdrop-blur-md">
-          {blocked && <p role="status" className="mb-3 text-sm">{t("unavailableWhileFilling")}</p>}
-          <Button onClick={handleSubmit} disabled={blocked || submitting || needsTime} className="w-full">
-            {submitting ? t("submitting") : existing ? t(purpose === "registration" ? "registration.update" : "update")
-              : localizeRoundText(config.labels.submit, locale, t(purpose === "registration" ? "registration.submit" : "submit"))}
-          </Button>
-          {!blocked && needsTime && <p className="mt-2 text-center text-xs text-muted-foreground">{t("noTimeSlotHint")}</p>}
-        </div>
+        <SurveyActionBar onSubmit={handleSubmit} disabled={blocked || submitting || cancelling || needsTime} submitting={submitting}
+          error={error} notice={blocked ? t("unavailableWhileFilling") : undefined}
+          hint={!blocked && needsTime ? t("noTimeSlotHint") : undefined}
+          label={submitting ? t("submitting") : existing?.cancelled_at ? t("registration.rejoin") : existing ? t(purpose === "registration" ? "registration.update" : "update")
+            : localizeRoundText(config.labels.submit, locale, t(purpose === "registration" ? "registration.submit" : "submit"))}>
+          {purpose === "registration" && existing && !existing.cancelled_at && <CancelRegistrationButton
+            roundId={roundId} roundName={roundName} expectedUpdatedAt={existing.updated_at ?? null}
+            disabled={blocked || submitting} returnToRecord onBusyChange={setCancelling} />}
+        </SurveyActionBar>
       </>}
     </div>
   )

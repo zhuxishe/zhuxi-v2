@@ -758,8 +758,20 @@
       "submitted": "回答済み",
       "collectionComplete": "受付終了",
       "notOpen": "変更受付前",
-      "closed": "締切済み"
-    }
+      "closed": "締切済み",
+      "cancelled": "取消済み"
+    },
+    "cancelRegistration": "申込を取り消す",
+    "cancelTitle": "申込を取り消しますか？",
+    "cancelDescription": "「{name}」への申込を取り消します。回答と取消履歴は保存され、受付期間中は再度申し込めます。",
+    "keepRegistration": "申込を維持",
+    "confirmCancel": "取消を確定",
+    "cancelling": "取消中…",
+    "reregister": "再度申し込む",
+    "cancelledAt": "取消日時：{time}（日本時間）",
+    "reregisterHint": "申込は取り消されました。回答は保存されており、受付期間中は再度申し込めます。",
+    "cancelUnavailableHint": "ご自身での取消受付は終了しました。取り消す場合はスタッフにご連絡ください。",
+    "registrationCancelledAnswers": "申込は取り消されました。今回の追加質問はありません。"
   },
   "playerStats": {
     "title": "レベル制度",
@@ -1018,7 +1030,8 @@
       "submit": "参加申込みを確定",
       "update": "申込内容を更新",
       "successTitle": "申込みを受け付けました！",
-      "successDescription": "申込内容を保存しました。イベントの案内をご確認ください。"
+      "successDescription": "申込内容を保存しました。イベントの案内をご確認ください。",
+      "rejoin": "再度申し込む"
     },
     "details": {
       "time": "開催日時（日本時間）",
@@ -1294,7 +1307,10 @@
     "invalidSurveyInput": "入力形式または選択肢が無効です。内容をご確認ください。",
     "customQuestionRequired": "すべての必須項目に回答してください。",
     "surveyUpdated": "募集内容が更新されました。ページを再読み込みして内容を確認してください。",
-    "surveyReadOnly": "この募集はお知らせのみです。回答の送信は不要です。"
+    "surveyReadOnly": "この募集はお知らせのみです。回答の送信は不要です。",
+    "registrationChanged": "申込状況が変更されています。ページを再読み込みしてから操作してください。",
+    "registrationCancelUnavailable": "現在、ご自身で申込を取り消すことはできません。スタッフにご連絡ください。",
+    "registrationNotFound": "申込記録が見つかりません。"
   },
   "pwa": {
     "install": "竹渓社をインストール",

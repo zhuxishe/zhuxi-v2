@@ -14,7 +14,7 @@ const receipt = {
   created_at: now, expires_at: "2026-12-28T01:00:00.000Z",
 }
 let notifications: typeof receipt[]
-let submissions: { round_id: string; member_id: string }[]
+let submissions: { round_id: string; member_id: string; cancelled_at?: string | null }[]
 let requests: URL[]
 let banned: boolean
 let submissionsUnavailable: boolean
@@ -47,7 +47,7 @@ describe("notification delivery with the real Supabase request builder", () => {
           if (submissionsUnavailable) return new Response(JSON.stringify({ message: "Unavailable", code: "42501" }), { status: 403 })
           const ids = params.get("round_id")?.slice(4, -1).split(",")
           data = submissions.filter((row) => (!params.get("member_id") || params.get("member_id") === `eq.${row.member_id}`)
-            && (!ids || ids.includes(row.round_id)))
+            && (!ids || ids.includes(row.round_id)) && (!params.get("cancelled_at") || row.cancelled_at == null))
         }
         return new Response(JSON.stringify(data), { headers: { "content-type": "application/json" } })
       } },
@@ -84,5 +84,48 @@ describe("notification delivery with the real Supabase request builder", () => {
   it("surfaces target lookup failures instead of treating an unverified receipt as available", async () => {
     submissionsUnavailable = true
     await expect(fetchCommunityNotifications("member", "zh", { limit: 8 })).rejects.toThrow("Failed to verify community notification targets")
+  })
+
+  it.each(["zh", "ja"] as const)("keeps a cancelled receipt available with its original title and current %s status", async (locale) => {
+    submissions[0].cancelled_at = now
+    const { items } = await fetchCommunityNotifications("member", locale, { limit: 8 })
+    expect(items[0]).toMatchObject({ title: locale === "ja" ? receipt.title_ja : receipt.title_zh,
+      href: "/app/matches/rounds/closed-round", unavailable: false })
+    expect(items[0].body).toMatch(locale === "ja" ? /取り消|取消|キャンセル/ : /已取消/)
+    const query = requests.find((url) => url.pathname.endsWith("/match_round_submissions"))!.searchParams
+    expect(query.get("select")).toContain("cancelled_at")
+    expect(query.has("cancelled_at")).toBe(false)
+  })
+
+  it.each([null, now])("restores the receipt after signup resumes without changing read state %s or timestamps", async (readAt) => {
+    notifications = [{ ...receipt, read_at: readAt }]; submissions[0].cancelled_at = now
+    const cancelled = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    submissions[0].cancelled_at = null
+    const restored = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    expect(restored.items[0]).toMatchObject({ id: receipt.id, title: receipt.title_zh, body: receipt.body_zh,
+      readAt, createdAt: receipt.created_at, href: "/app/matches/rounds/closed-round" })
+    expect(cancelled.items[0]).toMatchObject({ id: receipt.id, readAt, createdAt: receipt.created_at })
+    expect(restored.unreadCount).toBe(readAt ? 0 : 1)
+    expect(cancelled.unreadCount).toBe(restored.unreadCount)
+  })
+
+  it("does not expose another member's cancellation status or detail link", async () => {
+    submissions = [{ round_id: receipt.round_id, member_id: "other", cancelled_at: now }]
+    const { items } = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    expect(items[0]).toMatchObject({ body: receipt.body_zh, href: null, unavailable: true })
+  })
+
+  it("never rewrites matching questionnaire receipts as registration cancellations", async () => {
+    notifications = [{ ...receipt, notification_type: "matching_submitted" }]; submissions[0].cancelled_at = now
+    const { items } = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    expect(items[0]).toMatchObject({ title: receipt.title_zh, body: receipt.body_zh, unavailable: false })
+  })
+
+  it("keeps the member's cancelled transactional receipt visible after a community ban", async () => {
+    banned = true; submissions[0].cancelled_at = now
+    const result = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    expect(result.unreadCount).toBe(1)
+    expect(result.items[0]).toMatchObject({ href: "/app/matches/rounds/closed-round", unavailable: false })
+    expect(result.items[0].body).toContain("已取消")
   })
 })

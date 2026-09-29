@@ -24,7 +24,7 @@ export async function fetchSubmittedRoundIds(memberId: string, roundIds: string[
   if (!roundIds.length) return []
   const db = await createClient()
   const { data, error } = await db.from("match_round_submissions").select("round_id")
-    .eq("member_id", memberId).in("round_id", roundIds)
+    .eq("member_id", memberId).in("round_id", roundIds).is("cancelled_at", null)
   if (error) throw new Error("Unable to load your submissions")
   return (data ?? []).map((submission) => submission.round_id)
 }

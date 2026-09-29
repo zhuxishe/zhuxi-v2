@@ -2,13 +2,15 @@ import { isValidElement, type ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ submit: vi.fn(), push: vi.fn(), window: vi.fn(), useState: vi.fn(), useRef: vi.fn() }))
-vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: mocks.useState, useRef: mocks.useRef }))
+vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: mocks.useState, useRef: mocks.useRef, useEffect: vi.fn() }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }))
 vi.mock("next-intl", () => ({ useLocale: () => "zh", useTranslations: () => Object.assign((key: string) => key, { has: () => true }) }))
 vi.mock("@/lib/i18n/use-tag-labels", () => ({ useTagLabels: () => ({}) }))
 vi.mock("@/lib/matching/use-survey-window", () => ({ useSurveyWindow: mocks.window }))
+vi.mock("@/app/app/matching/survey/cancellation-actions", () => ({ cancelRegistration: vi.fn() }))
 vi.mock("@/app/app/matching/survey/actions", () => ({ submitSurvey: mocks.submit }))
 import { SurveyForm } from "./SurveyForm"
+import { SurveyActionBar } from "./SurveyActionBar"
 import { normalizeRoundConfig } from "@/lib/matching/round-config"
 import { RoundCustomQuestion } from "./RoundCustomQuestion"
 
@@ -16,6 +18,7 @@ type NodeProps = { children?: ReactNode; disabled?: boolean; onClick?: () => Pro
 function find(node: ReactNode, predicate: (type: unknown, props: NodeProps) => boolean): NodeProps | undefined {
   if (Array.isArray(node)) return node.map((child) => find(child, predicate)).find(Boolean)
   if (!isValidElement<NodeProps>(node)) return
+  if (node.type === SurveyActionBar) return find(SurveyActionBar(node.props as Parameters<typeof SurveyActionBar>[0]), predicate)
   return predicate(node.type, node.props) ? node.props : find(node.props.children, predicate)
 }
 
@@ -109,6 +112,24 @@ describe("survey form expiry and recovery", () => {
     expect(button?.disabled).toBe(false)
     await button?.onClick?.()
     expect(mocks.submit).toHaveBeenCalledWith(expect.objectContaining({ availability: {}, gameTypePref: "都可以" }))
+  })
+
+  it("requires an explicit rejoin and the read version to restore a cancelled registration", async () => {
+    const cancelled = { game_type_pref: "都可以", gender_pref: "都可以", availability: {}, interest_tags: [], social_style: null, message: null,
+      updated_at: "2026-09-29T00:30:00Z", cancelled_at: "2026-09-29T00:30:00Z" }
+    const tree = render({ purpose: "registration", existing: cancelled })
+    const button = find(tree, (_type, props) => props.children === "registration.rejoin")
+    await button?.onClick?.()
+    expect(mocks.submit).toHaveBeenCalledWith(expect.objectContaining({ registrationIntent: "rejoin", expectedUpdatedAt: cancelled.updated_at }))
+  })
+
+  it("stops a stale update after another tab changes the registration", async () => {
+    mocks.submit.mockResolvedValue({ error: "registrationChanged" })
+    const tree = render({ purpose: "registration" })
+    await find(tree, (_type, props) => props.children === "registration.update")?.onClick?.()
+    const next = render({ purpose: "registration" })
+    expect(find(next, (_type, props) => props.children === "registration.update")?.disabled).toBe(true)
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 
   it("does not show a submit button for an announcement", () => {

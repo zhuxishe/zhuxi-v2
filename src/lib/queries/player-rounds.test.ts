@@ -13,7 +13,7 @@ const base: RoundRecord = {
   activity_start: "2026-10-10", activity_end: "2026-10-11",
 }
 let rounds: RoundRecord[]
-let submissions: { round_id: string; member_id: string }[]
+let submissions: { round_id: string; member_id: string; cancelled_at?: string | null }[]
 let requests: URL[]
 let unavailable: boolean
 
@@ -34,6 +34,7 @@ describe("player round queries with the real Supabase request builder", () => {
             && (!end || Date.parse(round.survey_end) > Date.parse(end.slice(3)))
         }).sort((a, b) => Date.parse(a.survey_end) - Date.parse(b.survey_end)).slice(0, Number(params.get("limit") ?? rounds.length))
           : submissions.filter((submission) => `eq.${submission.member_id}` === params.get("member_id")
+            && (params.get("cancelled_at") !== "is.null" || !submission.cancelled_at)
             && (params.get("round_id") ?? "").slice(4, -1).split(",").includes(submission.round_id)).map(({ round_id }) => ({ round_id }))
         return new Response(JSON.stringify(data), { headers: { "content-type": "application/json" } })
       } },
@@ -74,6 +75,15 @@ describe("player round queries with the real Supabase request builder", () => {
     submissions = [{ member_id: "member", round_id: id }, { member_id: "other", round_id: "round2" }, { member_id: "member", round_id: "hidden" }]
     expect(await fetchSubmittedRoundIds("member", [id, "round2"])).toEqual([id])
     expect(requests[0].searchParams.get("member_id")).toBe("eq.member")
+  })
+
+  it("treats cancelled registration as available again across home and recruiting entries", async () => {
+    submissions = [
+      { member_id: "member", round_id: id, cancelled_at: "2026-09-29T01:00:00Z" },
+      { member_id: "member", round_id: "active", cancelled_at: null },
+    ]
+    expect(await fetchSubmittedRoundIds("member", [id, "active"])).toEqual(["active"])
+    expect(requests[0].searchParams.get("cancelled_at")).toBe("is.null")
   })
 
   it("does not query submissions for an empty entry list", async () => {

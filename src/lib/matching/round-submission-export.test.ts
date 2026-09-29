@@ -23,6 +23,17 @@ describe("round submission export", () => {
     expect(csv).not.toContain("搭档性别偏好")
   })
 
+  it("retains cancelled registration answers with explicit status and cancellation time", () => {
+    const csv = buildRoundSubmissionCsv([
+      { member_id: "active", cancelled_at: null },
+      { member_id: "cancelled", cancelled_at: "2026-09-29T01:00:00Z", custom_answers: { food: ["veg"] } },
+    ], config, "registration")
+    expect(csv).toContain('"报名状态","取消时间"')
+    expect(csv).toContain('"有效报名",""')
+    expect(csv).toContain('"已取消","2026-09-29T01:00:00Z","素食"')
+    expect(csv.split("\r\n")).toHaveLength(3)
+  })
+
   it.each(["+1", "-2", "@SUM(A1)", "\t=1", "\r=1", "  =1"])("neutralizes dangerous text %j", (name) => {
     const csv = buildRoundSubmissionCsv([{ member_id: "id", member: { member_identity: { full_name: name } } }], normalizeRoundConfig({}), "registration")
     expect(csv).toContain(`"'${name}"`)
@@ -33,5 +44,7 @@ describe("round submission export", () => {
     expect(csv).toContain("可用时间")
     expect(csv).toContain("2026-10-10")
     expect(csv).toContain("推理")
+    expect(csv).not.toContain("报名状态")
+    expect(csv).not.toContain("取消时间")
   })
 })

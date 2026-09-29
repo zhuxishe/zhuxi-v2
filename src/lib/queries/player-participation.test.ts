@@ -41,6 +41,14 @@ describe("personal participation queries", () => {
     expect(requests[0].searchParams.has("round.status")).toBe(false)
   })
 
+  it("retains cancellation state and saved answers in owned records", async () => {
+    records = [{ ...base, cancelled_at: "2026-09-29T01:00:00Z", custom_answers: { food: "veg" } }]
+    expect((await fetchPlayerParticipationRecords("member"))[0].cancelled_at).toBe("2026-09-29T01:00:00Z")
+    expect((await fetchPlayerParticipationDetail("member", roundId))?.custom_answers).toEqual({ food: "veg" })
+    expect(requests.every((request) => request.searchParams.get("select")?.includes("cancelled_at"))).toBe(true)
+    expect(requests.every((request) => !request.searchParams.has("cancelled_at"))).toBe(true)
+  })
+
   it("loads records beyond one response page without truncating older history", async () => {
     records = Array.from({ length: 101 }, (_, index) => ({ ...base, id: `record-${index}` }))
     const result = await fetchPlayerParticipationRecords("member")

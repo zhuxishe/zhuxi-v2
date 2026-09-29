@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { normalizeRoundConfig } from "./round-config"
-import { canEditParticipation, groupParticipationRecords, participationAvailability, participationCustomAnswers, participationEditHref, participationRecordHref, participationStatus } from "./participation-display"
+import { canEditParticipation, canReregisterParticipation, groupParticipationRecords, participationAvailability, participationCustomAnswers, participationEditHref, participationRecordHref, participationStatus } from "./participation-display"
 import { getSurveyWindowState } from "./survey-window"
 import type { RoundRecord } from "@/types/matching-round"
 
@@ -35,6 +35,20 @@ describe("participation record presentation", () => {
     expect(grouped.current.map((record) => record.round.id)).toEqual(["round", "later"])
     expect(grouped.history).toEqual([records[0]])
     expect(participationStatus(records[0].round, "matched")).toBe("collectionComplete")
+  })
+
+  it("keeps cancelled fixed events in history and only offers registration again while open", () => {
+    const cancelled_at = "2026-09-29T08:00:00Z"
+    const record = { round: { ...round, content_config: { eventStart: "2026-10-01T09:00:00Z" } }, cancelled_at }
+    expect(groupParticipationRecords([record], new Date("2026-09-29T12:00:00Z"))).toEqual({ current: [], history: [record] })
+    expect(participationStatus(round, "open", cancelled_at)).toBe("cancelled")
+    expect(participationStatus(round, "closed", cancelled_at)).toBe("cancelled")
+    expect(canEditParticipation(round, "open", cancelled_at)).toBe(false)
+    expect(canReregisterParticipation(round, "open", cancelled_at)).toBe(true)
+    expect(canReregisterParticipation(round, "expired", cancelled_at)).toBe(false)
+    expect(canReregisterParticipation(round, "scheduled", cancelled_at)).toBe(false)
+    expect(participationStatus({ ...round, purpose: "matching" }, "open", cancelled_at)).toBe("submitted")
+    expect(canReregisterParticipation({ ...round, purpose: "matching" }, "open", cancelled_at)).toBe(false)
   })
 
   it("localizes saved choice labels while retaining free text verbatim", () => {

@@ -19,6 +19,7 @@ export default async function SurveySuccessPage({ searchParams }: { searchParams
   if (!round || getRoundPurpose(round.purpose) === "announcement") redirect("/app/matching")
   const submission = await fetchMySubmission(roundId, player.memberId)
   if (!submission) redirect(roundHref(roundId))
+  if (submission.cancelled_at) redirect(participationRecordHref(roundId))
   const t = await getTranslations("survey")
   const participation = await getTranslations("participation")
   const registration = getRoundPurpose(round.purpose) === "registration"

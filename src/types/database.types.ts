@@ -1457,6 +1457,7 @@ export type Database = {
       }
       match_round_submissions: {
         Row: {
+          cancelled_at: string | null
           audit_reason: string | null
           custom_answers: Json
           config_revision: number
@@ -1474,6 +1475,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          cancelled_at?: string | null
           audit_reason?: string | null
           custom_answers?: Json
           config_revision?: number
@@ -1491,6 +1493,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          cancelled_at?: string | null
           audit_reason?: string | null
           custom_answers?: Json
           config_revision?: number
@@ -3087,6 +3090,16 @@ export type Database = {
       }
     }
     Functions: {
+      manage_my_registration: {
+        Args: {
+          p_round_id: string
+          p_operation: string
+          p_expected_updated_at?: string | null
+          p_config_revision?: number | null
+          p_custom_answers?: Json
+        }
+        Returns: Json
+      }
       admin_anonymize_member: {
         Args: { p_member_id: string; p_reason: string }
         Returns: Json

@@ -11,13 +11,22 @@ export function participationEditHref(roundId: string) {
   return `${roundHref(roundId)}&from=participation`
 }
 
-export function canEditParticipation(round: RoundRecord, state: SurveyWindowState) {
-  return state === "open" && getRoundPurpose(round.purpose) !== "announcement"
+export function isRegistrationCancelled(round: RoundRecord, cancelledAt?: string | null) {
+  return getRoundPurpose(round.purpose) === "registration" && Boolean(cancelledAt)
 }
 
-export function groupParticipationRecords<T extends { round: RoundRecord }>(records: T[], now: Date) {
+export function canEditParticipation(round: RoundRecord, state: SurveyWindowState, cancelledAt?: string | null) {
+  return state === "open" && getRoundPurpose(round.purpose) !== "announcement" && !isRegistrationCancelled(round, cancelledAt)
+}
+
+export function canReregisterParticipation(round: RoundRecord, state: SurveyWindowState, cancelledAt?: string | null) {
+  return state === "open" && isRegistrationCancelled(round, cancelledAt)
+}
+
+export function groupParticipationRecords<T extends { round: RoundRecord; cancelled_at?: string | null }>(records: T[], now: Date) {
   const current: T[] = [], history: T[] = []
   for (const record of records) {
+    if (isRegistrationCancelled(record.round, record.cancelled_at)) { history.push(record); continue }
     const config = normalizeRoundConfig(record.round.content_config)
     const upcomingRegistration = getRoundPurpose(record.round.purpose) === "registration"
       && Date.parse(config.eventEnd || config.eventStart) >= now.getTime()
@@ -28,7 +37,8 @@ export function groupParticipationRecords<T extends { round: RoundRecord }>(reco
   return { current, history }
 }
 
-export function participationStatus(round: RoundRecord, state: SurveyWindowState) {
+export function participationStatus(round: RoundRecord, state: SurveyWindowState, cancelledAt?: string | null) {
+  if (isRegistrationCancelled(round, cancelledAt)) return "cancelled"
   if (state === "open") return getRoundPurpose(round.purpose) === "registration" ? "registered" : "submitted"
   if (state === "matched") return "collectionComplete"
   if (state === "scheduled") return "notOpen"

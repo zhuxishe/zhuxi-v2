@@ -48,6 +48,7 @@ export function RoundDetailClient({
   const [createOpen, setCreateOpen] = useState(false)
   const purpose = getRoundPurpose(round.purpose)
   const matching = purpose === "matching"
+  const activeCount = submissions.filter((submission) => purpose !== "registration" || !submission.cancelled_at).length
   const config = normalizeRoundConfig(round.content_config)
   const requiresPlayerAnswers = config.questions.some((question) => question.required)
   const editable = canManageSubmissions && round.status !== "matched" && matching
@@ -88,7 +89,7 @@ export function RoundDetailClient({
   }
   return (
     <div className="space-y-6">
-      <RoundDetailHeader round={round} windowState={windowState} loading={loading} count={submissions.length} matchingReason={matchingReason} onOpen={() => setOpening(true)} onClose={() => handleStatusChange("closed")} onMatch={handleRunMatch} />
+      <RoundDetailHeader round={round} windowState={windowState} loading={loading} count={activeCount} matchingReason={matchingReason} onOpen={() => setOpening(true)} onClose={() => handleStatusChange("closed")} onMatch={handleRunMatch} />
       {error && <p className="text-sm text-destructive">{error}</p>}
       {opening && <RoundOpeningDialog round={round} onClose={() => setOpening(false)} />}
       {matching && canRunRoundMatching(round.status) && (

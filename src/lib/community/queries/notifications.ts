@@ -117,7 +117,7 @@ export async function fetchCommunityNotifications(
       ? db.from("community_announcements").select("id, status, display_start_at, display_end_at").in("id", announcementIds)
       : Promise.resolve({ data: [], error: null }),
     roundIds.length
-      ? db.from("match_round_submissions").select("round_id").eq("member_id", memberId).in("round_id", roundIds)
+      ? db.from("match_round_submissions").select("round_id, cancelled_at").eq("member_id", memberId).in("round_id", roundIds)
       : Promise.resolve({ data: [], error: null }),
   ])
   const relatedError = [profilesResult, postsResult, commentsResult, announcementsResult, submissionsResult]
@@ -138,6 +138,10 @@ export async function fetchCommunityNotifications(
   const announcements = new Map((announcementsResult.data ?? []).map((row: { id: string; status: string; display_start_at: string | null; display_end_at: string | null }) => [row.id, row]))
   const submittedRoundIds = new Set((submissionsResult.data ?? []).map((row: { round_id: string }) => row.round_id))
 
+  const cancelledRoundIds = new Set((submissionsResult.data ?? [])
+    .filter((row: { cancelled_at?: string | null }) => row.cancelled_at)
+    .map((row: { round_id: string }) => row.round_id))
+
   return {
     unreadCount: unreadResult.count ?? 0,
     items: rows.map((row) => {
@@ -152,11 +156,12 @@ export async function fetchCommunityNotifications(
       const target = hasCommunityBan && row.report_id
         ? { href: null, unavailable: false }
         : resolvedTarget
+      const cancelled = row.notification_type === "registration_submitted" && row.round_id && cancelledRoundIds.has(row.round_id)
       return {
         id: row.id,
         type: row.notification_type,
         title: (locale === "ja" ? row.title_ja : row.title_zh) || row.title_zh || row.title_ja || "",
-        body: (locale === "ja" ? row.body_ja : row.body_zh) || row.body_zh || row.body_ja || "",
+        body: cancelled ? (locale === "ja" ? "この申込は取り消されました。記録を開くと詳細を確認できます。" : "这次报名已取消，点击查看保留的报名记录。") : (locale === "ja" ? row.body_ja : row.body_zh) || row.body_zh || row.body_ja || "",
         href: target.href,
         unavailable: target.unavailable,
         actor: row.actor_profile_id ? profiles.get(row.actor_profile_id) ?? null : null,

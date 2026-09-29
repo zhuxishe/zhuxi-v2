@@ -758,8 +758,20 @@
       "submitted": "已提交",
       "collectionComplete": "收集已结束",
       "notOpen": "暂未开放修改",
-      "closed": "已截止"
-    }
+      "closed": "已截止",
+      "cancelled": "已取消"
+    },
+    "cancelRegistration": "取消报名",
+    "cancelTitle": "确认取消报名？",
+    "cancelDescription": "取消「{name}」后，你将退出本次报名。原答案和取消记录会保留；报名开放期间可以重新报名。",
+    "keepRegistration": "保留报名",
+    "confirmCancel": "确认取消",
+    "cancelling": "取消中…",
+    "reregister": "重新报名",
+    "cancelledAt": "取消时间：{time}（日本时间）",
+    "reregisterHint": "报名已取消，原答案已保留。报名开放期间可以重新报名。",
+    "cancelUnavailableHint": "自助取消已关闭。如需退出，请联系工作人员。",
+    "registrationCancelledAnswers": "报名已取消，本期没有补充问题。"
   },
   "playerStats": {
     "title": "等级制度",
@@ -1018,7 +1030,8 @@
       "submit": "确认报名",
       "update": "更新报名",
       "successTitle": "报名已提交！",
-      "successDescription": "你的报名信息已保存，请留意本次活动的安排。"
+      "successDescription": "你的报名信息已保存，请留意本次活动的安排。",
+      "rejoin": "重新报名"
     },
     "details": {
       "time": "活动时间（日本时间）",
@@ -1294,7 +1307,10 @@
     "invalidSurveyInput": "填写内容的格式或选项无效，请检查后重试。",
     "customQuestionRequired": "请完成所有必填问题。",
     "surveyUpdated": "本期内容已更新，请刷新页面后确认并提交。",
-    "surveyReadOnly": "本期仅发布通知，无需提交问卷。"
+    "surveyReadOnly": "本期仅发布通知，无需提交问卷。",
+    "registrationChanged": "报名状态已发生变化，请刷新页面后再操作。",
+    "registrationCancelUnavailable": "当前无法自行取消报名。如需退出，请联系工作人员。",
+    "registrationNotFound": "未找到这次报名记录。"
   },
   "pwa": {
     "install": "安装竹溪社",

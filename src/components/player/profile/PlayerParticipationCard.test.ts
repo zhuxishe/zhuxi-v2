@@ -6,6 +6,8 @@ import type { PlayerParticipationDetail } from "@/types/player-participation"
 const mocks = vi.hoisted(() => ({ state: "open" }))
 vi.mock("next-intl", () => ({ useLocale: () => "zh", useTranslations: () => (key: string) => key }))
 vi.mock("@/lib/matching/use-survey-window", () => ({ useSurveyWindow: () => mocks.state }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }) }))
+vi.mock("@/app/app/matching/survey/cancellation-actions", () => ({ cancelRegistration: vi.fn() }))
 import { PlayerParticipationCard } from "./PlayerParticipationCard"
 import { ParticipationRecordActions } from "./ParticipationRecordActions"
 import { ParticipationAnswers } from "./ParticipationAnswers"
@@ -30,13 +32,62 @@ describe("participation record controls", () => {
     expect(closed).toContain("status.registrationClosed")
   })
 
+  it("shows cancellation and replaces editing with registration again, retaining the record after deadline", () => {
+    const cancelledRecord = { ...record, cancelled_at: "2026-09-29T08:00:00Z" }
+    const open = renderToStaticMarkup(createElement(PlayerParticipationCard, { record: cancelledRecord, initialNow: "2026-09-29T12:00:00Z" }))
+    expect(open).toContain("status.cancelled")
+    expect(open).toContain("cancelledAt")
+    expect(open).toContain("reregister")
+    expect(open).not.toContain("editRegistration")
+    mocks.state = "expired"
+    const closed = renderToStaticMarkup(createElement(PlayerParticipationCard, { record: cancelledRecord, initialNow: "2026-09-30T00:00:00Z" }))
+    expect(closed).toContain("status.cancelled")
+    expect(closed).toContain('href="/app/matches/rounds/round"')
+    expect(closed).not.toContain("/app/matching/survey")
+  })
+
   it("renders matched records as read-only and explains that questionnaire submission is not attendance", () => {
     mocks.state = "matched"
-    const html = renderToStaticMarkup(createElement(ParticipationRecordActions, { round: { ...record.round, purpose: "matching", status: "matched" }, initialNow: "2026-10-01T00:00:00Z" }))
+    const html = renderToStaticMarkup(createElement(ParticipationRecordActions, { round: { ...record.round, purpose: "matching", status: "matched" }, updatedAt: null, initialNow: "2026-10-01T00:00:00Z" }))
     expect(html).not.toContain("/app/matching/survey")
     expect(html).toContain("readOnlyHint")
     expect(html).toContain("matchingHint")
     expect(html).toContain("status.collectionComplete")
+  })
+
+  it("shows cancellation in the detail and offers registration again instead of modify or cancel", () => {
+    const html = renderToStaticMarkup(createElement(ParticipationRecordActions, {
+      round: record.round, initialNow: "2026-09-29T12:00:00Z", cancelledAt: "2026-09-29T08:00:00Z", updatedAt: null,
+    }))
+    expect(html).toContain("status.cancelled")
+    expect(html).toContain('href="/app/matching/survey?round=round&amp;from=participation"')
+    expect(html).toContain(">reregister<")
+    expect(html).not.toContain("editRegistration")
+    expect(html).not.toContain(">cancelRegistration<")
+  })
+
+  it("limits the cancel control to active registration while the collection window remains open", () => {
+    const props = { round: record.round, initialNow: "2026-09-29T12:00:00Z", updatedAt: null }
+    const active = renderToStaticMarkup(createElement(ParticipationRecordActions, props))
+    expect(active).toContain(">cancelRegistration<")
+    mocks.state = "expired"
+    const closed = renderToStaticMarkup(createElement(ParticipationRecordActions, props))
+    expect(closed).not.toContain(">cancelRegistration<")
+    expect(closed).not.toContain("/app/matching/survey")
+    expect(closed).toContain("cancelUnavailableHint")
+    mocks.state = "open"
+    const matching = renderToStaticMarkup(createElement(ParticipationRecordActions, { ...props, round: { ...record.round, purpose: "matching" } }))
+    expect(matching).not.toContain(">cancelRegistration<")
+  })
+
+  it("does not offer registration again from a cancelled detail after deadline", () => {
+    mocks.state = "expired"
+    const html = renderToStaticMarkup(createElement(ParticipationRecordActions, {
+      round: record.round, initialNow: "2026-09-30T00:00:00Z", cancelledAt: "2026-09-29T08:00:00Z", updatedAt: null,
+    }))
+    expect(html).toContain("status.cancelled")
+    expect(html).not.toContain("/app/matching/survey")
+    expect(html).not.toContain(">cancelRegistration<")
   })
 
   it("escapes saved text and does not expose meaningless matching defaults on registration records", () => {

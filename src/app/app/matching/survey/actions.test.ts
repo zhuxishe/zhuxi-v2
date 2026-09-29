@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), upsert: vi.fn() }))
-vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from }) }))
+const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), upsert: vi.fn(), rpc: vi.fn() }))
+vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from, rpc: mocks.rpc }) }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }))
 import { submitSurvey } from "./actions"
@@ -27,6 +27,7 @@ describe("survey submission availability", () => {
     vi.setSystemTime("2026-09-29T01:00:00Z")
     mocks.player.mockResolvedValue({ memberId: "canonical-member" })
     mocks.upsert.mockResolvedValue({ error: null })
+    mocks.rpc.mockResolvedValue({ error: null })
     vi.spyOn(console, "error").mockImplementation(() => {})
   })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
@@ -71,11 +72,39 @@ describe("survey submission availability", () => {
 
   it("accepts a fixed activity registration without any availability and stores its schema revision", async () => {
     mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration", config_revision: 2 }))
-      .mockReturnValueOnce({ upsert: mocks.upsert })
     expect(await submitSurvey({ ...input, availability: {}, configRevision: 2 })).toEqual({ success: true })
-    expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      availability: {}, game_type_pref: "都可以", gender_pref: "都可以", custom_answers: {}, config_revision: 2,
-    }), expect.anything())
+    expect(mocks.rpc).toHaveBeenCalledWith("manage_my_registration", {
+      p_round_id: "round", p_operation: "create", p_expected_updated_at: null, p_custom_answers: {}, p_config_revision: 2,
+    })
+    expect(mocks.upsert).not.toHaveBeenCalled()
+  })
+
+  it("passes explicit rejoin intent and the exact saved version without accepting another member", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration" }))
+    const version = "2026-09-29T00:10:00.123456Z"
+    expect(await submitSurvey({ ...input, availability: {}, registrationIntent: "rejoin", expectedUpdatedAt: version })).toEqual({ success: true })
+    expect(mocks.rpc).toHaveBeenCalledWith("manage_my_registration", expect.objectContaining({ p_operation: "rejoin", p_expected_updated_at: version }))
+    expect(mocks.rpc.mock.calls[0][1]).not.toHaveProperty("p_member_id")
+  })
+
+  it("rejects an update lacking the original version before a write", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration" }))
+    expect(await submitSurvey({ ...input, registrationIntent: "update" })).toEqual({ error: "invalidSurveyInput" })
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  it("explains stale registration state and does not report success", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration" }))
+    mocks.rpc.mockResolvedValue({ error: { message: "REGISTRATION_STATE_CHANGED" } })
+    expect(await submitSurvey(input)).toEqual({ error: "registrationChanged" })
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("a registration deadline race uses submission wording instead of cancellation wording", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration" }))
+      .mockReturnValueOnce(readRound({ ...round, purpose: "registration", survey_end: "2026-09-29T01:00:00Z" }))
+    mocks.rpc.mockResolvedValue({ error: { message: "REGISTRATION_CANCEL_UNAVAILABLE" } })
+    expect(await submitSurvey(input)).toEqual({ error: "surveyExpired" })
   })
 
   it("rejects submissions to announcements", async () => {

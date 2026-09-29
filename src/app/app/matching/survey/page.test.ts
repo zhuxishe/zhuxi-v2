@@ -11,7 +11,7 @@ vi.mock("@/components/player/SurveyForm", () => ({ SurveyForm: "survey-form" }))
 import SurveyPage from "./page"
 import SurveySuccessPage from "./success/page"
 
-type NodeProps = { href?: string; children?: ReactNode; fromParticipation?: boolean }
+type NodeProps = { href?: string; children?: ReactNode; fromParticipation?: boolean; existing?: { cancelled_at?: string | null; updated_at?: string | null; custom_answers?: unknown } | null }
 function nodes(node: ReactNode): NodeProps[] {
   if (Array.isArray(node)) return node.flatMap(nodes)
   if (!isValidElement<NodeProps>(node)) return []
@@ -40,6 +40,17 @@ describe("survey participation navigation", () => {
     expect(hrefs(page)).toEqual([recordHref])
     expect(nodes(page).find((props) => props.fromParticipation !== undefined)?.fromParticipation).toBe(true)
     expect(mocks.submission).toHaveBeenCalledWith(roundId, "own-member")
+  })
+
+  it("passes saved answers and cancellation version to the form without losing the record return link", async () => {
+    const cancelledAt = "2026-09-29T08:00:00Z"
+    const updatedAt = "2026-09-29T08:00:01Z"
+    mocks.submission.mockResolvedValue({ id: "own-submission", availability: {}, cancelled_at: cancelledAt, updated_at: updatedAt, custom_answers: { food: "veg" } })
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId, from: "participation" }) })
+    expect(hrefs(page)).toEqual([recordHref])
+    expect(nodes(page).find((props) => props.fromParticipation !== undefined)).toMatchObject({
+      fromParticipation: true, existing: { cancelled_at: cancelledAt, updated_at: updatedAt, custom_answers: { food: "veg" } },
+    })
   })
 
   it.each([undefined, "https://outside.example/", ["participation", "https://outside.example/"]])("ignores unknown or duplicate sources: %s", async (from) => {
@@ -74,6 +85,11 @@ describe("survey participation navigation", () => {
   it("retains view-record on success after closure without restoring the edit action", async () => {
     mocks.round.mockResolvedValue({ ...round, status: "closed" })
     expect(hrefs(await SurveySuccessPage({ searchParams: Promise.resolve({ roundId }) }))).toEqual([recordHref, "/app"])
+  })
+
+  it("redirects an old success URL to the saved cancellation record", async () => {
+    mocks.submission.mockResolvedValue({ id: "own-submission", cancelled_at: "2026-09-29T08:00:00Z" })
+    await expect(SurveySuccessPage({ searchParams: Promise.resolve({ roundId }) })).rejects.toThrow(`redirect:${recordHref}`)
   })
 
   it("does not show a success record when the current player has not submitted", async () => {

@@ -215,6 +215,7 @@ const FIELD_LABELS: Record<string, string> = {
   sort_order: "显示顺序",
   created_at: "创建时间",
   updated_at: "更新时间",
+  cancelled_at: "取消报名时间",
 }
 
 const MEMBER_VALUE_LABELS: Record<string, string> = {

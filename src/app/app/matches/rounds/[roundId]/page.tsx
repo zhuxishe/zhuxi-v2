@@ -25,9 +25,11 @@ export default async function ParticipationRecordPage({ params }: { params: Prom
       <ArrowLeft className="size-4" aria-hidden="true" />{t("backToRecords")}
     </Link>
     <RoundDetails roundName={round.round_name} purpose={getRoundPurpose(round.purpose)} config={normalizeRoundConfig(round.content_config)} surveyEnd={round.survey_end} showFormHeading={false} />
-    <ParticipationRecordActions round={round} initialNow={new Date().toISOString()} />
+    <ParticipationRecordActions key={`${record.id}:${record.updated_at}`} round={round} initialNow={new Date().toISOString()}
+      cancelledAt={record.cancelled_at} updatedAt={record.updated_at} />
     <ParticipationAnswers record={record} />
     {(record.created_at || record.updated_at) && <div className="space-y-1 text-xs leading-5 text-muted-foreground">
+      {record.cancelled_at && <p>{t("cancelledAt", { time: formatSurveyTime(record.cancelled_at, locale) })}</p>}
       {record.created_at && <p>{t("submittedAt", { time: formatSurveyTime(record.created_at, locale) })}</p>}
       {record.updated_at && record.updated_at !== record.created_at && <p>{t("updatedAt", { time: formatSurveyTime(record.updated_at, locale) })}</p>}
     </div>}

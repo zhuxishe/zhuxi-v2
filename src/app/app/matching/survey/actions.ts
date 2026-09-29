@@ -7,11 +7,14 @@ import { surveySubmissionError } from "@/lib/matching/survey-window"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
 import { validateSurveyAnswers } from "@/lib/matching/survey-answers"
 import type { SurveyAnswers } from "@/types/matching-round"
+import { registrationOperationError } from "@/lib/matching/registration-operation"
 
 interface SubmitSurveyInput extends Omit<SurveyAnswers, "customAnswers"> {
   roundId: string
   configRevision?: number
   customAnswers?: SurveyAnswers["customAnswers"]
+  registrationIntent?: "create" | "update" | "rejoin"
+  expectedUpdatedAt?: string | null
 }
 
 export async function submitSurvey(input: SubmitSurveyInput) {
@@ -33,7 +36,16 @@ export async function submitSurvey(input: SubmitSurveyInput) {
   const answers = validated.data
   const contentFields = Object.hasOwn(round, "config_revision")
     ? { custom_answers: answers.customAnswers, config_revision: round.config_revision } : {}
-  const { error } = await supabase.from("match_round_submissions").upsert({
+  if (round.purpose === "registration" && (
+    (input.registrationIntent !== undefined && !["create", "update", "rejoin"].includes(input.registrationIntent))
+    || (input.registrationIntent && input.registrationIntent !== "create" && !Object.hasOwn(input, "expectedUpdatedAt"))
+    || (input.expectedUpdatedAt != null && (typeof input.expectedUpdatedAt !== "string" || !Number.isFinite(Date.parse(input.expectedUpdatedAt))))
+  )) return { error: "invalidSurveyInput" }
+  const { error } = round.purpose === "registration" ? await supabase.rpc("manage_my_registration", {
+    p_round_id: input.roundId, p_operation: input.registrationIntent ?? "create",
+    p_expected_updated_at: input.expectedUpdatedAt ?? null,
+    p_config_revision: input.configRevision ?? 0, p_custom_answers: answers.customAnswers,
+  }) : await supabase.from("match_round_submissions").upsert({
     round_id: input.roundId, member_id: player.memberId,
     game_type_pref: answers.gameTypePref, gender_pref: answers.genderPref,
     availability: answers.availability, interest_tags: answers.interestTags,
@@ -42,17 +54,21 @@ export async function submitSurvey(input: SubmitSurveyInput) {
 
   if (error) {
     console.error("[submitSurvey] upsert", error)
+    const registrationError = registrationOperationError(error)
+    if (registrationError && registrationError !== "registrationCancelUnavailable") return { error: registrationError }
     // Explain admin closure or content changes which raced with the initial read.
     const { data: current } = await supabase.from("match_rounds").select("*").eq("id", input.roundId).maybeSingle()
     const currentError = current ? surveySubmissionError(current) : null
     if (currentError) return { error: currentError }
     if (current && (current.config_revision ?? 0) !== (input.configRevision ?? 0)) return { error: "surveyUpdated" }
     if (current?.purpose === "announcement") return { error: "surveyReadOnly" }
+    if (registrationError === "registrationCancelUnavailable") return { error: "surveyClosed" }
     return { error: "saveFailed" }
   }
   revalidatePath("/app", "layout")
   revalidatePath("/app/matching/survey")
   revalidatePath("/app/matching")
+  revalidatePath("/app/matches")
   revalidatePath(`/admin/matching/rounds/${input.roundId}`)
   return { success: true }
 }

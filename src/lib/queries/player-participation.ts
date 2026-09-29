@@ -10,7 +10,7 @@ export async function fetchPlayerParticipationRecords(memberId: string): Promise
   const records: PlayerParticipationRecord[] = []
   for (let from = 0; ; from += PAGE_SIZE) {
     const { data, error } = await db.from("match_round_submissions")
-      .select(`id, created_at, updated_at, round:match_rounds!inner(${ROUND_COLUMNS})`)
+      .select(`id, created_at, updated_at, cancelled_at, round:match_rounds!inner(${ROUND_COLUMNS})`)
       .eq("member_id", memberId)
       .order("created_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true })
@@ -26,7 +26,7 @@ export async function fetchPlayerParticipationDetail(memberId: string, roundId: 
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(roundId)) return null
   const db = await createClient()
   const { data, error } = await db.from("match_round_submissions")
-    .select(`id, created_at, updated_at, game_type_pref, gender_pref, availability, interest_tags, social_style, message, custom_answers, round:match_rounds!inner(${ROUND_COLUMNS})`)
+    .select(`id, created_at, updated_at, cancelled_at, game_type_pref, gender_pref, availability, interest_tags, social_style, message, custom_answers, round:match_rounds!inner(${ROUND_COLUMNS})`)
     .eq("member_id", memberId)
     .eq("round_id", roundId)
     .maybeSingle()

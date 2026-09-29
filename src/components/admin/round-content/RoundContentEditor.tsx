@@ -13,6 +13,7 @@ import { RoundQuestionFields } from "./RoundQuestionFields"
 import { RoundContentPreview } from "./RoundContentPreview"
 import { RoundTextField } from "./RoundTextField"
 import { useUnsavedRoundContent } from "./use-unsaved-round-content"
+import { roundLabelDefaults } from "./round-text-defaults"
 
 interface Props { roundId: string; initial: RoundContentDraft; revision: number; locked: boolean; status: string }
 
@@ -66,9 +67,9 @@ export function RoundContentEditor({ roundId, initial, revision: initialRevision
           <Button type="button" variant={locale === "zh" ? "default" : "outline"} onClick={() => setLocale("zh")}>编辑中文</Button>
           <Button type="button" variant={locale === "ja" ? "default" : "outline"} onClick={() => setLocale("ja")}>编辑日文</Button>
         </div>
-        <RoundCopyFields config={draft.contentConfig} locale={locale} onChange={(contentConfig) => setDraft({ ...draft, contentConfig })} />
+        <RoundCopyFields config={draft.contentConfig} purpose={draft.purpose} roundName={draft.roundName} locale={locale} onChange={(contentConfig) => setDraft({ ...draft, contentConfig })} />
         {draft.purpose === "matching" && <RoundModuleFields config={draft.contentConfig} locale={locale} locked={locked} onChange={(contentConfig) => setDraft({ ...draft, contentConfig })} />}
-        {draft.purpose === "registration" && <section className="rounded-xl border bg-card p-5"><RoundTextField label="确认报名按钮文字" locale={locale} value={draft.contentConfig.labels.submit ?? { zh: "", ja: "" }} maxLength={40} onChange={(submit) => setDraft({ ...draft, contentConfig: { ...draft.contentConfig, labels: { ...draft.contentConfig.labels, submit } } })} /></section>}
+        {draft.purpose === "registration" && <section className="rounded-xl border bg-card p-5"><RoundTextField label="确认报名按钮文字" locale={locale} value={draft.contentConfig.labels.submit ?? { zh: "", ja: "" }} fallbackText={roundLabelDefaults("registration", locale).submit} maxLength={40} onChange={(submit) => setDraft({ ...draft, contentConfig: { ...draft.contentConfig, labels: { ...draft.contentConfig.labels, submit } } })} /></section>}
         {draft.purpose !== "announcement" && <RoundQuestionFields config={draft.contentConfig} locale={locale} locked={locked} onChange={(contentConfig) => setDraft({ ...draft, contentConfig })} />}
       </fieldset>
       {message && <p role="status" className={`text-sm ${message.error ? "text-destructive" : "text-primary"}`}>{message.text}</p>}

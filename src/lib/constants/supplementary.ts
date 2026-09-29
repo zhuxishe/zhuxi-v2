@@ -36,8 +36,15 @@ export const SCENARIO_THEME_OPTIONS = [
 ] as const
 
 export const GROUP_SIZE_OPTIONS = [
-  "2人", "3-4人", "4-5人", "6-7人", "8-10人", "10人以上", "都可以",
+  "2人", "3-4人", "4-10人", "10人以上", "都可以",
 ] as const
+
+// Keep saved answers valid while displaying the merged choice in editors.
+export const LEGACY_GROUP_SIZE_OPTIONS: readonly string[] = ["4-5人", "6-7人", "8-10人"]
+
+export function groupSizeSelection(value: string): string {
+  return LEGACY_GROUP_SIZE_OPTIONS.includes(value) ? "4-10人" : value
+}
 
 export const SCRIPT_PREFERENCE_OPTIONS = [
   "新本", "经典本", "城限本", "独家本", "都可以",

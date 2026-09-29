@@ -61,7 +61,7 @@ const singleOptions: Partial<Record<keyof SupplementaryDraft, readonly string[]>
   activity_area: options.ACTIVITY_AREA_OPTIONS,
   japanese_level: options.JAPANESE_LEVEL_OPTIONS,
   game_type_pref: options.GAME_TYPE_PREF_OPTIONS,
-  ideal_group_size: options.GROUP_SIZE_OPTIONS,
+  ideal_group_size: [...options.GROUP_SIZE_OPTIONS, ...options.LEGACY_GROUP_SIZE_OPTIONS],
   activity_frequency: options.ACTIVITY_FREQUENCY_OPTIONS,
   budget_range: options.BUDGET_RANGE_OPTIONS,
   travel_radius: options.TRAVEL_RADIUS_OPTIONS,

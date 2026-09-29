@@ -9,6 +9,7 @@ import {
   SCENARIO_MODE_OPTIONS,
   SCENARIO_THEME_OPTIONS,
   GROUP_SIZE_OPTIONS,
+  groupSizeSelection,
   SCRIPT_PREFERENCE_OPTIONS,
   NON_SCRIPT_PREFERENCE_OPTIONS,
   ACTIVITY_FREQUENCY_OPTIONS,
@@ -74,7 +75,7 @@ export function SupplementaryStep3({ data, setField }: Props) {
         <label className="text-sm font-medium mb-2 block">{t("groupSize")}</label>
         <SingleSelect
           options={[...GROUP_SIZE_OPTIONS]}
-          value={data.ideal_group_size}
+          value={groupSizeSelection(data.ideal_group_size)}
           onChange={(v) => setField("ideal_group_size", v)}
           labels={groupSizeLabels}
         />

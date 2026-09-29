@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { groupSizeSelection } from "@/lib/constants/supplementary"
 import {
   buildPersonalityDraft, buildSupplementaryDraft, parsePersonality, parseQuizAnswers, parseSupplementary,
 } from "./player-enrichment"
@@ -6,6 +7,17 @@ import { buildDefaultQuizConfig, calculateScores, generatePersonalityType } from
 import { EMPTY_PERSONALITY, EMPTY_SUPPLEMENTARY } from "@/types"
 
 describe("supplementary answers", () => {
+  it("accepts the merged group size without changing other answers", () => {
+    const data = { ...EMPTY_SUPPLEMENTARY, ideal_group_size: "4-10人" }
+    expect(parseSupplementary(data)).toEqual(data)
+  })
+
+  it.each(["4-5人", "6-7人", "8-10人"])("keeps the saved answer %s when editing other fields", (size) => {
+    const data = buildSupplementaryDraft({ ideal_group_size: size, nearest_station: "新宿駅" }, null)
+    expect(groupSizeSelection(data.ideal_group_size)).toBe("4-10人")
+    expect(parseSupplementary(data)).toMatchObject({ ideal_group_size: size, nearest_station: "新宿駅" })
+  })
+
   it("keeps unanswered choices unknown and preserves an explicit no after reloading", () => {
     expect(buildSupplementaryDraft(null, null)).toMatchObject({ accept_beginners: null, accept_cross_school: null })
     expect(buildSupplementaryDraft({ hobby_tags: ["游戏"], accept_beginners: true, accept_cross_school: true }, null))

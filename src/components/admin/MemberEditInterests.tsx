@@ -1,7 +1,7 @@
 "use client"
 
 import {
-  ACTIVITY_AREA_OPTIONS, GROUP_SIZE_OPTIONS, ACTIVITY_FREQUENCY_OPTIONS,
+  ACTIVITY_AREA_OPTIONS, GROUP_SIZE_OPTIONS, groupSizeSelection, ACTIVITY_FREQUENCY_OPTIONS,
   TIME_SLOT_OPTIONS, BUDGET_RANGE_OPTIONS, TRAVEL_RADIUS_OPTIONS,
   SOCIAL_GOAL_OPTIONS, SCENARIO_MODE_OPTIONS, SCRIPT_PREFERENCE_OPTIONS,
   NON_SCRIPT_PREFERENCE_OPTIONS, GRADUATION_YEAR_OPTIONS,
@@ -19,7 +19,7 @@ function SelectRow({ label, name, options, data, onChange, numeric = false }: {
     <tr className="border-b border-border/50">
       <td className="py-2.5 pr-4 text-xs text-muted-foreground whitespace-nowrap w-24">{label}</td>
       <td className="py-2.5">
-        <select value={(data[name] as string) ?? ""}
+        <select value={name === "ideal_group_size" ? groupSizeSelection((data[name] as string) ?? "") : (data[name] as string) ?? ""}
           onChange={(e) => onChange({ ...data, [name]: numeric ? (e.target.value ? Number(e.target.value) : null) : e.target.value })}
           className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary">
           <option value="">-</option>

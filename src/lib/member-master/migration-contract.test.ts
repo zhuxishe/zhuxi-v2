@@ -508,8 +508,8 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(70)
-    expect(runbook).toContain("当前仓库共有 70 条 migration")
+    expect(migrationNames).toHaveLength(71)
+    expect(runbook).toContain("当前仓库共有 71 条 migration")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
     )

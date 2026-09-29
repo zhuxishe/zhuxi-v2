@@ -56,6 +56,11 @@ export async function savePreInterviewStep(
     throw error
   }
 
+  if (step === 1 && typeof payload.nickname === "string"
+      && [...payload.nickname.normalize("NFKC").trim()].length > 20) {
+    return { success: false, error: "nicknameTooLong" }
+  }
+
   try {
     const supabase = await createClient()
     const saved = await saveMyOnboardingStep(supabase, step, payload)

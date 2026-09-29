@@ -1288,6 +1288,7 @@
     "invalidPayloadError": "请检查本步必填内容和选择数量。",
     "requiredFieldsError": "仍有必填内容未完成，请返回检查后再提交。",
     "nicknameConflictError": "该昵称已被使用，请更换后重试。",
+    "nicknameTooLongError": "昵称字数超过上限",
     "onboardingLockedError": "该资料已锁定，无法继续修改。",
     "successTitle": "提交成功！",
     "successDescription": "感谢你的填写，我们会尽快安排面试，请留意通知。",

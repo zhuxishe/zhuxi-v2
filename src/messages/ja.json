@@ -1288,6 +1288,7 @@
     "invalidPayloadError": "必須項目と選択数をご確認ください。",
     "requiredFieldsError": "未入力の必須項目があります。戻って確認してから送信してください。",
     "nicknameConflictError": "このニックネームはすでに使われています。別の名前をお試しください。",
+    "nicknameTooLongError": "ニックネームの文字数が上限を超えています",
     "onboardingLockedError": "このプロフィールはロックされているため変更できません。",
     "successTitle": "送信完了！",
     "stepBasic": "基本情報",

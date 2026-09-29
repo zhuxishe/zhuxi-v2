@@ -1,6 +1,5 @@
 import Link from "next/link"
 import { ChevronRight } from "lucide-react"
-import type { ReactNode } from "react"
 import type { MemberLevel } from "@/lib/profile/types"
 import { MemberLevelIcon } from "@/components/MemberLevelIcon"
 import { ProfileAvatar } from "./ProfileAvatar"
@@ -52,8 +51,11 @@ export function ProfileSummaryCard({
       >
         <ProfileAvatar src={avatarUrl} alt={nickname || fullName} size="lg" priority />
         <span className="min-w-0 flex-1">
-          <span className={`block truncate text-lg font-semibold leading-6 tracking-tight ${nickname ? "text-foreground" : "text-muted-foreground"}`}>
-            {nickname || labels.nicknameUnset}
+          <span className="flex items-center gap-1.5">
+            <MemberLevelIcon level={level} className="size-6 shrink-0" />
+            <span className={`min-w-0 truncate text-lg font-semibold leading-6 tracking-tight ${nickname ? "text-foreground" : "text-muted-foreground"}`}>
+              {nickname || labels.nicknameUnset}
+            </span>
           </span>
           <span className="mt-1 block truncate text-sm leading-4 text-muted-foreground">{fullName}</span>
           <span className="mt-0.5 block truncate text-sm leading-4 text-muted-foreground">
@@ -66,7 +68,7 @@ export function ProfileSummaryCard({
       </Link>
 
       <div className="grid min-h-[4.25rem] grid-cols-3 border-t border-border/80 bg-secondary/65 px-2 py-2.5">
-        <Stat label={labels.level} value={levelLabel} href="/app/profile/stats" icon={<MemberLevelIcon level={level} className="size-5 shrink-0" />} />
+        <Stat label={labels.level} value={levelLabel} href="/app/profile/stats" />
         <Stat
           label={labels.matchScore}
           value={matchScore == null ? labels.matchScorePending : matchScore.toFixed(1)}
@@ -88,20 +90,18 @@ function Stat({
   label,
   value,
   href,
-  icon,
   bordered = false,
   compact = false,
 }: {
   label: string
   value: string
   href?: string
-  icon?: ReactNode
   bordered?: boolean
   compact?: boolean
 }) {
   const content = (
     <>
-      <span className="flex items-center gap-1 text-[11px] leading-4 text-muted-foreground">{icon}{label}</span>
+      <span className="text-[11px] leading-4 text-muted-foreground">{label}</span>
       <span className="mt-1 flex max-w-full items-center justify-center gap-0.5">
         <span className={`max-w-full break-words font-semibold leading-5 text-primary ${compact ? "text-xs" : "text-base"}`}>
           {value}

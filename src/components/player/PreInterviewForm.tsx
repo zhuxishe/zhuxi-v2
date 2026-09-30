@@ -34,6 +34,7 @@ const ERROR_TRANSLATIONS: Record<MemberMasterActionError, string> = {
   invalidPayload: "invalidPayloadError",
   requiredFieldsMissing: "requiredFieldsError",
   nicknameConflict: "nicknameConflictError",
+  nicknameTooShort: "nicknameTooShortError",
   nicknameTooLong: "nicknameTooLongError",
   onboardingLocked: "onboardingLockedError",
   saveFailed: "saveError",
@@ -55,7 +56,10 @@ export function PreInterviewForm({
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialLastSavedAt)
   const [error, setError] = useState<string | null>(null)
   const operationPending = useRef(false)
-  const nicknameTooLong = step === 0 && [...data.nickname.normalize("NFKC").trim()].length > 20
+  const nicknameLength = step === 0 ? [...data.nickname.normalize("NFKC").trim()].length : 0
+  const nicknameError = nicknameLength === 1
+    ? t("nicknameTooShortError")
+    : nicknameLength > 20 ? t("nicknameTooLongError") : null
 
   const formattedLastSavedAt = useMemo(() => {
     if (!lastSavedAt) return null
@@ -74,7 +78,7 @@ export function PreInterviewForm({
 
   function canProceed(): boolean {
     if (step === 0) {
-      return !nicknameTooLong && !!(data.full_name.trim() && data.gender && data.age_range && data.nationality && data.current_city)
+      return !nicknameError && !!(data.full_name.trim() && data.gender && data.age_range && data.nationality && data.current_city)
     }
     if (step === 2) {
       return data.hobby_tags.length > 0 && data.activity_type_tags.length > 0
@@ -172,8 +176,8 @@ export function PreInterviewForm({
         {step === 3 && <InterviewStep4 data={data} onChange={update} />}
       </fieldset>
 
-      {(nicknameTooLong || error) && (
-        <p className="mt-4 text-sm text-destructive" role="alert">{nicknameTooLong ? t("nicknameTooLongError") : error}</p>
+      {(nicknameError || error) && (
+        <p className="mt-4 text-sm text-destructive" role="alert">{nicknameError ?? error}</p>
       )}
 
       <div className="flex justify-between mt-8">

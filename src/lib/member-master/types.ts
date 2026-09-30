@@ -41,6 +41,7 @@ export type MemberMasterActionError =
   | "invalidPayload"
   | "requiredFieldsMissing"
   | "nicknameConflict"
+  | "nicknameTooShort"
   | "nicknameTooLong"
   | "onboardingLocked"
   | "saveFailed"

@@ -91,6 +91,24 @@ describe("interview form server actions", () => {
     expect(mocks.saveMyOnboardingStep).not.toHaveBeenCalled()
   })
 
+  it.each([
+    ["寒", "nicknameTooShort"], ["　寒　", "nicknameTooShort"], ["😀", "nicknameTooShort"],
+    ["", null], ["　 ", null], ["小寒", null], ["😀".repeat(20), null],
+    ["寒".repeat(21), "nicknameTooLong"],
+  ])("validates nickname %j before saving", async (nickname, error) => {
+    mocks.saveMyOnboardingStep.mockResolvedValue({ memberId: "member-id", onboardingStep: 1 })
+    const result = await savePreInterviewStep(1, {
+      full_name: "测试玩家", nickname, gender: "female",
+      age_range: "21-23", nationality: "中国大陆", current_city: "东京都",
+    })
+
+    expect(result).toMatchObject(error ? { success: false, error } : { success: true })
+    if (error) {
+      expect(mocks.createClient).not.toHaveBeenCalled()
+      expect(mocks.saveMyOnboardingStep).not.toHaveBeenCalled()
+    } else expect(mocks.saveMyOnboardingStep).toHaveBeenCalledOnce()
+  })
+
   it("leaves the draft intact when the step RPC fails", async () => {
     mocks.saveMyOnboardingStep.mockRejectedValue(new Error("database unavailable"))
     mocks.toMemberMasterActionError.mockReturnValue("saveFailed")

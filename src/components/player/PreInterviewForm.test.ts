@@ -34,19 +34,19 @@ vi.mock("./InterviewStep2", () => ({ InterviewStep2: () => null }))
 
 import { PreInterviewForm } from "./PreInterviewForm"
 
-function buttonAction(node: ReactNode, text: string): (() => Promise<void>) | undefined {
+function buttonProps(node: ReactNode, text: string): { onClick?: () => Promise<void>; disabled?: boolean } | undefined {
   if (Array.isArray(node)) {
     for (const child of node) {
-      const action = buttonAction(child, text)
-      if (action) return action
+      const button = buttonProps(child, text)
+      if (button) return button
     }
-  } else if (isValidElement<{ children?: ReactNode; onClick?: () => Promise<void> }>(node)) {
-    if (node.props.children === text && node.props.onClick) return node.props.onClick
-    return buttonAction(node.props.children, text)
+  } else if (isValidElement<{ children?: ReactNode; onClick?: () => Promise<void>; disabled?: boolean }>(node)) {
+    if (node.props.children === text && node.props.onClick) return node.props
+    return buttonProps(node.props.children, text)
   }
 }
 
-function formAction(step: 0 | 3) {
+function formButton(step: 0 | 3, nickname = "") {
   mocks.useState
     .mockImplementationOnce((initial) => [initial, mocks.setStep])
     .mockImplementationOnce((initial) => [initial, vi.fn()])
@@ -58,15 +58,21 @@ function formAction(step: 0 | 3) {
     defaultValues: {
       ...EMPTY_FORM,
       full_name: "测试玩家",
+      nickname,
+      gender: "female",
       age_range: "20-24",
       nationality: "中国",
       current_city: "东京",
       personality_self_tags: ["温和"],
     },
   })
-  const action = buttonAction(form, step === 3 ? "submit" : "next")
-  if (!action) throw new Error("Expected form action")
-  return action
+  const button = buttonProps(form, step === 3 ? "submit" : "next")
+  if (!button?.onClick) throw new Error("Expected form action")
+  return { onClick: button.onClick, disabled: button.disabled }
+}
+
+function formAction(step: 0 | 3) {
+  return formButton(step).onClick
 }
 
 describe("onboarding request recovery", () => {
@@ -74,6 +80,14 @@ describe("onboarding request recovery", () => {
     vi.clearAllMocks()
     mocks.save.mockResolvedValue({ success: true, lastSavedAt: "2026-09-08T01:00:00Z" })
     mocks.submit.mockResolvedValue({ success: true })
+  })
+
+  it.each([
+    ["", false], ["　 ", false], ["寒", true], ["　寒　", true],
+    ["😀", true], ["小寒", false], ["😀".repeat(20), false], ["寒".repeat(21), true],
+  ])("gates the next button for nickname %j (disabled: %s)", (nickname, disabled) => {
+    expect(formButton(0, nickname).disabled).toBe(disabled)
+    expect(mocks.save).not.toHaveBeenCalled()
   })
 
   it("keeps the current draft and allows retry after a step transport failure", async () => {

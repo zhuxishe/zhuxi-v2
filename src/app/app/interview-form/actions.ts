@@ -56,9 +56,10 @@ export async function savePreInterviewStep(
     throw error
   }
 
-  if (step === 1 && typeof payload.nickname === "string"
-      && [...payload.nickname.normalize("NFKC").trim()].length > 20) {
-    return { success: false, error: "nicknameTooLong" }
+  if (step === 1 && typeof payload.nickname === "string") {
+    const nicknameLength = [...payload.nickname.normalize("NFKC").trim()].length
+    if (nicknameLength === 1) return { success: false, error: "nicknameTooShort" }
+    if (nicknameLength > 20) return { success: false, error: "nicknameTooLong" }
   }
 
   try {

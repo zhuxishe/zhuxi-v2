@@ -117,6 +117,7 @@ export default async function ProfilePage({ searchParams }: ProfilePageProps) {
           languageJa: t("languageJa"),
           logout: t("logout"),
           logoutConfirm: t("logoutConfirm"),
+          logoutFailed: t("logoutFailed"),
         }}
       />
     </div>

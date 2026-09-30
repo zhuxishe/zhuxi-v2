@@ -1,12 +1,13 @@
 "use client"
 
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { useRouter } from "next/navigation"
-import { useTransition } from "react"
+import { useActionState, useState, useTransition } from "react"
 import { ChevronRight, Globe2, LogOut } from "lucide-react"
 import { signOut } from "@/app/login/actions"
 import { setLocale } from "@/lib/i18n/actions"
 import { LineBindingCard } from "@/components/player/LineBindingCard"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 
 interface ProfileSettingsLabels {
   language: string
@@ -14,6 +15,7 @@ interface ProfileSettingsLabels {
   languageJa: string
   logout: string
   logoutConfirm: string
+  logoutFailed: string
 }
 
 interface ProfileSettingsCardProps {
@@ -23,8 +25,11 @@ interface ProfileSettingsCardProps {
 
 export function ProfileSettingsCard({ lineUserId, labels }: ProfileSettingsCardProps) {
   const locale = useLocale()
+  const common = useTranslations("common")
   const router = useRouter()
   const [languagePending, startLanguageTransition] = useTransition()
+  const [logoutOpen, setLogoutOpen] = useState(false)
+  const [logoutState, logoutAction, logoutPending] = useActionState(signOut, null)
 
   function switchLanguage() {
     const next = locale === "ja" ? "zh" : "ja"
@@ -56,15 +61,11 @@ export function ProfileSettingsCard({ lineUserId, labels }: ProfileSettingsCardP
         <ChevronRight className="size-5 shrink-0 text-muted-foreground/80" strokeWidth={1.7} aria-hidden="true" />
       </button>
 
-      <form
-        action={signOut}
-        onSubmit={(event) => {
-          if (!window.confirm(labels.logoutConfirm)) event.preventDefault()
-        }}
-        className="border-t border-border/80"
-      >
+      <div className="border-t border-border/80">
         <button
-          type="submit"
+          type="button"
+          onClick={() => setLogoutOpen(true)}
+          disabled={logoutPending}
           className="flex min-h-[3.25rem] w-full items-center gap-3 py-1 text-left text-destructive transition-colors hover:bg-destructive/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-destructive focus-visible:ring-inset"
         >
           <span className="grid size-9 shrink-0 place-items-center rounded-full bg-destructive/10">
@@ -73,7 +74,35 @@ export function ProfileSettingsCard({ lineUserId, labels }: ProfileSettingsCardP
           <span className="min-w-0 flex-1 text-sm font-semibold leading-5">{labels.logout}</span>
           <ChevronRight className="size-5 shrink-0 text-muted-foreground/80" strokeWidth={1.7} aria-hidden="true" />
         </button>
-      </form>
+      </div>
+
+      <Dialog open={logoutOpen} onOpenChange={(open) => { if (!logoutPending) setLogoutOpen(open) }}>
+        <DialogContent showCloseButton={false} className="rounded-2xl p-6">
+          <DialogTitle className="text-lg font-semibold">{labels.logout}</DialogTitle>
+          <DialogDescription>{labels.logoutConfirm}</DialogDescription>
+          {logoutState?.error && !logoutPending && (
+            <p role="alert" className="text-sm text-destructive">{labels.logoutFailed}</p>
+          )}
+          <form action={logoutAction} className="mt-2 grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setLogoutOpen(false)}
+              disabled={logoutPending}
+              className="min-h-11 rounded-xl border border-border px-3 py-2 text-sm font-medium disabled:opacity-60"
+            >
+              {common("cancel")}
+            </button>
+            <button
+              type="submit"
+              disabled={logoutPending}
+              aria-busy={logoutPending}
+              className="min-h-11 rounded-xl bg-destructive px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"
+            >
+              {logoutPending ? common("loading") : labels.logout}
+            </button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </section>
   )
 }

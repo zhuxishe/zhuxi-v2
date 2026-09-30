@@ -317,6 +317,7 @@
     "languageZh": "中文",
     "languageJa": "日本語",
     "logoutConfirm": "現在のアカウントからログアウトしますか？",
+    "logoutFailed": "ログアウトできませんでした。しばらくしてから再試行してください。",
     "nicknameUnset": "ニックネーム未設定",
     "schoolUnset": "学校未入力",
     "memberNumberValue": "会員番号 {number}",

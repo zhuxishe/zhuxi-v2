@@ -4,6 +4,8 @@ const mocks = vi.hoisted(() => ({
   createClient: vi.fn(),
   signUp: vi.fn(),
   signInWithPassword: vi.fn(),
+  signOut: vi.fn(),
+  redirect: vi.fn(),
 }))
 
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }))
@@ -11,7 +13,9 @@ vi.mock("@/lib/site-url", () => ({
   buildPublicUrl: (path: string) => `https://www.zhuxishe.jp${path}`,
 }))
 
-import { signIn, signUp } from "./actions"
+vi.mock("next/navigation", () => ({ redirect: mocks.redirect }))
+
+import { signIn, signOut, signUp } from "./actions"
 
 describe("player email authentication", () => {
   beforeEach(() => {
@@ -67,5 +71,34 @@ describe("player email authentication", () => {
     expect(mocks.signInWithPassword).toHaveBeenCalledWith({
       email: "player@example.com", password: "test-password",
     })
+  })
+})
+
+describe("player sign out", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.createClient.mockResolvedValue({ auth: { signOut: mocks.signOut } })
+    mocks.redirect.mockImplementation((path: string) => {
+      throw new Error(`NEXT_REDIRECT:${path}`)
+    })
+  })
+
+  it("redirects to the public homepage after signing out", async () => {
+    mocks.signOut.mockResolvedValue({ error: null })
+
+    await expect(signOut()).rejects.toThrow("NEXT_REDIRECT:/")
+    expect(mocks.signOut).toHaveBeenCalledOnce()
+  })
+
+  it("keeps the user on the page and reports a failed sign out", async () => {
+    mocks.signOut.mockResolvedValue({ error: new Error("Auth service unavailable") })
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => {})
+
+    try {
+      await expect(signOut()).resolves.toEqual({ error: "logout_failed" })
+      expect(mocks.redirect).not.toHaveBeenCalled()
+    } finally {
+      errorLog.mockRestore()
+    }
   })
 })

@@ -38,7 +38,7 @@ export function MemberTable({ members, canViewHighRisk, redactedFields }: Props)
         <thead>
           <tr className="border-b border-border text-left">
             <th className="px-4 py-3 font-medium text-muted-foreground">用户与成员</th>
-            <th className="px-4 py-3 font-medium text-muted-foreground">成员主记录 ID（members.id）</th>
+            <th className="px-4 py-3 font-medium text-muted-foreground">学校</th>
             <th className="px-4 py-3 font-medium text-muted-foreground">登录账号绑定</th>
             <th className="px-4 py-3 font-medium text-muted-foreground">来源</th>
             <th className="px-4 py-3 font-medium text-muted-foreground">账号 / 资料 / 审批</th>
@@ -58,7 +58,7 @@ export function MemberTable({ members, canViewHighRisk, redactedFields }: Props)
                 </p>
               </td>
               <td className="px-4 py-3">
-                <code className="block max-w-52 break-all text-xs text-muted-foreground" title={member.memberId}>{member.memberId}</code>
+                <p className="max-w-52 break-words text-muted-foreground">{member.schoolName?.trim() || "未填写"}</p>
               </td>
               <td className="px-4 py-3">
                 <StateBadge value={member.authBound === true ? "已绑定" : member.authBound === false ? "未绑定" : null} />

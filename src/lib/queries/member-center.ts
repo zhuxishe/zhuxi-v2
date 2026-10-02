@@ -139,7 +139,11 @@ export function normalizeMemberDirectoryResponse(
     nullableNumber(payload.total_pages) ?? Math.ceil(total / pageSize),
   )
 
-  return { page, pageSize, total, totalPages, items, redactedFields: stringArray(payload.redacted_fields) }
+  const schools = asRecordArray(payload.schools).map((school) => ({
+    value: requiredString(school.value),
+    count: Math.max(0, nullableNumber(school.count) ?? 0),
+  }))
+  return { page, pageSize, total, totalPages, items, schools, redactedFields: stringArray(payload.redacted_fields) }
 }
 
 function normalizeCore(value: unknown): Member360Core {
@@ -287,11 +291,14 @@ export function buildMemberDirectoryRpcArgs(filters: MemberDirectoryFilters): Re
     p_account_status: optionalFilter(filters.accountStatus),
     p_profile_stage: optionalFilter(filters.profileStage),
     p_record_source: optionalFilter(filters.recordSource),
+    p_schools: filters.schools?.length ? filters.schools : null,
+    p_sort: filters.sort ?? "default",
+    p_school_order: filters.schoolOrder ?? "default",
   }
 }
 
 export async function fetchMemberDirectory(filters: MemberDirectoryFilters): Promise<MemberDirectoryPage> {
-  const raw = await rpc<unknown>("admin_list_member_directory", buildMemberDirectoryRpcArgs(filters))
+  const raw = await rpc<unknown>("admin_list_member_directory_filtered", buildMemberDirectoryRpcArgs(filters))
   return normalizeMemberDirectoryResponse(raw, filters)
 }
 

@@ -6,6 +6,7 @@ import { MemberListFilter } from "@/components/admin/MemberListFilter"
 import { Pagination } from "@/components/shared/Pagination"
 import { parseMemberDirectoryPage } from "@/components/admin/member-center-utils"
 import { normalizeCurrentMemberDirectoryFilters } from "@/lib/member-master/current-member-directory"
+import { normalizeMemberDirectoryControls } from "@/lib/member-master/directory-controls"
 
 interface Props {
   searchParams: Promise<{
@@ -15,6 +16,9 @@ interface Props {
     source?: string
     search?: string
     page?: string
+    school?: string | string[]
+    sort?: string
+    schoolOrder?: string
   }>
 }
 
@@ -25,7 +29,9 @@ export default async function AdminMembersPage({ searchParams }: Props) {
   const params = await searchParams
   const page = parseMemberDirectoryPage(params.page)
   const filters = normalizeCurrentMemberDirectoryFilters(params)
+  const controls = normalizeMemberDirectoryControls(params, admin.role === "super_admin")
   const directory = await fetchMemberDirectory({
+    ...controls,
     status: filters.status,
     accountStatus: filters.accountStatus,
     profileStage: filters.profileStage,
@@ -57,6 +63,10 @@ export default async function AdminMembersPage({ searchParams }: Props) {
             members={directory.items}
             canViewHighRisk={admin.role === "super_admin"}
             redactedFields={directory.redactedFields}
+            schools={directory.schools}
+            selectedSchools={controls.schools}
+            sort={controls.sort}
+            schoolOrder={controls.schoolOrder}
           />
         </div>
         <Pagination total={directory.total} page={directory.page} pageSize={directory.pageSize} />

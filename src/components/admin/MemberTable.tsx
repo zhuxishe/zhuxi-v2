@@ -1,13 +1,20 @@
 import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
-import type { MemberDirectoryItem } from "@/types"
+import { Fragment } from "react"
+import type { MemberDirectoryItem, MemberDirectorySort, MemberSchoolOption, MemberSchoolOrder } from "@/types/member-center"
 import { MemberStatusBadge } from "./MemberStatusBadge"
 import { memberDisplayLabel } from "./member-center-utils"
+import { MemberSortHeader } from "./MemberSortHeader"
+import { MemberSchoolFilter } from "./MemberSchoolFilter"
 
 interface Props {
   members: MemberDirectoryItem[]
   canViewHighRisk: boolean
   redactedFields: string[]
+  schools: MemberSchoolOption[]
+  selectedSchools: string[]
+  sort: MemberDirectorySort
+  schoolOrder: MemberSchoolOrder
 }
 
 function StateBadge({ value, fallback = "未设置" }: { value: string | null; fallback?: string }) {
@@ -20,11 +27,7 @@ function StateBadge({ value, fallback = "未设置" }: { value: string | null; f
   return <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${tone}`}>{label}</span>
 }
 
-export function MemberTable({ members, canViewHighRisk, redactedFields }: Props) {
-  if (members.length === 0) {
-    return <p className="py-12 text-center text-sm text-muted-foreground">没有符合条件的用户或成员</p>
-  }
-
+export function MemberTable({ members, canViewHighRisk, redactedFields, schools, selectedSchools, sort, schoolOrder }: Props) {
   const highRiskVisible = canViewHighRisk && !redactedFields.some((field) => ["member_number", "auth_email", "auth_providers"].some((sensitive) => field.includes(sensitive)))
 
   return (
@@ -38,18 +41,30 @@ export function MemberTable({ members, canViewHighRisk, redactedFields }: Props)
         <thead>
           <tr className="border-b border-border text-left">
             <th className="px-4 py-3 font-medium text-muted-foreground">用户与成员</th>
-            <th className="px-4 py-3 font-medium text-muted-foreground">学校</th>
+            <th className="px-4 py-3 font-medium text-muted-foreground">
+              <MemberSchoolFilter schools={schools} selected={selectedSchools} order={schoolOrder} />
+            </th>
             <th className="px-4 py-3 font-medium text-muted-foreground">登录账号绑定</th>
             <th className="px-4 py-3 font-medium text-muted-foreground">来源</th>
             <th className="px-4 py-3 font-medium text-muted-foreground">账号 / 资料 / 审批</th>
-            <th className="px-4 py-3 font-medium text-muted-foreground">会员编号</th>
-            <th className="px-4 py-3 font-medium text-muted-foreground">更新时间</th>
+            <MemberSortHeader label="会员编号" column="number" sort={sort} disabled={!highRiskVisible} />
+            <MemberSortHeader label="更新时间" column="updated" sort={sort} />
             <th className="px-4 py-3 text-right font-medium text-muted-foreground">操作</th>
           </tr>
         </thead>
         <tbody>
-          {members.map((member) => (
-            <tr key={member.memberId} className="border-b border-border/50 align-top transition-colors hover:bg-muted/30">
+          {members.length === 0 && <tr><td colSpan={8} className="py-12 text-center text-muted-foreground">没有符合条件的用户或成员</td></tr>}
+          {members.map((member, index) => (
+            <Fragment key={member.memberId}>
+            {schoolOrder !== "default" && (index === 0 || members[index - 1].schoolName !== member.schoolName) && (
+              <tr className="border-b border-border/50 bg-muted/50">
+                <th colSpan={8} scope="row" className="px-4 py-2 text-left font-medium">
+                  {member.schoolName || "未填写"}
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">{schools.find((school) => school.value === (member.schoolName || ""))?.count ?? 0} 人</span>
+                </th>
+              </tr>
+            )}
+            <tr className="border-b border-border/50 align-top transition-colors hover:bg-muted/30">
               <td className="px-4 py-3">
                 <p className="font-medium">{member.fullName ?? "未填写姓名"}</p>
                 {member.nickname ? <p className="mt-0.5 text-xs text-muted-foreground">{member.nickname}</p> : null}
@@ -83,6 +98,7 @@ export function MemberTable({ members, canViewHighRisk, redactedFields }: Props)
                 <Link href={`/admin/members/${member.memberId}`} className="font-medium text-primary hover:underline">查看详情</Link>
               </td>
             </tr>
+            </Fragment>
           ))}
         </tbody>
       </table>

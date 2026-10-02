@@ -1,5 +1,9 @@
 export type MemberCenterRecord = Record<string, unknown>
 
+export type MemberDirectorySort = "default" | "updated_asc" | "updated_desc" | "number_asc" | "number_desc"
+export type MemberSchoolOrder = "default" | "name_asc" | "name_desc" | "count_desc"
+export interface MemberSchoolOption { value: string; count: number }
+
 export interface MemberDirectoryFilters {
   page: number
   pageSize: number
@@ -8,6 +12,9 @@ export interface MemberDirectoryFilters {
   accountStatus?: string | null
   profileStage?: string | null
   recordSource?: string | null
+  schools?: string[]
+  sort?: MemberDirectorySort
+  schoolOrder?: MemberSchoolOrder
 }
 
 export interface MemberDirectoryItem {
@@ -39,6 +46,7 @@ export interface MemberDirectoryPage {
   total: number
   totalPages: number
   items: MemberDirectoryItem[]
+  schools: MemberSchoolOption[]
   redactedFields: string[]
 }
 

@@ -72,11 +72,23 @@ describe("buildMemberDirectoryRpcArgs", () => {
       p_account_status: "unbound",
       p_profile_stage: "in_progress",
       p_record_source: "line",
+      p_schools: null,
+      p_sort: "default",
+      p_school_order: "default",
     })
   })
 
   it("normalizes all-valued filters to null", () => {
     expect(buildMemberDirectoryRpcArgs({ page: 1, pageSize: 50, status: "all" }).p_status).toBeNull()
+  })
+
+  it("keeps school facets and passes selected schools and ordering to SQL", () => {
+    const filters = { page: 1, pageSize: 50, schools: ["早稻田大学", ""], sort: "number_desc" as const, schoolOrder: "count_desc" as const }
+    expect(buildMemberDirectoryRpcArgs(filters)).toMatchObject({
+      p_schools: ["早稻田大学", ""], p_sort: "number_desc", p_school_order: "count_desc",
+    })
+    expect(normalizeMemberDirectoryResponse({ items: [], schools: [{ value: "", count: 3 }, { value: "早稻田大学", count: 60 }] }, filters).schools)
+      .toEqual([{ value: "", count: 3 }, { value: "早稻田大学", count: 60 }])
   })
 })
 

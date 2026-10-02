@@ -32,14 +32,14 @@ export function PlayerParticipationCard({ record, initialNow, reviewRound }: { r
     <div className="p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground"><ClipboardCheck className="size-3.5" aria-hidden="true" />{t(`purpose.${purpose}`)}</span>
-        <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${editable ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{t(`status.${participationStatus(round, state, record.cancelled_at)}`)}</span>
+        <span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${state === "open" && !cancelled ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{t(`status.${participationStatus(round, state, record.cancelled_at)}`)}</span>
       </div>
       <h3 className="mt-3 break-words text-base font-semibold leading-6 tracking-tight">{roundDisplayName(round, locale)}</h3>
       {(activityTime || location) && <div className="mt-2.5 space-y-1.5 text-xs leading-5 text-muted-foreground">
         {activityTime && <p className="flex items-start gap-2"><CalendarDays className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" /><span>{activityTime}</span></p>}
         {location && <p className="flex items-start gap-2"><MapPin className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" /><span className="break-words">{location}</span></p>}
       </div>}
-      <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{cancelled ? t("cancelledAt", { time: formatSurveyTime(record.cancelled_at!, locale) }) : editable ? t("editableUntil", { time: formatSurveyTime(round.survey_end, locale) }) : t("readOnlyShort")}</p>
+      <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{cancelled ? t("cancelledAt", { time: formatSurveyTime(record.cancelled_at!, locale) }) : editable ? t("editableUntil", { time: formatSurveyTime(round.survey_end, locale) }) : t(state === "open" && purpose === "registration" ? "registrationConfirmed" : "readOnlyShort")}</p>
     </div>
     <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/70 bg-muted/25 px-4 py-2.5">
       {reviewRound && <ActivityReviewEntry round={reviewRound} locale={locale} compact />}

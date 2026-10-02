@@ -12,9 +12,10 @@ interface Props {
   notice?: string
   hint?: string
   children?: ReactNode
+  hideSubmit?: boolean
 }
 
-export function SurveyActionBar({ label, disabled, submitting, onSubmit, error, notice, hint, children }: Props) {
+export function SurveyActionBar({ label, disabled, submitting, onSubmit, error, notice, hint, children, hideSubmit = false }: Props) {
   const barRef = useRef<HTMLDivElement>(null)
   const [barHeight, setBarHeight] = useState(176)
   const feedback = error || notice || hint
@@ -39,11 +40,11 @@ export function SurveyActionBar({ label, disabled, submitting, onSubmit, error, 
               {feedback}
             </p>
           )}
-          <Button type="button" onClick={onSubmit} disabled={disabled} aria-busy={submitting}
+          {!hideSubmit && <Button type="button" onClick={onSubmit} disabled={disabled} aria-busy={submitting}
             aria-describedby={feedback ? "survey-submit-feedback" : undefined}
             className="h-auto min-h-13 w-full whitespace-normal rounded-2xl px-6 py-3 text-base font-semibold leading-relaxed shadow-soft [overflow-wrap:anywhere]">
             {label}
-          </Button>
+          </Button>}
           {children}
         </div>
       </div>

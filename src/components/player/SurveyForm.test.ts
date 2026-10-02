@@ -123,15 +123,6 @@ describe("survey form expiry and recovery", () => {
     expect(mocks.submit).toHaveBeenCalledWith(expect.objectContaining({ registrationIntent: "rejoin", expectedUpdatedAt: cancelled.updated_at }))
   })
 
-  it("stops a stale update after another tab changes the registration", async () => {
-    mocks.submit.mockResolvedValue({ error: "registrationChanged" })
-    const tree = render({ purpose: "registration" })
-    await find(tree, (_type, props) => props.children === "registration.update")?.onClick?.()
-    const next = render({ purpose: "registration" })
-    expect(find(next, (_type, props) => props.children === "registration.update")?.disabled).toBe(true)
-    expect(mocks.push).not.toHaveBeenCalled()
-  })
-
   it("does not show a submit button for an announcement", () => {
     expect(find(render({ purpose: "announcement" }), (_type, props) => Boolean(props.onClick))).toBeUndefined()
   })

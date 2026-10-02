@@ -7,6 +7,7 @@ import { TimeGridSelector } from "./TimeGridSelector"
 import { SurveyPreferences } from "./SurveyPreferences"
 import { SurveyOptionalFields } from "./SurveyOptionalFields"
 import { RoundCustomQuestion } from "./RoundCustomQuestion"
+import { RegistrationStatus } from "./RegistrationStatus"
 
 interface Props {
   purpose: RoundPurpose
@@ -15,10 +16,11 @@ interface Props {
   activityEnd: string
   value: SurveyAnswers
   onChange: (value: SurveyAnswers) => void
+  registered?: boolean
 }
 
 /** Used by both the player form and the admin's interactive draft preview. */
-export function RoundFormFields({ purpose, config, activityStart, activityEnd, value, onChange }: Props) {
+export function RoundFormFields({ purpose, config, activityStart, activityEnd, value, onChange, registered = false }: Props) {
   const t = useTranslations("survey")
   const locale = useLocale()
   if (purpose === "announcement") return null
@@ -33,7 +35,8 @@ export function RoundFormFields({ purpose, config, activityStart, activityEnd, v
             onChange={(availability) => onChange({ ...value, availability })} />
         </section>
         <SurveyOptionalFields config={config} value={value} onChange={onChange} />
-      </> : <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">{t("registration.confirmHint")}</p>}
+      </> : registered ? <RegistrationStatus editable={config.questions.length > 0} />
+        : <p className="rounded-lg bg-muted p-3 text-sm text-muted-foreground">{t("registration.confirmHint")}</p>}
       {config.questions.map((question) => (
         <RoundCustomQuestion key={question.id} question={question} value={value.customAnswers[question.id]}
           onChange={(answer) => onChange({ ...value, customAnswers: { ...value.customAnswers, [question.id]: answer } })} />

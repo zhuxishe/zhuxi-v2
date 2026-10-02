@@ -72,12 +72,27 @@ describe("survey participation navigation", () => {
     expect(nodes(page).some((props) => props.fromParticipation !== undefined)).toBe(false)
   })
 
-  it("links success to the exact record and keeps the edit source", async () => {
+  it("links a zero-question registration success to its record without an empty edit action", async () => {
+    const page = await SurveySuccessPage({ searchParams: Promise.resolve({ roundId, from: "participation" }) })
+    expect(hrefs(page)).toEqual([recordHref, "/app"])
+  })
+
+  it("keeps the registration edit source when supplementary questions exist", async () => {
+    mocks.round.mockResolvedValue({ ...round, content_config: { questions: [{ id: "note", type: "text", label: { zh: "备注" } }] } })
     const page = await SurveySuccessPage({ searchParams: Promise.resolve({ roundId, from: "participation" }) })
     expect(hrefs(page)).toEqual([recordHref, `${editHref}&from=participation`, "/app"])
+    expect(nodes(page).some((props) => props.children === "editRegistration")).toBe(true)
+  })
+
+  it("keeps open matching questionnaire edits even without supplementary questions", async () => {
+    mocks.round.mockResolvedValue({ ...round, purpose: "matching" })
+    const page = await SurveySuccessPage({ searchParams: Promise.resolve({ roundId }) })
+    expect(hrefs(page)).toEqual([recordHref, editHref, "/app"])
+    expect(nodes(page).some((props) => props.children === "success.editSurvey")).toBe(true)
   })
 
   it.each(["https://outside.example/", ["participation", "participation"]])("does not reuse an arbitrary success-page source: %s", async (from) => {
+    mocks.round.mockResolvedValue({ ...round, content_config: { questions: [{ id: "note", type: "text", label: { zh: "备注" } }] } })
     const page = await SurveySuccessPage({ searchParams: Promise.resolve({ roundId, from }) })
     expect(hrefs(page)).toEqual([recordHref, editHref, "/app"])
   })

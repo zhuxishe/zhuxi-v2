@@ -16,7 +16,13 @@ export function isRegistrationCancelled(round: RoundRecord, cancelledAt?: string
 }
 
 export function canEditParticipation(round: RoundRecord, state: SurveyWindowState, cancelledAt?: string | null) {
-  return state === "open" && getRoundPurpose(round.purpose) !== "announcement" && !isRegistrationCancelled(round, cancelledAt)
+  const purpose = getRoundPurpose(round.purpose)
+  return state === "open" && !isRegistrationCancelled(round, cancelledAt)
+    && (purpose === "matching" || purpose === "registration" && normalizeRoundConfig(round.content_config).questions.length > 0)
+}
+
+export function canCancelRegistration(round: RoundRecord, state: SurveyWindowState, cancelledAt?: string | null) {
+  return state === "open" && getRoundPurpose(round.purpose) === "registration" && !cancelledAt
 }
 
 export function canReregisterParticipation(round: RoundRecord, state: SurveyWindowState, cancelledAt?: string | null) {
@@ -30,7 +36,8 @@ export function groupParticipationRecords<T extends { round: RoundRecord; cancel
     const config = normalizeRoundConfig(record.round.content_config)
     const upcomingRegistration = getRoundPurpose(record.round.purpose) === "registration"
       && Date.parse(config.eventEnd || config.eventStart) >= now.getTime()
-    if (upcomingRegistration || canEditParticipation(record.round, getSurveyWindowState(record.round, now))) current.push(record)
+    const state = getSurveyWindowState(record.round, now)
+    if (upcomingRegistration || canEditParticipation(record.round, state) || canCancelRegistration(record.round, state)) current.push(record)
     else history.push(record)
   }
   current.sort((a, b) => Date.parse(a.round.survey_end) - Date.parse(b.round.survey_end))

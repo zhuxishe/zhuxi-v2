@@ -9,7 +9,7 @@ import { fetchMySubmission } from "@/lib/queries/rounds"
 import { getRoundPurpose } from "@/lib/matching/round-config"
 import { roundHref } from "@/lib/matching/round-display"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
-import { participationEditHref, participationRecordHref } from "@/lib/matching/participation-display"
+import { canEditParticipation, participationEditHref, participationRecordHref } from "@/lib/matching/participation-display"
 
 export default async function SurveySuccessPage({ searchParams }: { searchParams: Promise<{ roundId?: string; from?: string | string[] }> }) {
   const player = await requirePlayer()
@@ -35,8 +35,8 @@ export default async function SurveySuccessPage({ searchParams }: { searchParams
         <Link href={participationRecordHref(roundId)}>
           <Button className="min-h-11 w-full">{participation("viewRecord")}</Button>
         </Link>
-        {getSurveyWindowState(round) === "open" && <Link href={from === "participation" ? participationEditHref(roundId) : roundHref(roundId)}>
-          <Button variant="outline" className="min-h-11 w-full">{t(registration ? "registration.update" : "success.editSurvey")}</Button>
+        {canEditParticipation(round, getSurveyWindowState(round)) && <Link href={from === "participation" ? participationEditHref(roundId) : roundHref(roundId)}>
+          <Button variant="outline" className="min-h-11 w-full">{registration ? participation("editRegistration") : t("success.editSurvey")}</Button>
         </Link>}
         <Link href="/app">
           <Button variant="ghost" className="min-h-11 w-full">{t("success.backToHome")}</Button>

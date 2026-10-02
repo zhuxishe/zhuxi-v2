@@ -1,12 +1,33 @@
 import { describe, expect, it } from "vitest"
 import { normalizeRoundConfig } from "./round-config"
-import { canEditParticipation, canReregisterParticipation, groupParticipationRecords, participationAvailability, participationCustomAnswers, participationEditHref, participationRecordHref, participationStatus } from "./participation-display"
+import { canCancelRegistration, canEditParticipation, canReregisterParticipation, groupParticipationRecords, participationAvailability, participationCustomAnswers, participationEditHref, participationRecordHref, participationStatus } from "./participation-display"
 import { getSurveyWindowState } from "./survey-window"
 import type { RoundRecord } from "@/types/matching-round"
 
 const round: RoundRecord = { id: "round", round_name: "活动", purpose: "registration", status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-30T00:00:00Z", activity_start: "2026-10-01", activity_end: "2026-10-02" }
 
 describe("participation record presentation", () => {
+  it("keeps a zero-question signup current and cancellable without offering an empty edit form", () => {
+    expect(canEditParticipation(round, "open")).toBe(false)
+    expect(canCancelRegistration(round, "open")).toBe(true)
+    expect(groupParticipationRecords([{ round }], new Date("2026-09-29T12:00:00Z"))).toEqual({ current: [{ round }], history: [] })
+  })
+
+  it("offers editing for configured registration questions and preserves matching questionnaires", () => {
+    const withQuestions = { ...round, content_config: { questions: [{ id: "note", type: "text", label: { zh: "备注" } }] } }
+    expect(canEditParticipation(withQuestions, "open")).toBe(true)
+    expect(canEditParticipation(withQuestions, "expired")).toBe(false)
+    expect(canEditParticipation(withQuestions, "open", "2026-09-29T08:00:00Z")).toBe(false)
+    expect(canEditParticipation({ ...round, purpose: "matching" }, "open")).toBe(true)
+    expect(canEditParticipation({ ...round, purpose: "announcement" }, "open")).toBe(false)
+  })
+
+  it("allows cancellation independently of questions only for a valid open registration", () => {
+    expect(canCancelRegistration(round, "open", "2026-09-29T08:00:00Z")).toBe(false)
+    for (const state of ["scheduled", "expired", "closed", "matched"] as const) expect(canCancelRegistration(round, state)).toBe(false)
+    expect(canCancelRegistration({ ...round, purpose: "matching" }, "open")).toBe(false)
+  })
+
   it("keeps record and edit destinations inside the app with a fixed participation source", () => {
     expect(participationRecordHref("round/id?from=outside")).toBe("/app/matches/rounds/round%2Fid%3Ffrom%3Doutside")
     expect(participationEditHref("round&id=outside")).toBe("/app/matching/survey?round=round%26id%3Doutside&from=participation")

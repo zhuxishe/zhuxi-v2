@@ -22,14 +22,36 @@ describe("participation record controls", () => {
   beforeEach(() => { mocks.state = "open" })
 
   it("keeps a permanent record link and offers a separate edit action only during collection", () => {
-    const open = renderToStaticMarkup(createElement(PlayerParticipationCard, { record, initialNow: "2026-09-29T12:00:00Z" }))
+    const withQuestions = { ...record, round: { ...record.round, content_config: { questions: [{ id: "note", type: "text", label: { zh: "备注" } }] } } }
+    const open = renderToStaticMarkup(createElement(PlayerParticipationCard, { record: withQuestions, initialNow: "2026-09-29T12:00:00Z" }))
     expect(open).toContain('href="/app/matches/rounds/round"')
     expect(open).toContain('href="/app/matching/survey?round=round&amp;from=participation"')
     mocks.state = "expired"
-    const closed = renderToStaticMarkup(createElement(PlayerParticipationCard, { record, initialNow: "2026-09-29T12:00:00Z" }))
+    const closed = renderToStaticMarkup(createElement(PlayerParticipationCard, { record: withQuestions, initialNow: "2026-09-29T12:00:00Z" }))
     expect(closed).toContain('href="/app/matches/rounds/round"')
     expect(closed).not.toContain("/app/matching/survey")
     expect(closed).toContain("status.registrationClosed")
+  })
+
+  it("hides meaningless edit links on a zero-question signup while keeping cancellation and record access", () => {
+    const card = renderToStaticMarkup(createElement(PlayerParticipationCard, { record, initialNow: "2026-09-29T12:00:00Z" }))
+    expect(card).toContain('href="/app/matches/rounds/round"')
+    expect(card).toContain("registrationConfirmed")
+    expect(card).not.toContain("/app/matching/survey")
+    const detail = renderToStaticMarkup(createElement(ParticipationRecordActions, { round: record.round, updatedAt: null, initialNow: "2026-09-29T12:00:00Z" }))
+    expect(detail).toContain(">cancelRegistration<")
+    expect(detail).toContain("registrationConfirmed")
+    expect(detail).not.toContain("/app/matching/survey")
+    expect(detail).not.toContain("readOnlyHint")
+    expect(detail).not.toContain("cancelUnavailableHint")
+  })
+
+  it("continues to offer questionnaire editing on an open matching round", () => {
+    const html = renderToStaticMarkup(createElement(PlayerParticipationCard, {
+      record: { ...record, round: { ...record.round, purpose: "matching" } }, initialNow: "2026-09-29T12:00:00Z",
+    }))
+    expect(html).toContain("editSurvey")
+    expect(html).toContain('href="/app/matching/survey?round=round&amp;from=participation"')
   })
 
   it("shows cancellation and replaces editing with registration again, retaining the record after deadline", () => {

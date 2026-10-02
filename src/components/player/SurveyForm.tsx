@@ -8,6 +8,7 @@ import { localizeRoundText, normalizeRoundConfig } from "@/lib/matching/round-co
 import { validateSurveyAnswers } from "@/lib/matching/survey-answers"
 import { surveySubmissionError } from "@/lib/matching/survey-window"
 import { useSurveyWindow } from "@/lib/matching/use-survey-window"
+import { registrationAnswersChanged } from "@/lib/matching/registration-answers"
 import type { RoundContentConfig, RoundPurpose, SurveyAnswers } from "@/types/matching-round"
 import { RoundDetails } from "./RoundDetails"
 import { RoundFormFields } from "./RoundFormFields"
@@ -59,9 +60,11 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
   const windowState = useSurveyWindow(window, initialNow)
   const blocked = windowState !== "open" || serverClosed
   const needsTime = purpose === "matching" && !Object.values(value.availability).some((slots) => slots.length > 0)
+  const registered = purpose === "registration" && Boolean(existing) && !existing?.cancelled_at
+  const unchanged = registered && !registrationAnswersChanged(config.questions, existing?.custom_answers ?? {}, value.customAnswers)
 
   async function handleSubmit() {
-    if (inFlight.current || cancelling || blocked || purpose === "announcement") return
+    if (inFlight.current || cancelling || blocked || unchanged || purpose === "announcement") return
     const windowError = surveySubmissionError(window)
     if (windowError) { setServerClosed(true); setError(tErr(windowError)); return }
     const validated = validateSurveyAnswers(value, purpose, config, activityStart, activityEnd)
@@ -90,13 +93,14 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
 
   return (
     <div className="space-y-6 pb-4">
-      <RoundDetails roundName={roundName} purpose={purpose} config={config} surveyEnd={surveyEnd} />
+      <RoundDetails roundName={roundName} purpose={purpose} config={config} surveyEnd={surveyEnd} showFormHeading={!registered} />
       {purpose !== "announcement" && <>
         <fieldset disabled={blocked || submitting || cancelling} className="space-y-6 disabled:opacity-70">
           <RoundFormFields purpose={purpose} config={config} activityStart={activityStart} activityEnd={activityEnd}
-            value={value} onChange={setValue} />
+            value={value} onChange={setValue} registered={registered} />
         </fieldset>
-        <SurveyActionBar onSubmit={handleSubmit} disabled={blocked || submitting || cancelling || needsTime} submitting={submitting}
+        <SurveyActionBar onSubmit={handleSubmit} disabled={blocked || submitting || cancelling || needsTime || unchanged} submitting={submitting}
+          hideSubmit={registered && config.questions.length === 0}
           error={error} notice={blocked ? t("unavailableWhileFilling") : undefined}
           hint={!blocked && needsTime ? t("noTimeSlotHint") : undefined}
           label={submitting ? t("submitting") : existing?.cancelled_at ? t("registration.rejoin") : existing ? t(purpose === "registration" ? "registration.update" : "update")

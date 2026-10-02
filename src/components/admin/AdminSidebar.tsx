@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle, ClipboardList, UserRound, Images, MessagesSquare, MessageSquareText, PieChart } from "lucide-react"
+import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle, ClipboardList, UserRound, Images, MessagesSquare, MessageSquareText, PieChart, Star } from "lucide-react"
 import { logoutAdmin } from "@/app/admin/login/actions"
 import type { AdminRole } from "@/types"
 
@@ -24,6 +24,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { href: "/admin/members", label: "成员管理", icon: Users },
       { href: "/admin/matching", label: "匹配管理", icon: Shuffle },
+      { href: "/admin/activity-reviews", label: "活动互评", icon: Star },
       { href: "/admin/matching/cancellations", label: "取消申请", icon: XCircle },
     ],
   },

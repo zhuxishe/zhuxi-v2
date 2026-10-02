@@ -1,6 +1,7 @@
 import { renderToReadableStream } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { PlayerParticipationRecord } from "@/types/player-participation"
+import type { ActivityReviewRound } from "@/lib/activity-reviews/types"
 
 const mocks = vi.hoisted(() => ({
   matches: [] as Record<string, unknown>[],
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   reviewedIds: new Set<string>(),
   participationQuery: vi.fn(),
   groupQuery: vi.fn(),
+  reviewRounds: [] as ActivityReviewRound[],
 }))
 vi.mock("next-intl/server", () => ({ getTranslations: async () => (key: string) => key, getLocale: async () => "zh" }))
 vi.mock("next-intl", () => ({ useLocale: () => "zh", useTranslations: () => (key: string) => key }))
@@ -18,6 +20,7 @@ vi.mock("@/lib/queries/player-history", () => ({ fetchPlayerMatchHistory: async 
 vi.mock("@/lib/queries/reviews", () => ({ fetchReviewedMatchIds: async () => mocks.reviewedIds }))
 vi.mock("@/lib/queries/group-members", () => ({ fetchGroupMemberNames: (...args: unknown[]) => mocks.groupQuery(...args) }))
 vi.mock("@/lib/queries/player-participation", () => ({ fetchPlayerParticipationRecords: (...args: unknown[]) => mocks.participationQuery(...args) }))
+vi.mock("@/lib/activity-reviews/queries", () => ({ fetchMyActivityReviewRounds: async () => mocks.reviewRounds }))
 vi.mock("@/lib/matching/use-survey-window", () => ({ useSurveyWindow: () => "open" }))
 import PlayerMatchesPage from "./page"
 
@@ -43,6 +46,7 @@ describe("participation page composition", () => {
     mocks.history = []
     mocks.participation = [registration]
     mocks.reviewedIds = new Set()
+    mocks.reviewRounds = []
     mocks.participationQuery.mockImplementation(async () => mocks.participation)
     mocks.groupQuery.mockResolvedValue([])
   })
@@ -85,5 +89,22 @@ describe("participation page composition", () => {
     expect(html).toContain('id="participation"')
     expect(html).toContain('href="/app/matching"')
     expect(html).not.toContain("/app/matches/cancelled-result")
+  })
+
+  it("adds an event-review entry for an eligible registration without needing a match result", async () => {
+    mocks.reviewRounds = [{ roundId: "autumn", title: "秋季迎新派对", status: "open", opensAt: null, closesAt: null, reviewedCount: 2, participantCount: 12, canReview: true, canReport: true }]
+    const html = await renderPage()
+    expect(html).toContain('href="/app/matches/rounds/autumn/reviews"')
+    expect(html).toContain("评价本场玩家")
+    expect(html).toContain("matchingEmpty")
+  })
+
+  it("keeps an entry for an administrator-confirmed attendee who has no signup record", async () => {
+    mocks.participation = []
+    mocks.reviewRounds = [{ roundId: "autumn", title: "秋季迎新派对", status: "open", opensAt: null, closesAt: null, reviewedCount: 0, participantCount: 12, canReview: true, canReport: true }]
+    const html = await renderPage()
+    expect(html).toContain("秋季迎新派对")
+    expect(html).toContain('href="/app/matches/rounds/autumn/reviews"')
+    expect(html).not.toContain('href="/app/matches/rounds/autumn"')
   })
 })

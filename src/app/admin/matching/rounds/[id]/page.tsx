@@ -6,6 +6,8 @@ import { RoundDetailClient } from "@/components/admin/RoundDetailClient"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { fetchAdminActivityReviewRoundSummary } from "@/lib/activity-reviews/queries"
+import { getRoundPurpose } from "@/lib/matching/round-config"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -22,10 +24,11 @@ export default async function RoundDetailPage({ params }: Props) {
     notFound()
   }
 
-  const [submissions, stats, allMembers] = await Promise.all([
+  const [submissions, stats, allMembers, activityReviewSummary] = await Promise.all([
     fetchRoundSubmissions(id),
     fetchRoundStats(id),
     fetchMemberBriefList(),
+    getRoundPurpose(round.purpose) === "registration" ? fetchAdminActivityReviewRoundSummary(id) : Promise.resolve(null),
   ])
 
   return (
@@ -46,6 +49,7 @@ export default async function RoundDetailPage({ params }: Props) {
           allMembers={allMembers}
           canManageSubmissions={admin.role === "super_admin"}
           canImportMembers={admin.role === "super_admin"}
+          activityReviewSummary={activityReviewSummary}
         />
       </div>
     </div>

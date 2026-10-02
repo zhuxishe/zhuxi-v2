@@ -10,8 +10,10 @@ import { canEditParticipation, canReregisterParticipation, isRegistrationCancell
 import { formatSurveyTime } from "@/lib/matching/survey-window"
 import { useSurveyWindow } from "@/lib/matching/use-survey-window"
 import { formatTokyoDateTimeRange } from "@/lib/player-activity/tokyo-datetime"
+import type { ActivityReviewRound } from "@/lib/activity-reviews/types"
+import { ActivityReviewEntry } from "../activity-reviews/ActivityReviewEntry"
 
-export function PlayerParticipationCard({ record, initialNow }: { record: PlayerParticipationRecord; initialNow: string }) {
+export function PlayerParticipationCard({ record, initialNow, reviewRound }: { record: PlayerParticipationRecord; initialNow: string; reviewRound?: ActivityReviewRound }) {
   const t = useTranslations("participation")
   const locale = useLocale()
   const { round } = record
@@ -40,6 +42,7 @@ export function PlayerParticipationCard({ record, initialNow }: { record: Player
       <p className="mt-3 text-[11px] leading-5 text-muted-foreground">{cancelled ? t("cancelledAt", { time: formatSurveyTime(record.cancelled_at!, locale) }) : editable ? t("editableUntil", { time: formatSurveyTime(round.survey_end, locale) }) : t("readOnlyShort")}</p>
     </div>
     <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/70 bg-muted/25 px-4 py-2.5">
+      {reviewRound && <ActivityReviewEntry round={reviewRound} locale={locale} compact />}
       <Link href={participationRecordHref(round.id)} className="inline-flex min-h-11 items-center justify-center gap-1 rounded-xl border border-border bg-card px-3 text-xs font-semibold text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
         {t("viewRecord")}<ChevronRight className="size-3.5" aria-hidden="true" />
       </Link>

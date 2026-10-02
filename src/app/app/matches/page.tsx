@@ -7,16 +7,18 @@ import { fetchGroupMemberNames } from "@/lib/queries/group-members"
 import { fetchPlayerParticipationRecords } from "@/lib/queries/player-participation"
 import { PlayerMatchesSection } from "@/components/player/matches/PlayerMatchesSection"
 import { PlayerParticipationRecords } from "@/components/player/profile/PlayerParticipationRecords"
+import { fetchMyActivityReviewRounds } from "@/lib/activity-reviews/queries"
 
 export default async function PlayerMatchesPage() {
   const player = await requirePlayer()
-  const [t, locale, matches, history, reviewedIds, participation] = await Promise.all([
+  const [t, locale, matches, history, reviewedIds, participation, reviewRounds] = await Promise.all([
     getTranslations("playerMatches"),
     getLocale(),
     fetchPlayerMatches(player.memberId),
     fetchPlayerMatchHistory(player.memberId),
     fetchReviewedMatchIds(player.memberId),
     fetchPlayerParticipationRecords(player.memberId),
+    fetchMyActivityReviewRounds(),
   ])
   const labels = {
     partner: t("partner"), interests: t("interests"), socialStyle: t("socialStyle"),
@@ -43,6 +45,6 @@ export default async function PlayerMatchesPage() {
       reviewedIds={reviewedIds} dateFmt={locale === "ja" ? "ja-JP" : "zh-CN"} labels={labels}
       copy={{ title: t("matchingTitle"), description: t("matchingDescription"), empty: t("matchingEmpty"), historyTitle: t("historyTitle") }}
     />
-    <PlayerParticipationRecords records={participation} initialNow={new Date().toISOString()} />
+    <PlayerParticipationRecords records={participation} reviewRounds={reviewRounds} initialNow={new Date().toISOString()} />
   </div>
 }

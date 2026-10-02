@@ -17,6 +17,8 @@ import { PlayerHomeFeaturedActivity } from "@/components/player/home/PlayerHomeF
 import { PlayerHomeQuickActions } from "@/components/player/home/PlayerHomeQuickActions"
 import { PlayerHomeStatus } from "@/components/player/home/PlayerHomeStatus"
 import type { PlayerHomeAction } from "@/components/player/home/types"
+import { fetchMyActivityReviewRounds } from "@/lib/activity-reviews/queries"
+import { activityReviewCopy } from "@/lib/activity-reviews/copy"
 
 export default async function PlayerHomePage() {
   const player = await getPlayerInfo()
@@ -35,7 +37,7 @@ export default async function PlayerHomePage() {
 
   const approvedPlayer = player!
   const locale = await getLocale()
-  const [t, profileT, roundT, profile, rounds, activityData, announcements] = await Promise.all([
+  const [t, profileT, roundT, profile, rounds, activityData, announcements, reviewRounds] = await Promise.all([
     getTranslations("playerHome"),
     getTranslations("profile"),
     getTranslations("rounds"),
@@ -43,6 +45,7 @@ export default async function PlayerHomePage() {
     fetchPlayerRounds(),
     fetchPlayerActivityHub(locale, new Date(), { largeLimit: 200 }),
     fetchHomeAnnouncements(locale),
+    fetchMyActivityReviewRounds(),
   ])
 
   const submittedIds = await fetchSubmittedRoundIds(approvedPlayer.memberId, rounds.map((round) => round.id))
@@ -54,20 +57,19 @@ export default async function PlayerHomePage() {
   } : {
     title: roundT(`purpose.${purpose}`), description: roundT(`description.${purpose}`), cta: roundT(`cta.${purpose}`),
   }
-  // V1 keeps the mutual-review entry visible but does not infer eligibility
-  // from confirmed matches: current match data has no review-open timestamp,
-  // and group reviews are still tracked at match level rather than per person.
-  const pendingReviewCount = 0
-  const pendingReviewHref = "/app/matches#matching"
+  // Count open activities, since participants only need to review people they met.
+  const reviewCopy = activityReviewCopy(locale)
+  const pendingReviewCount = reviewRounds.filter((round) => round.status === "open" && round.canReview).length
+  const pendingReviewHref = "/app/matches#participation"
   const recruitingActivities = activityData.largeActivities.filter((activity) => isUpcomingLargeActivity(activity)).slice(0, 3)
   const priorityActivityId = recruitingActivities[0]?.id ?? null
   const actionInput = {
     labels: {
       eyebrow: t("action.eyebrow"),
       review: {
-        title: t("action.review.title", { count: pendingReviewCount }),
-        description: t("action.review.description"),
-        cta: t("action.review.cta"),
+        title: reviewCopy.openActivities(pendingReviewCount),
+        description: reviewCopy.homeDescription,
+        cta: reviewCopy.homeCta,
       },
       survey: openRound ? roundCardCopy(openRound, locale, surveyCopy) : surveyCopy,
       profile: {
@@ -149,7 +151,7 @@ export default async function PlayerHomePage() {
           labels={{
             ariaLabel: t("quick.ariaLabel"),
             recruiting: t("quick.recruiting"),
-            reviews: t("quick.reviews"),
+            reviews: reviewCopy.quick,
             history: t("quick.history"),
             feedback: t("quick.feedback"),
             recruitingSheet: {

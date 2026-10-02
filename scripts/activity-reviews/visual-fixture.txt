@@ -1,0 +1,47 @@
+/* UI evidence only. Synthetic identities; no deployed route or live actions. */
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import { PlayerTopHeader } from '@/components/player/PlayerTopHeader'
+import { PlayerBottomNav } from '@/components/player/PlayerBottomNav'
+import { PlayerHomeQuickActions } from '@/components/player/home/PlayerHomeQuickActions'
+import { PlayerHomeStatus } from '@/components/player/home/PlayerHomeStatus'
+import { PlayerParticipationCard } from '@/components/player/profile/PlayerParticipationCard'
+import { RoundDetails } from '@/components/player/RoundDetails'
+import { RoundDetailClient } from '@/components/admin/RoundDetailClient'
+import { AdminSidebar } from '@/components/admin/AdminSidebar'
+import { normalizeRoundConfig } from '@/lib/matching/round-config'
+import { ActivityReviewPageContent } from '@new/components/player/activity-reviews/ActivityReviewPageContent'
+import { ActivityReviewEntry } from '@new/components/player/activity-reviews/ActivityReviewEntry'
+import { ActivityReviewsDashboard } from '@new/components/admin/activity-reviews/ActivityReviewsDashboard'
+
+declare const __BEFORE__: boolean
+const params = new URLSearchParams(location.search)
+const screen = params.get('screen') || 'home'
+const locale = params.get('locale') || 'zh'
+const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+const now = '2026-10-12T02:00:00Z'
+const roundId = id(1)
+const config = normalizeRoundConfig({ titleJa: '秋のウェルカムパーティー', introduction: {zh:'一起认识新朋友，分享交流与桌游的快乐。',ja:'新しい仲間と交流し、ボードゲームを楽しみましょう。'}, eventStart:'2026-10-10T04:00:00Z',eventEnd:'2026-10-11T08:00:00Z',location:{zh:'东京 · 活动会场',ja:'東京 · イベント会場'},questions:[] })
+const round: any = { id:roundId,round_name:'秋季迎新派对',purpose:'registration',status:'closed',survey_start:'2026-09-25T00:00:00Z',survey_end:'2026-10-09T14:00:00Z',activity_start:'2026-10-10',activity_end:'2026-10-11',content_config:config,created_at:'2026-09-25T00:00:00Z' }
+const settings = { enabled:true,opensAt:'2026-10-11T08:00:00Z',closesAt:'2026-10-18T08:00:00Z',openedAt:'2026-10-11T08:00:00Z',rosterConfirmed:true,version:3 }
+const reviewRound:any = { roundId,title:round.round_name,status:'open',opensAt:settings.opensAt,closesAt:settings.closesAt,reviewedCount:1,participantCount:4,canReview:true,canReport:true }
+const people = [{memberId:id(2),fullName:'林晓',nickname:'小森林'},{memberId:id(3),fullName:'陈一',nickname:'橘子汽水'},{memberId:id(4),fullName:'周宁',nickname:'阿宁'},{memberId:id(5),fullName:'陈一',nickname:'北极星'}]
+const review:any = { id:id(20),reviewerId:id(6),revieweeId:id(3),score:4.5,comment:'交流很自然，游戏中也很照顾新朋友。',version:1,valid:true,createdAt:now,updatedAt:now }
+const report:any = { id:id(21),reporterId:id(6),revieweeId:id(4),category:'privacy',detail:'演示记录：活动中未经同意拍摄并分享照片，请工作人员协助核实。',status:'pending',version:1,createdAt:now,updatedAt:now,supplements:[],internalNote:'' }
+const participants = people.map(p=>({...p,review:p.memberId===id(3)?review:null,report:p.memberId===id(4)?report:null}))
+const context:any = { ...reviewRound,eligible:true,settings,participants,ownReviews:[review],ownReports:[report],total:4,page:1,pageSize:24,search:'' }
+if(screen==='closed'){context.canReview=false;context.status='closed'}
+const memberOptions = [...people,{memberId:id(6),fullName:'演示玩家',nickname:'竹影'}]
+const adminContext:any = {roundId,title:round.round_name,settings,participants:memberOptions.map(p=>({...p,source:'registered',included:true,eligible:true,registered:true})),candidates:memberOptions.map(p=>({...p,source:'registered',included:true,eligible:true,registered:true})),reviews:[review],reports:[report],audit:[{id:'1',action:'settings_changed',actorId:id(8),actorKind:"admin",reason:'确认到场名单后开放本轮互评',createdAt:now,details:{}}],canManageSettings:true,canModerateReports:true}
+const adminData:any = {events:[{...reviewRound,settings,reviewCount:1,pendingReportCount:1}],context:adminContext,memberOptions,setupRequired:false,memberFilter:null}
+const record:any = {id:id(10),round_id:roundId,member_id:id(6),submitted_at:'2026-10-01T03:00:00Z',updated_at:'2026-10-01T03:00:00Z',cancelled_at:null,answers:{},round}
+const action = async (input:any) => {
+  ;(window as any).__lastSubmission=input
+  return {success:true,review:input.review?{...review,id:id(22),revieweeId:input.targetMemberId,score:input.review.score,comment:input.review.comment,version:input.review.expectedVersion+1}:null,report:input.report?{...report,id:id(23),revieweeId:input.targetMemberId,category:input.report.category,detail:input.report.detail,version:input.report.expectedVersion+1}:null}
+}
+const adminAction = async(input:any)=>{(window as any).__lastAdminSubmission=input;return {success:true}}
+const actions = {saveSettingsAction:adminAction,confirmRosterAction:adminAction,moderateReviewAction:adminAction,moderateReportAction:adminAction}
+function Home(){return <div className="space-y-6 px-5 pt-5"><div><p className="text-xs text-muted-foreground">欢迎回来</p><h1 className="heading-display mt-2 text-2xl">你好，演示玩家</h1></div><PlayerHomeQuickActions activities={[]} rounds={[]} initialNow={now} locale={locale} pendingReviewCount={__BEFORE__?0:1} pendingReviewHref="/app/matches#participation" labels={{ariaLabel:'常用操作',recruiting:'报名活动',reviews:__BEFORE__?'待互评':'活动互评',history:'参与记录',feedback:'意见反馈',recruitingSheet:{} as any,feedbackDialog:{} as any}}/><PlayerHomeStatus title="我的状态" compatibility={{label:'合拍分数',value:'—',hint:'积累更多互动后解锁',href:'/app/profile'}} growth={{label:'成长值',value:'—',hint:'参与活动积累成长',href:'/app/profile'}}/><div><h2 className="mb-3 text-base font-semibold">我的参与记录</h2><PlayerParticipationCard record={record} initialNow={now} {...(!__BEFORE__?{reviewRound}:{})}/></div></div>}
+function Detail(){return <div className="space-y-5 p-5"><a href="/app/matches" className="text-xs text-primary">← 返回参与记录</a><RoundDetails roundName={round.round_name} purpose="registration" config={config} surveyEnd={round.survey_end} showFormHeading={false}/>{!__BEFORE__&&<ActivityReviewEntry round={reviewRound} locale={locale}/>}<section className="rounded-xl border p-4"><h2 className="font-semibold">我的报名记录</h2><p className="mt-3 text-sm text-muted-foreground">报名已提交 · 活动报名已截止</p></section></div>}
+function App(){const admin=screen.startsWith('admin');return admin?<div className="flex min-h-screen bg-muted/20"><div className="sticky top-0 h-screen"><AdminSidebar role="super_admin"/></div><main className="min-w-0 flex-1 p-6">{screen==='admin-round'?<RoundDetailClient round={round} submissions={[]} stats={{total:0,gameTypeDist:{duo:0,multi:0,either:0},slotCounts:{}}} allMembers={[]} canManageSubmissions canImportMembers initialNow={now} {...(!__BEFORE__?{activityReviewSummary:adminData.events[0]}:{})}/>:<ActivityReviewsDashboard data={adminData} actions={actions} onNavigate={()=>{}} onSaved={()=>{}}/>}</main></div>:<div className="mx-auto min-h-screen max-w-2xl bg-background pb-24"><PlayerTopHeader locale={locale} showNotifications={false}/><main>{screen==='home'?<Home/>:screen==='detail'?<Detail/>:<ActivityReviewPageContent context={context} locale={locale} action={action} initialSelectedMemberId={screen==='editor'||screen==='closed'?id(2):null}/>}</main><PlayerBottomNav/></div>}
+createRoot(document.getElementById('root')!).render(<App/> )

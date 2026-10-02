@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({ player: vi.fn(), detail: vi.fn(), redirect: vi.fn(), notFound: vi.fn() }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("@/lib/queries/player-participation", () => ({ fetchPlayerParticipationDetail: mocks.detail }))
+vi.mock("@/lib/activity-reviews/queries", () => ({ fetchMyActivityReviewRounds: async () => [] }))
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect, notFound: mocks.notFound }))
 vi.mock("next-intl/server", () => ({ getLocale: async () => "zh", getTranslations: async () => (key: string) => key }))
 import ParticipationRecordPage from "./page"

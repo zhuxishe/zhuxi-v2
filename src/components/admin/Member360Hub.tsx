@@ -390,6 +390,11 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
           <RecordCollection title="匹配问卷" records={data.matchRoundSubmissions} />
           <RecordCollection title="未匹配原因诊断" records={data.unmatchedDiagnostics} />
           <RecordCollection title="剧本授权与参与记录" records={data.scriptPlayRecords} />
+          <section className="rounded-xl border border-border bg-card p-4">
+            <h3 className="font-semibold">活动互评</h3>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">活动体验评分单独管理，暂不计入合拍分数。此处不展示举报人身份、举报原文或内部审核说明。</p>
+            {isSuperAdmin ? <div className="mt-3"><ModuleLink href={`/admin/activity-reviews?memberId=${encodeURIComponent(memberId)}`} label="查看该成员的活动互评" /></div> : <p className="mt-2 text-xs text-muted-foreground">涉及成员的互评明细请由有权限的管理员在活动互评中查看。</p>}
+          </section>
           <div className="flex flex-wrap gap-2">
             <ModuleLink href="/admin/activity-records" label="活动记录" />
             <ModuleLink href="/admin/matching" label="匹配管理" />

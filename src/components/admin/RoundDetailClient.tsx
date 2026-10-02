@@ -13,6 +13,8 @@ import type { RoundRecord } from "@/types"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
 import { RoundDetailHeader } from "./round-content/RoundDetailHeader"
 import { RoundSubmissionRecords } from "./round-content/RoundSubmissionRecords"
+import { RoundActivityReviewSummary } from "./activity-reviews/RoundActivityReviewSummary"
+import type { AdminActivityReviewEvent } from "@/lib/activity-reviews/types"
 type Sub = Record<string, any>
 interface Stats {
   total: number
@@ -27,6 +29,7 @@ interface Props {
   canManageSubmissions: boolean
   canImportMembers: boolean
   initialNow: string
+  activityReviewSummary?: AdminActivityReviewEvent | null
 }
 export function RoundDetailClient({
   round,
@@ -36,6 +39,7 @@ export function RoundDetailClient({
   canManageSubmissions,
   canImportMembers,
   initialNow,
+  activityReviewSummary = null,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -90,6 +94,7 @@ export function RoundDetailClient({
   return (
     <div className="space-y-6">
       <RoundDetailHeader round={round} windowState={windowState} loading={loading} count={activeCount} matchingReason={matchingReason} onOpen={() => setOpening(true)} onClose={() => handleStatusChange("closed")} onMatch={handleRunMatch} />
+      {purpose === "registration" ? <RoundActivityReviewSummary roundId={round.id} summary={activityReviewSummary} /> : null}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {opening && <RoundOpeningDialog round={round} onClose={() => setOpening(false)} />}
       {matching && canRunRoundMatching(round.status) && (

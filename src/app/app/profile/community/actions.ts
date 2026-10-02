@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { requireCommunityAccess } from "@/lib/auth/community"
 import { callCommunityRpc, communityErrorMessage } from "@/lib/community/rpc"
 import { isPresetAvatar, validateNickname } from "@/lib/community/validation"
+import { canCurrentUserUseReservedNickname } from "@/lib/profile/nickname-permissions"
 import type { CommunityActionState } from "@/lib/community/types"
 
 function value(formData: FormData, key: string) {
@@ -17,7 +18,7 @@ export async function saveCommunityProfileAction(
 ): Promise<CommunityActionState> {
   await requireCommunityAccess()
   const nickname = value(formData, "nickname").normalize("NFKC").trim()
-  const invalid = validateNickname(nickname)
+  const invalid = validateNickname(nickname, await canCurrentUserUseReservedNickname())
   if (invalid) return { error: invalid, fieldErrors: { nickname: invalid } }
 
   const avatarKind = value(formData, "avatarKind")

@@ -41,6 +41,22 @@ describe("profile validation", () => {
     })).toBe("PROFILE_FULL_NAME_INVALID")
   })
 
+  it("keeps profile validation consistent for official nicknames", () => {
+    const input = {
+      fullName: "竹溪 太郎",
+      gender: "male" as const,
+      nickname: "竹溪社官方",
+      schoolName: null,
+      department: null,
+      personalAvatarPath: null,
+    }
+    expect(validateUpdateMyProfile(input)).toBe("PROFILE_NICKNAME_RESERVED")
+    expect(validateUpdateMyProfile(input, true)).toBeNull()
+    expect(validateUpdateMyProfile({ ...input, nickname: "竹" }, true)).toBe("PROFILE_NICKNAME_INVALID")
+    expect(validateUpdateMyProfile({ ...input, nickname: "a".repeat(21) }, true)).toBe("PROFILE_NICKNAME_INVALID")
+    expect(validateUpdateMyProfile({ ...input, fullName: "" }, true)).toBe("PROFILE_FULL_NAME_INVALID")
+  })
+
   it("requires a one-decimal 1.0-5.0 admin score and audit text", () => {
     const valid = {
       memberId: "00000000-0000-4000-8000-000000000000",

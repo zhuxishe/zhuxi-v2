@@ -1,5 +1,6 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import { createClient } from "@/lib/supabase/server"
+import { canCurrentUserUseReservedNickname } from "./nickname-permissions"
 import type {
   AdminMemberProfileMetrics,
   CommunityMemberProfileMetrics,
@@ -254,7 +255,7 @@ function mapPlayerProfileSummary(row: PlayerProfileSummaryRow): PlayerProfileSum
 }
 
 export async function updateMyProfile(input: UpdateMyProfileInput): Promise<PlayerProfileSummary> {
-  const validationError = validateUpdateMyProfile(input)
+  const validationError = validateUpdateMyProfile(input, await canCurrentUserUseReservedNickname())
   if (validationError) throw new ProfileDataError(validationError)
   const row = await callProfileRpc("update_my_profile", {
     p_full_name: input.fullName,

@@ -12,6 +12,14 @@ describe("community validation", () => {
     expect(validateNickname("a".repeat(21))).toMatch(/20/)
   })
 
+  it("only exempts official accounts from reserved names, not nickname length", () => {
+    expect(validateNickname("竹溪社官方", true)).toBeNull()
+    expect(validateNickname(" ａｄｍｉｎ ", true)).toBeNull()
+    expect(validateNickname("", true)).not.toBeNull()
+    expect(validateNickname("竹", true)).not.toBeNull()
+    expect(validateNickname("a".repeat(21), true)).not.toBeNull()
+  })
+
   it("requires treehole content and limits comments", () => {
     expect(validateTreehole("", "")).toMatchObject({ fieldErrors: { body: expect.any(String) } })
     expect(validateTreehole("标题", "内容")).toBeNull()

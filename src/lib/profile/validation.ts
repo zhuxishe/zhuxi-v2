@@ -29,12 +29,15 @@ export function normalizeOptionalProfileText(value: string | null | undefined) {
   return normalized || null
 }
 
-export function validateProfileNickname(value: string | null | undefined): ProfileNicknameErrorCode | null {
+export function validateProfileNickname(
+  value: string | null | undefined,
+  allowReservedNickname = false,
+): ProfileNicknameErrorCode | null {
   const nickname = normalizeOptionalProfileText(value)
   if (!nickname) return null
   const length = [...nickname].length
   if (length < 2 || length > 20) return "PROFILE_NICKNAME_INVALID"
-  if (RESERVED_NICKNAMES.has(nickname.toLowerCase())) return "PROFILE_NICKNAME_RESERVED"
+  if (!allowReservedNickname && RESERVED_NICKNAMES.has(nickname.toLowerCase())) return "PROFILE_NICKNAME_RESERVED"
   return null
 }
 
@@ -45,11 +48,11 @@ export type ProfileFieldError =
   | "PROFILE_DEPARTMENT_INVALID"
   | ProfileNicknameErrorCode
 
-export function validateUpdateMyProfile(input: UpdateMyProfileInput): ProfileFieldError | null {
+export function validateUpdateMyProfile(input: UpdateMyProfileInput, allowReservedNickname = false): ProfileFieldError | null {
   const fullName = input.fullName.normalize("NFKC").trim()
   if ([...fullName].length < 1 || [...fullName].length > 100) return "PROFILE_FULL_NAME_INVALID"
   if (!(["male", "female", "other"] as const).includes(input.gender)) return "PROFILE_GENDER_INVALID"
-  const nicknameError = validateProfileNickname(input.nickname)
+  const nicknameError = validateProfileNickname(input.nickname, allowReservedNickname)
   if (nicknameError) return nicknameError
   const schoolName = normalizeOptionalProfileText(input.schoolName)
   if (schoolName && [...schoolName].length > 120) return "PROFILE_SCHOOL_NAME_INVALID"

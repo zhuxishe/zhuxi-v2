@@ -1,6 +1,9 @@
+"use client"
+
+import { useState } from "react"
 import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
-import { ArrowRight, CalendarClock, CheckCircle2, Plus, Shuffle, Users, type LucideIcon } from "lucide-react"
+import { CalendarClock, CheckCircle2, Plus, Shuffle, Users, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
@@ -35,7 +38,10 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   matched: { label: "已匹配", cls: "bg-blue-100 text-blue-700" },
 }
 export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessions: Session[] }) {
-  const current = rounds.find((r) => r.status === "open") ?? rounds[0]
+  const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null)
+  const current = rounds.find((r) => r.id === selectedRoundId)
+    ?? rounds.find((r) => r.status === "open")
+    ?? rounds[0]
 
   if (rounds.length === 0) {
     return (
@@ -51,9 +57,10 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
     <div className="grid gap-4 xl:grid-cols-[17rem_1fr_18rem]">
       <aside className="rounded-xl bg-card shadow-soft">
         <Header title="轮次与活动" actionHref="/admin/matching/rounds/new" />
+        <p className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground">点击条目查看概览，右侧按钮进入详情。</p>
         <div className="divide-y divide-border/70">
           {rounds.map((round) => (
-            <RoundLink key={round.id} round={round} active={round.id === current?.id} />
+            <RoundOption key={round.id} round={round} active={round.id === current?.id} onSelect={() => setSelectedRoundId(round.id)} />
           ))}
         </div>
       </aside>
@@ -125,19 +132,24 @@ function Header({ title, actionHref }: { title: string; actionHref: string }) {
   )
 }
 
-function RoundLink({ round, active }: { round: Round; active: boolean }) {
+function RoundOption({ round, active, onSelect }: { round: Round; active: boolean; onSelect: () => void }) {
   return (
-    <Link href={`/admin/matching/rounds/${round.id}`} className={`block px-4 py-3 ${active ? "bg-bamboo-muted" : "hover:bg-muted/50"}`}>
-      <div className="flex items-center justify-between gap-2">
+    <button
+      type="button"
+      aria-pressed={active}
+      onClick={onSelect}
+      className={`block w-full cursor-pointer px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary ${active ? "bg-bamboo-muted" : "hover:bg-muted/50"}`}
+    >
+      <span className="flex items-center justify-between gap-2">
         <span className="min-w-0">
           <span className="block truncate text-sm font-semibold">{round.round_name}</span>
           <span className="block text-[11px] text-muted-foreground">{purposeText(round.purpose)}</span>
           <span className="text-xs text-muted-foreground">{shortDate(round.activity_start)} - {shortDate(round.activity_end)}</span>
         </span>
-        <ArrowRight className="size-4 shrink-0 text-muted-foreground" />
-      </div>
+        <CheckCircle2 aria-hidden="true" className={`size-4 shrink-0 ${active ? "text-primary" : "invisible"}`} />
+      </span>
       <StatusBadge status={getSurveyWindowState(round)} className="mt-2" />
-    </Link>
+    </button>
   )
 }
 

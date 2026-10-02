@@ -1,8 +1,12 @@
 import type { Metadata, Viewport } from "next"
-import { Geist, Noto_Sans_SC, Noto_Serif_SC } from "next/font/google"
+import { Geist, Noto_Sans_SC } from "next/font/google"
 import { NextIntlClientProvider } from "next-intl"
 import { getLocale, getMessages } from "next-intl/server"
 import { PwaInstallPrompt } from "@/components/shared/PwaInstallPrompt"
+// Keep this font local: remote Google CSS can break Turbopack font URL parsing.
+import "@fontsource/noto-serif-sc/500.css"
+import "@fontsource/noto-serif-sc/600.css"
+import "@fontsource/noto-serif-sc/700.css"
 import "./globals.css"
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" })
@@ -10,12 +14,6 @@ const notoSansSc = Noto_Sans_SC({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
   variable: "--font-noto-sans-sc",
-  display: "swap",
-})
-const notoSerifSc = Noto_Serif_SC({
-  subsets: ["latin"],
-  weight: ["500", "600", "700"],
-  variable: "--font-noto-serif-sc",
   display: "swap",
 })
 
@@ -52,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang={locale === "ja" ? "ja" : "zh-CN"} className="scroll-smooth motion-reduce:scroll-auto">
-      <body className={`${geist.variable} ${notoSansSc.variable} ${notoSerifSc.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
+      <body className={`${geist.variable} ${notoSansSc.variable} font-sans antialiased bg-background text-foreground`} suppressHydrationWarning>
         <NextIntlClientProvider messages={messages}>
           {children}
           <PwaInstallPrompt />

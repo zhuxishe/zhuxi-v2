@@ -11,6 +11,7 @@ import {
 } from "@/app/app/community/actions"
 import { CommunityAvatar } from "@/components/community/CommunityAvatar"
 import type { CommunityComment } from "@/lib/community/types"
+import { CommentLikeButton } from "./CommentLikeButton"
 
 interface CommentThreadProps {
   postId: string
@@ -81,7 +82,7 @@ export function CommentThread({ postId, comments, canWrite, locale }: CommentThr
     <>
       <div className="space-y-4">
         {comments.map((comment) => (
-          <CommentItem key={comment.id} comment={comment} locale={locale} rootCommentId={comment.id} onReply={setReplyTo} onDelete={remove} onEdit={update} onReport={setReportTarget} />
+          <CommentItem key={comment.id} comment={comment} canWrite={canWrite} locale={locale} rootCommentId={comment.id} onReply={setReplyTo} onDelete={remove} onEdit={update} onReport={setReportTarget} />
         ))}
       </div>
       <div className="fixed bottom-[calc(4.75rem+env(safe-area-inset-bottom))] left-1/2 z-40 w-full max-w-md -translate-x-1/2 border-t border-border bg-card/95 p-2 backdrop-blur-md">
@@ -127,6 +128,7 @@ export function CommentThread({ postId, comments, canWrite, locale }: CommentThr
 
 function CommentItem({
   comment,
+  canWrite,
   locale,
   rootCommentId,
   onReply,
@@ -135,6 +137,7 @@ function CommentItem({
   onReport,
 }: {
   comment: CommunityComment
+  canWrite: boolean
   locale: "zh" | "ja"
   rootCommentId: string
   onReply: (commentId: string) => void
@@ -192,8 +195,9 @@ function CommentItem({
           )}
         </div>
         {!deleted && !hidden && !editing && (
-          <div className="mt-1 flex items-center gap-3 px-2 text-xs text-muted-foreground">
+          <div className="mt-1 flex flex-wrap items-center gap-x-3 px-2 text-xs text-muted-foreground">
             <button type="button" onClick={() => onReply(rootCommentId)} className="min-h-9">{label("回复", "返信")}</button>
+            <CommentLikeButton commentId={comment.id} postId={comment.postId} likeCount={comment.likeCount} likeVersion={comment.likeVersion} likedByMe={comment.likedByMe} canWrite={canWrite} locale={locale} />
             {comment.isMine ? (
               <>
                 <button type="button" onClick={() => setEditing(true)} className="inline-flex min-h-9 items-center gap-1"><Pencil className="size-3" />{label("编辑", "編集")}</button>
@@ -205,7 +209,7 @@ function CommentItem({
         {comment.replies?.length ? (
           <div className="mt-3 space-y-3 border-l-2 border-primary/15 pl-3">
             {comment.replies.map((reply) => (
-              <CommentItem key={reply.id} comment={reply} locale={locale} rootCommentId={rootCommentId} onReply={onReply} onDelete={onDelete} onEdit={onEdit} onReport={onReport} />
+              <CommentItem key={reply.id} comment={reply} canWrite={canWrite && !hidden} locale={locale} rootCommentId={rootCommentId} onReply={onReply} onDelete={onDelete} onEdit={onEdit} onReport={onReport} />
             ))}
           </div>
         ) : null}

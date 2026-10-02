@@ -31,6 +31,9 @@ export interface CommunityComment {
   parentCommentId: string | null
   author: CommunityProfile | null
   isAnonymousAuthor: boolean
+  likeCount: number
+  likeVersion: number
+  likedByMe: boolean
   body: string | null
   status: CommunityContentStatus
   removalSource?: "author" | "admin" | null

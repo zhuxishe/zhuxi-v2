@@ -161,6 +161,39 @@ export async function toggleCommunityLikeAction(postId: string) {
   return { success: true, liked: result?.liked ?? false, likeCount: result?.like_count ?? 0 }
 }
 
+export async function setCommunityCommentLikeAction(
+  commentId: string,
+  postId: string,
+  liked: boolean,
+): Promise<{ success: true; liked: boolean; likeCount: number; likeVersion: number } | { success: false; error: string }> {
+  const { error: accessError } = await requireCommunityWrite()
+  if (accessError) return { success: false, error: accessError }
+
+  const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (typeof commentId !== "string" || !uuid.test(commentId)
+    || typeof postId !== "string" || !uuid.test(postId) || typeof liked !== "boolean") {
+    return { success: false, error: "点赞信息无效，请刷新后重试" }
+  }
+
+  let response
+  try {
+    response = await callCommunityRpc<Array<{ liked: boolean; like_count: number; like_version: number }>>(
+      "community_set_comment_like",
+      { p_comment_id: commentId, p_liked: liked },
+    )
+  } catch {
+    return { success: false, error: "点赞操作失败，请稍后重试" }
+  }
+  if (response.error) return { success: false, error: communityErrorMessage(response.error, "点赞操作失败，请稍后重试") }
+  const result = Array.isArray(response.data) && response.data.length === 1 ? response.data[0] : null
+  if (!result || typeof result.liked !== "boolean" || !Number.isSafeInteger(result.like_count) || result.like_count < 0
+    || !Number.isSafeInteger(result.like_version) || result.like_version < 0) {
+    return { success: false, error: "无法确认点赞状态，请刷新后重试" }
+  }
+  revalidateCommunity(postId)
+  return { success: true, liked: result.liked, likeCount: result.like_count, likeVersion: result.like_version }
+}
+
 export async function addCommunityCommentAction(
   postId: string,
   parentCommentId: string | null,

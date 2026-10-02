@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { getCommunityTreeholeSortColumns } from "@/lib/community/sorting"
+import { callCommunityRpc } from "@/lib/community/rpc"
 import type {
   CommunityComment,
   CommunityContentStatus,
@@ -51,6 +52,8 @@ interface CommentRow {
   parent_comment_id: string | null
   author_profile_id: string | null
   is_anonymous_author: boolean
+  like_count: number
+  like_version: number
   body: string | null
   status: CommunityContentStatus
   removal_source: "author" | "admin" | null
@@ -62,6 +65,30 @@ interface AuthorMapRow {
   post_id?: string
   comment_id?: string
   member_id: string | null
+}
+
+interface CommentLikeRow {
+  comment_id: string
+  liked: boolean
+  like_count: number
+  like_version: number
+}
+
+async function fetchCommentLikeSnapshots(commentIds: string[]): Promise<CommentLikeRow[]> {
+  const batches: string[][] = []
+  for (let offset = 0; offset < commentIds.length; offset += 1000) batches.push(commentIds.slice(offset, offset + 1000))
+  const results = await Promise.all(batches.map((ids) => callCommunityRpc<CommentLikeRow[]>(
+    "community_get_comment_like_states", { p_comment_ids: ids },
+  )))
+  return results.flatMap(({ data, error }) => {
+    if (error) throw new Error(`Failed to load comment likes: ${error.message}`)
+    if (!Array.isArray(data) || data.some((row) => !row || typeof row.comment_id !== "string"
+      || typeof row.liked !== "boolean" || !Number.isSafeInteger(row.like_count) || row.like_count < 0
+      || !Number.isSafeInteger(row.like_version) || row.like_version < 0)) {
+      throw new Error("Failed to verify comment like snapshots")
+    }
+    return data
+  })
 }
 
 function mapProfile(row: ProfileRow): CommunityProfile {
@@ -136,13 +163,14 @@ async function hydratePosts(rows: PostRow[], memberId: string): Promise<Communit
 
   const [imagesResult, commentsResult, authorsResult, likesResult, reportsResult, blocksResult] = await Promise.all([
     db.from("community_post_images").select("id, post_id, storage_path, thumbnail_path, sort_order, width, height, byte_size, mime_type").in("post_id", postIds).order("sort_order"),
-    db.from("community_comments").select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, body, status, removal_source, edited_at, created_at").in("post_id", postIds).eq("status", "published").is("parent_comment_id", null).order("created_at", { ascending: false }).limit(postIds.length * 6),
+    db.from("community_comments").select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, like_count, like_version, body, status, removal_source, edited_at, created_at").in("post_id", postIds).eq("status", "published").is("parent_comment_id", null).order("created_at", { ascending: false }).limit(postIds.length * 6),
     db.schema("private").from("community_post_authors").select("post_id, member_id").in("post_id", postIds),
     db.from("community_likes").select("post_id").eq("member_id", memberId).in("post_id", postIds),
     db.from("community_reports").select("reported_post_id").eq("reporter_member_id", memberId).eq("status", "pending").in("reported_post_id", postIds),
     db.from("community_blocks").select("blocked_profile_id").eq("blocker_member_id", memberId),
   ])
 
+  if (commentsResult.error) throw new Error(`Failed to load comment previews: ${commentsResult.error.message}`)
   if (blocksResult.error) {
     throw new Error("Failed to verify blocked community profiles")
   }
@@ -175,6 +203,9 @@ async function hydratePosts(rows: PostRow[], memberId: string): Promise<Communit
         parentCommentId: null,
         author: comment.is_anonymous_author ? null : profiles.get(comment.author_profile_id ?? "") ?? null,
         isAnonymousAuthor: comment.is_anonymous_author,
+        likeCount: comment.like_count,
+        likeVersion: comment.like_version,
+        likedByMe: false,
         body: comment.body,
         status: comment.status,
         removalSource: comment.removal_source,
@@ -272,7 +303,7 @@ export async function fetchCommunityPostDetail(
   const [hydrated] = await hydratePosts([post], memberId)
   const { data: topLevelRows, error } = await db
     .from("community_comments")
-    .select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, body, status, removal_source, edited_at, created_at")
+    .select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, like_count, like_version, body, status, removal_source, edited_at, created_at")
     .eq("post_id", postId)
     .in("status", ["published", "deleted", "hidden"])
     .is("parent_comment_id", null)
@@ -284,7 +315,7 @@ export async function fetchCommunityPostDetail(
   if (targetCommentId) {
     const targetResult = await db
       .from("community_comments")
-      .select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, body, status, removal_source, edited_at, created_at")
+      .select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, like_count, like_version, body, status, removal_source, edited_at, created_at")
       .eq("id", targetCommentId)
       .eq("post_id", postId)
       .in("status", ["published", "deleted", "hidden"])
@@ -298,7 +329,7 @@ export async function fetchCommunityPostDetail(
       } else {
         const rootResult = await db
           .from("community_comments")
-          .select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, body, status, removal_source, edited_at, created_at")
+          .select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, like_count, like_version, body, status, removal_source, edited_at, created_at")
           .eq("id", rootId)
           .eq("post_id", postId)
           .is("parent_comment_id", null)
@@ -313,7 +344,7 @@ export async function fetchCommunityPostDetail(
   const repliesResult = topLevelIds.length
     ? await db
         .from("community_comments")
-        .select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, body, status, removal_source, edited_at, created_at")
+        .select("id, post_id, parent_comment_id, author_profile_id, is_anonymous_author, like_count, like_version, body, status, removal_source, edited_at, created_at")
         .in("parent_comment_id", topLevelIds)
         .in("status", ["published", "deleted", "hidden"])
         .order("created_at", { ascending: true })
@@ -336,7 +367,7 @@ async function hydrateComments(rows: CommentRow[], memberId: string, topLevelLim
   const db = createAdminClient()
   const profileIds = [...new Set(rows.flatMap((row) => row.author_profile_id ? [row.author_profile_id] : []))]
   const commentIds = rows.map((row) => row.id)
-  const [profilesResult, authorsResult, blocksResult] = await Promise.all([
+  const [profilesResult, authorsResult, blocksResult, likeRows] = await Promise.all([
     profileIds.length
       ? db.from("community_profiles").select("id, nickname, avatar_kind, avatar_path, preset_avatar, joined_at").in("id", profileIds)
       : Promise.resolve({ data: [] }),
@@ -344,22 +375,35 @@ async function hydrateComments(rows: CommentRow[], memberId: string, topLevelLim
       ? db.schema("private").from("community_comment_authors").select("comment_id, member_id").in("comment_id", commentIds)
       : Promise.resolve({ data: [] }),
     db.from("community_blocks").select("blocked_profile_id").eq("blocker_member_id", memberId),
+    fetchCommentLikeSnapshots(commentIds),
   ])
   if (blocksResult.error) {
     throw new Error("Failed to verify blocked community profiles")
   }
   const profiles = new Map(((profilesResult.data ?? []) as ProfileRow[]).map((row) => [row.id, mapProfile(row)]))
   const mine = new Set(((authorsResult.data ?? []) as AuthorMapRow[]).filter((row) => row.member_id === memberId).map((row) => row.comment_id!))
+  const likeSnapshots = new Map(likeRows.map((row) => [row.comment_id, row]))
+  const commentsById = new Map(rows.map((row) => [row.id, row]))
   const blockedProfiles = new Set((blocksResult.data ?? []).map((row: { blocked_profile_id: string }) => row.blocked_profile_id))
   const mapped = new Map<string, CommunityComment>()
-  const visibleRows = rows.filter((row) => row.is_anonymous_author || !row.author_profile_id || !blockedProfiles.has(row.author_profile_id))
+  const unblockedRows = rows.filter((row) => row.is_anonymous_author || !row.author_profile_id || !blockedProfiles.has(row.author_profile_id))
+  const visibleCommentIds = new Set(unblockedRows.map((row) => row.id))
+  const visibleRows = unblockedRows.filter((row) => !row.parent_comment_id || visibleCommentIds.has(row.parent_comment_id))
   for (const row of visibleRows) {
+    const parent = row.parent_comment_id ? commentsById.get(row.parent_comment_id) : null
+    const readable = row.status === "published" && row.removal_source !== "admin"
+      && (!parent || (parent.status !== "hidden" && parent.removal_source !== "admin"))
+    const likes = likeSnapshots.get(row.id)
+    if (readable && !likes) throw new Error("Failed to verify comment like snapshot availability")
     mapped.set(row.id, {
       id: row.id,
       postId: row.post_id,
       parentCommentId: row.parent_comment_id,
       author: row.is_anonymous_author ? null : profiles.get(row.author_profile_id ?? "") ?? null,
       isAnonymousAuthor: row.is_anonymous_author,
+      likeCount: likes?.like_count ?? 0,
+      likeVersion: likes?.like_version ?? 0,
+      likedByMe: likes?.liked ?? false,
       body: row.status === "published" ? row.body : null,
       status: row.status,
       removalSource: row.removal_source,

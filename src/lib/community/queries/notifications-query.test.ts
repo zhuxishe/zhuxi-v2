@@ -8,7 +8,7 @@ import { fetchCommunityNotifications } from "./notifications"
 const now = "2026-09-29T01:00:00.000Z"
 const receipt = {
   id: "receipt", notification_type: "registration_submitted", recipient_member_id: "member",
-  actor_profile_id: null, post_id: null, comment_id: null, report_id: null, announcement_id: null,
+  actor_profile_id: null as string | null, post_id: null as string | null, comment_id: null as string | null, report_id: null, announcement_id: null,
   round_id: "closed-round", title_zh: "报名已提交", title_ja: "申込みを受け付けました",
   body_zh: "报名信息已保存", body_ja: "申込内容を保存しました", group_count: 1, read_at: null as string | null,
   created_at: now, expires_at: "2026-12-28T01:00:00.000Z",
@@ -39,7 +39,8 @@ describe("notification delivery with the real Supabase request builder", () => {
           data = notifications.filter((row) => (!params.get("recipient_member_id") || params.get("recipient_member_id") === `eq.${row.recipient_member_id}`)
             && (!types || types.includes(row.notification_type))
             && (!params.get("read_at") || row.read_at === null)
-            && (!params.get("expires_at") || row.expires_at > params.get("expires_at")!.slice(3)))
+            && (!params.get("expires_at") || row.expires_at > params.get("expires_at")!.slice(3))
+            && (!params.get("group_count") || row.group_count > Number(params.get("group_count")!.slice(3))))
           if (init?.method === "HEAD") return new Response(null, { headers: { "content-range": `0-${Math.max(0, data.length - 1)}/${data.length}` } })
           data = data.slice(0, Number(params.get("limit") ?? data.length))
         }
@@ -49,6 +50,8 @@ describe("notification delivery with the real Supabase request builder", () => {
           data = submissions.filter((row) => (!params.get("member_id") || params.get("member_id") === `eq.${row.member_id}`)
             && (!ids || ids.includes(row.round_id)) && (!params.get("cancelled_at") || row.cancelled_at == null))
         }
+        if (url.pathname.endsWith("/community_posts")) data = [{ id: "photo", post_type: "photo", status: "published" }]
+        if (url.pathname.endsWith("/community_comments")) data = [{ id: "reply", status: "published" }]
         return new Response(JSON.stringify(data), { headers: { "content-type": "application/json" } })
       } },
     }))
@@ -64,6 +67,39 @@ describe("notification delivery with the real Supabase request builder", () => {
       href: "/app/matches/rounds/closed-round", unavailable: false,
     })])
     expect(requests.find((url) => url.pathname.endsWith("/match_round_submissions"))?.searchParams.get("member_id")).toBe("eq.member")
+  })
+
+  it.each(["zh", "ja"] as const)("renders the comment-like count in %s without exposing actor metadata", async (locale) => {
+    notifications = [{ ...receipt, id: "comment-like", notification_type: "comment_like",
+      post_id: "photo", comment_id: "reply", actor_profile_id: "private-author", group_count: 3,
+      title_zh: "must not display identity", title_ja: "must not display identity", body_zh: "private text", body_ja: "private text" }]
+    const result = await fetchCommunityNotifications("member", locale, { limit: 8 })
+    expect(result.items).toEqual([expect.objectContaining({
+      id: "comment-like", title: locale === "ja" ? "3人があなたのコメントにいいねしました" : "有 3 人赞了你的评论",
+      actor: null, body: "", groupCount: 3, href: "/app/community/photos/photo?comment=reply#comment-reply",
+    })])
+    expect(requests.some((url) => url.pathname.endsWith("/community_profiles"))).toBe(false)
+    expect(result.unreadCount).toBe(1)
+  })
+
+  it("excludes zero-like tombstones from both notifications and the unread badge before pagination", async () => {
+    notifications = [{ ...receipt, id: "cancelled-like", notification_type: "comment_like", group_count: 0 }, receipt]
+    const result = await fetchCommunityNotifications("member", "zh", { limit: 1 })
+    expect(result.items.map((item) => item.id)).toEqual(["receipt"])
+    expect(result.unreadCount).toBe(1)
+    const queries = requests.filter((url) => url.pathname.endsWith("/community_notifications"))
+    expect(queries).toHaveLength(2)
+    expect(queries.every((url) => url.searchParams.get("group_count") === "gt.0")).toBe(true)
+  })
+
+  it("updates an existing read comment-like notice's number without creating another unread item", async () => {
+    notifications = [{ ...receipt, id: "comment-like", notification_type: "comment_like", group_count: 1, read_at: now }]
+    const first = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    notifications[0].group_count = 4
+    const next = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    expect(next.items).toHaveLength(1)
+    expect(next.items[0]).toMatchObject({ id: first.items[0].id, readAt: now, createdAt: first.items[0].createdAt, title: "有 4 人赞了你的评论" })
+    expect(next.unreadCount).toBe(0)
   })
 
   it("includes transactional receipts in both list and unread count after a community ban", async () => {

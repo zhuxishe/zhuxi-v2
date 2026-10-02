@@ -74,6 +74,7 @@ export async function fetchCommunityNotifications(
     .select("id, notification_type, actor_profile_id, post_id, comment_id, report_id, announcement_id, round_id, title_zh, title_ja, body_zh, body_ja, group_count, read_at, created_at")
     .eq("recipient_member_id", memberId)
     .gt("expires_at", nowIso)
+    .gt("group_count", 0)
     .order("created_at", { ascending: false })
     .limit(options.limit)
   let unreadQuery = db
@@ -82,6 +83,7 @@ export async function fetchCommunityNotifications(
     .eq("recipient_member_id", memberId)
     .is("read_at", null)
     .gt("expires_at", nowIso)
+    .gt("group_count", 0)
   if (hasCommunityBan) {
     query = query.in("notification_type", [...COMMUNITY_RESTRICTED_NOTIFICATION_TYPES])
     unreadQuery = unreadQuery.in("notification_type", [...COMMUNITY_RESTRICTED_NOTIFICATION_TYPES])
@@ -98,7 +100,8 @@ export async function fetchCommunityNotifications(
   }
 
   const rows = (notificationsResult.data ?? []) as NotificationRow[]
-  const profileIds = [...new Set(rows.flatMap((row) => row.actor_profile_id ? [row.actor_profile_id] : []))]
+  // Comment likes never reveal the actor, including in the notification bell.
+  const profileIds = [...new Set(rows.flatMap((row) => row.notification_type !== "comment_like" && row.actor_profile_id ? [row.actor_profile_id] : []))]
   const postIds = [...new Set(rows.flatMap((row) => row.post_id ? [row.post_id] : []))]
   const commentIds = [...new Set(rows.flatMap((row) => row.comment_id ? [row.comment_id] : []))]
   const announcementIds = [...new Set(rows.flatMap((row) => row.announcement_id ? [row.announcement_id] : []))]
@@ -157,14 +160,17 @@ export async function fetchCommunityNotifications(
         ? { href: null, unavailable: false }
         : resolvedTarget
       const cancelled = row.notification_type === "registration_submitted" && row.round_id && cancelledRoundIds.has(row.round_id)
+      const isCommentLike = row.notification_type === "comment_like"
       return {
         id: row.id,
         type: row.notification_type,
-        title: (locale === "ja" ? row.title_ja : row.title_zh) || row.title_zh || row.title_ja || "",
-        body: cancelled ? (locale === "ja" ? "この申込は取り消されました。記録を開くと詳細を確認できます。" : "这次报名已取消，点击查看保留的报名记录。") : (locale === "ja" ? row.body_ja : row.body_zh) || row.body_zh || row.body_ja || "",
+        title: isCommentLike
+          ? (locale === "ja" ? `${row.group_count}人があなたのコメントにいいねしました` : `有 ${row.group_count} 人赞了你的评论`)
+          : (locale === "ja" ? row.title_ja : row.title_zh) || row.title_zh || row.title_ja || "",
+        body: isCommentLike ? "" : cancelled ? (locale === "ja" ? "この申込は取り消されました。記録を開くと詳細を確認できます。" : "这次报名已取消，点击查看保留的报名记录。") : (locale === "ja" ? row.body_ja : row.body_zh) || row.body_zh || row.body_ja || "",
         href: target.href,
         unavailable: target.unavailable,
-        actor: row.actor_profile_id ? profiles.get(row.actor_profile_id) ?? null : null,
+        actor: !isCommentLike && row.actor_profile_id ? profiles.get(row.actor_profile_id) ?? null : null,
         groupCount: row.group_count,
         readAt: row.read_at,
         createdAt: row.created_at,

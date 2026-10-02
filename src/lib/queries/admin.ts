@@ -1,5 +1,6 @@
 import { requireAdmin } from "@/lib/auth/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchPendingApplicationCount } from "@/lib/queries/pending-applications"
 
 export async function fetchDashboardStats() {
   await requireAdmin()
@@ -7,18 +8,12 @@ export async function fetchDashboardStats() {
 
   const [
     { count: totalMembers },
-    { count: pendingMembers },
+    pendingMembers,
     { count: approvedMembers },
     { count: rejectedMembers },
   ] = await Promise.all([
     supabase.from("members").select("id", { count: "exact", head: true }).eq("record_scope", "current").neq("account_status", "unbound"),
-    supabase.from("members")
-      .select("id, member_identity!inner(id)", { count: "exact", head: true })
-      .eq("record_scope", "current")
-      .eq("account_status", "active")
-      .eq("status", "pending")
-      .in("profile_stage", ["submitted", "complete"])
-      .eq("onboarding_step", 4),
+    fetchPendingApplicationCount(),
     supabase.from("members").select("id", { count: "exact", head: true }).eq("record_scope", "current").neq("account_status", "unbound").eq("status", "approved"),
     supabase.from("members").select("id", { count: "exact", head: true }).eq("record_scope", "current").neq("account_status", "unbound").eq("status", "rejected"),
   ])

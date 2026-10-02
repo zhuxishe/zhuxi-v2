@@ -54,7 +54,7 @@ export function AdminOperationsDashboard({
 
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Metric icon={Users} label="总成员" value={stats.total} />
-        <Metric icon={Clock} label="待处理申请" value={stats.pending} tone="gold" />
+        <Metric icon={Clock} label="待处理申请" value={stats.pending} tone="gold" href="/admin/members/pending" />
         <Metric icon={Shuffle} label="开放轮次" value={rounds.filter((r) => r.status === "open").length} tone="green" />
         <Metric icon={ClipboardList} label="匹配记录" value={matchedSessions} tone="sky" />
       </div>
@@ -62,7 +62,7 @@ export function AdminOperationsDashboard({
       <div className="grid gap-4 xl:grid-cols-[1.08fr_.92fr]">
         <section className="rounded-xl bg-card shadow-soft">
           <Header title="处理队列" badge={stats.pending > 0 ? "需要跟进" : "暂无积压"} />
-          <QueueRow title={`${stats.pending} 位成员等待审核`} desc={`${stats.approved} 位已通过，${stats.rejected} 位已拒绝`} href="/admin/members" />
+          <QueueRow title={`${stats.pending} 位成员等待审核`} desc={`${stats.approved} 位已通过，${stats.rejected} 位已拒绝`} href="/admin/members/pending" />
           <QueueRow title="取消申请与黑名单" desc="匹配轮次运行前建议先检查边界问题" href="/admin/matching/cancellations" />
           <QueueRow title="问卷配置" desc="标签和问题会直接影响玩家端问卷体验" href="/admin/quiz-config" />
         </section>
@@ -90,17 +90,23 @@ export function AdminOperationsDashboard({
   )
 }
 
-function Metric({ icon: Icon, label, value, tone = "default" }: { icon: LucideIcon; label: string; value: number; tone?: "default" | "green" | "gold" | "sky" }) {
+function Metric({ icon: Icon, label, value, tone = "default", href }: { icon: LucideIcon; label: string; value: number; tone?: "default" | "green" | "gold" | "sky"; href?: string }) {
   const toneClass = tone === "green" ? "text-primary" : tone === "gold" ? "text-gold" : tone === "sky" ? "text-sky" : "text-foreground"
-  return (
-    <div className="rounded-xl bg-card p-4 shadow-soft">
+  const content = (
+    <>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <Icon className={`size-4 ${toneClass}`} />
         <span>{label}</span>
+        {href && <ArrowRight aria-hidden="true" className="ml-auto size-4 transition-transform group-hover:translate-x-0.5" />}
       </div>
       <strong className={`mt-3 block text-3xl leading-none ${toneClass}`}>{value}</strong>
-    </div>
+    </>
   )
+  return href ? (
+    <Link href={href} aria-label={`${label} ${value} 人，查看并处理`} className="group block rounded-xl bg-card p-4 shadow-soft ring-1 ring-transparent transition-colors hover:bg-bamboo-muted/50 hover:ring-primary/20 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary">
+      {content}
+    </Link>
+  ) : <div className="rounded-xl bg-card p-4 shadow-soft">{content}</div>
 }
 
 function Header({ title, badge }: { title: string; badge: string }) {

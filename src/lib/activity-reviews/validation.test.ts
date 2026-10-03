@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { validateReviewSubmission, validateReviewSettings, validateReviewRoster } from "./validation"
-import { mapActivityReport, mapReviewContext, reviewWindowStatus } from "./mappers"
+import { mapActivityReport, mapReviewContext, mapReviewRound, reviewWindowStatus } from "./mappers"
 import type { SubmitActivityReviewInput } from "./types"
 
 const roundId = "10000000-0000-4000-8000-000000000001"
@@ -24,6 +24,13 @@ describe("activity peer feedback request boundaries", () => {
     expect(validateReviewSubmission({ ...input, targetMemberId: "someone" })).toBe("PEER_INVALID_INPUT")
     expect(validateReviewSubmission({ ...input, review: { ...input.review!, expectedVersion: -1 } })).toBe("PEER_VERSION_CONFLICT")
   })
+  it("requires an existing report and forbids combining report editing with a rating", () => {
+    const report = { category: "other" as const, detail: "更正此前提交的具体举报说明内容。", expectedVersion: 1 }
+    expect(validateReviewSubmission({ operation: "edit_report", roundId, targetMemberId, report })).toBeNull()
+    expect(validateReviewSubmission({ operation: "edit_report", roundId, targetMemberId, report: { ...report, expectedVersion: 0 } })).toBe("PEER_INVALID_INPUT")
+    expect(validateReviewSubmission({ ...input, operation: "edit_report", report })).toBe("PEER_INVALID_INPUT")
+    expect(validateReviewSubmission({ operation: "edit_report", roundId, targetMemberId })).toBe("PEER_INVALID_INPUT")
+  })
   it("requires admin reasons, unique roster IDs and increasing dates", () => {
     const settings = { roundId, enabled: true, opensAt: "2026-10-10T08:00:00Z", closesAt: "2026-10-17T08:00:00Z", expectedVersion: 1, reason: "确认本场评价开放" }
     expect(validateReviewSettings(settings)).toBeNull()
@@ -46,6 +53,23 @@ describe("activity peer feedback response privacy", () => {
     const context = mapReviewContext({ round_id: roundId, participants: [{ member_id: "a", full_name: "同名" }, { member_id: "b", full_name: "同名" }], reviews: [{ reviewee_id: "b", score: 4.5 }], reports: [] })
     expect(context.participants[0].review).toBeNull()
     expect(context.participants[1].review?.score).toBe(4.5)
+  })
+  it("maps all permitted history targets even when the current search page is empty", () => {
+    const context = mapReviewContext({ round_id: roundId, participants: [], reviews: [{ reviewee_id: "a", score: 4 }], history_targets: [
+      { member_id: "a", full_name: "玩家甲", nickname: "竹子", can_review: true, can_report: true },
+      { member_id: "b", full_name: null, nickname: null, can_review: false, can_report: false, internal_note: "not for player" },
+    ] })
+    expect(context.participants).toEqual([])
+    expect(context.historyTargets).toEqual([
+      { memberId: "a", fullName: "玩家甲", nickname: "竹子", canReview: true, canReport: true },
+      { memberId: "b", fullName: "", nickname: null, canReview: false, canReport: false },
+    ])
+  })
+  it("recognizes previous ratings and report-only feedback without increasing reviewed count", () => {
+    expect(mapReviewRound({ reviewed_count: 1 }).hasSubmittedFeedback).toBe(true)
+    expect(mapReviewRound({ reviewed_count: 0, has_submitted_feedback: true })).toMatchObject({ reviewedCount: 0, hasSubmittedFeedback: true })
+    expect(mapReviewRound({ reviewed_count: 0 }).hasSubmittedFeedback).toBe(false)
+    expect(mapReviewContext({ reports: [{ reviewee_id: targetMemberId }] })).toMatchObject({ reviewedCount: 0, hasSubmittedFeedback: true })
   })
   it("keeps window start inclusive and deadline exclusive independently of registration", () => {
     const settings = { enabled: true, rosterConfirmed: true, opensAt: "2026-10-10T08:00:00Z", closesAt: "2026-10-17T08:00:00Z", openedAt: null, version: 1 }

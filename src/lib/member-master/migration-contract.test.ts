@@ -508,14 +508,15 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(78)
-    expect(runbook).toContain("当前仓库共有 78 条 migration")
+    expect(migrationNames).toHaveLength(79)
+    expect(runbook).toContain("当前仓库共有 79 条 migration")
     expect(runbook).toContain("20260929142902_round_submission_notifications.sql")
     expect(runbook).toContain("20260929153531_registration_cancellation.sql")
     expect(runbook).toContain("20260929153645_registration_operation.sql")
     expect(runbook).toContain("20261002151147_member_directory_filters.sql")
     expect(runbook).toContain("20261002162521_official_nickname_exemptions.sql")
     expect(runbook).toContain("20261002165912_round_peer_reviews.sql")
+    expect(runbook).toContain("20261003042356_peer_review_history_and_pending_report_edits.sql")
     expect(runbook).toContain(
       "20260830214322_complete_release_dependency_and_staff_view_security.sql",
     )

@@ -3,8 +3,9 @@
 import Link from "next/link"
 import { useState } from "react"
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Search, Users } from "lucide-react"
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { activityReviewCopy } from "@/lib/activity-reviews/copy"
-import type { ActivityReviewContext, ActivityReviewParticipant } from "@/lib/activity-reviews/types"
+import type { ActivityReviewActionResult, ActivityReviewContext } from "@/lib/activity-reviews/types"
 import { ActivityReviewEditor, formatActivityReviewTime, type ActivityReviewAction, type ActivityReviewDraft } from "./ActivityReviewEditor"
 import { ActivityReviewHistory } from "./ActivityReviewHistory"
 
@@ -13,18 +14,26 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
 }) {
   const copy = activityReviewCopy(locale)
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedMemberId)
-  const [updates, setUpdates] = useState<Record<string, ActivityReviewParticipant>>({})
+  const [updates, setUpdates] = useState<Record<string, ActivityReviewActionResult>>({})
   const [drafts, setDrafts] = useState<Record<string, ActivityReviewDraft>>({})
   const [editorBusy, setEditorBusy] = useState(false)
-  const participants = context.participants.map((participant) => updates[participant.memberId] ?? participant)
+  const [historySelection, setHistorySelection] = useState<{ memberId: string; kind: "review" | "report" } | null>(null)
+  const [historySuccess, setHistorySuccess] = useState<string | null>(null)
+  const participants = context.participants.map((participant) => ({ ...participant, review: updates[participant.memberId]?.review ?? participant.review, report: updates[participant.memberId]?.report ?? participant.report }))
   const selected = participants.find((participant) => participant.memberId === selectedId)
   const ownReviews = new Map((context.ownReviews ?? context.participants.flatMap((participant) => participant.review ? [participant.review] : [])).map((review) => [review.revieweeId, review]))
   const ownReports = new Map((context.ownReports ?? context.participants.flatMap((participant) => participant.report ? [participant.report] : [])).map((report) => [report.revieweeId, report]))
-  for (const participant of Object.values(updates)) {
-    if (participant.review) ownReviews.set(participant.memberId, participant.review)
-    if (participant.report) ownReports.set(participant.memberId, participant.report)
+  for (const [memberId, result] of Object.entries(updates)) {
+    if (result.review) ownReviews.set(memberId, result.review)
+    if (result.report) ownReports.set(memberId, result.report)
   }
-  const reviewedCount = context.reviewedCount + Object.values(updates).filter((participant) => participant.review && !context.participants.find((original) => original.memberId === participant.memberId)?.review).length
+  const targetById = new Map(context.participants.map((participant) => [participant.memberId, { memberId: participant.memberId, fullName: participant.fullName, nickname: participant.nickname, canReview: context.canReview, canReport: context.canReport }]))
+  for (const target of context.historyTargets ?? []) targetById.set(target.memberId, target)
+  const historyTargets = context.eligible ? [...targetById.values()].map((target) => ({ ...target, canReview: target.canReview && context.canReview, canReport: target.canReport && context.canReport })) : []
+  const historyTarget = historyTargets.find((target) => target.memberId === historySelection?.memberId)
+  const historyParticipant = historyTarget ? { ...historyTarget, review: ownReviews.get(historyTarget.memberId) ?? null, report: ownReports.get(historyTarget.memberId) ?? null } : null
+  const originalReviews = new Set((context.ownReviews ?? context.participants.flatMap((participant) => participant.review ? [participant.review] : [])).map((review) => review.revieweeId))
+  const reviewedCount = context.reviewedCount + Object.entries(updates).filter(([memberId, result]) => result.review && !originalReviews.has(memberId)).length
   const baseHref = `/app/matches/rounds/${encodeURIComponent(context.roundId)}/reviews`
   const pages = Math.max(1, Math.ceil(context.total / context.pageSize))
   function pageHref(page: number) {
@@ -39,6 +48,24 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
       document.getElementById("activity-review-editor")?.scrollIntoView({ behavior: "smooth", block: "start" })
       document.getElementById("activity-review-editor-title")?.focus({ preventScroll: true })
     })
+  }
+  function saveResult(memberId: string, result: ActivityReviewActionResult) {
+    setUpdates((previous) => ({ ...previous, [memberId]: { ...previous[memberId], ...(result.review ? { review: result.review } : {}), ...(result.report ? { report: result.report } : {}) } }))
+    setDrafts((previous) => {
+      const draft = previous[memberId]
+      if (!draft) return previous
+      return { ...previous, [memberId]: { ...draft, ...(result.review ? { score: result.review.score, comment: result.review.comment } : {}), ...(result.report ? { category: result.report.category, detail: result.report.detail, supplement: "" } : {}) } }
+    })
+  }
+  function editHistory(memberId: string, kind: "review" | "report") {
+    if (editorBusy) return
+    const target = historyTargets.find((item) => item.memberId === memberId)
+    if (!target || (kind === "review" ? !target.canReview || !ownReviews.get(memberId)?.valid : !target.canReport || !ownReports.has(memberId))) return
+    setHistorySuccess(null)
+    setHistorySelection({ memberId, kind })
+  }
+  function closeHistory() {
+    if (!editorBusy) setHistorySelection(null)
   }
 
   return <div className="mx-auto max-w-2xl space-y-5 px-4 pb-8 pt-3">
@@ -78,11 +105,25 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
           {context.page < pages ? <Link href={pageHref(context.page + 1)} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-primary">{copy.next}<ChevronRight className="size-4" aria-hidden="true" /></Link> : <span />}
         </nav>}
       </section>
-      {selected ? <ActivityReviewEditor key={selected.memberId} roundId={context.roundId} participant={selected} canReview={context.canReview} canReport={context.canReport} locale={locale} action={action}
+      {!historySelection && (selected ? <ActivityReviewEditor key={selected.memberId} roundId={context.roundId} participant={selected} canReview={context.canReview} canReport={context.canReport} locale={locale} action={action}
         draft={drafts[selected.memberId]} onDraftChange={(draft) => setDrafts((previous) => ({ ...previous, [selected.memberId]: draft }))} onBusyChange={setEditorBusy}
-        onSaved={(result) => setUpdates((previous) => ({ ...previous, [selected.memberId]: { ...selected, ...(result.review ? { review: result.review } : {}), ...(result.report ? { report: result.report } : {}) } }))} />
-        : participants.length > 0 && <div className="space-y-2 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-center"><p className="text-sm font-medium">{copy.choose}</p><p className="text-xs leading-5 text-muted-foreground">{copy.chooseHint}</p></div>}
+        onSaved={(result) => saveResult(selected.memberId, result)} />
+        : participants.length > 0 && <div className="space-y-2 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-center"><p className="text-sm font-medium">{copy.choose}</p><p className="text-xs leading-5 text-muted-foreground">{copy.chooseHint}</p></div>)}
     </>}
-    <ActivityReviewHistory reviews={[...ownReviews.values()]} reports={[...ownReports.values()]} locale={locale} open={!context.eligible} />
+    {historySuccess && <p role="status" className="rounded-xl bg-primary/7 px-4 py-3 text-sm text-primary">{historySuccess}</p>}
+    <ActivityReviewHistory reviews={[...ownReviews.values()]} reports={[...ownReports.values()]} targets={historyTargets} locale={locale} open={!context.eligible} busy={editorBusy} onEdit={editHistory} />
+    <Dialog open={Boolean(historySelection && historyParticipant)} onOpenChange={(open) => { if (!open) closeHistory() }}>
+      <DialogContent showCloseButton={false} className="max-h-[85dvh] overflow-y-auto rounded-2xl p-5 sm:max-w-lg">
+        <DialogTitle className="text-base font-semibold">{historySelection?.kind === "review" ? copy.editReview : historyParticipant?.report?.status === "pending" ? copy.editReport : copy.reportCorrect}</DialogTitle>
+        <DialogDescription className="break-words text-sm">{historyParticipant?.fullName || copy.historyUnavailable}{historyParticipant?.nickname ? ` · ${historyParticipant.nickname}` : ""}</DialogDescription>
+        {historySelection && historyParticipant && <ActivityReviewEditor key={`${historySelection.memberId}:${historySelection.kind}`} roundId={context.roundId} participant={historyParticipant}
+          canReview={historyTarget?.canReview ?? false} canReport={historyTarget?.canReport ?? false} locale={locale} action={action} mode={historySelection.kind} onBusyChange={setEditorBusy} onCancel={closeHistory}
+          onSaved={(result) => {
+            saveResult(historySelection.memberId, result)
+            setHistorySuccess(historySelection.kind === "review" ? copy.updated : historyParticipant.report?.status === "pending" ? copy.reportUpdated : copy.reportSupplementSaved)
+            setHistorySelection(null)
+          }} />}
+      </DialogContent>
+    </Dialog>
   </div>
 }

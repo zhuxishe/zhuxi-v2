@@ -9,10 +9,10 @@ const version = (value: unknown) => typeof value === "number" && Number.isSafeIn
 export const validReviewReason = (value: unknown): value is string => typeof value === "string" && length(value) >= 4 && length(value) <= 500
 export function validateReviewSubmission(input: SubmitActivityReviewInput): string | null {
   if (!input || !isReviewUuid(input.roundId) || !isReviewUuid(input.targetMemberId)
-    || !["save", "append_report"].includes(input.operation)) return "PEER_INVALID_INPUT"
+    || !["save", "append_report", "edit_report"].includes(input.operation)) return "PEER_INVALID_INPUT"
   if (input.requestId !== undefined && !isReviewUuid(input.requestId)) return "PEER_INVALID_INPUT"
   if (!input.review && !input.report) return "PEER_INVALID_INPUT"
-  if (input.operation === "append_report" && (input.review || !input.report || input.report.expectedVersion < 1)) return "PEER_INVALID_INPUT"
+  if (input.operation !== "save" && (input.review || !input.report || input.report.expectedVersion < 1)) return "PEER_INVALID_INPUT"
   if (input.review) {
     const { score, comment, expectedVersion } = input.review
     if (typeof score !== "number" || !Number.isFinite(score) || score < 1 || score > 5 || !Number.isInteger(score * 2)) return "PEER_SCORE_INVALID"

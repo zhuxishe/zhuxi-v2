@@ -96,7 +96,7 @@ describe("participation page composition", () => {
     mocks.reviewRounds = [{ roundId: "autumn", title: "秋季迎新派对", status: "open", opensAt: null, closesAt: null, reviewedCount: 2, participantCount: 12, canReview: true, canReport: true }]
     const html = await renderPage()
     expect(html).toContain('href="/app/matches/rounds/autumn/reviews"')
-    expect(html).toContain("评价本场玩家")
+    expect(html).toContain("继续评价")
     expect(html).toContain("matchingEmpty")
   })
 

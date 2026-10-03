@@ -57,9 +57,9 @@ export default async function PlayerHomePage() {
   } : {
     title: roundT(`purpose.${purpose}`), description: roundT(`description.${purpose}`), cta: roundT(`cta.${purpose}`),
   }
-  // Count open activities, since participants only need to review people they met.
+  // Remind once per activity: any submitted rating or report satisfies the reminder.
   const reviewCopy = activityReviewCopy(locale)
-  const pendingReviewCount = reviewRounds.filter((round) => round.status === "open" && round.canReview).length
+  const pendingReviewCount = reviewRounds.filter((round) => round.status === "open" && round.canReview && !round.hasSubmittedFeedback && round.reviewedCount === 0).length
   const pendingReviewHref = "/app/matches#participation"
   const recruitingActivities = activityData.largeActivities.filter((activity) => isUpcomingLargeActivity(activity)).slice(0, 3)
   const priorityActivityId = recruitingActivities[0]?.id ?? null

@@ -12,7 +12,11 @@ export async function submitActivityReviewAction(input: SubmitActivityReviewInpu
   const error = validateReviewSubmission(input)
   if (error) return { error }
   try {
-    const data = record(await activityReviewRpc("player_submit_round_peer_feedback", {
+    const data = record(input.operation === "edit_report" && input.report ? await activityReviewRpc("player_update_round_peer_report", {
+      p_round_id: input.roundId, p_reviewee_id: input.targetMemberId,
+      p_category: input.report.category, p_details: input.report.detail.trim(),
+      p_expected_version: input.report.expectedVersion, p_request_id: input.requestId ?? null,
+    }) : await activityReviewRpc("player_submit_round_peer_feedback", {
       p_round_id: input.roundId, p_reviewee_id: input.targetMemberId,
       p_score: input.review?.score ?? null, p_comment: input.review?.comment.trim() ?? "", p_review_version: input.review?.expectedVersion ?? 0,
       p_report_category: input.report?.category ?? null, p_report_details: input.report?.detail.trim() ?? null, p_report_version: input.report?.expectedVersion ?? 0,

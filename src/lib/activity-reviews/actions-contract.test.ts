@@ -69,6 +69,28 @@ describe("peer feedback server action boundary", () => {
     expect(await submitActivityReviewAction({ roundId, targetMemberId: memberId, operation: "save", review: { score: 4, comment: "", expectedVersion: 0 } })).toEqual({ error: "PEER_VERSION_CONFLICT" })
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
+  it("updates an existing report through its dedicated RPC without touching the rating", async () => {
+    mocks.rpc.mockResolvedValueOnce({ review: null, report: { ...reportRow, category: "privacy", version: 2 } })
+    const result = await submitActivityReviewAction({ roundId, targetMemberId: memberId, operation: "edit_report", requestId,
+      report: { category: "privacy", detail: ` ${reportRow.details} `, expectedVersion: 1 },
+    })
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("player_update_round_peer_report", {
+      p_round_id: roundId, p_reviewee_id: memberId, p_category: "privacy", p_details: reportRow.details, p_expected_version: 1, p_request_id: requestId,
+    })
+    expect(result.review).toBeNull()
+    expect(result.report).toMatchObject({ category: "privacy", version: 2 })
+    expect(result.report).not.toHaveProperty("internalNote")
+    expect(result.report).not.toHaveProperty("reporterId")
+    expect(mocks.revalidate).toHaveBeenCalledWith("/app")
+    expect(mocks.revalidate).toHaveBeenCalledWith("/admin/activity-reviews")
+  })
+  it("leaves a concurrently moderated report untouched and returns a useful error", async () => {
+    mocks.rpc.mockRejectedValueOnce(new Error("PEER_REPORT_NOT_EDITABLE"))
+    expect(await submitActivityReviewAction({ roundId, targetMemberId: memberId, operation: "edit_report",
+      report: { category: "other", detail: reportRow.details, expectedVersion: 1 },
+    })).toEqual({ error: "PEER_REPORT_NOT_EDITABLE" })
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
 })
 
 describe("peer feedback administrator action contract", () => {

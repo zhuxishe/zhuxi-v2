@@ -1,11 +1,13 @@
 -- Read-only release inventory. Run with a trusted database operator after
--- applying 20261002165912_round_peer_reviews.sql. All ok values must be true.
+-- applying 20261003042356_peer_review_history_and_pending_report_edits.sql.
+-- All ok values must be true.
 -- Does not query player names, comments, report details, or any audit payload.
 WITH expected(signature, player_api) AS (VALUES
   ('public.player_list_round_peer_review_events()', true),
   ('public.player_get_round_peer_reviews(uuid,text,integer,integer)', true),
   ('public.player_save_round_peer_review(uuid,uuid,numeric,text,integer)', true),
   ('public.player_save_round_peer_report(uuid,uuid,text,text,integer)', true),
+  ('public.player_update_round_peer_report(uuid,uuid,text,text,integer,uuid)', true),
   ('public.player_submit_round_peer_feedback(uuid,uuid,numeric,text,integer,text,text,integer,uuid)', true),
   ('public.admin_list_round_peer_review_events()', false),
   ('public.admin_get_round_peer_reviews(uuid)', false),

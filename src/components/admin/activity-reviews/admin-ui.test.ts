@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import type { ActivityReview, AdminActivityReviewContext, AdminActivityReviewsData } from "@/lib/activity-reviews/types"
+import { mapAdminReviewContext } from "@/lib/activity-reviews/mappers"
 import { ActivityReviewModeration, filterAdminReviews } from "./ActivityReviewModeration"
 import { ActivityReviewRoster } from "./ActivityReviewRoster"
 import { ActivityReviewSettingsForm } from "./ActivityReviewSettingsForm"
@@ -31,13 +32,44 @@ const context: AdminActivityReviewContext = {
 const success = async () => ({ success: true })
 const actions: AdminActivityReviewActions = { saveSettingsAction: success, confirmRosterAction: success, moderateReviewAction: success, moderateReportAction: success }
 const data: AdminActivityReviewsData = { events: [], context, memberOptions: members, setupRequired: false, memberFilter: null }
+const revisedReportContext: AdminActivityReviewContext = {
+  ...context,
+  reports: [{ ...context.reports[0], category: "disruption", detail: "PRIVATE_REVISED_REPORT\n已核对发生时间", status: "pending", version: 3, updatedAt: "2026-10-03T12:00:00Z" }],
+  audit: [...context.audit, ...mapAdminReviewContext({ audit: [{
+    id: "audit-revision", action: "report_updated", actor_member_id: "player-123456", subject_id: "report-1", created_at: "2026-10-03T12:00:00Z",
+    before_values: { category: "privacy", details: "PRIVATE_PREVIOUS_REPORT\n原始记录", status: "resolved", version: 2 },
+    after_values: { category: "disruption", details: "PRIVATE_REVISED_REPORT\n已核对发生时间", status: "pending", version: 3 },
+  }] }).audit],
+}
 
 describe("activity review administration UI", () => {
   it("does not render report details, supplements or internal audit to an unauthorized report viewer", () => {
-    const html = renderToStaticMarkup(createElement(ActivityReviewModeration, { context: { ...context, canModerateReports: false }, memberOptions: members, memberFilter: null, moderateReviewAction: success, moderateReportAction: success }))
-    for (const privateText of ["PRIVATE_REPORT_DETAIL", "PRIVATE_SUPPLEMENT", "PRIVATE_INTERNAL_NOTE", "PRIVATE_AUDIT_REASON"]) expect(html).not.toContain(privateText)
+    const html = renderToStaticMarkup(createElement(ActivityReviewModeration, { context: { ...revisedReportContext, canModerateReports: false }, memberOptions: members, memberFilter: null, moderateReviewAction: success, moderateReportAction: success }))
+    for (const privateText of ["PRIVATE_REPORT_DETAIL", "PRIVATE_REVISED_REPORT", "PRIVATE_PREVIOUS_REPORT", "PRIVATE_SUPPLEMENT", "PRIVATE_INTERNAL_NOTE", "PRIVATE_AUDIT_REASON"]) expect(html).not.toContain(privateText)
     expect(html).toContain("当前权限无法查看活动举报明细")
     expect(html).toContain("4.5")
+  })
+
+  it("shows the current report separately from the player's timestamped revision and preserved supplements", () => {
+    const html = renderToStaticMarkup(createElement(ActivityReviewModeration, { context: revisedReportContext, memberOptions: members, memberFilter: null, moderateReviewAction: success, moderateReportAction: success }))
+    const currentDetail = html.match(/<h3[^>]*>当前举报内容<\/h3>([\s\S]*?)<\/div>/)?.[1] ?? ""
+    expect(currentDetail).toContain("PRIVATE_REVISED_REPORT\n已核对发生时间")
+    expect(currentDetail).not.toContain("PRIVATE_PREVIOUS_REPORT")
+    expect(currentDetail).toContain("最后更新：2026-10-03 21:00 · 版本 3")
+    expect(html).toContain("PRIVATE_SUPPLEMENT")
+    expect(html).toContain("PRIVATE_INTERNAL_NOTE")
+    expect(html).toContain("修改举报内容")
+    expect(html).toContain("玩家 player-1 · 2026-10-03 21:00")
+    expect(html).toContain("PRIVATE_PREVIOUS_REPORT\n原始记录")
+    expect(html).toContain("举报类型")
+    expect(html).toContain("隐私问题")
+    expect(html).toContain("干扰活动")
+    expect(html).toContain("修改前")
+    expect(html).toContain("修改后")
+    expect(html).toContain("已处理 → 待处理")
+    expect(html).toContain('<option value="pending" selected="">待处理</option>')
+    expect(html).toMatch(/<details open=""[^>]*><summary[^>]*>查看修改前后/)
+    expect(html).not.toContain("report_updated")
   })
 
   it("shows both names and nicknames to distinguish matching real names", () => {
@@ -94,7 +126,7 @@ describe("activity review administration UI", () => {
   it("labels audit actions in Chinese and distinguishes players from administrators", () => {
     const html = renderToStaticMarkup(createElement(ReviewHistory, { entries: [
       { id: "player-history", action: "review_created", actorId: "player-one", actorKind: "player", reason: "", createdAt: "2026-10-03T09:00:00Z" },
-      { id: "admin-history", action: "review_moderated", actorId: "admin-one", actorKind: "admin", reason: "核对实际活动记录", createdAt: "2026-10-03T10:00:00Z" },
+      { id: "admin-history", action: "review_moderated", actorId: "admin-one", actorKind: "admin", reason: "核对实际活动记录", createdAt: "2026-10-03T10:00:00Z", details: { before: { score: 4.5, valid: true, comment: "原评价" }, after: { score: 4.5, valid: false, comment: "原评价" } } },
       { id: "system-history", action: "review_invalidated_roster", actorId: null, actorKind: "system", reason: "名册变更", createdAt: "2026-10-03T11:00:00Z" },
     ] }))
     expect(html).toContain("提交评分")
@@ -104,5 +136,8 @@ describe("activity review administration UI", () => {
     expect(html).toContain("管理员 admin-on")
     expect(html).not.toContain("管理员 player-o")
     expect(html).not.toContain("review_created")
+    expect(html).toContain("评分有效")
+    expect(html).toContain("是 → 否")
+    expect(html).toContain("原评价 → 原评价")
   })
 })

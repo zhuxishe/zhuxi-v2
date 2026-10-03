@@ -5,11 +5,10 @@ import { Search, ShieldAlert, Star } from "lucide-react"
 import type { ActivityReport, ActivityReview, ActivityReviewActionResult, AdminActivityReviewContext, AdminActivityReviewsData, ModerateActivityReportInput, ModerateActivityReviewInput } from "@/lib/activity-reviews/types"
 import { formatAdminDateTime } from "@/lib/admin-datetime"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
-import { AuditReasonField, fieldClass, MutationFeedback, primaryButtonClass, ReviewHistory, secondaryButtonClass, useAdminReviewMutation } from "./shared"
+import { AuditReasonField, fieldClass, MutationFeedback, primaryButtonClass, REPORT_CATEGORY_LABELS, ReviewHistory, secondaryButtonClass, useAdminReviewMutation } from "./shared"
 import { confirmActivityReviewNavigation, useUnsavedActivityReviews } from "./use-unsaved-activity-reviews"
 
 export const REPORT_STATUS_LABELS = { pending: "待处理", reviewing: "核查中", resolved: "已处理", dismissed: "已驳回" } as const
-const CATEGORY_LABELS = { harassment: "骚扰或不当言行", privacy: "隐私问题", disruption: "干扰活动", other: "其他" } as const
 const PAGE_SIZE = 10
 type Members = AdminActivityReviewsData["memberOptions"]
 type NameMap = Map<string, Members[number]>
@@ -101,9 +100,9 @@ function ReportRecord({ report, names, context, saveAction, onSaved }: { report:
     if (await mutation.run(() => saveAction({ roundId: context.roundId, reportId: report.id, status, internalNote: internalNote.trim(), expectedVersion: report.version, reason: reason.trim() }))) onSaved?.()
   }
   return <article className="rounded-lg border border-destructive/20 p-4">
-    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-medium">{memberText(names, report.reporterId)} <span className="text-muted-foreground">举报</span> {memberText(names, report.revieweeId)}</p><p className="mt-1 text-xs text-muted-foreground">{CATEGORY_LABELS[report.category]} · {formatAdminDateTime(report.createdAt)}</p></div><span className="rounded-full bg-destructive/10 px-2.5 py-1 text-xs text-destructive">{REPORT_STATUS_LABELS[report.status]}</span></div>
+    <div className="flex flex-wrap items-start justify-between gap-3"><div className="min-w-0"><p className="break-words text-sm font-medium">{memberText(names, report.reporterId)} <span className="text-muted-foreground">举报</span> {memberText(names, report.revieweeId)}</p><p className="mt-1 text-xs text-muted-foreground">{REPORT_CATEGORY_LABELS[report.category]} · 首次提交：{formatAdminDateTime(report.createdAt)}</p></div><span className="rounded-full bg-destructive/10 px-2.5 py-1 text-xs text-destructive">{REPORT_STATUS_LABELS[report.status]}</span></div>
     <details className="mt-3"><summary className="min-h-8 cursor-pointer text-sm font-medium text-primary">查看举报详情与处理</summary><div className="mt-3 space-y-4">
-      <div className="rounded-lg bg-muted/30 p-3"><h3 className="text-xs font-medium text-muted-foreground">举报原文</h3><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{report.detail}</p></div>
+      <div className="rounded-lg bg-muted/30 p-3"><h3 className="text-xs font-medium text-muted-foreground">当前举报内容</h3><p className="mt-1 text-xs text-muted-foreground">最后更新：{formatAdminDateTime(report.updatedAt)} · 版本 {report.version}</p><p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6">{report.detail}</p></div>
       {report.supplements.length ? <div className="space-y-2"><h3 className="text-sm font-medium">补充信息</h3>{report.supplements.map((item, index) => <div key={`${item.createdAt}:${index}`} className="rounded-lg border border-border p-3"><p className="text-xs text-muted-foreground">{formatAdminDateTime(item.createdAt)}</p><p className="mt-1 whitespace-pre-wrap break-words text-sm leading-6">{item.detail}</p></div>)}</div> : null}
       <ReviewHistory entries={context.audit.filter((item) => item.reportId === report.id)} />
       <form onSubmit={submit} className="space-y-3 border-t border-border pt-4">

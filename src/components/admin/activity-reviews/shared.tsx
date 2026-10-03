@@ -8,6 +8,7 @@ import type { ActivityReviewActionResult, ActivityReviewAudit } from "@/lib/acti
 export const fieldClass = "min-h-11 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/40 disabled:opacity-50"
 export const primaryButtonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 export const secondaryButtonClass = "inline-flex min-h-11 items-center justify-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm font-medium outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-primary/40 disabled:cursor-not-allowed disabled:opacity-50"
+export const REPORT_CATEGORY_LABELS = { harassment: "骚扰或不当言行", privacy: "隐私问题", disruption: "干扰活动", other: "其他" } as const
 
 export type MutationResult = ActivityReviewActionResult
 
@@ -86,23 +87,27 @@ export function ReviewHistory({ entries }: { entries: ActivityReviewAudit[] }) {
         <p className="font-medium">{auditActionLabel(entry.action)}</p>
         <p className="text-xs text-muted-foreground">{auditActorLabel(entry)} · {formatAdminDateTime(entry.createdAt)}</p>
         {entry.reason ? <p className="whitespace-pre-wrap break-words text-muted-foreground">{entry.reason}</p> : null}
-        {entry.details ? <HistoryChanges before={entry.details.before} after={entry.details.after} /> : null}
+        {entry.details ? <HistoryChanges before={entry.details.before} after={entry.details.after} expanded={entry.action === "report_updated"} /> : null}
       </li>)}
     </ol> : <p className="py-2 text-xs text-muted-foreground">暂无处理记录</p>}
   </details>
 }
 
-function HistoryChanges({ before, after }: { before: unknown; after: unknown }) {
+function HistoryChanges({ before, after, expanded = false }: { before: unknown; after: unknown; expanded?: boolean }) {
   const record = (value: unknown): Record<string, unknown> => value !== null && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {}
   const previous = record(before)
   const next = record(after)
   const fields = [
     ["version", "版本"], ["score", "分数"], ["valid", "评分有效"], ["enabled", "互评启用"], ["included", "在名册中"],
     ["opens_at", "开放时间"], ["closes_at", "截止时间"], ["status", "处理状态"], ["comment", "文字评价"], ["internal_note", "内部处理说明"],
+    ["category", "举报类型"], ["details", "举报内容"],
   ].filter(([field]) => field in previous || field in next)
   if (fields.length === 0 && !Array.isArray(previous.participants) && !Array.isArray(next.participants)) return null
-  return <details className="pt-1"><summary className="cursor-pointer text-xs text-primary">查看修改前后</summary><dl className="mt-2 space-y-2 rounded-lg bg-background p-3 text-xs">
-    {fields.map(([field, label]) => <div key={field} className="space-y-1"><dt className="font-medium">{label}</dt><dd className="whitespace-pre-wrap break-words text-muted-foreground">{historyValue(previous[field], field)} → {historyValue(next[field], field)}</dd></div>)}
+  return <details open={expanded} className="pt-1"><summary className="cursor-pointer text-xs text-primary">查看修改前后</summary><dl className="mt-2 space-y-2 rounded-lg bg-background p-3 text-xs">
+    {fields.map(([field, label]) => <div key={field} className="space-y-1"><dt className="font-medium">{label}</dt>{field === "category" || field === "details" ? <dd className="grid gap-2 sm:grid-cols-2">
+      <div className="min-w-0 rounded-md border border-border p-2"><p className="mb-1 font-medium text-muted-foreground">修改前</p><p className="whitespace-pre-wrap break-words leading-5">{historyValue(previous[field], field)}</p></div>
+      <div className="min-w-0 rounded-md border border-primary/20 bg-primary/5 p-2"><p className="mb-1 font-medium text-muted-foreground">修改后</p><p className="whitespace-pre-wrap break-words leading-5">{historyValue(next[field], field)}</p></div>
+    </dd> : <dd className="whitespace-pre-wrap break-words text-muted-foreground">{historyValue(previous[field], field)} → {historyValue(next[field], field)}</dd>}</div>)}
     {Array.isArray(previous.participants) || Array.isArray(next.participants) ? <div><dt className="font-medium">名册参与人数</dt><dd className="text-muted-foreground">{includedCount(previous.participants)} → {includedCount(next.participants)}</dd></div> : null}
   </dl></details>
 }
@@ -113,6 +118,7 @@ function historyValue(value: unknown, field: string) {
   if (typeof value === "boolean") return value ? "是" : "否"
   if (field.endsWith("_at") && typeof value === "string") return formatAdminDateTime(value)
   if (field === "status" && typeof value === "string") return ({ pending: "待处理", reviewing: "核查中", resolved: "已处理", dismissed: "已驳回" } as Record<string, string>)[value] ?? value
+  if (field === "category" && typeof value === "string") return REPORT_CATEGORY_LABELS[value as keyof typeof REPORT_CATEGORY_LABELS] ?? value
   return typeof value === "string" || typeof value === "number" ? String(value) || "空" : "—"
 }
 
@@ -120,7 +126,7 @@ function auditActionLabel(action: string) {
   const labels: Record<string, string> = {
     settings_changed: "更新开放设置", roster_confirmed: "确认参与名册", participant_changed: "调整参与成员",
     review_created: "提交评分", review_revised: "修改评分", review_moderated: "审核评分有效性", review_invalidated_roster: "因名册调整标记评分无效",
-    report_created: "提交举报", report_supplemented: "补充举报信息", report_moderated: "处理举报", feedback_submitted: "提交活动反馈",
+    report_created: "提交举报", report_updated: "修改举报内容", report_supplemented: "补充举报信息", report_moderated: "处理举报", feedback_submitted: "提交活动反馈",
   }
   return labels[action] ?? "记录变更"
 }

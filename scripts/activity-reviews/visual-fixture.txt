@@ -30,6 +30,11 @@ const review:any = { id:id(20),reviewerId:id(6),revieweeId:id(3),score:4.5,comme
 const report:any = { id:id(21),reporterId:id(6),revieweeId:id(4),category:'privacy',detail:'演示记录：活动中未经同意拍摄并分享照片，请工作人员协助核实。',status:'pending',version:1,createdAt:now,updatedAt:now,supplements:[],internalNote:'' }
 const participants = people.map(p=>({...p,review:p.memberId===id(3)?review:null,report:p.memberId===id(4)?report:null}))
 const context:any = { ...reviewRound,eligible:true,settings,participants,ownReviews:[review],ownReports:[report],total:4,page:1,pageSize:24,search:'' }
+if(screen==='history'){
+  context.participants=[];context.total=0;context.search='未匹配的搜索词';
+  context.historyTargets=people.filter(p=>p.memberId===id(3)||p.memberId===id(4)).map(p=>({...p,canReview:true,canReport:true}));
+}
+if(params.get('reportStatus')==='reviewing') report.status='reviewing'
 if(screen==='closed'){context.canReview=false;context.status='closed'}
 const memberOptions = [...people,{memberId:id(6),fullName:'演示玩家',nickname:'竹影'}]
 const adminContext:any = {roundId,title:round.round_name,settings,participants:memberOptions.map(p=>({...p,source:'registered',included:true,eligible:true,registered:true})),candidates:memberOptions.map(p=>({...p,source:'registered',included:true,eligible:true,registered:true})),reviews:[review],reports:[report],audit:[{id:'1',action:'settings_changed',actorId:id(8),actorKind:"admin",reason:'确认到场名单后开放本轮互评',createdAt:now,details:{}}],canManageSettings:true,canModerateReports:true}
@@ -37,7 +42,9 @@ const adminData:any = {events:[{...reviewRound,settings,reviewCount:1,pendingRep
 const record:any = {id:id(10),round_id:roundId,member_id:id(6),submitted_at:'2026-10-01T03:00:00Z',updated_at:'2026-10-01T03:00:00Z',cancelled_at:null,answers:{},round}
 const action = async (input:any) => {
   ;(window as any).__lastSubmission=input
-  return {success:true,review:input.review?{...review,id:id(22),revieweeId:input.targetMemberId,score:input.review.score,comment:input.review.comment,version:input.review.expectedVersion+1}:null,report:input.report?{...report,id:id(23),revieweeId:input.targetMemberId,category:input.report.category,detail:input.report.detail,version:input.report.expectedVersion+1}:null}
+  const reportResult=input.report?{...report,id:id(23),revieweeId:input.targetMemberId,category:input.report.category,detail:input.report.detail,version:input.report.expectedVersion+1}:null
+  if(reportResult&&input.operation==='append_report'){reportResult.detail=report.detail;reportResult.status='pending';reportResult.supplements=[...report.supplements,{detail:input.report.detail,createdAt:now}]}
+  return {success:true,review:input.review?{...review,id:id(22),revieweeId:input.targetMemberId,score:input.review.score,comment:input.review.comment,version:input.review.expectedVersion+1}:null,report:reportResult}
 }
 const adminAction = async(input:any)=>{(window as any).__lastAdminSubmission=input;return {success:true}}
 const actions = {saveSettingsAction:adminAction,confirmRosterAction:adminAction,moderateReviewAction:adminAction,moderateReportAction:adminAction}

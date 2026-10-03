@@ -84,7 +84,7 @@ describe("event review editor submission boundaries", () => {
   })
 
   it("appends a supplement using the report version and retains the original record", async () => {
-    const overrides = { participant: { ...participant, review, report }, canReview: false }
+    const overrides = { participant: { ...participant, review, report: { ...report, status: "reviewing" as const } }, canReview: false }
     await find(render(overrides), (props) => props["aria-expanded"] !== undefined)?.onClick?.()
     setField("activity-report-supplement", "补充说明：事发时间约为下午三点。", render(overrides))
     await button("提交补充", render(overrides)).onClick()
@@ -157,12 +157,69 @@ describe("event review editor submission boundaries", () => {
   })
 
   it("stops offering report supplements at the database limit while preserving its history", async () => {
-    const fullReport = { ...report, supplements: Array.from({ length: 50 }, (_, index) => ({ detail: `已提交补充 ${index}`, createdAt: "2026-10-10T12:00:00Z" })) }
+    const fullReport = { ...report, status: "resolved" as const, supplements: Array.from({ length: 50 }, (_, index) => ({ detail: `已提交补充 ${index}`, createdAt: "2026-10-10T12:00:00Z" })) }
     const overrides = { participant: { ...participant, report: fullReport } }
     await find(render(overrides), (props) => props["aria-expanded"] !== undefined)?.onClick?.()
     const tree = render(overrides)
     expect(find(tree, (props) => props.id === "activity-report-supplement")).toBeUndefined()
     expect(find(tree, (props) => props.children === "本次举报的补充信息已达到上限。")).toBeDefined()
     expect(find(tree, (props) => props.children === report.detail)).toBeDefined()
+  })
+
+  it("edits a pending report's category and details from the saved values without submitting its rating", async () => {
+    const overrides = { participant: { ...participant, review, report }, mode: "report" as const }
+    let tree = render(overrides)
+    expect(find(tree, (props) => props.id === "activity-report-category")?.value).toBe("privacy")
+    expect(find(tree, (props) => props.id === "activity-report-detail")?.value).toBe(report.detail)
+    expect(find(tree, (props) => props.id === "activity-review-comment")).toBeUndefined()
+    setField("activity-report-category", "disruption", tree)
+    setField("activity-report-detail", "更正说明：对方在游戏过程中多次打断主持。", render(overrides))
+    mocks.action.mockResolvedValue({ success: true, report: { ...report, category: "disruption", detail: "更正说明：对方在游戏过程中多次打断主持。", version: 3 } })
+    await button("保存修改", render(overrides)).onClick()
+    expect(mocks.action.mock.calls[0][0]).toMatchObject({ operation: "edit_report", report: { category: "disruption", detail: "更正说明：对方在游戏过程中多次打断主持。", expectedVersion: 2 } })
+    expect(mocks.action.mock.calls[0][0]).not.toHaveProperty("review")
+    tree = render(overrides)
+    expect(find(tree, (props) => props.id === "activity-report-detail")?.value).toBe("更正说明：对方在游戏过程中多次打断主持。")
+    await button("保存修改", tree).onClick()
+    expect(mocks.action.mock.calls[1][0].report.expectedVersion).toBe(3)
+  })
+
+  it.each(["reviewing", "resolved", "dismissed"] as const)("preserves a %s report and sends a correction as a supplement", async (status) => {
+    const overrides = { participant: { ...participant, report: { ...report, status } }, mode: "report" as const, canReview: false }
+    const tree = render(overrides)
+    expect(find(tree, (props) => props.id === "activity-report-category")).toBeUndefined()
+    expect(find(tree, (props) => props.id === "activity-report-detail")).toBeUndefined()
+    expect(find(tree, (props) => props.children === report.detail)).toBeDefined()
+    setField("activity-report-supplement", "更正发生时间：应为下午两点左右。", tree)
+    await button("提交补充", render(overrides)).onClick()
+    expect(mocks.action.mock.calls[0][0]).toMatchObject({ operation: "append_report", report: { expectedVersion: 2, detail: "更正发生时间：应为下午两点左右。" } })
+    expect(mocks.action.mock.calls[0][0]).not.toHaveProperty("review")
+  })
+
+  it("keeps a pending-report draft when moderation changes before saving", async () => {
+    const overrides = { participant: { ...participant, report }, mode: "report" as const }
+    setField("activity-report-detail", "更正后的具体举报情况，需要管理员确认。", render(overrides))
+    mocks.action.mockResolvedValue({ error: "PEER_REPORT_NOT_EDITABLE" })
+    await button("保存修改", render(overrides)).onClick()
+    const tree = render(overrides)
+    expect(find(tree, (props) => props.role === "alert")?.children).toContain("举报处理状态已变化")
+    expect(find(tree, (props) => props.id === "activity-report-detail")?.value).toBe("更正后的具体举报情况，需要管理员确认。")
+  })
+
+  it("cancels a review edit without saving and prevents cancellation during a submission", async () => {
+    const onCancel = vi.fn()
+    const overrides = { participant: { ...participant, review, report }, mode: "review" as const, onCancel }
+    setField("activity-review-comment", "这段修改还没有保存", render(overrides))
+    expect(find(render(overrides), (props) => props["aria-expanded"] !== undefined)).toBeUndefined()
+    await button("取消", render(overrides)).onClick()
+    expect(onCancel).toHaveBeenCalledOnce()
+    expect(mocks.action).not.toHaveBeenCalled()
+    let finish!: (value: { success: true }) => void
+    mocks.action.mockReturnValue(new Promise((resolve) => { finish = resolve }))
+    const pending = button("更新评价", render(overrides)).onClick()
+    expect(button("取消", render(overrides)).disabled).toBe(true)
+    await button("取消", render(overrides)).onClick()
+    expect(onCancel).toHaveBeenCalledOnce()
+    finish({ success: true }); await pending
   })
 })

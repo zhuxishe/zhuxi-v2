@@ -1,0 +1,175 @@
+{
+  "helpers": [
+    {
+      "ok": true,
+      "private_helper": "private.peer_current_admin()"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_current_player()"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_effective_opened_at(private.round_peer_review_settings)"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_lock_admin()"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_lock_pair(uuid,uuid,uuid)"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_member_eligible(uuid,uuid)"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_participant_eligible(uuid,uuid)"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_report_json(private.round_peer_reports)"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_require_reason(text)"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_review_json(private.round_peer_reviews)"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_review_prior_member_preflight(uuid)"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_scrub_anonymized_member()"
+    },
+    {
+      "ok": true,
+      "private_helper": "private.peer_settings_json(uuid)"
+    }
+  ],
+  "history_targets_installed": true,
+  "lifecycle": [
+    {
+      "check_name": "anonymization_trigger",
+      "ok": true
+    },
+    {
+      "check_name": "preserved_lifecycle_function",
+      "ok": true
+    },
+    {
+      "check_name": "review_directed_pair_unique",
+      "ok": true
+    },
+    {
+      "check_name": "report_directed_pair_unique",
+      "ok": true
+    },
+    {
+      "check_name": "idempotency_unique",
+      "ok": true
+    }
+  ],
+  "migration_registered": true,
+  "rpcs": [
+    {
+      "ok": true,
+      "player_api": false,
+      "signature": "public.admin_confirm_round_peer_review_roster(uuid,uuid[],integer,text)"
+    },
+    {
+      "ok": true,
+      "player_api": false,
+      "signature": "public.admin_get_round_peer_reviews(uuid)"
+    },
+    {
+      "ok": true,
+      "player_api": false,
+      "signature": "public.admin_list_round_peer_review_events()"
+    },
+    {
+      "ok": true,
+      "player_api": false,
+      "signature": "public.admin_moderate_round_peer_review(uuid,boolean,integer,text)"
+    },
+    {
+      "ok": true,
+      "player_api": false,
+      "signature": "public.admin_preflight_member_lifecycle(uuid)"
+    },
+    {
+      "ok": true,
+      "player_api": false,
+      "signature": "public.admin_resolve_round_peer_report(uuid,text,text,integer,text)"
+    },
+    {
+      "ok": true,
+      "player_api": false,
+      "signature": "public.admin_save_round_peer_review_settings(uuid,boolean,timestamp with time zone,timestamp with time zone,integer,text)"
+    },
+    {
+      "ok": true,
+      "player_api": false,
+      "signature": "public.admin_set_round_peer_review_participant(uuid,uuid,boolean,text)"
+    },
+    {
+      "ok": true,
+      "player_api": true,
+      "signature": "public.player_get_round_peer_reviews(uuid,text,integer,integer)"
+    },
+    {
+      "ok": true,
+      "player_api": true,
+      "signature": "public.player_list_round_peer_review_events()"
+    },
+    {
+      "ok": true,
+      "player_api": true,
+      "signature": "public.player_save_round_peer_report(uuid,uuid,text,text,integer)"
+    },
+    {
+      "ok": true,
+      "player_api": true,
+      "signature": "public.player_save_round_peer_review(uuid,uuid,numeric,text,integer)"
+    },
+    {
+      "ok": true,
+      "player_api": true,
+      "signature": "public.player_submit_round_peer_feedback(uuid,uuid,numeric,text,integer,text,text,integer,uuid)"
+    },
+    {
+      "ok": true,
+      "player_api": true,
+      "signature": "public.player_update_round_peer_report(uuid,uuid,text,text,integer,uuid)"
+    }
+  ],
+  "submitted_flag_installed": true,
+  "tables": [
+    {
+      "name": "private.round_peer_reports",
+      "ok": true
+    },
+    {
+      "name": "private.round_peer_review_audit",
+      "ok": true
+    },
+    {
+      "name": "private.round_peer_review_participants",
+      "ok": true
+    },
+    {
+      "name": "private.round_peer_review_settings",
+      "ok": true
+    },
+    {
+      "name": "private.round_peer_reviews",
+      "ok": true
+    }
+  ]
+}

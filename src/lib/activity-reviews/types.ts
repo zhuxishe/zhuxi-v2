@@ -49,7 +49,15 @@ export interface ActivityReviewRound {
   opensAt: string | null
   closesAt: string | null
   reviewedCount: number
+  hasSubmittedFeedback?: boolean
   participantCount: number
+  canReview: boolean
+  canReport: boolean
+}
+export interface ActivityReviewHistoryTarget {
+  memberId: string
+  fullName: string
+  nickname: string | null
   canReview: boolean
   canReport: boolean
 }
@@ -59,6 +67,7 @@ export interface ActivityReviewContext extends ActivityReviewRound {
   participants: ActivityReviewParticipant[]
   ownReviews?: ActivityReview[]
   ownReports?: ActivityReport[]
+  historyTargets?: ActivityReviewHistoryTarget[]
   total: number
   page: number
   pageSize: number
@@ -66,7 +75,7 @@ export interface ActivityReviewContext extends ActivityReviewRound {
   setupRequired?: boolean
 }
 export interface SubmitActivityReviewInput {
-  operation: "save" | "append_report"
+  operation: "save" | "append_report" | "edit_report"
   roundId: string
   targetMemberId: string
   review?: { score: number; comment: string; expectedVersion: number }

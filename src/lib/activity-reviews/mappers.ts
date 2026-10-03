@@ -28,12 +28,14 @@ export function mapActivityReport(value: unknown, admin = false): ActivityReport
 }
 export function mapReviewRound(value: unknown): ActivityReviewRound {
   const r = record(value), settings = mapReviewSettings(r.settings ?? { ...r, roster_confirmed: true })
-  return { roundId: text(r.round_id), title: text(r.round_name), status: reviewWindowStatus(settings), opensAt: settings.opensAt, closesAt: settings.closesAt, reviewedCount: number(r.reviewed_count), participantCount: number(r.participant_count), canReview: r.can_review === true, canReport: r.can_report === true }
+  return { roundId: text(r.round_id), title: text(r.round_name), status: reviewWindowStatus(settings), opensAt: settings.opensAt, closesAt: settings.closesAt, reviewedCount: number(r.reviewed_count), hasSubmittedFeedback: r.has_submitted_feedback === true || number(r.reviewed_count) > 0, participantCount: number(r.participant_count), canReview: r.can_review === true, canReport: r.can_report === true }
 }
 export function mapReviewContext(value: unknown, search = ""): ActivityReviewContext {
   const r = record(value), settings = mapReviewSettings(r.settings)
   const reviews = rows(r.reviews).map(mapActivityReview), reports = rows(r.reports).map(item => mapActivityReport(item))
-  return { ...mapReviewRound(r), settings, eligible: r.eligible === true, ownReviews: reviews, ownReports: reports, search, total: number(r.total), page: number(r.page, 1), pageSize: number(r.page_size, 24), participants: rows(r.participants).map(p => ({ memberId: text(p.member_id), fullName: text(p.full_name), nickname: nullable(p.nickname), review: reviews.find(v => v.revieweeId === p.member_id) ?? null, report: reports.find(v => v.revieweeId === p.member_id) ?? null })) }
+  return { ...mapReviewRound(r), hasSubmittedFeedback: reviews.length > 0 || reports.length > 0, settings, eligible: r.eligible === true, ownReviews: reviews, ownReports: reports,
+    ...(Array.isArray(r.history_targets) ? { historyTargets: rows(r.history_targets).map(p => ({ memberId: text(p.member_id), fullName: text(p.full_name), nickname: nullable(p.nickname), canReview: p.can_review === true, canReport: p.can_report === true })) } : {}),
+    search, total: number(r.total), page: number(r.page, 1), pageSize: number(r.page_size, 24), participants: rows(r.participants).map(p => ({ memberId: text(p.member_id), fullName: text(p.full_name), nickname: nullable(p.nickname), review: reviews.find(v => v.revieweeId === p.member_id) ?? null, report: reports.find(v => v.revieweeId === p.member_id) ?? null })) }
 }
 export function emptyReviewContext(roundId: string, setupRequired = false): ActivityReviewContext {
   return { ...mapReviewContext({ round_id: roundId }), eligible: false, setupRequired }

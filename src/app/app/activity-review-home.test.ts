@@ -24,13 +24,28 @@ const round: ActivityReviewRound = { roundId: "event", title: "秋季迎新派�
 describe("home event review entry", () => {
   beforeEach(() => { mocks.rounds = []; mocks.locale = "zh" })
 
-  it("counts open activities instead of unrated people and routes to participation records", async () => {
-    mocks.rounds = [round, { ...round, roundId: "second", reviewedCount: 0 }, { ...round, roundId: "closed", status: "closed", canReview: false }, { ...round, roundId: "no-access", canReview: false }]
+  it("only reminds for open activities with no submitted feedback", async () => {
+    mocks.rounds = [round, { ...round, roundId: "second", reviewedCount: 0 }, { ...round, roundId: "reported", reviewedCount: 0, hasSubmittedFeedback: true }, { ...round, roundId: "closed", reviewedCount: 0, status: "closed", canReview: false }, { ...round, roundId: "no-access", reviewedCount: 0, canReview: false }]
     const page = await PlayerHomePage()
     const quick = find(page, (props) => props.pendingReviewCount !== undefined)
-    expect(quick?.pendingReviewCount).toBe(2)
+    expect(quick?.pendingReviewCount).toBe(1)
     expect(quick?.pendingReviewHref).toBe("/app/matches#participation")
-    expect(find(page, (props) => Boolean(props.action))?.action?.title).toBe("2 场活动可以互评")
+    expect(find(page, (props) => Boolean(props.action))?.action?.title).toBe("1 场活动待评价")
+  })
+
+  it("clears the priority reminder after a partial review while keeping the shortcut", async () => {
+    mocks.rounds = [{ ...round, reviewedCount: 1 }]
+    const page = await PlayerHomePage()
+    expect(find(page, (props) => props.pendingReviewCount !== undefined)?.pendingReviewCount).toBe(0)
+    expect(find(page, (props) => props.pendingReviewCount !== undefined)?.pendingReviewHref).toBe("/app/matches#participation")
+    expect(find(page, (props) => Boolean(props.action))?.action?.href).not.toBe("/app/matches#participation")
+  })
+
+  it("does not require a score to clear a report-only activity reminder", async () => {
+    mocks.rounds = [{ ...round, reviewedCount: 0, hasSubmittedFeedback: true }]
+    const page = await PlayerHomePage()
+    expect(find(page, (props) => props.pendingReviewCount !== undefined)?.pendingReviewCount).toBe(0)
+    expect(find(page, (props) => Boolean(props.action))?.action?.href).not.toBe("/app/matches#participation")
   })
 
   it("keeps the shortcut usable with no open activity and uses Japanese activity-based copy", async () => {
@@ -38,8 +53,8 @@ describe("home event review entry", () => {
     let page = await PlayerHomePage()
     expect(find(page, (props) => props.pendingReviewCount !== undefined)?.pendingReviewCount).toBe(0)
     expect(find(page, (props) => props.pendingReviewCount !== undefined)?.labels?.reviews).toBe("相互評価")
-    mocks.rounds = [round]
+    mocks.rounds = [{ ...round, reviewedCount: 0 }]
     page = await PlayerHomePage()
-    expect(find(page, (props) => Boolean(props.action))?.action?.title).toBe("1 件のイベントで評価を受付中")
+    expect(find(page, (props) => Boolean(props.action))?.action?.title).toBe("未評価のイベントが 1 件あります")
   })
 })

@@ -14,7 +14,7 @@ const tailwindRequire = createRequire(require.resolve('@tailwindcss/postcss'))
 const postcss = tailwindRequire('postcss')
 const tailwind = require('@tailwindcss/postcss')
 const mode = process.argv[2] || 'after'
-const source = mode === 'before' ? resolve(process.env.PEER_REVIEW_BASELINE || '/tmp/zhuxi-peer-review-before') : root
+const source = mode === 'before' ? resolve(process.env.PEER_REVIEW_BASELINE || '/tmp/zhuxi-peer-review-before') : resolve(process.env.PEER_REVIEW_SOURCE || root)
 const port = Number(process.argv[3] || (mode === 'before' ? 3198 : 3199))
 const dest = resolve('/tmp/zhuxi-peer-review-visual', mode)
 mkdirSync(dest, { recursive: true })
@@ -33,7 +33,7 @@ await build({
     b.onResolve({filter:/^(next\/link|next\/image|next\/navigation|next-intl|server-only)$/},args=>({path:args.path,namespace:'fixture-shim'}))
     b.onLoad({filter:/.*/,namespace:'fixture-shim'},args=>({contents:shims[args.path],loader:'js',resolveDir:root}))
     b.onResolve({filter:/^@\//},args=>{let base=resolve(source,'src',args.path.slice(2));if(!existsSync(base)&&!['.tsx','.ts','.json','/index.ts','/index.tsx'].some(ext=>existsSync(base+ext)))base=resolve(root,'src',args.path.slice(2));return {path:base+(/\.(tsx?|json)$/.test(args.path)?'':resolveExtension(base))}})
-    b.onResolve({filter:/^@new\//},args=>({path:resolve(root,'src',args.path.slice(5))+resolveExtension(resolve(root,'src',args.path.slice(5)))}))
+    b.onResolve({filter:/^@new\//},args=>{const target=process.env.PEER_REVIEW_SOURCE?source:root;return {path:resolve(target,'src',args.path.slice(5))+resolveExtension(resolve(target,'src',args.path.slice(5)))}})
     b.onLoad({filter:/visual-fixture\.txt$/},args=>({contents:readFileSync(args.path,'utf8'),loader:'tsx',resolveDir:root}))
     b.onLoad({filter:/\.tsx?$/},args=>{
       const content=readFileSync(args.path,'utf8')

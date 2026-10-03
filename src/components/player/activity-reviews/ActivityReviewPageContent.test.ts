@@ -54,8 +54,10 @@ describe("event review page content", () => {
       ownReports: [{ id: "report-one", revieweeId: "12345678-private-member", category: "privacy", detail: "本人已提交的具体情况说明。", status: "reviewing", version: 3, createdAt: "2026-10-10T12:00:00Z", updatedAt: "2026-10-11T12:00:00Z", supplements: [{ detail: "本人补充的相关情况。", createdAt: "2026-10-11T12:00:00Z" }], internalNote: "ADMIN SECRET" }],
     }
     const html = renderToStaticMarkup(createElement(ActivityReviewPageContent, { context: removed, locale: "zh" }))
-    expect(html).toContain("本人已提交记录")
-    expect(html).toContain("对象编号 · 12345678")
+    expect(html).toContain("我的评价与举报")
+    expect(html).toContain("玩家信息暂不可用")
+    expect(html).not.toContain("12345678")
+    expect(html).not.toContain("当前版本")
     expect(html).toContain("当时交流很愉快")
     expect(html).toContain("本人已提交的具体情况说明。")
     expect(html).toContain("本人补充的相关情况。")
@@ -70,5 +72,18 @@ describe("event review page content", () => {
     const html = renderToStaticMarkup(createElement(ActivityReviewPageContent, { context: { ...context, participants: [], total: 0, ownReviews: [{ id: "review", revieweeId: "12345678-member", score: 3.5, comment: "搜索时仍然可见的本人评价", version: 1, valid: true, updatedAt: "2026-10-10T12:00:00Z" }] }, locale: "zh" }))
     expect(html).toContain("没有找到符合条件的玩家")
     expect(html).toContain("搜索时仍然可见的本人评价")
+  })
+
+  it("uses authorized history names outside the search page without displaying internal versions or empty comments", () => {
+    const html = renderToStaticMarkup(createElement(ActivityReviewPageContent, { context: { ...context, participants: [], total: 0,
+      ownReviews: [{ id: "review", revieweeId: "private-id", score: 3.5, comment: "", version: 16, valid: true, updatedAt: "2026-10-10T12:00:00Z" }],
+      historyTargets: [{ memberId: "private-id", fullName: "林青", nickname: "竹叶", canReview: true, canReport: true }],
+    }, locale: "zh" }))
+    expect(html).toContain("林青")
+    expect(html).toContain("昵称 · 竹叶")
+    expect(html).toContain("修改评价")
+    expect(html).not.toContain("未填写文字评价")
+    expect(html).not.toContain("当前版本")
+    expect(html).not.toContain("private-id")
   })
 })

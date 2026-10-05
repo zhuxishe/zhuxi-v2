@@ -35,6 +35,8 @@ interface Props {
   onLock?: (id: string) => void
   onSplit?: (id: string) => void
   onRestore?: (id: string) => void
+  displayNumber?: number
+  conflictMessages?: { memberId: string; text: string }[]
 }
 
 function memberLabel(m: EnrichedMember | null): string {
@@ -54,7 +56,7 @@ function scoreBgClass(score: number): string {
   return "bg-red-500/10"
 }
 
-export function MatchPairCard({ result, pairRel, submissionPrefs = {}, canViewRawSubmissions = false, onLock, onSplit, onRestore }: Props) {
+export function MatchPairCard({ result, pairRel, submissionPrefs = {}, canViewRawSubmissions = false, onLock, onSplit, onRestore, displayNumber, conflictMessages = [] }: Props) {
   const { id, total_score, rank, status, best_slot, score_breakdown } = result
   const badge = STATUS_STYLES[status] ?? STATUS_STYLES.draft
   const aId = result.member_a?.id
@@ -64,14 +66,21 @@ export function MatchPairCard({ result, pairRel, submissionPrefs = {}, canViewRa
     <div className="rounded-xl bg-card ring-1 ring-foreground/10 divide-y divide-border">
       {/* Header: rank + status */}
       <div className="flex items-center justify-between px-4 py-2.5">
-        <span className="text-sm font-semibold">#{rank}</span>
+        <span className="text-sm font-semibold">#{displayNumber ?? rank}</span>
         <div className="flex items-center gap-2">
+          {conflictMessages.length > 0 && <Badge variant="outline" className="border-amber-400 text-amber-800">重复成员</Badge>}
           {gameType && <Badge variant="outline" className="text-xs">{gameType}</Badge>}
           <span className={cn("rounded-full px-2 py-0.5 text-xs font-medium", badge.className)}>
             {badge.label}
           </span>
         </div>
       </div>
+
+      {conflictMessages.length > 0 && (
+        <div className="space-y-1 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          {conflictMessages.map(({ memberId, text }) => <p key={memberId}>{text}</p>)}
+        </div>
+      )}
 
       {/* Member pair/group with popover */}
       <div className="px-4 py-3 space-y-1.5">

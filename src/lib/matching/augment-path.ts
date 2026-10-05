@@ -49,7 +49,8 @@ export function augmentPaths(
         if (pDirect.length > 0) {
           const bestForP = pDirect.sort((a, b) => b.score.totalScore - a.score.totalScore)[0]
           const xi = bestForP.i === pi ? bestForP.j : bestForP.i
-          result.splice(pairIdx, 1); matched.delete(pi)
+          // Both original members are rematched, so neither becomes available.
+          result.splice(pairIdx, 1)
           matched.add(ui); result.push(opt)
           matched.add(xi); result.push(bestForP)
           found = true; rescued = true; break
@@ -99,7 +100,7 @@ function tryLayer2Augment(
 
       const [first, second] = pairIdx > qPairIdx ? [pairIdx, qPairIdx] : [qPairIdx, pairIdx]
       result.splice(first, 1); result.splice(second, 1)
-      matched.delete(pi); matched.delete(ri)
+      // The original four members remain occupied by the replacement pairs.
 
       matched.add(ui); result.push(opt)
       result.push(pOpt)

@@ -14,7 +14,8 @@ vi.mock("@/lib/matching/session-summary-sync", () => ({
   syncSessionSummary: mocks.syncSessionSummary,
 }))
 
-import { confirmSession, deleteSession, unpublishSession } from "./actions"
+import { confirmSession, deleteSession, restorePair, unpublishSession } from "./actions"
+import type { MatchMemberResult } from "@/lib/matching/member-conflicts"
 
 type DbError = { message: string } | null
 type UpdateResponse = {
@@ -25,18 +26,25 @@ type UpdateResponse = {
 function queryChain(response: UpdateResponse) {
   const chain: {
     eq: ReturnType<typeof vi.fn>
+    neq: ReturnType<typeof vi.fn>
     in: ReturnType<typeof vi.fn>
     select: ReturnType<typeof vi.fn>
+    single: ReturnType<typeof vi.fn>
+    maybeSingle: ReturnType<typeof vi.fn>
     then: Promise<UpdateResponse>["then"]
   } = {
     eq: vi.fn(),
+    neq: vi.fn(),
     in: vi.fn(),
     select: vi.fn(),
+    single: vi.fn(),
+    maybeSingle: vi.fn().mockResolvedValue({ data: response.data?.[0] ?? null, error: response.error }),
     then: Promise.resolve(response).then.bind(Promise.resolve(response)),
   }
   chain.eq.mockReturnValue(chain)
+  chain.neq.mockReturnValue(chain)
   chain.in.mockReturnValue(chain)
-  chain.select.mockResolvedValue(response)
+  chain.select.mockReturnValue(chain)
   return chain
 }
 
@@ -45,6 +53,9 @@ function createDb(options: {
   sessionUpdates?: UpdateResponse[]
   resultUpdate?: UpdateResponse
   roundUpdate?: UpdateResponse
+  activeResults?: MatchMemberResult[] | null
+  activeResultsError?: DbError
+  resultToRestore?: MatchMemberResult & { session_id: string }
 }) {
   const sessionUpdateResponses = [...(options.sessionUpdates ?? [])]
   const sessionUpdate = vi.fn(() => {
@@ -73,7 +84,17 @@ function createDb(options: {
         update: sessionUpdate,
       }
     }
-    if (table === "match_results") return { update: resultUpdate }
+    if (table === "match_results") return {
+      update: resultUpdate,
+      select: vi.fn(() => {
+        const chain = queryChain({
+          data: options.activeResults === undefined ? [] : options.activeResults,
+          error: options.activeResultsError ?? null,
+        })
+        chain.single.mockResolvedValue({ data: options.resultToRestore ?? null, error: null })
+        return chain
+      }),
+    }
     if (table === "match_rounds") return { update: roundUpdate }
     throw new Error(`Unexpected table: ${table}`)
   })
@@ -188,5 +209,83 @@ describe("matching session compensation consistency", () => {
       status: "confirmed",
       audit_reason: `失败补偿：${reason}`,
     })
+  })
+})
+
+describe("matching member conflict guards", () => {
+  const cancelled = {
+    id: "cancelled-id", status: "cancelled", session_id: "session-id",
+    member_a_id: "A", member_b_id: "B",
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.requireAdmin.mockResolvedValue({ id: "admin-id", role: "super_admin" })
+  })
+
+  it.each([
+    { id: "other", status: "draft", member_a_id: "C", member_b_id: "A" },
+    { id: "other", status: "locked", member_a_id: "C", group_members: ["C", "D", "A"] },
+  ])("blocks publishing and restoring a member already in $id", async (other) => {
+    const { db, sessionUpdate, resultUpdate } = createDb({
+      sessionStatus: "draft",
+      activeResults: [{ ...cancelled, id: "active", status: "draft" }, other],
+      resultToRestore: cancelled,
+    })
+    mocks.createClient.mockResolvedValue(db)
+    await expect(confirmSession("session-id", reason)).resolves.toEqual({
+      error: "存在重复分配的成员，请先处理冲突配对后再发布",
+    })
+
+    const restoringDb = createDb({ sessionStatus: "draft", activeResults: [other], resultToRestore: cancelled })
+    mocks.createClient.mockResolvedValue(restoringDb.db)
+    await expect(restorePair(cancelled.id, reason)).resolves.toEqual({
+      error: "该配对有成员已在其他有效配对或多人组中，请先拆分冲突配对",
+    })
+    expect(sessionUpdate).not.toHaveBeenCalled()
+    expect(resultUpdate).not.toHaveBeenCalled()
+    expect(restoringDb.resultUpdate).not.toHaveBeenCalled()
+    expect(mocks.syncSessionSummary).not.toHaveBeenCalled()
+  })
+
+  it.each([{ message: "lookup failed" }, null])("stops before writes if occupancy is unavailable (%s)", async (error) => {
+    const { db, sessionUpdate, resultUpdate } = createDb({
+      sessionStatus: "draft", activeResults: null, activeResultsError: error, resultToRestore: cancelled,
+    })
+    mocks.createClient.mockResolvedValue(db)
+    await expect(confirmSession("session-id", reason)).resolves.toEqual({ error: "无法检查成员当前配对，请稍后重试" })
+    await expect(restorePair(cancelled.id, reason)).resolves.toEqual({ error: "无法检查成员当前配对，请稍后重试" })
+    expect(sessionUpdate).not.toHaveBeenCalled()
+    expect(resultUpdate).not.toHaveBeenCalled()
+  })
+
+  it("allows publishing a group whose representative also occurs in its member list", async () => {
+    const { db, sessionUpdate } = createDb({
+      sessionStatus: "draft",
+      activeResults: [{ id: "group", status: "draft", member_a_id: "A", group_members: ["A", "B", "C"] }],
+      sessionUpdates: [{ data: [{ id: "session-id" }], error: null }],
+    })
+    mocks.createClient.mockResolvedValue(db)
+    await expect(confirmSession("session-id", reason)).resolves.toEqual({ success: true })
+    expect(sessionUpdate).toHaveBeenCalledWith({ status: "confirmed", audit_reason: reason })
+  })
+
+  it("restores an unoccupied pair and refreshes its summary", async () => {
+    const { db, resultUpdate } = createDb({
+      sessionStatus: "draft", resultToRestore: cancelled,
+      activeResults: [{ id: "other", status: "draft", member_a_id: "C", member_b_id: "D" }],
+      resultUpdate: { data: [{ id: cancelled.id }], error: null },
+    })
+    mocks.createClient.mockResolvedValue(db)
+    await expect(restorePair(cancelled.id, reason)).resolves.toEqual({ success: true })
+    expect(resultUpdate).toHaveBeenCalledWith({ status: "draft", locked_by: null, locked_at: null, audit_reason: reason })
+    expect(mocks.syncSessionSummary).toHaveBeenCalledWith(db, "session-id", reason)
+  })
+
+  it("does not report restoration if the cancelled status changed before the write", async () => {
+    const { db } = createDb({ sessionStatus: "draft", resultToRestore: cancelled, resultUpdate: { data: [], error: null } })
+    mocks.createClient.mockResolvedValue(db)
+    await expect(restorePair(cancelled.id, reason)).resolves.toEqual({ error: "配对状态已变化，请刷新后重试" })
+    expect(mocks.syncSessionSummary).not.toHaveBeenCalled()
   })
 })

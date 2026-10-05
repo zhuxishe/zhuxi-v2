@@ -272,7 +272,7 @@ export async function manualPair(
 
   // ── 防重复校验 ──
   for (const mId of memberIds) {
-    const { data: existing } = await supabase
+    const { data: existing, error: existingError } = await supabase
       .from("match_results")
       .select("id")
       .eq("session_id", sessionId)
@@ -280,11 +280,12 @@ export async function manualPair(
       .or(`member_a_id.eq.${mId},member_b_id.eq.${mId}`)
       .limit(1)
 
+    if (existingError || !existing) return { error: "无法检查成员当前配对，请稍后重试" }
     if (existing && existing.length > 0) {
       return { error: `成员已在此次匹配中有活跃配对，请先拆分旧配对` }
     }
 
-    const { data: existingGroup } = await supabase
+    const { data: existingGroup, error: existingGroupError } = await supabase
       .from("match_results")
       .select("id")
       .eq("session_id", sessionId)
@@ -292,6 +293,7 @@ export async function manualPair(
       .contains("group_members", [mId])
       .limit(1)
 
+    if (existingGroupError || !existingGroup) return { error: "无法检查成员当前配对，请稍后重试" }
     if (existingGroup && existingGroup.length > 0) {
       return { error: `成员已在多人组中，请先拆分旧配对` }
     }

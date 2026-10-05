@@ -5,9 +5,10 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
+import { findMemberConflicts, getMatchMemberIds } from "@/lib/matching/member-conflicts"
 
 type WritableSession = { status: string; round_id: string | null }
-type WritableResult = { status: string; session_id: string }
+type WritableResult = { status: string; session_id: string; member_a_id: string; member_b_id: string | null; group_members: string[] | null }
 type SessionGuard = { session: WritableSession } | { error: string }
 type ResultGuard = { result: WritableResult; session: WritableSession } | { error: string }
 type OperationalRpcClient = {
@@ -52,7 +53,7 @@ async function getWritableResultSession(
 ): Promise<ResultGuard> {
   const { data: result } = await supabase
     .from("match_results")
-    .select("status, session_id")
+    .select("status, session_id, member_a_id, member_b_id, group_members")
     .eq("id", resultId)
     .single()
 
@@ -60,6 +61,16 @@ async function getWritableResultSession(
   const guarded = await getWritableSession(supabase, result.session_id)
   if ("error" in guarded) return guarded
   return { result, session: guarded.session }
+}
+
+async function getActiveResults(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  sessionId: string,
+) {
+  return supabase.from("match_results")
+    .select("id, status, member_a_id, member_b_id, group_members")
+    .eq("session_id", sessionId)
+    .neq("status", "cancelled")
 }
 
 export async function lockPair(resultId: string, rawReason: string) {
@@ -161,7 +172,14 @@ export async function restorePair(resultId: string, rawReason: string) {
     return { error: `当前状态为「${matchingStatusLabel(guarded.result.status)}」，只有「已取消」状态才能恢复` }
   }
 
-  const { error } = await supabase
+  const { data: activeResults, error: occupancyError } = await getActiveResults(supabase, guarded.result.session_id)
+  if (occupancyError || !activeResults) return { error: "无法检查成员当前配对，请稍后重试" }
+  const restoringMembers = new Set(getMatchMemberIds(guarded.result))
+  if (activeResults.some((row) => getMatchMemberIds(row).some((id) => restoringMembers.has(id)))) {
+    return { error: "该配对有成员已在其他有效配对或多人组中，请先拆分冲突配对" }
+  }
+
+  const { data: restored, error } = await supabase
     .from("match_results")
     .update({
       status: "draft",
@@ -170,11 +188,15 @@ export async function restorePair(resultId: string, rawReason: string) {
       audit_reason: reasonResult.reason,
     })
     .eq("id", resultId)
+    .eq("status", "cancelled")
+    .select("id")
+    .maybeSingle()
 
   if (error) {
     console.error("[restorePair]", error)
     return { error: "操作失败" }
   }
+  if (!restored) return { error: "配对状态已变化，请刷新后重试" }
   await syncSessionSummary(supabase, guarded.result.session_id, reasonResult.reason)
   revalidatePath("/admin/matching", "layout")
   return { success: true }
@@ -234,6 +256,12 @@ export async function confirmSession(sessionId: string, rawReason: string) {
   const supabase = await createClient()
   const guarded = await getWritableSession(supabase, sessionId)
   if ("error" in guarded) return { error: guarded.error }
+
+  const { data: activeResults, error: occupancyError } = await getActiveResults(supabase, sessionId)
+  if (occupancyError || !activeResults) return { error: "无法检查成员当前配对，请稍后重试" }
+  if (findMemberConflicts(activeResults).size > 0) {
+    return { error: "存在重复分配的成员，请先处理冲突配对后再发布" }
+  }
 
   // 原子条件更新：只有 draft 状态才会被更新（防止并发重复确认）
   const { data: updated, error: sErr } = await supabase

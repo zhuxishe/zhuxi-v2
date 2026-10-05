@@ -13,6 +13,7 @@ import { RematchPool } from "./RematchPool"
 import { ManualPairDialog } from "./ManualPairDialog"
 import { lockPair, unlockPair, splitPair, restorePair, confirmSession, deleteSession, unpublishSession } from "@/app/admin/matching/[id]/actions"
 import { buildSessionSummary } from "@/lib/matching/session-summary"
+import { findMemberConflicts } from "@/lib/matching/member-conflicts"
 import type { EnrichedMatchResult, PairRelationship, EnrichedMember, SubmissionPrefInfo } from "./match-detail-types"
 import type { PoolMember } from "@/lib/queries/pool-members"
 import type { DiagnosticItem } from "./UnmatchedDiagnostics"
@@ -83,6 +84,27 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
     () => buildSessionSummary(session.total_candidates, results),
     [results, session.total_candidates],
   )
+  const { conflictCount, conflictMessages, groupNumbers } = useMemo(() => {
+    // Use the full result list, so search filters cannot hide a conflict.
+    const rows = results.map((result) => ({
+      ...result,
+      member_a_id: result.member_a?.id,
+      member_b_id: result.member_b?.id,
+    }))
+    const groups = new Map(rows.map((row, index) => [row.id, index + 1]))
+    const conflicts = findMemberConflicts(rows)
+    const messages = new Map<string, { memberId: string; text: string }[]>()
+    for (const [memberId, matches] of conflicts) {
+      const member = matches.flatMap((row) => [row.member_a, row.member_b, ...(row.group_member_details ?? [])])
+        .find((candidate) => candidate?.id === memberId)
+      const name = member?.member_identity?.full_name || member?.member_identity?.nickname || "未知成员"
+      for (const match of matches) {
+        const otherGroups = matches.filter((row) => row.id !== match.id).map((row) => groups.get(row.id)).join("、")
+        messages.set(match.id, [...(messages.get(match.id) ?? []), { memberId, text: `${name} 同时出现在第 ${otherGroups} 组` }])
+      }
+    }
+    return { conflictCount: conflicts.size, conflictMessages: messages, groupNumbers: groups }
+  }, [results])
 
   // 搜索过滤（只过滤活跃配对）
   const filteredActive = useMemo(() => {
@@ -119,6 +141,8 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
     <MatchPairCard
       key={r.id}
       result={r}
+      displayNumber={groupNumbers.get(r.id)}
+      conflictMessages={conflictMessages.get(r.id)}
       pairRel={findRel(r.member_a?.id, r.member_b?.id)}
       submissionPrefs={submissionPrefs}
       canViewRawSubmissions={canViewRawSubmissions}
@@ -204,7 +228,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             }} disabled={isPending || !auditReasonValid}>
               <RefreshCw className="size-3.5" /> 重新匹配
             </Button>
-            <Button size="sm" onClick={handleConfirm} disabled={isPending || !auditReasonValid}>
+            <Button size="sm" onClick={handleConfirm} disabled={isPending || !auditReasonValid || conflictCount > 0}>
               <CheckCircle className="size-3.5" /> 确认发布
             </Button>
           </>
@@ -225,6 +249,14 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {conflictCount > 0 && (
+        <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+          发现 {conflictCount} 位成员被重复分配，请核对下方标记的配对。
+          {!readOnly && (session.status === "confirmed"
+            ? "请撤回发布后处理冲突配对。"
+            : "可使用「拆散」处理冲突，处理完成后才能发布。")}
+        </div>
+      )}
 
       {!canViewRawSubmissions && session.round_id != null && (
         <p className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">

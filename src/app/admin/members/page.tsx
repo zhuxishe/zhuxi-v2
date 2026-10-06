@@ -7,6 +7,8 @@ import { Pagination } from "@/components/shared/Pagination"
 import { parseMemberDirectoryPage } from "@/components/admin/member-center-utils"
 import { normalizeCurrentMemberDirectoryFilters } from "@/lib/member-master/current-member-directory"
 import { normalizeMemberDirectoryControls } from "@/lib/member-master/directory-controls"
+import { fetchDuplicateMemberNames } from "@/lib/queries/duplicate-member-names"
+import { DuplicateMemberNames } from "@/components/admin/DuplicateMemberNames"
 
 interface Props {
   searchParams: Promise<{
@@ -30,7 +32,7 @@ export default async function AdminMembersPage({ searchParams }: Props) {
   const page = parseMemberDirectoryPage(params.page)
   const filters = normalizeCurrentMemberDirectoryFilters(params)
   const controls = normalizeMemberDirectoryControls(params, admin.role === "super_admin")
-  const directory = await fetchMemberDirectory({
+  const [directory, duplicateNames] = await Promise.all([fetchMemberDirectory({
     ...controls,
     status: filters.status,
     accountStatus: filters.accountStatus,
@@ -39,7 +41,7 @@ export default async function AdminMembersPage({ searchParams }: Props) {
     search: params.search,
     page,
     pageSize: PAGE_SIZE,
-  })
+  }), fetchDuplicateMemberNames()])
 
   return (
     <div>
@@ -70,6 +72,7 @@ export default async function AdminMembersPage({ searchParams }: Props) {
           />
         </div>
         <Pagination total={directory.total} page={directory.page} pageSize={directory.pageSize} />
+        <DuplicateMemberNames groups={duplicateNames} />
       </div>
     </div>
   )

@@ -54,7 +54,7 @@ export function CancelRegistrationButton({ roundId, roundName, expectedUpdatedAt
   return <>
     <Button type="button" variant="destructive" disabled={disabled || busy} aria-haspopup="dialog" aria-expanded={open}
       onClick={() => { setError(null); setOpen(true) }}
-      className="h-auto min-h-11 whitespace-normal rounded-xl border-destructive/20 px-4 py-2.5 text-sm font-medium leading-5 text-[color-mix(in_oklab,var(--destructive),var(--foreground)_20%)] hover:border-destructive/30">
+      className="h-auto min-h-11 whitespace-normal rounded-xl border-destructive/20 px-4 py-2.5 text-sm font-medium leading-5 text-[color-mix(in_oklab,var(--destructive),var(--foreground)_20%)] hover:border-destructive/30 hover:bg-destructive/15">
       {t("cancelRegistration")}
     </Button>
     <Dialog open={open} onOpenChange={(value) => { if (!inFlight.current) setOpen(value) }}>

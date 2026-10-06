@@ -143,6 +143,19 @@ await bootstrap(`
   GRANT EXECUTE ON FUNCTION public.save_my_onboarding_step(smallint,jsonb), public.submit_my_onboarding(), public.admin_update_member_section(uuid,text,jsonb,text,timestamptz), public.admin_restore_member_event(bigint,text), public.admin_anonymize_member(uuid,text) TO authenticated;
 `)
 
+// Model current Production SELECT grants together with its real read policies.
+// The anon grant is deliberately retained: RLS must still return no identity rows.
+await bootstrap(`
+  GRANT SELECT ON public.member_identity TO anon;
+  DROP POLICY admin_read_identity ON public.member_identity;
+  DROP POLICY admin_read_members ON public.members;
+  GRANT EXECUTE ON FUNCTION private.member_master_is_super_admin() TO authenticated;
+`)
+for (const name of ['member_master_members_admin_or_active_self_read', 'member_master_identity_admin_or_active_self_read']) {
+  const start = master.indexOf('CREATE POLICY ' + name)
+  await bootstrap(master.slice(start, master.indexOf(';', start) + 1))
+}
+
 const uuid = (kind, n) => `${kind}0000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const user = n => uuid(1, n)
 const member = n => uuid(2, n)
@@ -188,6 +201,20 @@ await check('additive migration preserves every existing identity field and upda
   const actual = (await db.query("SELECT to_jsonb(i) - ARRAY['birth_date','legacy_age_range'] AS identity FROM public.member_identity i ORDER BY member_id")).rows
   assert.deepEqual(actual, originalRows)
   assert.deepEqual((await identityOf(1)), { birth_date: null, age_range: '23-25', legacy_age_range: null, school_name: null, degree_level: null, full_name: 'Legacy incomplete' })
+})
+await check('RLS blocks anon reads despite SELECT grant and isolates authenticated identities', async () => {
+  const anonRows = await asUser(null, () => db.query('SELECT member_id FROM public.member_identity'), 'anon')
+  assert.deepEqual(anonRows.rows, [])
+  const ownRows = await asUser(1, () => db.query('SELECT member_id FROM public.member_identity ORDER BY member_id'))
+  assert.deepEqual(ownRows.rows, [{ member_id: member(1) }])
+  const unauthenticatedRows = await asUser(null, () => db.query('SELECT member_id FROM public.member_identity'))
+  assert.deepEqual(unauthenticatedRows.rows, [])
+  await db.query("UPDATE public.members SET account_status='suspended' WHERE id=$1", [member(1)])
+  const suspendedRows = await asUser(1, () => db.query('SELECT member_id FROM public.member_identity'))
+  assert.deepEqual(suspendedRows.rows, [])
+  await db.query("UPDATE public.members SET account_status='active' WHERE id=$1", [member(1)])
+  const adminRows = await asUser(900, () => db.query('SELECT member_id FROM public.member_identity'))
+  assert.equal(adminRows.rows.length, 3)
 })
 await check('age boundaries are exact and leap birthday changes on March 1', async () => {
   for (const [birthday, today, expected] of [

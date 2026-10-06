@@ -31,9 +31,42 @@ BEGIN
     RAISE EXCEPTION 'BIRTH_DATE_POSTFLIGHT_TRIGGER';
   END IF;
   IF NOT (SELECT relrowsecurity FROM pg_class WHERE oid = 'public.member_identity'::regclass)
-     OR has_table_privilege('anon', 'public.member_identity', 'SELECT,INSERT,UPDATE,DELETE')
+     OR has_table_privilege('anon', 'public.member_identity', 'INSERT,UPDATE,DELETE')
      OR has_table_privilege('authenticated', 'public.member_identity', 'INSERT,UPDATE,DELETE') THEN
     RAISE EXCEPTION 'BIRTH_DATE_POSTFLIGHT_TABLE_ACCESS';
+  END IF;
+  -- SELECT grants alone do not expose rows: Production retains the grant but
+  -- permits identity reads only through the authenticated admin/active-self policy.
+  -- Reject bypass roles, ownership, inherited authenticated access for anon, and
+  -- any additional permissive SELECT policy that could widen this boundary.
+  IF EXISTS (
+    SELECT 1 FROM pg_roles role
+    WHERE role.rolname IN ('anon', 'authenticated')
+      AND (role.rolsuper OR role.rolbypassrls OR role.oid = (
+        SELECT relowner FROM pg_class WHERE oid = 'public.member_identity'::regclass
+      ))
+  ) OR pg_has_role('anon', 'authenticated', 'MEMBER')
+     OR NOT EXISTS (
+       SELECT 1 FROM pg_policy
+       WHERE polrelid = 'public.member_identity'::regclass AND polcmd = 'r'
+         AND polpermissive AND polname = 'member_master_identity_admin_or_active_self_read'
+         AND polroles = ARRAY['authenticated'::regrole::oid]
+         AND regexp_replace(replace(pg_get_expr(polqual, polrelid), 'public.', ''), '[[:space:]]', '', 'g')
+           = regexp_replace($policy$
+               ((SELECT is_admin() AS is_admin) OR (member_id IN (
+                 SELECT member.id FROM members member
+                 WHERE ((member.user_id = (SELECT auth.uid() AS uid))
+                   AND (member.account_status = 'active'::text))
+               )))
+             $policy$, '[[:space:]]', '', 'g')
+     ) OR EXISTS (
+       SELECT 1 FROM pg_policy
+       WHERE polrelid = 'public.member_identity'::regclass
+         AND polcmd IN ('r', '*') AND polpermissive
+         AND (polname <> 'member_master_identity_admin_or_active_self_read'
+           OR polroles <> ARRAY['authenticated'::regrole::oid])
+     ) THEN
+    RAISE EXCEPTION 'BIRTH_DATE_POSTFLIGHT_READ_POLICY';
   END IF;
   FOREACH v_function IN ARRAY ARRAY[
     'private.member_birth_date_from_payload(jsonb)'::regprocedure,

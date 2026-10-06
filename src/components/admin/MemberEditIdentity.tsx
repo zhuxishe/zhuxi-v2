@@ -127,7 +127,7 @@ export function MemberEditIdentity({ data, onChange }: Props) {
           <input id="member-birth-date" type="date" value={data.birth_date ?? ""} min="1900-01-01" max={getTodayInTokyo()}
             onChange={(event) => onChange({ ...data, birth_date: event.target.value || null })}
             className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
-          <p className="mt-1 text-xs text-muted-foreground">旧资料可暂不补填；填写后自动计算年龄段，并保留原年龄段。</p>
+          <p className="mt-1 text-xs text-muted-foreground">填写生日后自动计算年龄段；未填写时沿用已有年龄段。</p>
         </td>
       </tr>
       {data.birth_date ? (
@@ -136,12 +136,6 @@ export function MemberEditIdentity({ data, onChange }: Props) {
           <td className="py-2.5 text-sm">{calculatedAgeRange ?? "请填写有效生日"}<span className="ml-2 text-xs text-muted-foreground">根据生日自动计算</span></td>
         </tr>
       ) : <SelectRow label="年龄段" name="age_range" options={ageOptions} data={data} onChange={onChange} />}
-      {data.legacy_age_range ? (
-        <tr className="border-b border-border/50">
-          <td className="w-24 whitespace-nowrap py-2.5 pr-4 text-xs text-muted-foreground">原年龄段</td>
-          <td className="py-2.5 text-sm">{data.legacy_age_range}</td>
-        </tr>
-      ) : null}
       <InputRow label="国籍" name="nationality" data={data} onChange={onChange} />
       <InputRow label="所在地" name="current_city" data={data} onChange={onChange} />
       <InputRow label="学校" name="school_name" data={data} onChange={onChange} />

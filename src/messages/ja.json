@@ -428,7 +428,6 @@
         "gender": "性別",
         "age_range": "年齢層",
         "birth_date": "生年月日",
-        "legacy_age_range": "以前の年齢層",
         "nationality": "国籍・地域",
         "current_city": "居住地域",
         "school_name": "学校",

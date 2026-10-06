@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button"
 import type { AdminRole, Member360, MemberAuditEvent, MemberAuditPage, MemberCenterRecord } from "@/types"
 import { memberApprovalBlockReason } from "@/lib/member-master/approval"
+import { ageRangeFromBirthDate } from "@/lib/member-master/birth-date"
 import {
   MemberAccountAdvancedEditor,
   MemberLegacyAdvancedEditor,
@@ -43,6 +44,13 @@ interface Props {
   activeTab: Member360Tab
   adminRole: AdminRole
   auditPage: MemberAuditPage | null
+}
+
+function identityRecord(record: MemberCenterRecord | null): MemberCenterRecord | null {
+  if (!record) return null
+  return Object.fromEntries(Object.entries(record)
+    .filter(([key]) => key !== "legacy_age_range")
+    .map(([key, value]) => [key, key === "age_range" ? ageRangeFromBirthDate(record.birth_date) ?? value : value]))
 }
 
 function RecordPanel({ title, record, description }: {
@@ -313,7 +321,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
       {activeTab === "profile" ? (
         <div className="space-y-4">
           <div className="grid gap-4 xl:grid-cols-2">
-            <RecordPanel title="基本与学业信息" record={data.identity} />
+            <RecordPanel title="基本与学业信息" record={identityRecord(data.identity)} />
             <RecordPanel title="语言信息" record={data.language} />
             <RecordPanel title="兴趣与活动偏好" record={data.interests} />
             <RecordPanel title="性格自评" record={data.personality} />

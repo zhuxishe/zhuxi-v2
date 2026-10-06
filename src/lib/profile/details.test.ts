@@ -18,10 +18,10 @@ const empty: PlayerProfileDetails = { identity: null, language: null, interests:
 
 describe("saved player profile details", () => {
   it("covers every player registration, supplementary and self-assessment field", () => {
-    expect(REGISTRATION_FIELDS.filter((field) => field !== "legacy_age_range").sort()).toEqual(Object.keys(EMPTY_FORM).sort())
+    expect([...REGISTRATION_FIELDS].sort()).toEqual(Object.keys(EMPTY_FORM).sort())
     expect([...SUPPLEMENTARY_FIELDS].sort()).toEqual(Object.keys(EMPTY_SUPPLEMENTARY).sort())
     expect([...PERSONALITY_FIELDS].sort()).toEqual(Object.keys(EMPTY_PERSONALITY).sort())
-    expect(REGISTRATION_READONLY_FIELDS).toHaveLength(12)
+    expect(REGISTRATION_READONLY_FIELDS).toHaveLength(11)
     expect(REGISTRATION_READONLY_FIELDS).not.toContain("full_name")
     for (const section of buildProfileDetailSections(empty, "zh", t)) {
       for (const row of section.rows) {
@@ -31,7 +31,7 @@ describe("saved player profile details", () => {
     }
   })
 
-  it("derives current age from birthday while preserving original legacy age data", () => {
+  it("shows one age range derived from birthday or the saved value when birthday is absent", () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-10-07T00:00:00Z"))
     try {
@@ -41,9 +41,11 @@ describe("saved player profile details", () => {
       const rows = sections[0].rows
       expect(rows.find((row) => row.key === "birth_date")?.value).toBe("2005-10-07")
       expect(rows.find((row) => row.key === "age_range")?.value).toBe("21-23")
-      expect(rows.find((row) => row.key === "legacy_age_range")?.value).toBe("20-24")
+      expect(rows.filter((row) => row.key === "age_range")).toHaveLength(1)
+      expect(rows.some((row) => row.key === "legacy_age_range")).toBe(false)
       const legacy = buildProfileDetailSections({ ...empty, identity: { age_range: "20-24" } }, "zh", t)[0].rows
       expect(legacy.find((row) => row.key === "age_range")?.value).toBe("20-24")
+      expect(legacy.some((row) => row.key === "legacy_age_range")).toBe(false)
       expect(legacy.find((row) => row.key === "birth_date")?.missing).toBe(true)
     } finally {
       vi.useRealTimers()

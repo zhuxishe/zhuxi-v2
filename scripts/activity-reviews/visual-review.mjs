@@ -46,11 +46,11 @@ await build({
 function resolveExtension(path){for(const ext of ['.tsx','.ts','.json','/index.ts','/index.tsx']){try{readFileSync(path+ext);return ext}catch{}}throw Error('Cannot resolve '+path)}
 const css = await postcss([tailwind({base:root})]).process(readFileSync(resolve(source,'src/app/globals.css'),'utf8'),{from:resolve(root,'src/app/globals.css')})
 writeFileSync(resolve(dest,'style.css'),css.css)
-writeFileSync(resolve(dest,'index.html'),`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>活动互评界面验收</title><link rel="stylesheet" href="/style.css"><style>body{margin:0;font-family:Arial,"PingFang SC","Hiragino Sans GB",sans-serif}button,input,textarea,select{font:inherit}</style><div id="root"></div><script type="module" src="/bundle.js"></script></html>`)
+writeFileSync(resolve(dest,'index.html'),`<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>活动互评界面验收</title><link rel="stylesheet" href="/style.css">${existsSync(resolve(dest,'bundle.css'))?'<link rel="stylesheet" href="/bundle.css">':''}<style>body{margin:0;font-family:Arial,"PingFang SC","Hiragino Sans GB",sans-serif}button,input,textarea,select{font:inherit}</style><div id="root"></div><script type="module" src="/bundle.js"></script></html>`)
 http.createServer((req,res)=>{
   const path=new URL(req.url,'http://localhost').pathname
   if(path==='/favicon.ico'){res.writeHead(204);res.end();return}
-  const filename=path==='/bundle.js'?'bundle.js':path==='/style.css'?'style.css':'index.html'
+  const filename=path==='/bundle.js'?'bundle.js':path==='/bundle.css'?'bundle.css':path==='/style.css'?'style.css':'index.html'
   const file=path==='/logo.svg'?resolve(source,'public/logo.svg'):resolve(dest,filename)
   res.setHeader('Content-Type',path==='/logo.svg'?'image/svg+xml':filename.endsWith('.js')?'application/javascript':filename.endsWith('.css')?'text/css':'text/html')
   res.end(readFileSync(file))

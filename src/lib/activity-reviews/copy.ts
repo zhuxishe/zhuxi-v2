@@ -1,4 +1,8 @@
 const zh = {
+  confirm: "确定", onePointTitle: "确认 1.0 分评价", onePointSubmitTitle: "确认提交人工审查",
+  onePointConfirmDescription: "1.0分默认对方存在恶意行为，不适合社团健康发展行为，并自动进行举报。请问仍要提交1分的评价吗？",
+  onePointSubmitDescription: "提交1.0分评价或举报时候，将自动接入人工审查。为确保社团良性发展，您和对方或许只能保留一位成员继续在社团活动。请问仍要进行举报吗？",
+  onePointExistingReportHint: "你已举报这位玩家。请补充本次具体情况，评分和补充将一起提交人工审查，原举报内容会保留。", onePointCombinedSupplement: "保存评价并提交补充",
   title: "活动互评", back: "返回参与记录", entry: "评价本场玩家", viewEntry: "查看本场评价", continueEntry: "继续评价",
   intro: "只评价本场活动中实际交流过的玩家，不需要评价所有人。",
   privacy: "评分与评论仅本人和获授权的管理员可查看，不会向对方或其他玩家公开。",
@@ -22,6 +26,10 @@ const zh = {
 }
 
 const ja: typeof zh = {
+  confirm: "確認", onePointTitle: "1.0 点の評価を確認", onePointSubmitTitle: "管理者による確認への送信",
+  onePointConfirmDescription: "1.0 点は、相手に悪意ある行為やサークルの健全な発展にそぐわない行為があったことを意味し、自動的に通報の対象となります。それでも 1 点の評価を送信しますか？",
+  onePointSubmitDescription: "1.0 点の評価または通報を送信すると、管理者による確認の対象となります。サークルの健全な運営のため、あなたと相手のうち、どちらか一人だけが活動を継続できることがあります。それでも通報しますか？",
+  onePointExistingReportHint: "この参加者は通報済みです。今回の具体的な状況を補足してください。評価と補足を一緒に送信し、管理者が確認します。元の通報内容は保持されます。", onePointCombinedSupplement: "評価を保存して補足を送信",
   title: "イベントの相互評価", back: "参加記録に戻る", entry: "参加者を評価する", viewEntry: "評価を確認する", continueEntry: "評価を続ける",
   intro: "このイベントで実際に交流した方を評価してください。全員を評価する必要はありません。",
   privacy: "評価とコメントは、ご本人と権限を持つ管理者のみが確認できます。相手やほかの参加者には公開されません。",

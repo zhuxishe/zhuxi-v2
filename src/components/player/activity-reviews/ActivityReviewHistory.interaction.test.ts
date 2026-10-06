@@ -20,6 +20,11 @@ function findButton(node: ReactNode, label: string): NodeProps | undefined {
   if (!isValidElement<NodeProps>(node)) return
   return node.props.onClick && node.props.children === label ? node.props : findButton(node.props.children, label)
 }
+function textContent(node: ReactNode): string {
+  if (typeof node === "string") return node
+  if (Array.isArray(node)) return node.map(textContent).join("")
+  return isValidElement<NodeProps>(node) ? textContent(node.props.children) : ""
+}
 type HistoryProps = Parameters<typeof ActivityReviewHistory>[0]
 type EditorProps = Parameters<typeof ActivityReviewEditor>[0]
 const review = { id: "review", revieweeId: "off-page-member", score: 4.5, comment: "已保存的评论", version: 2, valid: true, updatedAt: "2026-10-10T12:00:00Z" }
@@ -87,6 +92,19 @@ describe("activity review history editing", () => {
     expect(findProps<EditorProps>(render(), ActivityReviewEditor)).toBeUndefined()
     expect(mocks.action).not.toHaveBeenCalled()
     expect(edit("修改举报").participant.report).toEqual(report)
+  })
+
+  it("keeps the historical review editor open after report-only submission and reports the actual result", () => {
+    const value = { ...context, ownReports: [] }
+    const opened = edit("修改评价", value)
+    opened.onSaved?.({ success: true, report })
+    const tree = render(value)
+    expect(editor(tree).mode).toBe("review")
+    expect(editor(tree).participant.review).toEqual(review)
+    expect(editor(tree).participant.report).toEqual(report)
+    expect(history(tree).reviews[0]).toEqual(review)
+    expect(textContent(tree)).toContain("举报已提交")
+    expect(textContent(tree)).not.toContain("评价已更新")
   })
 
   it("keeps report and review changes independent in both the history and the next editor", () => {

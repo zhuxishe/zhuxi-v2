@@ -120,7 +120,9 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
           canReview={historyTarget?.canReview ?? false} canReport={historyTarget?.canReport ?? false} locale={locale} action={action} mode={historySelection.kind} onBusyChange={setEditorBusy} onCancel={closeHistory}
           onSaved={(result) => {
             saveResult(historySelection.memberId, result)
-            setHistorySuccess(historySelection.kind === "review" ? copy.updated : historyParticipant.report?.status === "pending" ? copy.reportUpdated : copy.reportSupplementSaved)
+            setHistorySuccess(result.report ? !historyParticipant.report ? copy.reportSubmitted : historyParticipant.report.status === "pending" ? copy.reportUpdated : copy.reportSupplementSaved : copy.updated)
+            // A report-only save must leave an unsaved score/comment available.
+            if (historySelection.kind === "review" && !result.review && result.report) return
             setHistorySelection(null)
           }} />}
       </DialogContent>

@@ -318,6 +318,33 @@ try {
     assert.equal(editedAgain.report.created_at,editable.created_at)
   })
   editable=editedAgain.report
+  let onePointReview=await review(17,18,4.5,'一分流程前已保存的评分',0,5)
+  let onePointReport=await report(17,18,'一分流程前已提交的原始举报说明',0,5)
+  for(const [index,status] of ['pending','reviewing','resolved','dismissed'].entries()) {
+    if(status!=='pending') onePointReport=await rpc(10,'admin_resolve_round_peer_report',[onePointReport.id,status,'工作人员核实当前举报处理状态',onePointReport.version,'依据活动事实更新举报处理状态'])
+    const before=onePointReport
+    const detail='玩家确认一分评价时填写的新补充说明'+status
+    const args=[round(5),member(18),1,'确认一分并提交人工审查',onePointReview.version,before.category,detail,before.version,request(200+index)]
+    const saved=await rpc(17,'player_submit_round_peer_feedback',args)
+    await ok('one-point review and supplement atomically queue existing '+status+' report',async()=>{
+      assert.equal(saved.review.score,1);assert.equal(saved.review.version,onePointReview.version+1)
+      assert.equal(saved.report.id,before.id);assert.equal(saved.report.status,'pending');assert.equal(saved.report.version,before.version+1)
+      assert.equal(saved.report.category,before.category);assert.equal(saved.report.details,before.details);assert.equal(saved.report.created_at,before.created_at)
+      assert.deepEqual(saved.report.supplements.slice(0,-1),before.supplements);assert.equal(saved.report.supplements.at(-1).detail,detail)
+    })
+    await ok('one-point combined retry does not duplicate '+status+' supplement',async()=>{
+      const snapshot=await peerSnapshot()
+      assert.deepEqual(await rpc(17,'player_submit_round_peer_feedback',args),saved)
+      assert.equal(await peerSnapshot(),snapshot)
+    })
+    onePointReview=saved.review;onePointReport=saved.report
+  }
+  onePointReview=await review(17,18,3.5,'冲突前的评分必须完整保留',onePointReview.version,5)
+  const staleOnePointReportVersion=onePointReport.version
+  onePointReport=await rpc(10,'admin_resolve_round_peer_report',[onePointReport.id,'resolved','管理员在玩家确认提交前完成核查',onePointReport.version,'用于验证并发处理不会留下孤立一分'])
+  const beforeOnePointConflict=await peerSnapshot()
+  await no('one-point combined submission rejects a report moderated after confirmation',()=>rpc(17,'player_submit_round_peer_feedback',[round(5),member(18),1,'这条一分评价必须随举报失败回滚',onePointReview.version,onePointReport.category,'版本已变化时这份补充不能单独保存',staleOnePointReportVersion,request(204)]),'PEER_VERSION_CONFLICT')
+  await ok('report conflict rolls back one-point score, supplement and audit together',async()=>assert.equal(await peerSnapshot(),beforeOnePointConflict))
   await settings(5,true,3,-120,-60)
   await ok('expired history retains eligible names and reports while disabling rating edits',async()=>{
     for(const target of (await get(13,5)).history_targets){assert.equal(target.can_review,false);assert.equal(target.can_report,true);assert.ok(target.full_name)}

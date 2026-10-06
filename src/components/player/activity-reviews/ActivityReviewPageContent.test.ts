@@ -33,18 +33,20 @@ describe("event review page content", () => {
     expect(html).toContain("本场互评暂不可用")
   })
 
-  it("renders Japanese labels including half-point choices with no default selection", () => {
+  it("renders Japanese labels including half-point increments with no default selection", () => {
     const html = renderToStaticMarkup(createElement(ActivityReviewPageContent, { context, locale: "ja", initialSelectedMemberId: "a" }))
     expect(html).toContain("ニックネーム")
     expect(html).toContain("評価を保存")
     expect(html).toContain("0.5 点刻み")
-    expect(html.match(/type="radio"/g)).toHaveLength(9)
-    expect(html).not.toContain("checked=\"\"")
+    expect(html.match(/type="range"/g)).toHaveLength(1)
+    expect(html).toContain('step="0.5"')
+    expect(html).toContain('data-unselected="true"')
   })
 
-  it("uses exactly one checked radio for an existing half-point review", () => {
+  it("displays the exact saved half-point score on the slider", () => {
     const html = renderToStaticMarkup(createElement(ActivityReviewScorePicker, { value: 4.5, onChange: () => {}, copy: activityReviewCopy("zh") }))
-    expect(html.match(/checked=""/g)).toHaveLength(1)
+    expect(html.match(/type="range"/g)).toHaveLength(1)
+    expect(html).toContain('aria-valuetext="4.5 分"')
     expect(html).toContain('value="4.5"')
   })
 

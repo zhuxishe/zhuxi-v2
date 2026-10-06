@@ -71,6 +71,28 @@ describe("pending applications with the real Supabase request builder", () => {
     }
   })
 
+  it("counts current active directory members, including drafts, without closed or suspended accounts", async () => {
+    rows = [
+      base,
+      { ...base, id: "approved", status: "approved" },
+      { ...base, id: "rejected", status: "rejected" },
+      { ...base, id: "draft", profile_stage: "in_progress", onboarding_step: 1 },
+      { ...base, id: "blank", profile_stage: "not_started", onboarding_step: 0, member_identity: null },
+      { ...base, id: "inactive", status: "inactive" },
+      { ...base, id: "historical", record_scope: "historical", status: "approved" },
+      { ...base, id: "suspended", account_status: "suspended", status: "approved" },
+      { ...base, id: "closed", account_status: "closed", status: "approved" },
+      { ...base, id: "anonymized", account_status: "closed", status: "inactive", member_identity: null },
+      { ...base, id: "unbound", account_status: "unbound", status: "approved" },
+    ]
+
+    expect(await fetchDashboardStats()).toEqual({ total: 6, pending: 1, approved: 1, rejected: 1 })
+    for (const request of requests) {
+      expect(request.searchParams.get("record_scope")).toBe("eq.current")
+      expect(request.searchParams.get("account_status")).toBe("eq.active")
+    }
+  })
+
   it("returns only display data and a block reason while preserving the write version", async () => {
     rows = [{ ...base, member_identity: { ...base.member_identity, hobby_tags: [] } }]
     const item = (await fetchPendingApplications()).items[0]

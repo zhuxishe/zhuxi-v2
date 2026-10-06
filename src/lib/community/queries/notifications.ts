@@ -46,6 +46,7 @@ export const COMMUNITY_TRANSACTIONAL_NOTIFICATION_TYPES = [
 export const COMMUNITY_RESTRICTED_NOTIFICATION_TYPES = [
   ...COMMUNITY_SECURITY_NOTIFICATION_TYPES,
   ...COMMUNITY_TRANSACTIONAL_NOTIFICATION_TYPES,
+  "birthday_completion",
 ] as const
 
 export async function fetchCommunityNotifications(
@@ -193,6 +194,9 @@ export function resolveCommunityNotificationTarget(
   announcements: Map<string, { id: string; status: string; display_start_at: string | null; display_end_at: string | null }>,
   submittedRoundIds: Set<string> = new Set(),
 ): { href: string | null; unavailable: boolean } {
+  if (target.notificationType === "birthday_completion") {
+    return { href: "/app/profile/birthday", unavailable: false }
+  }
   if (COMMUNITY_TRANSACTIONAL_NOTIFICATION_TYPES.some((type) => type === target.notificationType)) {
     return target.roundId && submittedRoundIds.has(target.roundId)
       ? { href: participationRecordHref(target.roundId), unavailable: false }

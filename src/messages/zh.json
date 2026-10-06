@@ -398,6 +398,22 @@
       "saveFailed": "保存失败，请稍后重试",
       "unsavedConfirm": "尚有未保存的修改，确定离开吗？"
     },
+    "birthdayCompletion": {
+      "title": "补充生日信息",
+      "description": "请补充你的生日，保存后会自动更新个人资料中的年龄段。",
+      "confirmHint": "请确认日期准确后再保存。如需更正已保存的生日，请联系管理员。",
+      "birthday": "生日",
+      "ageRange": "年龄段",
+      "save": "确认并保存",
+      "saving": "正在保存…",
+      "completed": "生日已保存",
+      "completedHint": "生日与年龄段已同步到个人资料。",
+      "back": "返回个人资料",
+      "invalidDate": "请选择有效的出生日期，不能晚于今天。",
+      "alreadySet": "生日已经填写，正在刷新已保存的资料。",
+      "notEligible": "当前无需通过此入口补填生日，你可以返回个人资料查看已保存的信息。",
+      "saveFailed": "保存失败，请稍后重试。"
+    },
     "details": {
       "title": "已填写的资料",
       "hint": "展开查看各项已保存的信息。",

@@ -59,6 +59,7 @@ describe("community notification visibility after a permanent ban", () => {
       ...COMMUNITY_SECURITY_NOTIFICATION_TYPES,
       "registration_submitted",
       "matching_submitted",
+      "birthday_completion",
     ])
     expect(COMMUNITY_RESTRICTED_NOTIFICATION_TYPES).not.toContain("like")
     expect(COMMUNITY_RESTRICTED_NOTIFICATION_TYPES).not.toContain("announcement")
@@ -66,6 +67,13 @@ describe("community notification visibility after a permanent ban", () => {
 })
 
 describe("community notification targets", () => {
+  it("links birthday reminders to the independent completion form without a community target", () => {
+    expect(resolveCommunityNotificationTarget(
+      target({ notificationType: "birthday_completion" }),
+      new Map(), new Map(), new Map(),
+    )).toEqual({ href: "/app/profile/birthday", unavailable: false })
+  })
+
   it.each(["registration_submitted", "matching_submitted"])("links %s to the member's permanent record", (notificationType) => {
     expect(resolveCommunityNotificationTarget(
       target({ roundId: "closed-round", notificationType }),

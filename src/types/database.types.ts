@@ -3599,11 +3599,13 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      complete_my_birth_date: { Args: { p_birth_date: string }; Returns: Json }
       ensure_my_member_record: { Args: never; Returns: Json }
       get_community_member_profile_metrics: {
         Args: { p_profile_id: string }
         Returns: Json
       }
+      get_my_birthday_completion: { Args: never; Returns: Json }
       get_my_profile_summary: { Args: never; Returns: Json }
       is_admin: { Args: never; Returns: boolean }
       my_email: { Args: never; Returns: string }

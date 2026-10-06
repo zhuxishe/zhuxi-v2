@@ -115,7 +115,7 @@ describe("legacy admin member-read compatibility contract", () => {
     }
     const dashboard = source("src/lib/queries/admin.ts")
     expect(dashboard).toContain('.eq("record_scope", "current")')
-    expect(dashboard).toContain('.neq("account_status", "unbound")')
+    expect(dashboard).toContain('.eq("account_status", "active")')
   })
 
   it("uses safe service reads only after page/action administrator guards", () => {

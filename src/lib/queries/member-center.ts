@@ -461,7 +461,10 @@ export function memberCenterErrorMessage(error: unknown): string {
   if (message.includes("MEMBER_NOT_FOUND") || message.includes("MEMBER_MASTER_NOT_FOUND")) return "成员不存在或已被删除"
   if (message.includes("REASON_REQUIRED")) return "请填写本次修改原因"
   if (message.includes("MEMBER_NUMBER_TAKEN")) return "该会员编号已被其他成员使用"
-  if (message.includes("MEMBER_NUMBER_INVALID")) return "会员编号格式无效"
+  if (message.includes("MEMBER_NUMBER_INVALID")) return "会员编号格式应为 ZXS_001，数字至少 3 位"
+  if (message.includes("MEMBER_NUMBER_RESERVED")) return "该会员编号已为其他名单成员预留，请更换编号。"
+  if (message.includes("MEMBER_NUMBER_RETIRED")) return "该会员编号已停用，请使用其他编号"
+  if (message.includes("VERSION_CONFLICT")) return "资料已被其他管理员更新，请刷新后重试"
   if (message.includes("IDENTITY_REQUIRED_FIELDS_MISSING") || message.includes("IDENTITY_REQUIRED")) {
     return "首次建立基本信息时，请同时填写姓名、性别、年龄段、国籍和所在地"
   }

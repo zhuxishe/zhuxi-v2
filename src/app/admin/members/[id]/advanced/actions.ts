@@ -8,6 +8,7 @@ import {
   upsertLegacyMemberRecord,
 } from "@/lib/queries/member-center"
 import type { MemberCenterRecord } from "@/types"
+import { normalizeMemberNumber } from "@/lib/member-master/member-number"
 
 type AdvancedSection = "account" | "quiz" | "roles" | "workflow"
 
@@ -50,6 +51,13 @@ export async function updateAdvancedMemberSectionAction(input: {
     return { success: false, error: "提交内容包含该分区不允许修改的字段" }
   }
 
+  if (input.section === "account" && "member_number" in input.payload && input.payload.member_number !== null) {
+    if (typeof input.payload.member_number !== "string") return { success: false, error: "会员编号格式应为 ZXS_001，数字至少 3 位" }
+    const memberNumber = normalizeMemberNumber(input.payload.member_number)
+    if (!memberNumber) return { success: false, error: "会员编号格式应为 ZXS_001，数字至少 3 位" }
+    input = { ...input, payload: { ...input.payload, member_number: memberNumber } }
+  }
+
   try {
     await updateMemberSection({
       memberId: input.memberId,
@@ -59,6 +67,9 @@ export async function updateAdvancedMemberSectionAction(input: {
     })
     revalidatePath("/admin/members")
     revalidatePath(`/admin/members/${input.memberId}`)
+    if (input.section === "account") {
+      for (const path of ["/admin/community/members", "/app", "/app/profile", "/app/profile/edit"]) revalidatePath(path)
+    }
     return { success: true }
   } catch (error) {
     console.error(`[updateAdvancedMemberSectionAction:${input.section}]`, error)

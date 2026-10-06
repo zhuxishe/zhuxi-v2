@@ -78,6 +78,8 @@ export async function updateMemberStatus(memberId: string, status: string, rawRe
     revalidatePath("/admin")
     revalidatePath("/app")
     revalidatePath("/app/profile")
+    revalidatePath("/app/profile/edit")
+    revalidatePath("/admin/community/members")
     return { success: true }
   } catch (error) {
     console.error("[updateMemberStatus]", error)

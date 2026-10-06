@@ -109,6 +109,9 @@ export default async function PlayerHomePage() {
           {t(`greeting.${greetingPeriod()}`, { name: displayName })}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">{t("greeting.subtitle")}</p>
+        {profile.memberNumber ? (
+          <p className="mt-1 text-xs text-muted-foreground">{profileT("memberNumberValue", { number: profile.memberNumber })}</p>
+        ) : null}
       </header>
 
       <div className="mt-[10px]">

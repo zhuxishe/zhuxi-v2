@@ -297,7 +297,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
             <SummaryLink icon={History} title="审计" detail={data.audit ? `${data.audit.length}/${data.auditTotal} 条` : "审计数据暂不可用"} href={`/admin/members/${memberId}?tab=audit`} />
           </div>
           {!isAnonymized && !isHistoricalRecord ? <MemberStatusActions memberId={memberId} currentStatus={data.member.status} approvalBlockReason={memberApprovalBlockReason(data)} /> : null}
-          {canModifyHighRisk ? <MemberNumberEditor memberId={memberId} memberNumber={data.account?.memberNumber ?? null} canEdit /> : null}
+          {canModifyHighRisk ? <MemberNumberEditor key={`${data.member.updatedAt}:${data.account?.memberNumber ?? ""}`} memberId={memberId} memberNumber={data.account?.memberNumber ?? null} updatedAt={data.member.updatedAt} canEdit /> : null}
           {canModifyHighRisk ? <MemberAccountAdvancedEditor memberId={memberId} account={accountRecord(data, true) ?? {}} /> : null}
           {isSuperAdmin && !isHistoricalRecord ? (
             <MemberDeleteButton

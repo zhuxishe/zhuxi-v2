@@ -44,7 +44,7 @@ export async function approvePendingApplications(memberIds: string[], rawReason:
   }
   const approved = results.filter((result) => result.success)
   if (approved.length) {
-    for (const path of ["/admin", "/admin/members", "/admin/members/pending", "/app", "/app/profile"]) revalidatePath(path)
+    for (const path of ["/admin", "/admin/members", "/admin/members/pending", "/app", "/app/profile", "/app/profile/edit", "/admin/community/members"]) revalidatePath(path)
     for (const { id } of approved) {
       revalidatePath(`/admin/members/${id}`)
       revalidatePath(`/admin/members/${id}/interview`)

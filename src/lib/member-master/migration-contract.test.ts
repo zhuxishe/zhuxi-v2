@@ -508,8 +508,8 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(79)
-    expect(runbook).toContain("当前仓库共有 79 条 migration")
+    expect(migrationNames).toHaveLength(80)
+    expect(runbook).toContain("当前仓库共有 80 条 migration")
     expect(runbook).toContain("20260929142902_round_submission_notifications.sql")
     expect(runbook).toContain("20260929153531_registration_cancellation.sql")
     expect(runbook).toContain("20260929153645_registration_operation.sql")

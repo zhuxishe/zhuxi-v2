@@ -87,7 +87,9 @@ export async function restoreMemberAuditAction(input: {
 
   try {
     await restoreMemberEvent(input.eventId, reasonResult.reason)
-    revalidatePath(`/admin/members/${input.memberId}`)
+    for (const path of ["/admin/members", `/admin/members/${input.memberId}`, "/admin/community/members", "/app", "/app/profile", "/app/profile/edit"]) {
+      revalidatePath(path)
+    }
     return { success: true }
   } catch (error) {
     console.error("[restoreMemberAuditAction]", error)

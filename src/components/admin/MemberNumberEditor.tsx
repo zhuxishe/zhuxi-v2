@@ -4,32 +4,36 @@ import { type FormEvent, useState, useTransition } from "react"
 import { Hash, Save } from "lucide-react"
 import { updateMemberNumber } from "@/app/admin/members/[id]/member-number/actions"
 import { Button } from "@/components/ui/button"
+import { normalizeMemberNumber } from "@/lib/member-master/member-number"
 
 interface MemberNumberEditorProps {
   memberId: string
   memberNumber: string | null
+  updatedAt: string
   canEdit: boolean
 }
 
-export function MemberNumberEditor({ memberId, memberNumber, canEdit }: MemberNumberEditorProps) {
+export function MemberNumberEditor({ memberId, memberNumber, updatedAt, canEdit }: MemberNumberEditorProps) {
   const initialValue = memberNumber ?? ""
   const [value, setValue] = useState(initialValue)
   const [savedValue, setSavedValue] = useState(initialValue)
   const [reason, setReason] = useState("")
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    const normalized = value.trim()
-    if (!normalized || normalized === savedValue) return
+    const normalized = normalizeMemberNumber(value)
+    if (!normalized) {
+      setError("会员编号格式应为 ZXS_001，数字至少 3 位")
+      return
+    }
+    if (normalized === savedValue) return
     if (!window.confirm(`确认将会员编号修改为“${normalized}”吗？`)) return
 
     setError(null)
-    setMessage(null)
     startTransition(async () => {
-      const result = await updateMemberNumber(memberId, normalized, reason)
+      const result = await updateMemberNumber(memberId, normalized, reason, updatedAt)
       if (!result.success) {
         setError(result.error)
         return
@@ -37,7 +41,6 @@ export function MemberNumberEditor({ memberId, memberNumber, canEdit }: MemberNu
       setValue(result.memberNumber)
       setSavedValue(result.memberNumber)
       setReason("")
-      setMessage("会员编号已更新")
     })
   }
 
@@ -96,11 +99,11 @@ export function MemberNumberEditor({ memberId, memberNumber, canEdit }: MemberNu
         )}
       </div>
 
-      {(error || message) && (
-        <p role={error ? "alert" : "status"} className={`mt-3 rounded-lg px-3 py-2 text-sm ${error ? "bg-destructive/10 text-destructive" : "bg-primary/10 text-primary"}`}>
-          {error ?? message}
+      {error ? (
+        <p role="alert" className="mt-3 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">
+          {error}
         </p>
-      )}
+      ) : null}
     </section>
   )
 }

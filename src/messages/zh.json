@@ -746,7 +746,7 @@
     "notAnswered": "未填写",
     "earlierQuestion": "历史问题 {number}",
     "changedQuestion": "此回答已保存；原题目或选项已调整，暂无法完整显示。",
-    "registrationConfirmed": "你已提交报名，本期没有补充问题。",
+    "registrationConfirmed": "你已提交报名，若有疑问请随时联系我们。",
     "backToRecords": "返回参与记录",
     "submittedAt": "首次提交：{time}",
     "updatedAt": "最近修改：{time}",

@@ -52,8 +52,9 @@ export function CancelRegistrationButton({ roundId, roundName, expectedUpdatedAt
 
   if (done) return <p role="status" className="text-center text-sm text-muted-foreground">{t("status.cancelled")}</p>
   return <>
-    <Button type="button" variant="ghost" disabled={disabled || busy} onClick={() => { setError(null); setOpen(true) }}
-      className="min-h-11 rounded-xl px-5 text-sm font-medium text-muted-foreground hover:text-destructive">
+    <Button type="button" variant="destructive" disabled={disabled || busy} aria-haspopup="dialog" aria-expanded={open}
+      onClick={() => { setError(null); setOpen(true) }}
+      className="h-auto min-h-11 whitespace-normal rounded-xl border-destructive/20 px-4 py-2.5 text-sm font-medium leading-5 text-[color-mix(in_oklab,var(--destructive),var(--foreground)_20%)] hover:border-destructive/30">
       {t("cancelRegistration")}
     </Button>
     <Dialog open={open} onOpenChange={(value) => { if (!inFlight.current) setOpen(value) }}>

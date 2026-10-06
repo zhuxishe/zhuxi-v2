@@ -746,7 +746,7 @@
     "notAnswered": "未回答",
     "earlierQuestion": "以前の質問 {number}",
     "changedQuestion": "回答は保存されていますが、質問または選択肢が変更されたため、完全には表示できません。",
-    "registrationConfirmed": "申込は送信済みです。今回の追加質問はありません。",
+    "registrationConfirmed": "お申し込みを受け付けました。ご不明な点がありましたら、いつでもお問い合わせください。",
     "backToRecords": "参加履歴に戻る",
     "submittedAt": "初回送信：{time}",
     "updatedAt": "最終更新：{time}",

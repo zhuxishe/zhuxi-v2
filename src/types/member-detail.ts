@@ -7,6 +7,8 @@ export interface MemberIdentityRow {
   nickname: string | null
   gender: string
   age_range: string
+  birth_date?: string | null
+  legacy_age_range?: string | null
   nationality: string
   current_city: string
   school_name: string | null

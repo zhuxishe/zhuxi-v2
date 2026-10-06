@@ -1,3 +1,4 @@
+import { ageRangeFromBirthDate } from "@/lib/member-master/birth-date"
 import { formatAdminDate, formatAdminDateTime } from "@/lib/admin-datetime"
 import { TagBadge } from "@/components/shared/TagBadge"
 import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
@@ -59,7 +60,9 @@ export function MemberDetailCard({ member, identity }: Props) {
           <Row label="姓名" value={identity.full_name} />
           <Row label="昵称" value={identity.nickname} />
           <Row label="性别" value={identity.gender === "male" ? "男" : identity.gender === "female" ? "女" : identity.gender === "other" ? "其他" : identity.gender} />
-          <Row label="年龄段" value={identity.age_range} />
+          <Row label="生日" value={identity.birth_date} />
+          <Row label="年龄段" value={ageRangeFromBirthDate(identity.birth_date) ?? identity.age_range} />
+          {identity.legacy_age_range ? <Row label="原年龄段" value={identity.legacy_age_range} /> : null}
           <Row label="国籍" value={identity.nationality} />
           <Row label="所在地" value={identity.current_city} />
           <Row label="学校" value={identity.school_name} />

@@ -152,7 +152,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 ### 历史映射
 
-- 当前仓库共有 81 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条、媒体签名直传限制一条，以及本次玩家资料一致性、性格分数默认值兼容和空白回答完成判断修复三条，以及匹配管理内容编辑一条、理想活动人数选项兼容一条、报名与匹配提交通知一条、报名取消状态与自助操作两条，以及成员目录筛选排序一条、社区评论点赞一条、官方账号保留昵称豁免一条、独立活动互评采集一条、活动互评历史操作与举报修订一条，以及会员编号分配一条、后台成员只读统计一条。全新隔离 Preview 必须按依赖顺序登记全部 81 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条，最后按上述增量发布要求应用第 17、18、19 条，再按独立发布说明应用第 20 条，随后应用第 21、22 条，最后应用第 23、24、25、26、27、28、29、30、31 条。
+- 当前仓库共有 82 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条、媒体签名直传限制一条，以及本次玩家资料一致性、性格分数默认值兼容和空白回答完成判断修复三条，以及匹配管理内容编辑一条、理想活动人数选项兼容一条、报名与匹配提交通知一条、报名取消状态与自助操作两条，以及成员目录筛选排序一条、社区评论点赞一条、官方账号保留昵称豁免一条、独立活动互评采集一条、活动互评历史操作与举报修订一条，以及会员编号分配一条、后台成员只读统计一条。全新隔离 Preview 必须按依赖顺序登记全部 81 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条，最后按上述增量发布要求应用第 17、18、19 条，再按独立发布说明应用第 20 条，随后应用第 21、22 条，最后应用第 23、24、25、26、27、28、29、30、31 条。
 - Production 远端登记 45 条：34 条 `202604*`、10 条 `202607*` 和 `20260806140912`。仓库的 `001`–`038`、`20260809094500`、六条成员迁移和新基线前向迁移均未以本地版本登记在 Production。
 - 34 条 April 历史中，27 条去注释/空白后与本地对应 SQL 一致；`015`–`017` 只多幂等包装；远端 `022` 加后续独立 session policy 修复后等价于当前本地 `022`。
 - 远端 `008` 历史曾把 `social_goal_secondary` 转为 `text[]`，但实际 Production catalog 已是 nullable `text`、默认 `NULL`，与代码和 Preview 类型一致。远端 `011` 没有本地的姓名回填，但 Production 8 条面试记录均已填充且与当前管理员名称一致。
@@ -291,3 +291,11 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 - 同日修正版本经隔离 Preview 验证后，Production 六条核心迁移、第 8、9 条 forward migration 均按精确 dry-run 顺序成功。首次完整 postflight 进一步发现 1 条历史 LINE 成员处于 `complete` 但缺少 `submitted_at`；没有直接手工改数，而是新增 `20260831164143`，先在 Preview 单独验证，再在 Production 以既有 `updated_at` 回填并由成员审计触发器生成 1 条中文原因记录。最终 Production 迁移历史 56、Auth 33、members 175（linked 33/accountless 142）、legacy 119、Auth 缺档 0、legacy 缺 canonical 0、提交时间缺口 0；完整加密 postflight SHA-256 为 `2ffa0ff1a80005e1082661e91ec02ae6af3a0f85ca9a477b263b2777f50d4326`，返回 `PASS`（7/34/14/27），最终 dry-run 为 up to date。
 - `a62e64f` 首次上线后，已批准玩家访问 Production `/app` 暴露 SQLSTATE `25006`：`get_my_profile_summary` 是只读 RPC，但其授权辅助函数执行了 `FOR KEY SHARE`。`20260831234821` 改用与匿名化/建档相同用户键的 shared advisory transaction lock；该锁先由自动回滚的 Production `READ ONLY` 探针确认可用，再在隔离 Preview 应用并通过 postflight，最后单独应用 Production。修复后 Production 迁移历史 57、dry-run up to date、postflight 继续 `PASS`（7/34/14/27）；真实已批准成员的只读资料 RPC、社区授权及全新浏览器标签页 `/app` 均通过，未再出现错误面板或新控制台错误。
 - 尚未在 Preview 执行匿名化、Auth 删除、并发超级管理员降级等破坏性/高风险完整矩阵。Production 的实时迁移历史、postflight、应用部署与日志属于每次发布的动态证据，不在本手册中固化为“已可合并”；任何 release 都必须重新完成本节门禁。
+
+## 面试前生日与教育必填增量（2026-10-07）
+
+`20261006150631_preinterview_birth_date.sql` 新增可空的 `member_identity.birth_date`（DATE）和 `legacy_age_range`（TEXT）。不根据历史年龄段猜生日，不批量改写旧资料；首次补生日时保存原年龄段，再按日本日期计算兼容的 `age_range`。生日不向公开社区资料开放。后台历史资料仍可不填生日、学校或学位；已经提交的申请不要求重新填写。
+
+网站面试前表第一步要求有效生日（1900-01-01 至日本当天），第二步要求学校和既有学位选项。前端、Server Action 和 RPC 均校验；未完成的旧草稿回到缺失必填项所在步骤。数据库保留现有权限、昵称、会员编号、审计和账号匿名化逻辑。年龄段只读展示按生日实时计算，写入时同步兼容字段。
+
+发布前运行本次 PGlite 隔离检查、单元测试、TypeScript、ESLint、生产构建及手机/桌面日期选择交互检查。迁移使用独立 workdir 拉取生产迁移历史，只追加本条，dry-run 必须仅列出本条；执行 `supabase/audits/preinterview-birth-date-postflight.sql`，比对旧资料汇总校验值后，推送本次文件并核对 Vercel Production 对应 commit。禁止从含其他任务未提交内容的目录手动部署。

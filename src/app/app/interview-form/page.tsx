@@ -32,7 +32,7 @@ export default async function AppInterviewFormPage() {
     const supabase = await createClient()
     const { data, error } = await supabase
       .from("member_identity")
-      .select("full_name, nickname, gender, age_range, nationality, current_city, school_name, department, degree_level, course_language, enrollment_year, hobby_tags, activity_type_tags, personality_self_tags, taboo_tags")
+      .select("full_name, nickname, gender, birth_date, age_range, nationality, current_city, school_name, department, degree_level, course_language, enrollment_year, hobby_tags, activity_type_tags, personality_self_tags, taboo_tags")
       .eq("member_id", player.memberId)
       .single()
 
@@ -45,7 +45,7 @@ export default async function AppInterviewFormPage() {
   return (
     <PreInterviewForm
       defaultValues={hydrateOnboardingDraft(identity)}
-      initialStep={getOnboardingResumeStep(player.hasIdentity ? player.onboardingStep : 0)}
+      initialStep={getOnboardingResumeStep(player.hasIdentity ? player.onboardingStep : 0, identity)}
       initialLastSavedAt={player.lastProfileSavedAt}
     />
   )

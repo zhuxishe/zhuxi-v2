@@ -46,7 +46,7 @@ function buttonProps(node: ReactNode, text: string): { onClick?: () => Promise<v
   }
 }
 
-function formButton(step: 0 | 3, nickname = "") {
+function formButton(step: 0 | 1 | 3, nickname = "", patch: Partial<typeof EMPTY_FORM> = {}) {
   mocks.useState
     .mockImplementationOnce((initial) => [initial, mocks.setStep])
     .mockImplementationOnce((initial) => [initial, vi.fn()])
@@ -61,9 +61,13 @@ function formButton(step: 0 | 3, nickname = "") {
       nickname,
       gender: "female",
       age_range: "20-24",
+      birth_date: "2003-07-15",
+      school_name: "早稻田大学",
+      degree_level: "修士",
       nationality: "中国",
       current_city: "东京",
       personality_self_tags: ["温和"],
+      ...patch,
     },
   })
   const button = buttonProps(form, step === 3 ? "submit" : "next")
@@ -87,6 +91,17 @@ describe("onboarding request recovery", () => {
     ["😀", true], ["小寒", false], ["😀".repeat(20), false], ["寒".repeat(21), true],
   ])("gates the next button for nickname %j (disabled: %s)", (nickname, disabled) => {
     expect(formButton(0, nickname).disabled).toBe(disabled)
+    expect(mocks.save).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [0, { birth_date: "" }], [0, { birth_date: "2023-02-29" }],
+    [1, { school_name: " " }], [1, { degree_level: "" }],
+    [1, { degree_level: "invalid" }],
+  ] as const)("blocks step %s with missing required data", async (step, patch) => {
+    const button = formButton(step, "", patch)
+    expect(button.disabled).toBe(true)
+    await button.onClick()
     expect(mocks.save).not.toHaveBeenCalled()
   })
 

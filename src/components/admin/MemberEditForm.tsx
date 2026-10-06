@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { isValidBirthDate } from "@/lib/member-master/birth-date"
 import { useRouter } from "next/navigation"
 import { SectionHeader } from "./MemberDetailCard"
 import { MemberEditIdentity } from "./MemberEditIdentity"
@@ -33,6 +34,7 @@ const INITIAL_IDENTITY_FIELDS = [
 export function missingInitialIdentityFields(data: Record<string, unknown>): string[] {
   return INITIAL_IDENTITY_FIELDS
     .filter(([field]) => {
+      if (field === "age_range" && isValidBirthDate(data.birth_date)) return false
       const value = data[field]
       if (field === "gender") return !["male", "female", "other"].includes(String(value ?? ""))
       return typeof value !== "string" || value.trim().length === 0

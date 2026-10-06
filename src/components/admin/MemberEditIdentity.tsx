@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { ageRangeFromBirthDate, getTodayInTokyo } from "@/lib/member-master/birth-date"
 import {
   HOBBY_TAGS, ACTIVITY_TYPE_TAGS,
   PERSONALITY_SELF_TAGS, TABOO_TAGS,
@@ -113,12 +114,34 @@ function JsonObjectRow({ label, name, data, onChange }: {
 }
 
 export function MemberEditIdentity({ data, onChange }: Props) {
+  const calculatedAgeRange = ageRangeFromBirthDate(data.birth_date)
+  const ageOptions = Array.from(new Set(["18以下", "18-20", "21-23", "24-26", "27-29", "30+", ...(data.age_range ? [data.age_range] : [])]))
   return (
     <table className="w-full"><tbody>
       <InputRow label="姓名" name="full_name" data={data} onChange={onChange} />
       <InputRow label="昵称" name="nickname" data={data} onChange={onChange} />
       <SelectRow label="性别" name="gender" options={["male", "female", "other"]} labels={["男", "女", "其他"]} data={data} onChange={onChange} />
-      <SelectRow label="年龄段" name="age_range" options={["18-20", "21-23", "24-26", "27-29", "30+"]} data={data} onChange={onChange} />
+      <tr className="border-b border-border/50">
+        <td className="w-24 whitespace-nowrap py-2.5 pr-4 text-xs text-muted-foreground"><label htmlFor="member-birth-date">生日</label></td>
+        <td className="py-2.5">
+          <input id="member-birth-date" type="date" value={data.birth_date ?? ""} min="1900-01-01" max={getTodayInTokyo()}
+            onChange={(event) => onChange({ ...data, birth_date: event.target.value || null })}
+            className="w-full rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
+          <p className="mt-1 text-xs text-muted-foreground">旧资料可暂不补填；填写后自动计算年龄段，并保留原年龄段。</p>
+        </td>
+      </tr>
+      {data.birth_date ? (
+        <tr className="border-b border-border/50">
+          <td className="w-24 whitespace-nowrap py-2.5 pr-4 text-xs text-muted-foreground">年龄段</td>
+          <td className="py-2.5 text-sm">{calculatedAgeRange ?? "请填写有效生日"}<span className="ml-2 text-xs text-muted-foreground">根据生日自动计算</span></td>
+        </tr>
+      ) : <SelectRow label="年龄段" name="age_range" options={ageOptions} data={data} onChange={onChange} />}
+      {data.legacy_age_range ? (
+        <tr className="border-b border-border/50">
+          <td className="w-24 whitespace-nowrap py-2.5 pr-4 text-xs text-muted-foreground">原年龄段</td>
+          <td className="py-2.5 text-sm">{data.legacy_age_range}</td>
+        </tr>
+      ) : null}
       <InputRow label="国籍" name="nationality" data={data} onChange={onChange} />
       <InputRow label="所在地" name="current_city" data={data} onChange={onChange} />
       <InputRow label="学校" name="school_name" data={data} onChange={onChange} />

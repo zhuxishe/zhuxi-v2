@@ -184,6 +184,7 @@ export function toMemberMasterActionError(
     case "MEMBER_MASTER_STEP_OUT_OF_ORDER":
       return "stepOutOfOrder"
     case "MEMBER_MASTER_PAYLOAD_INVALID":
+    case "MEMBER_MASTER_BIRTH_DATE_INVALID":
       return "invalidPayload"
     case "MEMBER_MASTER_REQUIRED_FIELDS_MISSING":
       return "requiredFieldsMissing"

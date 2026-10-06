@@ -19,7 +19,7 @@ export async function fetchMyProfileDetails(): Promise<PlayerProfileDetails> {
     .select(`
       id,
       member_identity (
-        full_name, nickname, gender, age_range, nationality, current_city,
+        full_name, nickname, gender, birth_date, age_range, legacy_age_range, nationality, current_city,
         school_name, department, degree_level, course_language, enrollment_year,
         hobby_tags, activity_type_tags, personality_self_tags, taboo_tags
       ),

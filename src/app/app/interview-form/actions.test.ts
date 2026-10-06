@@ -45,7 +45,7 @@ describe("interview form server actions", () => {
       full_name: "  山田 花子 ",
       nickname: "",
       gender: "female",
-      age_range: "20-24",
+      birth_date: "2003-07-15",
       nationality: "jp",
       current_city: "tokyo",
       user_id: "must-not-pass-through",
@@ -59,7 +59,7 @@ describe("interview form server actions", () => {
         full_name: "山田 花子",
         nickname: null,
         gender: "female",
-        age_range: "20-24",
+        birth_date: "2003-07-15",
         nationality: "jp",
         current_city: "tokyo",
       }
@@ -81,7 +81,7 @@ describe("interview form server actions", () => {
     const result = await savePreInterviewStep(1, {
       full_name: "",
       gender: "female",
-      age_range: "20-24",
+      birth_date: "2003-07-15",
       nationality: "jp",
       current_city: "tokyo",
     })
@@ -99,7 +99,7 @@ describe("interview form server actions", () => {
     mocks.saveMyOnboardingStep.mockResolvedValue({ memberId: "member-id", onboardingStep: 1 })
     const result = await savePreInterviewStep(1, {
       full_name: "测试玩家", nickname, gender: "female",
-      age_range: "21-23", nationality: "中国大陆", current_city: "东京都",
+      birth_date: "2003-07-15", nationality: "中国大陆", current_city: "东京都",
     })
 
     expect(result).toMatchObject(error ? { success: false, error } : { success: true })

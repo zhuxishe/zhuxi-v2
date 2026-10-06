@@ -12,7 +12,7 @@ describe("buildOnboardingStepPayload", () => {
       full_name: "  山田 花子  ",
       nickname: "  花ちゃん  ",
       gender: "female",
-      age_range: "20-24",
+      birth_date: "2003-07-15",
       nationality: "jp",
       current_city: "tokyo",
       ignored: "never reaches the RPC",
@@ -20,26 +20,40 @@ describe("buildOnboardingStepPayload", () => {
       full_name: "山田 花子",
       nickname: "花ちゃん",
       gender: "female",
-      age_range: "20-24",
+      birth_date: "2003-07-15",
       nationality: "jp",
       current_city: "tokyo",
     })
   })
 
-  it("normalizes optional academic fields to null", () => {
+  it("requires school and degree while normalizing optional academic fields", () => {
     expect(buildOnboardingStepPayload(2, {
-      school_name: " ",
+      school_name: "  早稻田大学  ",
       department: "理工学部",
-      degree_level: "",
+      degree_level: "修士",
       course_language: null,
       enrollment_year: null,
     })).toEqual({
-      school_name: null,
+      school_name: "早稻田大学",
       department: "理工学部",
-      degree_level: null,
+      degree_level: "修士",
       course_language: null,
       enrollment_year: null,
     })
+  })
+
+  it.each([undefined, "", "2000-02-30", "2999-01-01"])("requires a real nonfuture birthday %j", (birth_date) => {
+    expect(() => buildOnboardingStepPayload(1, {
+      full_name: "玩家", gender: "male", nationality: "中国", current_city: "东京", age_range: "21-23", birth_date,
+    })).toThrow(OnboardingInputError)
+  })
+
+  it.each([
+    { school_name: " ", degree_level: "修士" },
+    { school_name: "早稻田大学", degree_level: "" },
+    { school_name: "早稻田大学", degree_level: "invalid" },
+  ])("rejects missing school and unsupported degrees", (input) => {
+    expect(() => buildOnboardingStepPayload(2, input)).toThrow(OnboardingInputError)
   })
 
   it("deduplicates tags while preserving order", () => {
@@ -57,7 +71,7 @@ describe("buildOnboardingStepPayload", () => {
       full_name: " ",
       nickname: "",
       gender: "female",
-      age_range: "20-24",
+      birth_date: "2003-07-15",
       nationality: "jp",
       current_city: "tokyo",
     })).toThrow(OnboardingInputError)
@@ -102,6 +116,13 @@ describe("onboarding resume hydration", () => {
       personality_self_tags: ["calm"],
       taboo_tags: [],
     })
+  })
+
+  it("resumes legacy incomplete drafts at the first newly missing required step", () => {
+    expect(getOnboardingResumeStep(4, { age_range: "21-23" })).toBe(0)
+    expect(getOnboardingResumeStep(4, { birth_date: "2000-02-29", school_name: "", degree_level: "" })).toBe(1)
+    expect(getOnboardingResumeStep(4, { birth_date: "2000-02-29", school_name: "早稻田大学", degree_level: "修士" })).toBe(3)
+    expect(hydrateOnboardingDraft({ age_range: "20-24" })).toMatchObject({ birth_date: "", age_range: "20-24" })
   })
 
   it("returns independent arrays for empty drafts", () => {

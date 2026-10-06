@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import type { PreInterviewFormData } from "@/types"
 import { EMPTY_FORM } from "@/types"
+import { isValidBirthDate } from "@/lib/member-master/birth-date"
+import { isOnboardingDegree } from "@/lib/member-master/onboarding"
 import {
   savePreInterviewStep,
   submitPreInterviewForm,
@@ -78,7 +80,10 @@ export function PreInterviewForm({
 
   function canProceed(): boolean {
     if (step === 0) {
-      return !nicknameError && !!(data.full_name.trim() && data.gender && data.age_range && data.nationality && data.current_city)
+      return !nicknameError && !!(data.full_name.trim() && data.gender && isValidBirthDate(data.birth_date) && data.nationality && data.current_city)
+    }
+    if (step === 1) {
+      return !!data.school_name.trim() && isOnboardingDegree(data.degree_level)
     }
     if (step === 2) {
       return data.hobby_tags.length > 0 && data.activity_type_tags.length > 0
@@ -108,7 +113,7 @@ export function PreInterviewForm({
   }
 
   async function handleNext() {
-    if (operationPending.current) return
+    if (operationPending.current || !canProceed()) return
     operationPending.current = true
     setBusy("saving")
     setError(null)
@@ -122,7 +127,7 @@ export function PreInterviewForm({
   }
 
   async function handleSubmit() {
-    if (operationPending.current) return
+    if (operationPending.current || !canProceed()) return
     operationPending.current = true
     setBusy("saving")
     setError(null)

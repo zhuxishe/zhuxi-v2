@@ -1,6 +1,13 @@
 import type { Gender, PreInterviewFormData } from "@/types"
 import { EMPTY_FORM } from "@/types"
 import type { OnboardingStep } from "./types"
+import { isValidBirthDate } from "./birth-date"
+
+export const ONBOARDING_DEGREE_OPTIONS = ["学部生", "修士", "博士", "交换留学", "语言学校", "研究生/预科", "其他"] as const
+
+export function isOnboardingDegree(value: unknown): value is string {
+  return typeof value === "string" && ONBOARDING_DEGREE_OPTIONS.some((option) => option === value)
+}
 
 export class OnboardingInputError extends Error {
   constructor() {
@@ -13,6 +20,7 @@ export interface OnboardingIdentityDraft {
   nickname?: unknown
   gender?: unknown
   age_range?: unknown
+  birth_date?: unknown
   nationality?: unknown
   current_city?: unknown
   school_name?: unknown
@@ -38,15 +46,15 @@ export function buildOnboardingStepPayload(
         full_name: requiredText(data.full_name),
         nickname: optionalText(data.nickname),
         gender: gender(data.gender),
-        age_range: requiredText(data.age_range),
+        birth_date: requiredBirthDate(data.birth_date),
         nationality: requiredText(data.nationality),
         current_city: requiredText(data.current_city),
       }
     case 2:
       return {
-        school_name: optionalText(data.school_name),
+        school_name: requiredText(data.school_name),
         department: optionalText(data.department),
-        degree_level: optionalText(data.degree_level),
+        degree_level: requiredDegree(data.degree_level),
         course_language: optionalText(data.course_language),
         enrollment_year: optionalInteger(data.enrollment_year),
       }
@@ -65,7 +73,10 @@ export function buildOnboardingStepPayload(
   }
 }
 
-export function getOnboardingResumeStep(onboardingStep: number): 0 | 1 | 2 | 3 {
+export function getOnboardingResumeStep(onboardingStep: number, identity?: OnboardingIdentityDraft | null): 0 | 1 | 2 | 3 {
+  // Only incomplete onboarding reaches this page. Old submitted profiles stay unchanged.
+  if (identity !== undefined && !isValidBirthDate(identity?.birth_date)) return 0
+  if (identity && onboardingStep >= 2 && (!textOrEmpty(identity.school_name).trim() || !isOnboardingDegree(identity.degree_level))) return 1
   if (!Number.isInteger(onboardingStep) || onboardingStep <= 0) return 0
   if (onboardingStep >= 3) return 3
   return onboardingStep as 1 | 2
@@ -81,6 +92,7 @@ export function hydrateOnboardingDraft(
     nickname: textOrEmpty(identity.nickname),
     gender: isGender(identity.gender) ? identity.gender : EMPTY_FORM.gender,
     age_range: textOrEmpty(identity.age_range),
+    birth_date: isValidBirthDate(identity.birth_date) ? identity.birth_date : "",
     nationality: textOrEmpty(identity.nationality),
     current_city: textOrEmpty(identity.current_city),
     school_name: textOrEmpty(identity.school_name),
@@ -117,6 +129,16 @@ function requiredText(value: unknown) {
     throw new OnboardingInputError()
   }
   return value.trim()
+}
+
+function requiredBirthDate(value: unknown): string {
+  if (!isValidBirthDate(value)) throw new OnboardingInputError()
+  return value
+}
+
+function requiredDegree(value: unknown): string {
+  if (!isOnboardingDegree(value)) throw new OnboardingInputError()
+  return value
 }
 
 function optionalText(value: unknown) {

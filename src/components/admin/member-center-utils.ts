@@ -25,6 +25,8 @@ const FIELD_LABELS: Record<string, string> = {
   email: "邮箱",
   gender: "性别",
   age_range: "年龄段",
+  birth_date: "生日",
+  legacy_age_range: "原年龄段",
   nationality: "国籍",
   current_city: "当前城市",
   school_name: "学校",

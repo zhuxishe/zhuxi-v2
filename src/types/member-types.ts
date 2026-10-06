@@ -11,6 +11,7 @@ export interface PreInterviewFormData {
   full_name: string
   nickname: string
   gender: Gender
+  birth_date: string
   age_range: string
   nationality: string
   current_city: string
@@ -32,6 +33,7 @@ export const EMPTY_FORM: PreInterviewFormData = {
   full_name: "",
   nickname: "",
   gender: "male",
+  birth_date: "",
   age_range: "",
   nationality: "",
   current_city: "",

@@ -3,9 +3,9 @@
 import { useTranslations, useLocale } from "next-intl"
 import type { PreInterviewFormData, Gender } from "@/types"
 import { SingleSelect } from "@/components/shared/SingleSelect"
+import { BirthdayPicker } from "./BirthdayPicker"
 import { useTagLabels } from "@/lib/i18n/use-tag-labels"
 import {
-  AGE_RANGE_OPTIONS,
   NATIONALITY_OPTIONS,
   CITY_OPTIONS,
 } from "@/lib/constants/tags"
@@ -27,7 +27,6 @@ const inputClass =
 export function InterviewStep1({ data, onChange }: Props) {
   const t = useTranslations("interview")
   const locale = useLocale()
-  const ageLabels = useTagLabels(AGE_RANGE_OPTIONS)
   const natLabels = useTagLabels(NATIONALITY_OPTIONS)
   const cityLabels = useTagLabels(CITY_OPTIONS)
 
@@ -60,15 +59,7 @@ export function InterviewStep1({ data, onChange }: Props) {
           labels={Object.fromEntries(GENDER_OPTIONS.map((g) => [g.value, locale === "ja" ? g.label_ja : g.label_zh]))}
         />
       </div>
-      <div>
-        <label className="text-sm font-medium text-foreground">{t("ageRange")} *</label>
-        <SingleSelect
-          options={[...AGE_RANGE_OPTIONS]}
-          value={data.age_range}
-          onChange={(v) => onChange({ age_range: v })}
-          labels={ageLabels}
-        />
-      </div>
+      <BirthdayPicker value={data.birth_date} onChange={(birth_date) => onChange({ birth_date })} />
       <div>
         <label className="text-sm font-medium text-foreground">{t("nationality")} *</label>
         <SingleSelect

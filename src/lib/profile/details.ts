@@ -1,10 +1,11 @@
+import { ageRangeFromBirthDate } from "@/lib/member-master/birth-date"
 import { localizeTag } from "@/lib/constants/tags-i18n"
 import { localizeSupplementary } from "@/lib/constants/supplementary-i18n"
 import { localizePersonalityOption } from "@/lib/constants/personality-i18n"
 import { buildPersonalityDraft, buildSupplementaryDraft } from "@/lib/forms/player-enrichment"
 
 export const REGISTRATION_FIELDS = [
-  "full_name", "nickname", "gender", "age_range", "nationality", "current_city",
+  "full_name", "nickname", "gender", "birth_date", "age_range", "legacy_age_range", "nationality", "current_city",
   "school_name", "department", "degree_level", "course_language", "enrollment_year",
   "hobby_tags", "activity_type_tags", "personality_self_tags", "taboo_tags",
 ] as const
@@ -127,7 +128,7 @@ export function buildProfileDetailRows(
   return fields.map((key) => ({
     key,
     label: t(`fields.${key}`),
-    ...formatProfileDetailValue(record?.[key], key, locale, t),
+    ...formatProfileDetailValue(key === "age_range" ? ageRangeFromBirthDate(record?.birth_date) ?? record?.age_range : record?.[key], key, locale, t),
   }))
 }
 

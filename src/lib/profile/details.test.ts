@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest"
+import { describe, expect, it, vi } from "vitest"
 import zh from "@/messages/zh.json"
 import ja from "@/messages/ja.json"
 import { EMPTY_FORM } from "@/types/member-types"
@@ -18,16 +18,35 @@ const empty: PlayerProfileDetails = { identity: null, language: null, interests:
 
 describe("saved player profile details", () => {
   it("covers every player registration, supplementary and self-assessment field", () => {
-    expect([...REGISTRATION_FIELDS].sort()).toEqual(Object.keys(EMPTY_FORM).sort())
+    expect(REGISTRATION_FIELDS.filter((field) => field !== "legacy_age_range").sort()).toEqual(Object.keys(EMPTY_FORM).sort())
     expect([...SUPPLEMENTARY_FIELDS].sort()).toEqual(Object.keys(EMPTY_SUPPLEMENTARY).sort())
     expect([...PERSONALITY_FIELDS].sort()).toEqual(Object.keys(EMPTY_PERSONALITY).sort())
-    expect(REGISTRATION_READONLY_FIELDS).toHaveLength(10)
+    expect(REGISTRATION_READONLY_FIELDS).toHaveLength(12)
     expect(REGISTRATION_READONLY_FIELDS).not.toContain("full_name")
     for (const section of buildProfileDetailSections(empty, "zh", t)) {
       for (const row of section.rows) {
         expect(zh.profile.details.fields).toHaveProperty(row.key)
         expect(ja.profile.details.fields).toHaveProperty(row.key)
       }
+    }
+  })
+
+  it("derives current age from birthday while preserving original legacy age data", () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date("2026-10-07T00:00:00Z"))
+    try {
+      const sections = buildProfileDetailSections({ ...empty, identity: {
+        birth_date: "2005-10-07", age_range: "18-20", legacy_age_range: "20-24",
+      } }, "zh", t)
+      const rows = sections[0].rows
+      expect(rows.find((row) => row.key === "birth_date")?.value).toBe("2005-10-07")
+      expect(rows.find((row) => row.key === "age_range")?.value).toBe("21-23")
+      expect(rows.find((row) => row.key === "legacy_age_range")?.value).toBe("20-24")
+      const legacy = buildProfileDetailSections({ ...empty, identity: { age_range: "20-24" } }, "zh", t)[0].rows
+      expect(legacy.find((row) => row.key === "age_range")?.value).toBe("20-24")
+      expect(legacy.find((row) => row.key === "birth_date")?.missing).toBe(true)
+    } finally {
+      vi.useRealTimers()
     }
   })
 

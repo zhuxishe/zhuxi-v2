@@ -1753,6 +1753,7 @@ export type Database = {
         Row: {
           activity_type_tags: string[]
           age_range: string
+          birth_date: string | null
           course_language: string | null
           created_at: string
           current_city: string
@@ -1764,6 +1765,7 @@ export type Database = {
           height_weight: string | null
           hobby_tags: string[]
           id: string
+          legacy_age_range: string | null
           member_id: string
           nationality: string
           nickname: string | null
@@ -1778,6 +1780,7 @@ export type Database = {
         Insert: {
           activity_type_tags?: string[]
           age_range: string
+          birth_date?: string | null
           course_language?: string | null
           created_at?: string
           current_city: string
@@ -1789,6 +1792,7 @@ export type Database = {
           height_weight?: string | null
           hobby_tags?: string[]
           id?: string
+          legacy_age_range?: string | null
           member_id: string
           nationality: string
           nickname?: string | null
@@ -1803,6 +1807,7 @@ export type Database = {
         Update: {
           activity_type_tags?: string[]
           age_range?: string
+          birth_date?: string | null
           course_language?: string | null
           created_at?: string
           current_city?: string
@@ -1814,6 +1819,7 @@ export type Database = {
           height_weight?: string | null
           hobby_tags?: string[]
           id?: string
+          legacy_age_range?: string | null
           member_id?: string
           nationality?: string
           nickname?: string | null

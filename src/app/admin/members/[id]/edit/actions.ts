@@ -2,10 +2,11 @@
 
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/admin"
+import { isValidBirthDate } from "@/lib/member-master/birth-date"
 import { memberCenterErrorMessage, updateMemberSection } from "@/lib/queries/member-center"
 
 const ALLOWED_FIELDS: Record<string, Set<string>> = {
-  identity: new Set(["full_name", "nickname", "gender", "age_range", "nationality", "current_city", "school_name", "department", "degree_level", "course_language", "enrollment_year", "height_weight", "phone", "sns_accounts", "hobby_tags", "activity_type_tags", "personality_self_tags", "taboo_tags", "personal_avatar_path"]),
+  identity: new Set(["full_name", "nickname", "gender", "birth_date", "age_range", "nationality", "current_city", "school_name", "department", "degree_level", "course_language", "enrollment_year", "height_weight", "phone", "sns_accounts", "hobby_tags", "activity_type_tags", "personality_self_tags", "taboo_tags", "personal_avatar_path"]),
   language: new Set(["japanese_level", "communication_language_pref"]),
   interests: new Set(["activity_area", "nearest_station", "graduation_year", "scenario_mode_pref", "ideal_group_size", "script_preference", "non_script_preference", "activity_frequency", "preferred_time_slots", "budget_range", "travel_radius", "social_goal_primary", "social_goal_secondary", "accept_beginners", "accept_cross_school", "scenario_theme_tags", "game_type_pref"]),
   personality: new Set(["extroversion", "initiative", "expression_style_tags", "group_role_tags", "warmup_speed", "planning_style", "coop_compete_tendency", "emotional_stability", "boundary_strength", "reply_speed"]),
@@ -30,6 +31,10 @@ async function updateProfileSection(
   if (reason.length < 4) return { error: "请填写至少 4 个字符的修改原因" }
   if (reason.length > 500) return { error: "修改原因不得超过 500 个字符" }
   const payload = sanitize(data, section)
+  if (section === "identity" && payload.birth_date != null) {
+    if (!isValidBirthDate(payload.birth_date)) return { error: "请填写有效生日（1900 年至今），且不能晚于今天" }
+    delete payload.age_range
+  }
   if (Object.keys(payload).length === 0) return { error: `${section} 分区没有可保存字段` }
 
   try {

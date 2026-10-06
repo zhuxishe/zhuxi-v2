@@ -30,7 +30,7 @@ export function InterviewStep2({ data, onChange }: Props) {
   return (
     <div className="space-y-4">
       <div>
-        <label className="text-sm font-medium text-foreground">{t("school")}</label>
+        <label className="text-sm font-medium text-foreground">{t("school")} *</label>
         <SchoolSearchSelect
           className={inputClass}
           value={data.school_name}
@@ -46,7 +46,7 @@ export function InterviewStep2({ data, onChange }: Props) {
         />
       </div>
       <div>
-        <label className="text-sm font-medium text-foreground">{t("degreeLevel")}</label>
+        <label className="text-sm font-medium text-foreground">{t("degreeLevel")} *</label>
         <SingleSelect
           options={[...DEGREE_OPTIONS]}
           value={data.degree_level}

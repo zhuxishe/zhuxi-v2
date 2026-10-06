@@ -9,7 +9,7 @@ export const ACTIVITY_AREA_OPTIONS = [
 export const NEAREST_STATION_PLACEHOLDER = "例：新宿駅、池袋駅"
 
 export const GRADUATION_YEAR_OPTIONS = [
-  2025, 2026, 2027, 2028, 2029, 2030,
+  2026, 2027, 2028, 2029, 2030, 2031, 2032,
 ] as const
 
 export const COMMUNICATION_LANGUAGE_OPTIONS = [

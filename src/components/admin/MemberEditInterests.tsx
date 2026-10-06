@@ -102,7 +102,10 @@ export function MemberEditInterests({ data, onChange }: Props) {
     <table className="w-full"><tbody>
       <SelectRow label="活动区域" name="activity_area" options={ACTIVITY_AREA_OPTIONS} data={data} onChange={onChange} />
       <InputRow label="最近车站" name="nearest_station" data={data} onChange={onChange} />
-      <SelectRow label="毕业年份" name="graduation_year" options={GRADUATION_YEAR_OPTIONS.map(String)} data={data} onChange={onChange} numeric />
+      <SelectRow label="毕业年份" name="graduation_year" options={Array.from(new Set<number>([
+        ...GRADUATION_YEAR_OPTIONS,
+        ...(data.graduation_year == null ? [] : [data.graduation_year]),
+      ])).sort((a, b) => a - b).map(String)} data={data} onChange={onChange} numeric />
       <SelectRow label="理想人数" name="ideal_group_size" options={GROUP_SIZE_OPTIONS} data={data} onChange={onChange} />
       <SelectRow label="活动频率" name="activity_frequency" options={ACTIVITY_FREQUENCY_OPTIONS} data={data} onChange={onChange} />
       <SelectRow label="预算" name="budget_range" options={BUDGET_RANGE_OPTIONS} data={data} onChange={onChange} />

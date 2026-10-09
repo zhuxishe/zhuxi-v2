@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   COMMUNITY_MAX_IMAGE_BYTES,
+  COMMUNITY_MAX_LEGACY_IMAGE_BYTES,
   COMMUNITY_MAX_MULTIPART_BYTES,
 } from "./constants"
 import {
@@ -12,8 +13,9 @@ import {
 
 describe("community upload boundaries", () => {
   it("leaves multipart overhead below Vercel's request-body limit", () => {
-    expect(COMMUNITY_MAX_IMAGE_BYTES).toBe(4 * 1024 * 1024)
-    expect(COMMUNITY_MAX_MULTIPART_BYTES).toBeGreaterThan(COMMUNITY_MAX_IMAGE_BYTES)
+    expect(COMMUNITY_MAX_IMAGE_BYTES).toBe(20 * 1024 * 1024)
+    expect(COMMUNITY_MAX_LEGACY_IMAGE_BYTES).toBe(4 * 1024 * 1024)
+    expect(COMMUNITY_MAX_MULTIPART_BYTES).toBeGreaterThan(COMMUNITY_MAX_LEGACY_IMAGE_BYTES)
     expect(COMMUNITY_MAX_MULTIPART_BYTES).toBeLessThan(4_500_000)
   })
 
@@ -25,21 +27,21 @@ describe("community upload boundaries", () => {
     expect(validateMultipartLength(String(COMMUNITY_MAX_MULTIPART_BYTES + 1))).toBe("too_large")
   })
 
-  it("accepts a 4 MiB image and rejects anything larger", () => {
+  it("accepts a 20 MiB image and rejects anything larger", () => {
     expect(isImageFileTooLarge({ size: COMMUNITY_MAX_IMAGE_BYTES })).toBe(false)
     expect(isImageFileTooLarge({ size: COMMUNITY_MAX_IMAGE_BYTES + 1 })).toBe(true)
   })
 
   it("provides natural Chinese and Japanese selection messages", () => {
-    expect(imageSizeError("zh")).toContain("4MB")
-    expect(imageSizeError("ja")).toContain("4MB以下")
+    expect(imageSizeError("zh")).toContain("20MB")
+    expect(imageSizeError("ja")).toContain("20MB以下")
   })
 })
 
 describe("upload response parsing", () => {
   const messages = {
     fallback: "上传失败",
-    payloadTooLarge: "请选择不超过 4MB 的照片。",
+    payloadTooLarge: "请选择不超过 20MB 的照片。",
   }
 
   it("handles a platform HTML 413 without throwing a JSON syntax error", async () => {
@@ -54,7 +56,7 @@ describe("upload response parsing", () => {
   })
 
   it("localizes a route JSON 413 and preserves other API errors", async () => {
-    const tooLarge = new Response(JSON.stringify({ error: "单张照片不能超过 4MB" }), {
+    const tooLarge = new Response(JSON.stringify({ error: "单张照片不能超过 20MB" }), {
       status: 413,
       headers: { "content-type": "application/json" },
     })

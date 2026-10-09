@@ -3,15 +3,16 @@ import {
   COMMUNITY_MAX_MULTIPART_BYTES,
 } from "./constants"
 
-export const COMMUNITY_IMAGE_SIZE_ERROR = "单张照片不能超过 4MB"
+export const COMMUNITY_IMAGE_SIZE_ERROR = "单张照片不能超过 20MB"
+export const COMMUNITY_PROCESSED_IMAGE_SIZE_ERROR = "处理后的照片不能超过 4MB，请重新上传"
 
 export type CommunityUploadLocale = "zh" | "ja"
 export type MultipartLengthError = "missing" | "too_large" | null
 
 export function imageSizeError(locale: CommunityUploadLocale): string {
   return locale === "ja"
-    ? "写真は1枚4MB以下のものを選んでください。"
-    : "请选择不超过 4MB 的单张照片。"
+    ? "写真は1枚20MB以下のものを選んでください。"
+    : "请选择不超过 20MB 的单张照片。"
 }
 
 export function validateMultipartLength(value: string | null): MultipartLengthError {

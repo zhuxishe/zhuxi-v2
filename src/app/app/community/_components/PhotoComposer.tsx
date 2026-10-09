@@ -9,8 +9,8 @@ import { ComposerHeader } from "./ComposerHeader"
 import {
   imageSizeError,
   isImageFileTooLarge,
-  readUploadResponse,
 } from "@/lib/community/upload"
+import { createDirectImageUpload, type DirectImageUpload } from "@/lib/community/direct-upload-client"
 import type {
   CommunityActionState,
   CommunityPost,
@@ -58,6 +58,7 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
     },
   })) ?? [])
   const itemsRef = useRef<UploadItem[]>([])
+  const uploadsRef = useRef(new Map<string, DirectImageUpload>())
   const uploading = items.some((item) => item.status === "uploading")
   const allReady = items.length > 0 && items.every((item) => item.status === "ready")
   const serialized = useMemo(
@@ -87,8 +88,13 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
     itemsRef.current = items
   }, [items])
 
-  useEffect(() => () => {
-    for (const item of itemsRef.current) URL.revokeObjectURL(item.preview)
+  useEffect(() => {
+    const uploads = uploadsRef.current
+    return () => {
+      for (const upload of uploads.values()) upload.cancel()
+      uploads.clear()
+      for (const item of itemsRef.current) URL.revokeObjectURL(item.preview)
+    }
   }, [])
 
   async function upload(item: UploadItem) {
@@ -103,17 +109,17 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
       return
     }
     setItems((current) => current.map((row) => row.id === item.id ? { ...row, status: "uploading", error: undefined } : row))
-    const data = new FormData()
-    data.set("kind", "photo")
-    data.set("file", item.file)
-    try {
-      const response = await fetch("/api/community/uploads", { method: "POST", body: data })
-      const fallback = locale === "ja" ? "アップロードに失敗しました" : "上传失败"
-      const result = await readUploadResponse<UploadedCommunityImage>(response, {
-        fallback,
+    let handle = uploadsRef.current.get(item.id)
+    if (!handle) {
+      handle = createDirectImageUpload(item.file, "photo", {
+        fallback: locale === "ja" ? "アップロードに失敗しました" : "上传失败",
         payloadTooLarge: sizeError,
       })
-      if (!response.ok) throw new Error(result.error || fallback)
+      uploadsRef.current.set(item.id, handle)
+    }
+    try {
+      const result = await handle.upload()
+      if (uploadsRef.current.get(item.id) !== handle) return
       setItems((current) => current.map((row) => {
         if (row.id !== item.id) return row
         if (row.preview.startsWith("blob:")) URL.revokeObjectURL(row.preview)
@@ -126,6 +132,7 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
         }
       }))
     } catch (error) {
+      if (uploadsRef.current.get(item.id) !== handle) return
       setItems((current) => current.map((row) => row.id === item.id ? {
         ...row,
         status: "error",
@@ -151,6 +158,8 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
   }
 
   function removeItem(id: string) {
+    uploadsRef.current.get(id)?.cancel()
+    uploadsRef.current.delete(id)
     setItems((current) => {
       const item = current.find((row) => row.id === id)
       if (item) URL.revokeObjectURL(item.preview)
@@ -232,7 +241,7 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
               >
                 <Image src={item.preview} alt={locale === "ja" ? `写真 ${index + 1}` : `第 ${index + 1} 张照片`} fill unoptimized className="object-cover" sizes="30vw" />
                 <span className="absolute left-1 top-1 grid size-7 place-items-center rounded-full bg-black/55 text-white"><GripVertical className="size-4" /></span>
-                <button type="button" aria-label={locale === "ja" ? "写真を削除" : "移除照片"} onClick={() => removeItem(item.id)} className="absolute right-1 top-1 grid size-11 place-items-center rounded-full bg-black/60 text-white">
+                <button type="button" aria-label={locale === "ja" ? "写真を削除" : "移除照片"} onClick={() => removeItem(item.id)} className="absolute right-1 top-1 z-10 grid size-11 place-items-center rounded-full bg-black/60 text-white">
                   <Trash2 className="size-4" />
                 </button>
                 {items.length > 1 && item.status === "ready" && (
@@ -264,7 +273,7 @@ export function PhotoComposer({ profile, locale, post }: PhotoComposerProps) {
             )}
           </div>
           <p className="mt-3 text-xs leading-5 text-muted-foreground">
-            {locale === "ja" ? "写真は1枚4MB以下。JPG・PNG・WebP・HEICに対応しています。" : "单张照片不超过 4MB，支持 JPG、PNG、WebP 和 HEIC。"}
+            {locale === "ja" ? "写真は1枚20MB以下。JPG・PNG・WebP・HEICに対応しています。" : "单张照片不超过 20MB，支持 JPG、PNG、WebP 和 HEIC。"}
           </p>
           {selectionError ? <p className="mt-2 text-xs text-destructive" role="alert">{selectionError}</p> : null}
           {items.some((item) => item.status === "error") ? (

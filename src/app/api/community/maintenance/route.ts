@@ -1,11 +1,13 @@
 import { timingSafeEqual } from "node:crypto"
 import { NextResponse, type NextRequest } from "next/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { COMMUNITY_UPLOAD_STAGING_BUCKET } from "@/lib/community/direct-upload-server"
 
 export const runtime = "nodejs"
 export const maxDuration = 60
 
 const MEDIA_CLEANUP_BATCH_SIZE = 25
+const STAGING_CLEANUP_BATCH_SIZE = 500
 
 interface CleanupRow {
   cleanup_id: number
@@ -45,6 +47,24 @@ export async function GET(request: NextRequest) {
   const purgeResult = await db.rpc("community_purge_expired_data")
   if (purgeResult.error) throw new Error(purgeResult.error.message)
 
+  const directUploadCleanup = await db.rpc("community_queue_expired_direct_uploads")
+  if (directUploadCleanup.error) throw new Error(directUploadCleanup.error.message)
+
+  const stagingClaim = await db.rpc("community_claim_staging_cleanup", { p_limit: STAGING_CLEANUP_BATCH_SIZE })
+  if (stagingClaim.error) throw new Error(stagingClaim.error.message)
+  const staging = stagingClaim.data as { claimToken: string; paths: string[] } | null
+  let stagingRemoved = 0
+  let stagingFailed = 0
+  if (staging?.paths.length) {
+    const removed = await db.storage.from(COMMUNITY_UPLOAD_STAGING_BUCKET).remove(staging.paths)
+    const completed = await db.rpc("community_complete_staging_cleanup", {
+      p_claim_token: staging.claimToken, p_error: removed.error?.message ?? null,
+    })
+    if (completed.error) throw new Error(completed.error.message)
+    if (removed.error) stagingFailed = staging.paths.length
+    else stagingRemoved = staging.paths.length
+  }
+
   const cleanupResult = await db.rpc("community_admin_claim_media_cleanup", {
     p_limit: MEDIA_CLEANUP_BATCH_SIZE,
   })
@@ -70,5 +90,7 @@ export async function GET(request: NextRequest) {
     retention: purgeResult.data ?? {},
     mediaRemoved,
     mediaFailed,
+    stagingRemoved,
+    stagingFailed,
   })
 }

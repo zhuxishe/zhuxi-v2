@@ -58,6 +58,7 @@ export default async function ProfileEditPage() {
           removeAvatar: t("removeAvatar"),
           avatarHint: t("avatarHint"),
           avatarTooLarge: t("avatarTooLarge"),
+          avatarTooManyPixels: t("avatarTooManyPixels"),
           cropTitle: t("cropTitle"),
           cropHint: t("cropHint"),
           cropFallback: t("cropFallback"),

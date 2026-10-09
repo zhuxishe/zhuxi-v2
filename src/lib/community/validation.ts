@@ -1,10 +1,10 @@
 import {
-  COMMUNITY_MAX_IMAGE_BYTES,
+  COMMUNITY_MAX_PROCESSED_IMAGE_BYTES,
   COMMUNITY_MAX_IMAGES,
   COMMUNITY_PRESET_AVATARS,
 } from "./constants"
 import type { CommunityActionState, UploadedCommunityImage } from "./types"
-import { COMMUNITY_IMAGE_SIZE_ERROR } from "./upload"
+import { COMMUNITY_PROCESSED_IMAGE_SIZE_ERROR } from "./upload"
 
 const RESERVED_NICKNAMES = /^(admin|administrator|staff|官方|管理员|竹溪社官方|管理者|運営|公式)$/i
 
@@ -33,7 +33,7 @@ export function validateComment(body: string): string | null {
 export function validatePhotoPost(body: string, images: UploadedCommunityImage[]): string | null {
   if (body.length > 500) return "照片说明不能超过 500 个字符"
   if (images.length < 1 || images.length > COMMUNITY_MAX_IMAGES) return "请选择 1–9 张照片"
-  if (images.some((image) => image.byteSize > COMMUNITY_MAX_IMAGE_BYTES)) return COMMUNITY_IMAGE_SIZE_ERROR
+  if (images.some((image) => image.byteSize > COMMUNITY_MAX_PROCESSED_IMAGE_BYTES)) return COMMUNITY_PROCESSED_IMAGE_SIZE_ERROR
   return null
 }
 

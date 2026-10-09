@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { POST as uploadCommunityImage } from "@/app/api/community/uploads/route"
 import { POST as uploadProfileAvatar } from "@/app/api/profile/avatar/route"
 import {
-  COMMUNITY_MAX_IMAGE_BYTES,
+  COMMUNITY_MAX_LEGACY_IMAGE_BYTES,
   COMMUNITY_MAX_MULTIPART_BYTES,
 } from "./constants"
 
@@ -59,7 +59,7 @@ describe.each(routes)("%s upload route", (_name, pathname, handler) => {
   it("checks the actual file size after parsing multipart data", async () => {
     const form = new FormData()
     form.set("file", new File(
-      [new Uint8Array(COMMUNITY_MAX_IMAGE_BYTES + 1)],
+      [new Uint8Array(COMMUNITY_MAX_LEGACY_IMAGE_BYTES + 1)],
       "too-large.jpg",
       { type: "image/jpeg" },
     ))

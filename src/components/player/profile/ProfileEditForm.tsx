@@ -4,7 +4,9 @@ import { useActionState, useEffect, useId, useRef, useState, type ReactNode } fr
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Camera, Check, LoaderCircle, LockKeyhole, Trash2, X } from "lucide-react"
 import { updateMyProfileAction, type UpdateProfileActionState } from "@/app/app/profile/edit/actions"
-import { isImageFileTooLarge, readUploadResponse } from "@/lib/community/upload"
+import { isImageFileTooLarge } from "@/lib/community/upload"
+import { COMMUNITY_MAX_IMAGE_PIXELS } from "@/lib/community/constants"
+import { createDirectImageUpload, type DirectImageUpload } from "@/lib/community/direct-upload-client"
 import { ProfileAvatar } from "./ProfileAvatar"
 
 const INITIAL_ACTION_STATE: UpdateProfileActionState = {}
@@ -20,6 +22,7 @@ export interface ProfileEditLabels {
   removeAvatar: string
   avatarHint: string
   avatarTooLarge: string
+  avatarTooManyPixels: string
   cropTitle: string
   cropHint: string
   cropFallback: string
@@ -94,6 +97,17 @@ export function ProfileEditForm({ initial, labels, registrationDetails }: Profil
   const [crop, setCrop] = useState<CropState | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const avatarUploadRef = useRef<{ key: string; handle: DirectImageUpload } | null>(null)
+  const mountedRef = useRef(true)
+
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      avatarUploadRef.current?.handle.cancel()
+      avatarUploadRef.current = null
+    }
+  }, [])
 
   useEffect(() => {
     if (!dirty) return
@@ -123,12 +137,21 @@ export function ProfileEditForm({ initial, labels, registrationDetails }: Profil
       return
     }
     setUploadError(null)
+    avatarUploadRef.current?.handle.cancel()
+    avatarUploadRef.current = null
     const objectUrl = URL.createObjectURL(file)
     const image = new window.Image()
     image.onload = () => {
+      if (!mountedRef.current) { URL.revokeObjectURL(objectUrl); return }
+      if (image.naturalWidth * image.naturalHeight > COMMUNITY_MAX_IMAGE_PIXELS) {
+        URL.revokeObjectURL(objectUrl)
+        setUploadError(labels.avatarTooManyPixels)
+        return
+      }
       setCrop({ file, objectUrl, image, fallback: false, zoom: 1, offset: { x: 0, y: 0 } })
     }
     image.onerror = () => {
+      if (!mountedRef.current) { URL.revokeObjectURL(objectUrl); return }
       setCrop({ file, objectUrl, image: null, fallback: true, zoom: 1, offset: { x: 0, y: 0 } })
     }
     image.src = objectUrl
@@ -137,6 +160,8 @@ export function ProfileEditForm({ initial, labels, registrationDetails }: Profil
   function closeCrop() {
     if (uploading) return
     if (crop) URL.revokeObjectURL(crop.objectUrl)
+    avatarUploadRef.current?.handle.cancel()
+    avatarUploadRef.current = null
     setCrop(null)
   }
 
@@ -145,29 +170,35 @@ export function ProfileEditForm({ initial, labels, registrationDetails }: Profil
     setUploading(true)
     setUploadError(null)
     try {
-      const file = crop.image
-        ? await canvasFile(document.getElementById("profile-avatar-crop") as HTMLCanvasElement, crop.file.name)
-        : crop.file
-      if (isImageFileTooLarge(file)) throw new Error(labels.avatarTooLarge)
-      const body = new FormData()
-      body.set("file", file)
-      const response = await fetch("/api/profile/avatar", { method: "POST", body })
-      const result = await readUploadResponse<{ storagePath?: string; previewUrl?: string }>(response, {
-        fallback: labels.uploadFailed,
-        payloadTooLarge: labels.avatarTooLarge,
-      })
-      if (!response.ok || !result.storagePath || !result.previewUrl) {
-        throw new Error(result.error || labels.uploadFailed)
+      const key = JSON.stringify([crop.objectUrl, crop.zoom, crop.offset.x, crop.offset.y])
+      if (avatarUploadRef.current?.key !== key) {
+        avatarUploadRef.current?.handle.cancel()
+        const file = crop.image
+          ? await canvasFile(document.getElementById("profile-avatar-crop") as HTMLCanvasElement, crop.file.name)
+          : crop.file
+        if (!mountedRef.current) return
+        if (isImageFileTooLarge(file)) throw new Error(labels.avatarTooLarge)
+        avatarUploadRef.current = {
+          key,
+          handle: createDirectImageUpload(file, "profile-avatar", {
+            fallback: labels.uploadFailed,
+            payloadTooLarge: labels.avatarTooLarge,
+          }),
+        }
       }
+      const current = avatarUploadRef.current
+      const result = await current.handle.upload()
+      if (!mountedRef.current || avatarUploadRef.current !== current) return
+      if (!result.previewUrl) throw new Error(labels.uploadFailed)
       setAvatarPath(result.storagePath)
       setAvatarUrl(`${result.previewUrl}${result.previewUrl.includes("?") ? "&" : "?"}v=${Date.now()}`)
       setDirty(true)
       URL.revokeObjectURL(crop.objectUrl)
       setCrop(null)
     } catch (error) {
-      setUploadError(error instanceof Error ? error.message : labels.uploadFailed)
+      if (mountedRef.current) setUploadError(error instanceof Error ? error.message : labels.uploadFailed)
     } finally {
-      setUploading(false)
+      if (mountedRef.current) setUploading(false)
     }
   }
 

@@ -1,22 +1,14 @@
 import { randomUUID } from "node:crypto"
-import convertHeic from "heic-convert"
-import sharp from "sharp"
 import { NextResponse, type NextRequest } from "next/server"
 import { getPlayerInfo } from "@/lib/auth/player"
 import { getCommunityContext } from "@/lib/auth/community"
 import {
   COMMUNITY_AVATAR_BUCKET,
-  COMMUNITY_MAX_IMAGE_PIXELS,
+  COMMUNITY_MAX_LEGACY_IMAGE_BYTES,
   COMMUNITY_MEDIA_BUCKET,
 } from "@/lib/community/constants"
+import { normalizeCommunityImage } from "@/lib/community/normalize-image"
 import {
-  assertCommunityPixelLimit,
-  assertHeicPixelLimit,
-  detectCommunityImageType,
-} from "@/lib/community/image-validation"
-import {
-  COMMUNITY_IMAGE_SIZE_ERROR,
-  isImageFileTooLarge,
   validateMultipartLength,
 } from "@/lib/community/upload"
 import { createAdminClient } from "@/lib/supabase/admin"
@@ -24,55 +16,7 @@ import { createClient } from "@/lib/supabase/server"
 
 export const runtime = "nodejs"
 
-type UploadKind = "photo" | "avatar"
-
-async function normalizeImage(input: Buffer, kind: UploadKind) {
-  const signature = detectCommunityImageType(input.subarray(0, 16))
-  if (!signature) throw new Error("仅支持 JPG、PNG、WebP 或 HEIC 照片")
-
-  if (signature === "heic") {
-    assertHeicPixelLimit(input)
-  } else {
-    try {
-      const metadata = await sharp(input, {
-        failOn: "warning",
-        limitInputPixels: COMMUNITY_MAX_IMAGE_PIXELS,
-      }).metadata()
-      assertCommunityPixelLimit(metadata.width, metadata.height)
-    } catch (error) {
-      if (error instanceof Error && /pixel limit|Input image exceeds/i.test(error.message)) {
-        throw new Error("照片像素过大，请选择较小的照片")
-      }
-      throw error
-    }
-  }
-
-  const decoded = signature === "heic"
-    ? Buffer.from(await convertHeic({ buffer: input, format: "JPEG", quality: 0.9 }))
-    : input
-
-  const base = sharp(decoded, {
-    failOn: "warning",
-    limitInputPixels: COMMUNITY_MAX_IMAGE_PIXELS,
-  }).rotate()
-  if (kind === "avatar") {
-    const output = await base
-      .resize(512, 512, { fit: "cover", position: "attention", withoutEnlargement: false })
-      .webp({ quality: 84 })
-      .toBuffer({ resolveWithObject: true })
-    return { main: output.data, thumbnail: output.data, width: output.info.width, height: output.info.height }
-  }
-
-  const output = await base
-    .resize({ width: 2400, height: 2400, fit: "inside", withoutEnlargement: true })
-    .webp({ quality: 84, effort: 4 })
-    .toBuffer({ resolveWithObject: true })
-  const thumbnail = await sharp(output.data)
-    .resize(720, 720, { fit: "cover", position: "attention" })
-    .webp({ quality: 78, effort: 4 })
-    .toBuffer()
-  return { main: output.data, thumbnail, width: output.info.width, height: output.info.height }
-}
+const LEGACY_UPLOAD_SIZE_ERROR = "此页面的上传方式仅支持 4MB，请刷新页面后上传更大的照片"
 
 export async function POST(request: NextRequest) {
   const supabase = await createClient()
@@ -89,7 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "无法确认上传大小" }, { status: 411 })
   }
   if (lengthError === "too_large") {
-    return NextResponse.json({ error: COMMUNITY_IMAGE_SIZE_ERROR }, { status: 413 })
+    return NextResponse.json({ error: LEGACY_UPLOAD_SIZE_ERROR }, { status: 413 })
   }
 
   let formData: FormData
@@ -102,8 +46,8 @@ export async function POST(request: NextRequest) {
   const kind = formData.get("kind") === "avatar" ? "avatar" : "photo"
   if (!(file instanceof File)) return NextResponse.json({ error: "请选择照片" }, { status: 400 })
   if (file.size <= 0) return NextResponse.json({ error: "请选择照片" }, { status: 400 })
-  if (isImageFileTooLarge(file)) {
-    return NextResponse.json({ error: COMMUNITY_IMAGE_SIZE_ERROR }, { status: 413 })
+  if (file.size > COMMUNITY_MAX_LEGACY_IMAGE_BYTES) {
+    return NextResponse.json({ error: LEGACY_UPLOAD_SIZE_ERROR }, { status: 413 })
   }
 
   const context = await getCommunityContext(player)
@@ -116,7 +60,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const admin = createAdminClient()
-    const processed = await normalizeImage(Buffer.from(await file.arrayBuffer()), kind)
+    const processed = await normalizeCommunityImage(Buffer.from(await file.arrayBuffer()), kind)
     const id = randomUUID()
     const bucket = kind === "avatar" ? COMMUNITY_AVATAR_BUCKET : COMMUNITY_MEDIA_BUCKET
     const folder = kind === "avatar" ? "avatars" : "photos"

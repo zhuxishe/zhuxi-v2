@@ -3456,6 +3456,41 @@ export type Database = {
         Returns: undefined
       }
       community_purge_expired_data: { Args: never; Returns: Json }
+      community_prepare_direct_upload: {
+        Args: {
+          p_member_id: string
+          p_user_id: string
+          p_kind: string
+          p_expected_size: number
+        }
+        Returns: Json
+      }
+      community_claim_direct_upload: {
+        Args: { p_upload_id: string; p_member_id: string }
+        Returns: Json
+      }
+      community_finish_direct_upload: {
+        Args: {
+          p_upload_id: string
+          p_member_id: string
+          p_claim_token: string
+          p_result: Json
+        }
+        Returns: Json
+      }
+      community_cancel_direct_upload: {
+        Args: { p_upload_id: string; p_member_id: string; p_claim_token?: string }
+        Returns: boolean
+      }
+      community_queue_expired_direct_uploads: { Args: never; Returns: number }
+      community_claim_staging_cleanup: {
+        Args: { p_limit?: number }
+        Returns: Json
+      }
+      community_complete_staging_cleanup: {
+        Args: { p_claim_token: string; p_error?: string | null }
+        Returns: number
+      }
       community_register_processed_upload: {
         Args: {
           p_bucket_id: string

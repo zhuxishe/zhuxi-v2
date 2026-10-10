@@ -9,6 +9,7 @@ import {
 import { buildPublicUrl } from "@/lib/site-url"
 import { APP_SPLASH_SKIP_COOKIE } from "@/lib/app-launch-splash"
 import type { Database } from "@/types/database.types"
+import { createObservedSupabaseFetch } from "@/lib/supabase/observed-fetch"
 
 /**
  * GET /login/callback
@@ -75,6 +76,7 @@ export async function GET(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     supabaseKey,
     {
+      global: { fetch: createObservedSupabaseFetch("callback") },
       cookies: {
         getAll() {
           return req.cookies.getAll()

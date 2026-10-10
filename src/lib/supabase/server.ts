@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import type { Database } from "@/types/database.types"
+import { createObservedSupabaseFetch } from "./observed-fetch"
 
 export async function createClient() {
   const cookieStore = await cookies()
@@ -14,6 +15,7 @@ export async function createClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     supabaseKey,
     {
+      global: { fetch: createObservedSupabaseFetch("server") },
       cookies: {
         getAll() {
           return cookieStore.getAll()

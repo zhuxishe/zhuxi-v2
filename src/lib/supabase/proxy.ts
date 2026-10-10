@@ -2,6 +2,7 @@ import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
 import { getSafePlayerNextPath } from "@/lib/auth/player-next-path"
 import type { Database } from "@/types/database.types"
+import { createObservedSupabaseFetch } from "./observed-fetch"
 
 function getSupabasePublicKey() {
   const key =
@@ -29,6 +30,7 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     getSupabasePublicKey(),
     {
+      global: { fetch: createObservedSupabaseFetch("proxy") },
       cookies: {
         getAll() {
           return request.cookies.getAll()

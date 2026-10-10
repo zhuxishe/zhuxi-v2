@@ -37,10 +37,10 @@ describe("mini-program matching compatibility", () => {
     expect(selectCompatibleMiniRound(rounds, now)?.id).toBe("matching")
   })
 
-  it("queries the time window before selecting and does not depend on new columns", async () => {
+  it("queries the active time window and excludes deleted activities before selecting", async () => {
     query.mockResolvedValueOnce([{ ...legacy, purpose: "announcement" }, { ...legacy, config_revision: 7 }])
     expect((await fetchMiniOpenRound(now))?.config_revision).toBe(7)
-    expect(query).toHaveBeenCalledWith("match_rounds", expect.objectContaining({ select: "*", status: "eq.open", survey_start: `lte.${now.toISOString()}`, survey_end: `gt.${now.toISOString()}` }))
+    expect(query).toHaveBeenCalledWith("match_rounds", expect.objectContaining({ select: "*", status: "eq.open", deleted_at: "is.null", survey_start: `lte.${now.toISOString()}`, survey_end: `gt.${now.toISOString()}` }))
   })
 
   it("does not let a full page of incompatible rounds hide a later compatible one", async () => {
@@ -65,6 +65,12 @@ describe("mini-program matching compatibility", () => {
     expect(getMiniSurveyRoundError({ ...legacy, status: "open", content_config: { questions: [{ id: "q1" }] } }, now)).toContain("网页版")
     expect(getMiniSurveyRoundError({ ...legacy, status: "open", survey_end: now.toISOString() }, now)).toBe("当前轮次已截止")
     expect(getMiniSurveyRoundError({ ...legacy, status: "open", survey_start: "2026-10-01T00:00:00Z" }, now)).toBe("当前轮次尚未开放")
+  })
+
+  it("rejects a deleted activity even if a stale response still labels it open", () => {
+    const deleted = { ...legacy, status: "open", deleted_at: now.toISOString() }
+    expect(selectCompatibleMiniRound([deleted], now)).toBeNull()
+    expect(getMiniSurveyRoundError(deleted, now)).toBe("当前轮次不存在")
   })
 
   it("explains database races without resetting form state", () => {

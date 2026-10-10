@@ -1533,6 +1533,8 @@ export type Database = {
           activity_start: string
           created_at: string | null
           created_by: string | null
+          deleted_at: string | null
+          deleted_by: string | null
           id: string
           purpose: string
           content_config: Json
@@ -1547,6 +1549,8 @@ export type Database = {
           activity_start: string
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           purpose?: string
           content_config?: Json
@@ -1561,6 +1565,8 @@ export type Database = {
           activity_start?: string
           created_at?: string | null
           created_by?: string | null
+          deleted_at?: string | null
+          deleted_by?: string | null
           id?: string
           purpose?: string
           content_config?: Json
@@ -1574,6 +1580,13 @@ export type Database = {
           {
             foreignKeyName: "match_rounds_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "match_rounds_deleted_by_fkey"
+            columns: ["deleted_by"]
             isOneToOne: false
             referencedRelation: "admin_users"
             referencedColumns: ["id"]
@@ -3134,6 +3147,10 @@ export type Database = {
       admin_delete_admin_user: {
         Args: { p_admin_user_id: string; p_reason: string }
         Returns: Json
+      }
+      admin_delete_match_round: {
+        Args: { p_round_id: string; p_confirm_name: string; p_expected_revision: number }
+        Returns: boolean
       }
       admin_delete_operational_record: {
         Args: { p_entity: string; p_id: string; p_reason: string }

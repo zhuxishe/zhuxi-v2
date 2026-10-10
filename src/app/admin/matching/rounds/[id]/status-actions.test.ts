@@ -58,6 +58,12 @@ describe("administrator survey reopening", () => {
     expect((await updateRoundStatus("round", "open", opening)).error).toContain("已匹配")
     expect(mocks.from).toHaveBeenCalledTimes(1)
   })
+  it("does not reopen a deleted round from a stale admin page", async () => {
+    const deleted = query({ ...round, deleted_at: "2026-09-29T00:00:00Z" })
+    mocks.from.mockReturnValue(deleted)
+    expect((await updateRoundStatus("round", "open", opening)).error).toContain("已删除")
+    expect(deleted.update).not.toHaveBeenCalled()
+  })
 
   it("blocks reopening once a matching session exists, including a run still being saved", async () => {
     mocks.from.mockReturnValueOnce(query(round)).mockReturnValueOnce(query({ id: "session" }))

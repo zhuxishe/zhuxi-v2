@@ -43,7 +43,7 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
     .eq("id", roundId)
     .single()
 
-  if (roundErr || !round) return { error: "轮次不存在" }
+  if (roundErr || !round || round.deleted_at) return { error: "轮次不存在" }
   if (getRoundPurpose(round.purpose) !== "matching") return { error: "只有收集时间后匹配的轮次可以运行匹配" }
   if (round.status !== "closed") {
     return { error: `当前轮次状态为「${roundStatusLabel(round.status)}」，只有「已截止」状态才能执行匹配` }
@@ -250,7 +250,8 @@ export async function updateSubmission(submissionId: string, data: SubmissionDat
     .select("*")
     .eq("id", sub.round_id)
     .single()
-  if (round?.status === "matched") return { error: "该轮次已完成匹配，无法编辑" }
+  if (!round || round.deleted_at) return { error: "轮次不存在" }
+  if (round.status === "matched") return { error: "该轮次已完成匹配，无法编辑" }
   if (getRoundPurpose(round?.purpose) !== "matching") return { error: "活动报名不使用匹配问卷编辑功能" }
 
   const { error } = await supabase
@@ -293,7 +294,7 @@ export async function createSubmission(
     .select("*")
     .eq("id", roundId)
     .single()
-  if (!round) return { error: "轮次不存在" }
+  if (!round || round.deleted_at) return { error: "轮次不存在" }
   if (getRoundPurpose(round.purpose) !== "matching") return { error: "只有匹配轮次可以手动新增匹配问卷" }
   if (normalizeRoundConfig(round.content_config).questions.some((question) => question.required)) return { error: "本轮含必填补充问题，请成员自行填写问卷" }
   if (round.status === "matched") return { error: "该轮次已完成匹配，无法新增" }
@@ -348,10 +349,11 @@ export async function deleteSubmission(submissionId: string, rawReason: string) 
 
   const { data: round } = await supabase
     .from("match_rounds")
-    .select("status")
+    .select("status, deleted_at")
     .eq("id", sub.round_id)
     .single()
-  if (round?.status === "matched") return { error: "该轮次已完成匹配，无法删除" }
+  if (!round || round.deleted_at) return { error: "轮次不存在" }
+  if (round.status === "matched") return { error: "该轮次已完成匹配，无法删除" }
 
   const rpc = supabase as unknown as OperationalRpcClient
   const { error } = await rpc.rpc<unknown>("admin_delete_operational_record", {

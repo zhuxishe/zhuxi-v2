@@ -18,7 +18,7 @@ export function supportsMiniRoundContent(round: MiniRoundContent) {
 export function selectCompatibleMiniRound(rounds: MiniOpenRound[], now = new Date()) {
   return rounds.find((round) => {
     const start = Date.parse(round.survey_start ?? ''), end = Date.parse(round.survey_end ?? '')
-    return round.status === 'open' && Number.isFinite(start) && Number.isFinite(end)
+    return !round.deleted_at && round.status === 'open' && Number.isFinite(start) && Number.isFinite(end)
       && start <= now.getTime() && now.getTime() < end && supportsMiniRoundContent(round)
   }) ?? null
 }

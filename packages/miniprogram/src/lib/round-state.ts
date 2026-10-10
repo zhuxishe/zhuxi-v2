@@ -7,6 +7,7 @@ export interface MiniOpenRound {
   purpose?: string | null
   content_config?: unknown
   config_revision?: number
+  deleted_at?: string | null
 }
 
 export interface MiniRoundCardState {

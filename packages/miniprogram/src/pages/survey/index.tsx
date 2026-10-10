@@ -102,6 +102,7 @@ export default function Survey() {
       const round = await supabaseQuery<MiniSurveyRoundGuardInput>('match_rounds', {
         select: '*',
         id: `eq.${roundId}`,
+        deleted_at: 'is.null',
       }, { single: true })
       const roundError = getMiniSurveyRoundError(round, new Date(), roundRevision)
       if (roundError) throw new Error(roundError)

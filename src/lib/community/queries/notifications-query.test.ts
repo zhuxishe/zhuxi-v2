@@ -14,7 +14,7 @@ const receipt = {
   created_at: now, expires_at: "2026-12-28T01:00:00.000Z",
 }
 let notifications: typeof receipt[]
-let submissions: { round_id: string; member_id: string; cancelled_at?: string | null }[]
+let submissions: { round_id: string; member_id: string; cancelled_at?: string | null; deleted_at?: string | null }[]
 let requests: URL[]
 let banned: boolean
 let submissionsUnavailable: boolean
@@ -48,6 +48,7 @@ describe("notification delivery with the real Supabase request builder", () => {
           if (submissionsUnavailable) return new Response(JSON.stringify({ message: "Unavailable", code: "42501" }), { status: 403 })
           const ids = params.get("round_id")?.slice(4, -1).split(",")
           data = submissions.filter((row) => (!params.get("member_id") || params.get("member_id") === `eq.${row.member_id}`)
+            && (params.get("round.deleted_at") !== "is.null" || !row.deleted_at)
             && (!ids || ids.includes(row.round_id)) && (!params.get("cancelled_at") || row.cancelled_at == null))
         }
         if (url.pathname.endsWith("/community_posts")) data = [{ id: "photo", post_type: "photo", status: "published" }]
@@ -115,6 +116,17 @@ describe("notification delivery with the real Supabase request builder", () => {
     submissions = [{ round_id: receipt.round_id, member_id: "other" }]
     const result = await fetchCommunityNotifications("member", "zh", { limit: 8 })
     expect(result.items[0]).toMatchObject({ href: null, unavailable: true })
+  })
+
+  it("keeps a deleted activity receipt's text and read state while making its target unavailable", async () => {
+    notifications = [{ ...receipt, read_at: now }]
+    submissions[0].deleted_at = now
+    const result = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    expect(result.items[0]).toMatchObject({ title: receipt.title_zh, body: receipt.body_zh, readAt: now, createdAt: receipt.created_at, href: null, unavailable: true })
+    expect(result.unreadCount).toBe(0)
+    const query = requests.find((url) => url.pathname.endsWith("/match_round_submissions"))!.searchParams
+    expect(query.get("round.deleted_at")).toBe("is.null")
+    expect(query.get("select")).toContain("match_rounds!inner")
   })
 
   it("surfaces target lookup failures instead of treating an unverified receipt as available", async () => {

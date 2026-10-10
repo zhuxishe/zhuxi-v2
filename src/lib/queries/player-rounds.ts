@@ -6,6 +6,7 @@ import type { RoundRecord } from "@/types/matching-round"
 export async function fetchPlayerRounds(now = new Date()): Promise<RoundRecord[]> {
   const db = await createClient()
   const { data, error } = await db.from("match_rounds").select("*")
+    .is("deleted_at", null)
     .eq("status", "open").lte("survey_start", now.toISOString()).gt("survey_end", now.toISOString())
     .order("survey_end", { ascending: true }).limit(100)
   if (error) throw new Error("Unable to load current matching activities")
@@ -15,7 +16,7 @@ export async function fetchPlayerRounds(now = new Date()): Promise<RoundRecord[]
 export async function fetchPlayerRound(id: string): Promise<RoundRecord | null> {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) return null
   const db = await createClient()
-  const { data, error } = await db.from("match_rounds").select("*").eq("id", id).maybeSingle()
+  const { data, error } = await db.from("match_rounds").select("*").eq("id", id).is("deleted_at", null).maybeSingle()
   if (error) throw new Error("Unable to load matching activity")
   return data
 }

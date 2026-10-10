@@ -7,6 +7,7 @@ export interface MiniSurveyRoundGuardInput {
   purpose?: string | null
   content_config?: unknown
   config_revision?: number
+  deleted_at?: string | null
 }
 
 export function getMiniSurveyRoundError(
@@ -14,7 +15,7 @@ export function getMiniSurveyRoundError(
   now = new Date(),
   expectedRevision?: number
 ): string | null {
-  if (!round) return '当前轮次不存在'
+  if (!round || round.deleted_at) return '当前轮次不存在'
   if (round.status !== 'open') return '当前轮次已关闭'
   if (!round.survey_end || !Number.isFinite(Date.parse(round.survey_end)) || Date.parse(round.survey_end) <= now.getTime()) return '当前轮次已截止'
   if (round.survey_start && (!Number.isFinite(Date.parse(round.survey_start)) || Date.parse(round.survey_start) > now.getTime())) return '当前轮次尚未开放'

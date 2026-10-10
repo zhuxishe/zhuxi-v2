@@ -14,7 +14,7 @@ export async function updateRoundStatus(roundId: string, status: string, opening
   const supabase = await createClient()
   const { data: round, error: roundError } = await supabase.from("match_rounds")
     .select("*").eq("id", roundId).single()
-  if (roundError || !round) return { error: "轮次不存在" }
+  if (roundError || !round || round.deleted_at) return { error: "轮次不存在或已删除" }
   if (!canUpdateRoundStatus(round.status, status)) return { error: "该轮次已匹配或状态无效，无法更改问卷状态" }
 
   let window: { survey_start: string; survey_end: string } | undefined
@@ -38,6 +38,7 @@ export async function updateRoundStatus(roundId: string, status: string, opening
     .eq("survey_start", round.survey_start).eq("survey_end", round.survey_end)
     .select("id").maybeSingle()
   if (error) {
+    if (error.message.includes("ROUND_DELETED") || error.message.includes("ROUND_NOT_FOUND")) return { error: "轮次已删除，请返回匹配管理" }
     console.error("[updateRoundStatus]", error)
     return { error: "操作失败，请稍后重试" }
   }

@@ -11,11 +11,13 @@ export async function fetchRounds() {
   let { data, error } = await supabase
     .from("match_rounds")
     .select("id, round_name, status, survey_start, survey_end, activity_start, activity_end, purpose")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100)
   if (isRoundSetupError(error)) {
     const legacy = await supabase.from("match_rounds")
       .select("id, round_name, status, survey_start, survey_end, activity_start, activity_end")
+      .is("deleted_at", null)
       .order("created_at", { ascending: false }).limit(100)
     data = legacy.data?.map((round) => ({ ...round, purpose: "matching" })) ?? null
     error = legacy.error
@@ -31,6 +33,7 @@ export async function fetchRound(id: string) {
     .from("match_rounds")
     .select("*")
     .eq("id", id)
+    .is("deleted_at", null)
     .single()
 
   if (error) throw error
@@ -121,6 +124,7 @@ export async function fetchOpenRound(now = new Date()) {
     .from("match_rounds")
     .select("*")
     .eq("status", "open")
+    .is("deleted_at", null)
     .lte("survey_start", now.toISOString())
     .gt("survey_end", now.toISOString())
     .order("survey_end", { ascending: true })
@@ -136,6 +140,7 @@ export async function fetchLatestRound() {
   const { data } = await supabase
     .from("match_rounds")
     .select("id, round_name, status, survey_start, survey_end")
+    .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle()

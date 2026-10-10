@@ -121,7 +121,7 @@ export async function fetchCommunityNotifications(
       ? db.from("community_announcements").select("id, status, display_start_at, display_end_at").in("id", announcementIds)
       : Promise.resolve({ data: [], error: null }),
     roundIds.length
-      ? db.from("match_round_submissions").select("round_id, cancelled_at").eq("member_id", memberId).in("round_id", roundIds)
+      ? db.from("match_round_submissions").select("round_id, cancelled_at, round:match_rounds!inner(id)").eq("member_id", memberId).in("round_id", roundIds).is("round.deleted_at", null)
       : Promise.resolve({ data: [], error: null }),
   ])
   const relatedError = [profilesResult, postsResult, commentsResult, announcementsResult, submissionsResult]

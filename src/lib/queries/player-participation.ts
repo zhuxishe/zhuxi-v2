@@ -12,6 +12,7 @@ export async function fetchPlayerParticipationRecords(memberId: string): Promise
     const { data, error } = await db.from("match_round_submissions")
       .select(`id, created_at, updated_at, cancelled_at, round:match_rounds!inner(${ROUND_COLUMNS})`)
       .eq("member_id", memberId)
+      .is("round.deleted_at", null)
       .order("created_at", { ascending: false, nullsFirst: false })
       .order("id", { ascending: true })
       .range(from, from + PAGE_SIZE - 1)
@@ -29,6 +30,7 @@ export async function fetchPlayerParticipationDetail(memberId: string, roundId: 
     .select(`id, created_at, updated_at, cancelled_at, game_type_pref, gender_pref, availability, interest_tags, social_style, message, custom_answers, round:match_rounds!inner(${ROUND_COLUMNS})`)
     .eq("member_id", memberId)
     .eq("round_id", roundId)
+    .is("round.deleted_at", null)
     .maybeSingle()
   if (error) throw new Error("Unable to load your participation record")
   return data

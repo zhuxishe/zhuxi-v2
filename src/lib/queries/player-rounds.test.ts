@@ -30,6 +30,7 @@ describe("player round queries with the real Supabase request builder", () => {
         const data = url.pathname.endsWith("/match_rounds") ? rounds.filter((round) => {
           const status = params.get("status"), start = params.get("survey_start"), end = params.get("survey_end"), selected = params.get("id")
           return (!status || status === `eq.${round.status}`) && (!selected || selected === `eq.${round.id}`)
+            && (params.get("deleted_at") !== "is.null" || !round.deleted_at)
             && (!start || Date.parse(round.survey_start) <= Date.parse(start.slice(4)))
             && (!end || Date.parse(round.survey_end) > Date.parse(end.slice(3)))
         }).sort((a, b) => Date.parse(a.survey_end) - Date.parse(b.survey_end)).slice(0, Number(params.get("limit") ?? rounds.length))
@@ -69,6 +70,18 @@ describe("player round queries with the real Supabase request builder", () => {
   it("rejects malformed round identities without making a request", async () => {
     expect(await fetchPlayerRound("id&round=other")).toBeNull()
     expect(mocks.client).not.toHaveBeenCalled()
+  })
+
+  it("excludes deleted rounds before pagination and refuses their old direct links", async () => {
+    rounds = [
+      ...Array.from({ length: 101 }, (_, index) => ({ ...base, id: `deleted-${index}`, deleted_at: now.toISOString() })),
+      base,
+    ]
+    expect((await fetchPlayerRounds(now)).map((round) => round.id)).toEqual([id])
+    expect(requests[0].searchParams.get("deleted_at")).toBe("is.null")
+    rounds = [{ ...base, deleted_at: now.toISOString() }]
+    expect(await fetchPlayerRound(id)).toBeNull()
+    expect(requests.at(-1)?.searchParams.get("deleted_at")).toBe("is.null")
   })
 
   it("scopes submission lookup to the canonical member and the displayed round IDs", async () => {

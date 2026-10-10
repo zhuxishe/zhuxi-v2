@@ -11,7 +11,7 @@ const input = {
   roundId: "round", gameTypePref: "都可以", genderPref: "都可以",
   availability: { "2026-10-01": ["下午"] }, interestTags: [], socialStyle: null, message: "existing answer",
 }
-function readRound(data: typeof round & { purpose?: string; config_revision?: number; content_config?: unknown }) {
+function readRound(data: (typeof round & { purpose?: string; config_revision?: number; content_config?: unknown; deleted_at?: string | null }) | null) {
   const query = { select: vi.fn(), eq: vi.fn(), single: vi.fn(), maybeSingle: vi.fn() }
   query.select.mockReturnValue(query)
   query.eq.mockReturnValue(query)
@@ -68,6 +68,29 @@ describe("survey submission availability", () => {
     mocks.player.mockRejectedValue(new Error("redirect"))
     await expect(submitSurvey(input)).rejects.toThrow("redirect")
     expect(mocks.from).not.toHaveBeenCalled()
+  })
+
+  it("refuses a deleted activity without writing the registration or questionnaire", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration", deleted_at: "2026-09-29T00:30:00Z" }))
+    expect(await submitSurvey(input)).toEqual({ error: "roundNotFound" })
+    expect(mocks.rpc).not.toHaveBeenCalled()
+    expect(mocks.upsert).not.toHaveBeenCalled()
+  })
+
+  it("explains deletion during filling when the database rejects a concurrent write", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+      .mockReturnValueOnce(readRound({ ...round, deleted_at: "2026-09-29T01:00:00Z" }))
+    mocks.upsert.mockResolvedValue({ error: { message: "ROUND_DELETED" } })
+    expect(await submitSurvey(input)).toEqual({ error: "roundNotFound" })
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("explains deletion during filling when RLS hides the retained round", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+      .mockReturnValueOnce(readRound(null))
+    mocks.upsert.mockResolvedValue({ error: { message: "ROUND_NOT_FOUND" } })
+    expect(await submitSurvey(input)).toEqual({ error: "roundNotFound" })
+    expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 
   it("accepts a fixed activity registration without any availability and stores its schema revision", async () => {

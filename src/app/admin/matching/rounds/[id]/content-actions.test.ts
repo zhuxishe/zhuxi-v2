@@ -34,6 +34,14 @@ describe("round content editing", () => {
     expect((await saveRoundContent("round", 0, draft())).error).toContain("其他管理员")
     expect(mocks.from).toHaveBeenCalledTimes(1)
   })
+  it("rejects stale editing and copying of a deleted round", async () => {
+    const deleted = query({ ...round(), deleted_at: "2026-10-10T10:00:00Z" })
+    mocks.from.mockReturnValue(deleted)
+    expect((await saveRoundContent("round", 0, draft())).error).toContain("已删除")
+    expect((await copyRound("round")).error).toContain("已删除")
+    expect(deleted.update).not.toHaveBeenCalled()
+    expect(deleted.insert).not.toHaveBeenCalled()
+  })
   it("locks purpose after answers, even for a direct server action request", async () => {
     mocks.from.mockReturnValue(query(round())); count(1)
     expect((await saveRoundContent("round", 0, { ...draft(), purpose: "announcement" })).error).toContain("不能修改")

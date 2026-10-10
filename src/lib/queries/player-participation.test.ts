@@ -27,6 +27,7 @@ describe("personal participation queries", () => {
         if (denied) return new Response(JSON.stringify({ message: "Denied", code: "42501" }), { status: 403 })
         const params = url.searchParams
         const data = records.filter((record) => `eq.${record.member_id}` === params.get("member_id")
+          && (params.get("round.deleted_at") !== "is.null" || !record.round.deleted_at)
           && (!params.get("round_id") || `eq.${record.round_id}` === params.get("round_id")))
         const from = Number(params.get("offset") ?? 0), limit = Number(params.get("limit") ?? data.length)
         return new Response(JSON.stringify(data.slice(from, from + limit)), { headers: { "content-type": "application/json" } })
@@ -69,6 +70,17 @@ describe("personal participation queries", () => {
   it("rejects malformed record paths before querying", async () => {
     expect(await fetchPlayerParticipationDetail("member", "round&member=other")).toBeNull()
     expect(mocks.client).not.toHaveBeenCalled()
+  })
+
+  it("hides deleted activities while retaining the member's other closed records and blocks their old detail links", async () => {
+    records = [
+      ...Array.from({ length: 101 }, (_, index) => ({ ...base, id: `deleted-${index}`, round: { ...base.round, deleted_at: "2026-09-29T01:00:00Z" } })),
+      { ...base, id: "retained", round_id: "22222222-2222-4222-8222-222222222222", round: { ...base.round, id: "22222222-2222-4222-8222-222222222222" } },
+    ]
+    expect((await fetchPlayerParticipationRecords("member")).map((record) => record.id)).toEqual(["retained"])
+    expect(await fetchPlayerParticipationDetail("member", roundId)).toBeNull()
+    expect(requests.every((request) => request.searchParams.get("round.deleted_at") === "is.null")).toBe(true)
+    expect(requests.every((request) => request.searchParams.get("select")?.includes("match_rounds!inner"))).toBe(true)
   })
 
   it("reports read failure rather than showing an empty personal history", async () => {

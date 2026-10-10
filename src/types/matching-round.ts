@@ -55,4 +55,5 @@ export interface RoundRecord {
   content_config?: unknown
   config_revision?: number
   created_at?: string | null
+  deleted_at?: string | null
 }

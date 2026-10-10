@@ -6,6 +6,7 @@ export async function fetchMiniOpenRound(now = new Date()): Promise<MiniOpenRoun
   for (let offset = 0; ; offset += 100) {
     const rounds = await supabaseQuery<MiniOpenRound[]>('match_rounds', {
       select: '*', status: 'eq.open',
+      deleted_at: 'is.null',
       survey_start: `lte.${now.toISOString()}`, survey_end: `gt.${now.toISOString()}`,
       order: 'survey_end.asc,id.asc', limit: '100', offset: String(offset),
     })

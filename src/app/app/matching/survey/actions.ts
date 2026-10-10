@@ -23,7 +23,7 @@ export async function submitSurvey(input: SubmitSurveyInput) {
   const supabase = await createClient()
   // Selecting the full row also permits unchanged legacy matching while a schema upgrade is pending.
   const { data: round, error: roundErr } = await supabase.from("match_rounds").select("*").eq("id", input.roundId).single()
-  if (roundErr || !round) {
+  if (roundErr || !round || round.deleted_at) {
     if (roundErr) console.error("[submitSurvey] round query", roundErr)
     return { error: "roundNotFound" }
   }
@@ -57,7 +57,8 @@ export async function submitSurvey(input: SubmitSurveyInput) {
     const registrationError = registrationOperationError(error)
     if (registrationError && registrationError !== "registrationCancelUnavailable") return { error: registrationError }
     // Explain admin closure or content changes which raced with the initial read.
-    const { data: current } = await supabase.from("match_rounds").select("*").eq("id", input.roundId).maybeSingle()
+    const { data: current, error: currentQueryError } = await supabase.from("match_rounds").select("*").eq("id", input.roundId).maybeSingle()
+    if (current?.deleted_at || !current && !currentQueryError) return { error: "roundNotFound" }
     const currentError = current ? surveySubmissionError(current) : null
     if (currentError) return { error: currentError }
     if (current && (current.config_revision ?? 0) !== (input.configRevision ?? 0)) return { error: "surveyUpdated" }

@@ -19,7 +19,7 @@ export async function saveRoundContent(roundId: string, expectedRevision: number
   if (parsed.error) return { error: parsed.error }
   const db = await createClient()
   const { data: round, error } = await db.from("match_rounds").select("*").eq("id", roundId).single()
-  if (error || !round) return { error: "轮次不存在" }
+  if (error || !round || round.deleted_at) return { error: "轮次不存在或已删除" }
   if (!("config_revision" in round)) return { error: ROUND_SETUP_ERROR }
   if (round.config_revision !== expectedRevision) return { error: "内容已被其他管理员修改，请刷新后重试" }
   if (round.status === "open") {
@@ -41,6 +41,7 @@ export async function saveRoundContent(roundId: string, expectedRevision: number
   }).eq("id", roundId).eq("config_revision", expectedRevision).select("config_revision").maybeSingle()
   if (updateError) {
     if (isRoundSetupError(updateError)) return { error: ROUND_SETUP_ERROR }
+    if (updateError.message.includes("ROUND_DELETED") || updateError.message.includes("ROUND_NOT_FOUND")) return { error: "轮次已删除，请返回匹配管理" }
     if (updateError.message.includes("ROUND_STRUCTURE_LOCKED")) return { error: "已有新回答，问题结构已锁定，请刷新或复制为新一期" }
     console.error("[saveRoundContent]", updateError)
     return { error: "内容保存失败，请检查时间及问题设置后重试" }
@@ -54,7 +55,7 @@ export async function copyRound(roundId: string) {
   const admin = await requireAdmin()
   const db = await createClient()
   const { data: round, error } = await db.from("match_rounds").select("*").eq("id", roundId).single()
-  if (error || !round) return { error: "轮次不存在" }
+  if (error || !round || round.deleted_at) return { error: "轮次不存在或已删除" }
   if (!("config_revision" in round)) return { error: ROUND_SETUP_ERROR }
   const { data: copy, error: copyError } = await db.from("match_rounds").insert({
     round_name: `${round.round_name.slice(0, 150)}（副本）`, purpose: round.purpose,

@@ -427,6 +427,264 @@ try {
       }
     }
   })
+
+  // All 57 previous checks deliberately run before automatic roster inclusion.
+  // Reuse the same synthetic accounts and real guards to test the next upgrade.
+  for (const n of [20,21,23,24,25]) await createRound(n)
+  await createRound(22,'matching',{})
+  for (const n of [20,22,23]) {
+    await query(`INSERT INTO private.round_peer_review_settings(round_id,enabled,opens_at,closes_at,roster_confirmed,opened_at)
+      VALUES($1,true,$2,$3,true,$2)`,[round(n),...times])
+  }
+  for (const m of [1,2,3,4,8,15,16,17,18]) await insertSignup(20,m,{note:`自动名册迁移前回答 ${m}`})
+  for (const [n,m,included] of [[20,1,true],[20,2,false],[20,4,true],[22,1,true],[23,1,true]]) {
+    await query("INSERT INTO private.round_peer_review_participants(round_id,member_id,included,source) VALUES($1,$2,$3,'registered')",[round(n),member(m),included])
+  }
+  await openRegistration(20); await cancelRegistration(20,4); await cancelRegistration(20,8)
+  for (const n of [21,22,23]) for (const m of [1,9]) await insertSignup(n,m,n===22?{}:{note:`活动${n}原报名`})
+  await call(10,'admin_delete_match_round',[round(23),'活动23',await revision(23),'测试管理员','测试自动名册忽略已删除活动'])
+  const beforeAutoMigration=await snapshot()
+  const participant = async (n,m) => (await query('SELECT * FROM private.round_peer_review_participants WHERE round_id=$1 AND member_id=$2',[round(n),member(m)]))[0]
+  const settings = async n => (await query('SELECT * FROM private.round_peer_review_settings WHERE round_id=$1',[round(n)]))[0]
+  const peerState = async n => ({
+    settings: await settings(n),
+    participants: await query('SELECT * FROM private.round_peer_review_participants WHERE round_id=$1 ORDER BY member_id',[round(n)]),
+    audit: await query('SELECT * FROM private.round_peer_review_audit WHERE round_id=$1 ORDER BY id',[round(n)]),
+  })
+  const register = async (n,m,answers={note:'玩家亲自填写的报名回答'}) => call(m,'manage_my_registration',[round(n),'create',null,await revision(n),answers])
+  const updateRegistration = async (n,m,answers) => {
+    const current=await signup(n,m)
+    return call(m,'manage_my_registration',[round(n),'update',current.updated_at,await revision(n),answers])
+  }
+  const rejoinRegistration = async (n,m) => {
+    const current=await signup(n,m)
+    return call(m,'manage_my_registration',[round(n),'rejoin',current.updated_at,await revision(n),{note:'重新报名时保留用户真实填写'}])
+  }
+  const saveReviewSettings = async (n,auto,enabled=true,window=times,actor=11) => call(actor,'admin_save_round_peer_review_settings',
+    [round(n),enabled,...window,(await settings(n))?.version??0,'核对自动报名名册与互评开放设置',...(auto===undefined?[]:[auto])])
+  await db.exec(read('supabase/migrations/20261010123021_automatic_registration_review_roster.sql'))
+  await ok('automatic-roster postflight verifies private helpers, RPC grants, trigger and eligibility guards',async()=>{
+    await db.exec(read('supabase/audits/automatic-registration-review-roster-postflight.sql'))
+  })
+  await ok('automatic-roster migration leaves original registrations, answers, cancellations, ratings and notifications untouched',async()=>{
+    const after=await snapshot()
+    for (const table of ['public.match_rounds','public.match_round_submissions','private.round_peer_reviews','public.community_notifications']) {
+      assert.deepEqual(after[table],beforeAutoMigration[table],table)
+    }
+    assert.deepEqual(await acl(),originalAcl)
+    assert.equal((await query("SELECT pg_get_functiondef('private.peer_member_eligible(uuid,uuid)'::regprocedure) AS definition"))[0].definition,strictEligibilityBefore)
+  })
+  await ok('existing fixed events default to automatic inclusion and add only missing eligible registrants',async()=>{
+    const current=await settings(20)
+    assert.equal(current.auto_include_registered,true); assert.equal(current.roster_confirmed,true)
+    assert.equal((await participant(20,3)).included,true)
+    assert.equal((await participant(20,2)).included,false)
+    assert.ok((await signup(20,4)).cancelled_at)
+    assert.ok((await signup(20,8)).cancelled_at); assert.equal(await participant(20,8),undefined)
+    assert.equal((await call(4,'player_get_round_peer_reviews',[round(20)])).can_review,false)
+    for (const m of [15,16,17,18]) assert.equal(await participant(20,m),undefined)
+    const audit=await query("SELECT * FROM private.round_peer_review_audit WHERE round_id=$1 AND action='registration_auto_included'",[round(20)])
+    assert.equal(audit.length,1); assert.equal(audit[0].subject_id,member(3))
+    const oldSettings=beforeAutoMigration['private.round_peer_review_settings'].find(row=>row.round_id===round(20))
+    for (const field of ['enabled','opens_at','closes_at','opened_at']) {
+      const expected=oldSettings[field]===null?null:new Date(oldSettings[field]).getTime()
+      if (field==='enabled') assert.equal(current[field],oldSettings[field])
+      else assert.equal(current[field]===null?null:new Date(current[field]).getTime(),expected)
+    }
+  })
+  await ok('automatic backfill skips matching questionnaires and deleted activities',async()=>{
+    assert.equal(await participant(22,9),undefined); assert.equal(await participant(23,9),undefined)
+    for (const n of [22,23]) {
+      assert.deepEqual((await snapshot())['private.round_peer_review_participants'].filter(row=>row.round_id===round(n)),
+        beforeAutoMigration['private.round_peer_review_participants'].filter(row=>row.round_id===round(n)))
+    }
+  })
+  await ok('first automatic settings save incorporates earlier registrations without requiring manual roster confirmation',async()=>{
+    assert.equal(await participant(21,1),undefined)
+    const result=await saveReviewSettings(21,true)
+    assert.equal(result.auto_include_registered,true); assert.equal(result.auto_include_supported,true)
+    assert.equal(result.roster_confirmed,true); assert.equal(result.enabled,true)
+    for (const m of [1,9]) assert.equal((await participant(21,m)).included,true)
+    const context=await call(9,'player_get_round_peer_reviews',[round(21)])
+    assert.equal(context.can_review,true); assert.equal(context.participants.length,1)
+  })
+  await ok('automatic mode can enable zero attendees and later one attendee without allowing self-review',async()=>{
+    const result=await saveReviewSettings(24,true)
+    assert.equal(result.enabled,true); assert.equal(result.roster_confirmed,true)
+    assert.equal((await peerState(24)).participants.length,0)
+    await openRegistration(24); await register(24,1)
+    const context=await call(1,'player_get_round_peer_reviews',[round(24)])
+    assert.equal(context.participants.length,0); assert.equal(context.participant_count,0)
+    await assert.rejects(()=>call(1,'player_save_round_peer_review',[round(24),member(1),4,'不能评价自己',0]),error=>error.message.includes('PEER_NOT_ELIGIBLE'))
+    await assert.rejects(()=>call(1,'player_save_round_peer_review',[round(24),member(9),4,'不能评价非本场成员',0]),error=>error.message.includes('PEER_NOT_ELIGIBLE'))
+  })
+  const versionBeforeLateSignup=await version(20)
+  await ok('later player registration atomically adds a review entry with original answers and exactly one receipt',async()=>{
+    const input={note:'新玩家真实填写，不允许后台改动'}
+    await register(20,6,input)
+    assert.deepEqual((await signup(20,6)).custom_answers,input)
+    assert.equal((await participant(20,6)).included,true)
+    assert.equal(await version(20),versionBeforeLateSignup+1)
+    const events=(await call(6,'player_list_round_peer_review_events')).events
+    assert.equal(events.find(event=>event.round_id===round(20)).can_review,true)
+    assert.equal((await query('SELECT * FROM public.community_notifications WHERE round_id=$1 AND recipient_member_id=$2',[round(20),member(6)])).length,1)
+    assert.equal((await query("SELECT * FROM private.round_peer_review_audit WHERE round_id=$1 AND subject_id=$2 AND action='registration_auto_included'",[round(20),member(6)])).length,1)
+    await call(6,'player_save_round_peer_review',[round(20),member(1),4.5,'报名后在开放时间内互评',0])
+  })
+  await unchangedFailure('old administrator roster version cannot overwrite a newly automatic attendee',()=>call(11,'admin_confirm_round_peer_review_roster',
+    [round(20),[member(1),member(3)],versionBeforeLateSignup,'测试过期名册不覆盖自动加入成员']),'PEER_VERSION_CONFLICT')
+  await ok('editing or repeating unchanged registration never duplicates roster, auto audit, version or receipt',async()=>{
+    const before=await peerState(20)
+    const notices=await query('SELECT * FROM public.community_notifications WHERE round_id=$1 ORDER BY id',[round(20)])
+    await updateRegistration(20,6,{note:'允许正常更新自己的回答'})
+    await updateRegistration(20,6,{note:'允许正常更新自己的回答'})
+    assert.deepEqual(await peerState(20),before)
+    assert.deepEqual(await query('SELECT * FROM public.community_notifications WHERE round_id=$1 ORDER BY id',[round(20)]),notices)
+    assert.deepEqual((await signup(20,6)).custom_answers,{note:'允许正常更新自己的回答'})
+  })
+  await ok('registration and its receipt roll back if automatic roster insertion fails',async()=>{
+    const before=await snapshot()
+    await db.exec(`CREATE FUNCTION private.test_reject_auto_roster() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN IF NEW.round_id='${round(20)}' AND NEW.member_id='${member(14)}' THEN RAISE EXCEPTION 'TEST_AUTO_ROSTER_FAILURE'; END IF; RETURN NEW; END$$;
+      CREATE TRIGGER test_reject_auto_roster BEFORE INSERT ON private.round_peer_review_participants FOR EACH ROW EXECUTE FUNCTION private.test_reject_auto_roster()`)
+    try { await assert.rejects(()=>register(20,14),error=>error.message.includes('TEST_AUTO_ROSTER_FAILURE')) }
+    finally { await db.exec('DROP TRIGGER test_reject_auto_roster ON private.round_peer_review_participants; DROP FUNCTION private.test_reject_auto_roster()') }
+    assert.deepEqual(await snapshot(),before)
+  })
+  await ok('turning auto off preserves existing attendees and requires manual inclusion for new registrations',async()=>{
+    const before=(await peerState(20)).participants
+    await saveReviewSettings(20,false)
+    assert.equal((await settings(20)).auto_include_registered,false)
+    assert.deepEqual((await peerState(20)).participants,before)
+    assert.equal((await call(6,'player_get_round_peer_reviews',[round(20)])).can_review,true)
+    const currentVersion=await version(20)
+    await register(20,7)
+    assert.equal(await participant(20,7),undefined); assert.equal(await version(20),currentVersion)
+    assert.equal((await call(7,'player_list_round_peer_review_events')).events.some(event=>event.round_id===round(20)),false)
+  })
+  await ok('legacy six-parameter settings RPC preserves auto-off instead of resetting its value',async()=>{
+    await saveReviewSettings(20,undefined)
+    assert.equal((await settings(20)).auto_include_registered,false)
+    assert.equal(await participant(20,7),undefined)
+  })
+  await ok('turning auto on incorporates missed registrations without reviving exclusions or cancellations',async()=>{
+    await saveReviewSettings(20,true)
+    assert.equal((await participant(20,7)).included,true)
+    assert.equal((await participant(20,2)).included,false)
+    assert.ok((await signup(20,4)).cancelled_at)
+    assert.equal((await call(4,'player_get_round_peer_reviews',[round(20)])).can_review,false)
+    assert.equal((await call(7,'player_get_round_peer_reviews',[round(20)])).can_review,true)
+    await saveReviewSettings(20,undefined)
+    assert.equal((await settings(20)).auto_include_registered,true)
+  })
+  await ok('explicitly removed attendee stays excluded through answer edits, cancellation and re-registration',async()=>{
+    await confirm(20,[1,6,7])
+    assert.equal((await participant(20,3)).included,false)
+    await updateRegistration(20,3,{note:'正常修改不代表管理员重新纳入'})
+    await cancelRegistration(20,3); await rejoinRegistration(20,3)
+    assert.equal((await participant(20,3)).included,false)
+    assert.equal((await call(3,'player_get_round_peer_reviews',[round(20)])).can_review,false)
+  })
+  await ok('cancellation immediately blocks an automatic attendee and re-registration restores only non-excluded eligibility',async()=>{
+    const original=(await signup(20,6)).id
+    const audits=await query("SELECT * FROM private.round_peer_review_audit WHERE round_id=$1 AND subject_id=$2 AND action='registration_auto_included' ORDER BY id",[round(20),member(6)])
+    await cancelRegistration(20,6)
+    assert.equal((await participant(20,6)).included,true)
+    assert.equal((await call(6,'player_get_round_peer_reviews',[round(20)])).can_review,false)
+    await assert.rejects(()=>call(6,'player_save_round_peer_review',[round(20),member(7),4,'取消报名不能评分',0]),error=>error.message.includes('PEER_NOT_ELIGIBLE'))
+    await rejoinRegistration(20,6)
+    assert.equal((await signup(20,6)).id,original)
+    assert.equal((await call(6,'player_get_round_peer_reviews',[round(20)])).can_review,true)
+    assert.deepEqual(await query("SELECT * FROM private.round_peer_review_audit WHERE round_id=$1 AND subject_id=$2 AND action='registration_auto_included' ORDER BY id",[round(20),member(6)]),audits)
+  })
+  const versionBeforeCancellation=await version(20)
+  await cancelRegistration(20,6)
+  await unchangedFailure('roster captured before cancellation cannot silently restore the cancelled signup',()=>call(11,'admin_confirm_round_peer_review_roster',
+    [round(20),[member(1),member(6),member(7)],versionBeforeCancellation,'旧名单不能覆盖玩家之后的取消报名']),'PEER_VERSION_CONFLICT')
+  const versionBeforeRejoin=await version(20)
+  await rejoinRegistration(20,6)
+  await unchangedFailure('roster captured during cancellation cannot remove a newly rejoined attendee',()=>call(11,'admin_confirm_round_peer_review_roster',
+    [round(20),[member(1),member(7)],versionBeforeRejoin,'旧名单不能覆盖玩家之后的重新报名']),'PEER_VERSION_CONFLICT')
+  await ok('automatic membership does not reveal peers or permit ratings before first review opening',async()=>{
+    await openRegistration(25); await register(25,1); await register(25,9)
+    await saveReviewSettings(25,true,false)
+    const context=await call(1,'player_get_round_peer_reviews',[round(25)])
+    assert.equal(context.eligible,true); assert.equal(context.can_review,false); assert.equal(context.can_report,false)
+    assert.deepEqual(context.participants,[]); assert.equal(context.total,0)
+    assert.equal((await settings(25)).opened_at,null)
+    await assert.rejects(()=>call(1,'player_save_round_peer_review',[round(25),member(9),4,'尚未开放不能评分',0]),error=>error.message.includes('PEER_WINDOW_CLOSED'))
+  })
+  await ok('enabled automatic membership respects future review start and never-open privacy',async()=>{
+    const future=[new Date(Date.now()+3_600_000).toISOString(),new Date(Date.now()+7_200_000).toISOString()]
+    await saveReviewSettings(25,true,true,future)
+    const context=await call(1,'player_get_round_peer_reviews',[round(25)])
+    assert.equal(context.can_review,false); assert.equal(context.can_report,false); assert.deepEqual(context.participants,[])
+    await assert.rejects(()=>call(1,'player_save_round_peer_review',[round(25),member(9),4,'未到开放时间不能评分',0]),error=>error.message.includes('PEER_WINDOW_CLOSED'))
+  })
+  await ok('automatic attendees can score once enabled and open, but pause and deadline still stop scoring',async()=>{
+    await saveReviewSettings(25,true)
+    assert.equal((await call(1,'player_get_round_peer_reviews',[round(25)])).participants.length,1)
+    await call(1,'player_save_round_peer_review',[round(25),member(9),4,'开放期间可正常互评',0])
+    await saveReviewSettings(25,true,false)
+    assert.equal((await call(9,'player_get_round_peer_reviews',[round(25)])).can_review,false)
+    await assert.rejects(()=>call(9,'player_save_round_peer_review',[round(25),member(1),4,'暂停后不能评分',0]),error=>error.message.includes('PEER_WINDOW_CLOSED'))
+    const expired=[new Date(Date.now()-7_200_000).toISOString(),new Date(Date.now()-3_600_000).toISOString()]
+    await saveReviewSettings(25,true,true,expired)
+    assert.equal((await call(9,'player_get_round_peer_reviews',[round(25)])).can_review,false)
+    await assert.rejects(()=>call(9,'player_save_round_peer_review',[round(25),member(1),4,'超过截止时间不能评分',0]),error=>error.message.includes('PEER_WINDOW_CLOSED'))
+  })
+  await ok('new matching submissions never automatically enter a review roster',async()=>{
+    const before=await peerState(22)
+    await insertSignup(22,8,{})
+    assert.equal(await participant(22,8),undefined); assert.deepEqual(await peerState(22),before)
+  })
+  await createRound(26,'matching',{})
+  await unchangedFailure('matching setup still requires manual roster confirmation',()=>saveReviewSettings(26,true),'PEER_ROSTER_REQUIRED')
+  await createRound(27)
+  await ok('legacy six-parameter RPC defaults new fixed activity settings to auto-on',async()=>{
+    const result=await saveReviewSettings(27,undefined)
+    assert.equal(result.auto_include_registered,true); assert.equal(result.enabled,true); assert.equal(result.roster_confirmed,true)
+  })
+  for (const [actor,label] of [[1,'ordinary player'],[12,'moderator'],[null,'unauthenticated user']]) {
+    await unchangedFailure(`${label} cannot alter automatic membership settings`,()=>saveReviewSettings(20,false,true,times,actor),'PEER_ADMIN_REQUIRED')
+  }
+  await unchangedFailure('automatic registration does not reopen or populate a deleted activity',()=>register(23,8),'REGISTRATION_CANCEL_UNAVAILABLE')
+  await unchangedFailure('automatic membership does not bypass required registration answers',()=>register(20,13,{}),'ROUND_ANSWER_REQUIRED')
+  await unchangedFailure('new seven-parameter RPC rejects explicit null automatic setting',()=>saveReviewSettings(20,null),'PEER_SETTINGS_INVALID')
+  await unchangedFailure('automatic mode still rejects reversed review window',()=>saveReviewSettings(20,true,true,[times[1],times[0]]),'PEER_SETTINGS_INVALID')
+  await ok('super admin can explicitly turn automatic inclusion off and on',async()=>{
+    await saveReviewSettings(27,false,false,times,10)
+    assert.equal((await settings(27)).auto_include_registered,false)
+    await saveReviewSettings(27,true,true,times,10)
+    assert.equal((await settings(27)).auto_include_registered,true)
+  })
+  await ok('automatic-off activities retain the explicit administrator roster workflow',async()=>{
+    await openRegistration(27); await register(27,1); await register(27,9)
+    await saveReviewSettings(27,false)
+    await register(27,8)
+    assert.equal(await participant(27,8),undefined)
+    await confirm(27,[1,9,8])
+    assert.equal((await settings(27)).auto_include_registered,false)
+    assert.equal((await participant(27,8)).included,true)
+    assert.equal((await call(8,'player_get_round_peer_reviews',[round(27)])).can_review,true)
+  })
+  await ok('API roles cannot directly invoke automatic roster or settings helpers',async()=>{
+    for (const role of ['anon','authenticated','service_role']) {
+      for (const name of [
+        'private.sync_registered_peer_review_roster(uuid,uuid,uuid,text)',
+        'private.include_registered_peer_review_participant()',
+        'private.save_round_peer_review_settings(uuid,boolean,timestamptz,timestamptz,integer,text,boolean)',
+      ]) assert.equal((await query("SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed",[role,name]))[0].allowed,false)
+    }
+  })
+  await ok('public settings RPC grants remain authenticated-only for both parameter signatures',async()=>{
+    for (const signature of ['uuid,boolean,timestamptz,timestamptz,integer,text','uuid,boolean,timestamptz,timestamptz,integer,text,boolean']) {
+      const name=`public.admin_save_round_peer_review_settings(${signature})`
+      for (const role of ['anon','authenticated','service_role']) {
+        assert.equal((await query("SELECT has_function_privilege($1,$2,'EXECUTE') AS allowed",[role,name]))[0].allowed,role==='authenticated')
+      }
+    }
+  })
   console.log(`PASS ${passed} registration and roster database checks`)
 } catch (error) {
   console.error(error.message)

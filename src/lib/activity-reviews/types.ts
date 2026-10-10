@@ -4,6 +4,8 @@ export type ActivityReportStatus = "pending" | "reviewing" | "resolved" | "dismi
 
 export interface ActivityReviewSettings {
   enabled: boolean
+  autoIncludeRegistered?: boolean
+  autoIncludeSupported?: boolean
   opensAt: string | null
   closesAt: string | null
   openedAt: string | null
@@ -135,7 +137,7 @@ export interface AdminActivityReviewsData {
   memberFilter: string | null
 }
 export interface SaveActivityReviewSettingsInput {
-  roundId: string; enabled: boolean; opensAt: string; closesAt: string
+  roundId: string; enabled: boolean; autoIncludeRegistered?: boolean; opensAt: string; closesAt: string
   expectedVersion: number; reason: string
 }
 export interface ConfirmActivityReviewRosterInput {

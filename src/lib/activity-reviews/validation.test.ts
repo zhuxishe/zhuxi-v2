@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { validateReviewSubmission, validateReviewSettings, validateReviewRoster } from "./validation"
-import { mapActivityReport, mapReviewContext, mapReviewRound, reviewWindowStatus } from "./mappers"
-import type { SubmitActivityReviewInput } from "./types"
+import { mapActivityReport, mapReviewContext, mapReviewRound, mapReviewSettings, reviewWindowStatus } from "./mappers"
+import type { SaveActivityReviewSettingsInput, SubmitActivityReviewInput } from "./types"
 
 const roundId = "10000000-0000-4000-8000-000000000001"
 const targetMemberId = "20000000-0000-4000-8000-000000000001"
@@ -38,8 +38,20 @@ describe("activity peer feedback request boundaries", () => {
     expect(validateReviewSettings({ ...settings, reason: "  " })).toBe("PEER_REASON_REQUIRED")
     expect(validateReviewRoster({ roundId, memberIds: [targetMemberId, targetMemberId], expectedVersion: 1, reason: settings.reason })).toBe("PEER_INVALID_INPUT")
   })
+  it("accepts both roster modes while rejecting non-boolean configuration", () => {
+    const settings = { roundId, enabled: true, opensAt: "2026-10-10T08:00:00Z", closesAt: "2026-10-17T08:00:00Z", expectedVersion: 1, reason: "确认本场评价开放" }
+    for (const autoIncludeRegistered of [true, false]) expect(validateReviewSettings({ ...settings, autoIncludeRegistered })).toBeNull()
+    for (const invalid of ["false", 1, null]) expect(validateReviewSettings({ ...settings, autoIncludeRegistered: invalid } as unknown as SaveActivityReviewSettingsInput)).toBe("PEER_SETTINGS_INVALID")
+  })
 })
 describe("activity peer feedback response privacy", () => {
+  it("defaults missing roster mode to automatic and preserves an explicitly disabled mode", () => {
+    expect(mapReviewSettings(null).autoIncludeRegistered).toBe(true)
+    expect(mapReviewSettings({ auto_include_registered: true }).autoIncludeRegistered).toBe(true)
+    expect(mapReviewSettings({ auto_include_registered: false }).autoIncludeRegistered).toBe(false)
+    expect(mapReviewSettings({ auto_include_supported: false }).autoIncludeSupported).toBe(false)
+    expect(mapReviewSettings({}).autoIncludeSupported).toBe(true)
+  })
   it("strips administrator-only data from the player report DTO", () => {
     const report = { id: "report", reviewee_id: targetMemberId, reporter_id: "secret", details: "original", internal_note: "staff only", status: "reviewing", supplements: [{ detail: "supplement", created_at: "today" }] }
     const player = mapActivityReport(report)

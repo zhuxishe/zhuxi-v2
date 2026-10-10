@@ -41,7 +41,7 @@ export function ActivityReviewRoster({ context, memberOptions, saveAction, onSav
 
   return <section className="rounded-xl border border-border bg-card p-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
-      <div className="flex gap-3"><Users className="mt-0.5 size-5 shrink-0 text-primary" /><div><h2 className="font-semibold">确认活动参与名册</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">从未取消的报名预选。请移除缺席玩家；临时到场者可从已有成员补录。</p></div></div>
+      <div className="flex gap-3"><Users className="mt-0.5 size-5 shrink-0 text-primary" /><div><h2 className="font-semibold">确认活动参与名册</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">{context.settings.autoIncludeSupported !== false && context.settings.autoIncludeRegistered !== false ? "有效报名自动纳入名册，仍可移除缺席玩家或补录临时到场者。" : "从未取消的报名预选。请移除缺席玩家；临时到场者可从已有成员补录。"}</p></div></div>
       <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary">已选 {selected.length} 人{manualCount ? ` · 补录 ${manualCount} 人` : ""}</span>
     </div>
     <form onSubmit={submit} className="mt-4 space-y-4">

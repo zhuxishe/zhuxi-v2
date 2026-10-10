@@ -27,7 +27,7 @@ export function validateReviewSubmission(input: SubmitActivityReviewInput): stri
   return null
 }
 export function validateReviewSettings(input: SaveActivityReviewSettingsInput): string | null {
-  if (!input || !isReviewUuid(input.roundId) || typeof input.enabled !== "boolean" || !version(input.expectedVersion)) return "PEER_SETTINGS_INVALID"
+  if (!input || !isReviewUuid(input.roundId) || typeof input.enabled !== "boolean" || (input.autoIncludeRegistered !== undefined && typeof input.autoIncludeRegistered !== "boolean") || !version(input.expectedVersion)) return "PEER_SETTINGS_INVALID"
   if (!validReviewReason(input.reason)) return "PEER_REASON_REQUIRED"
   const start = typeof input.opensAt === "string" ? Date.parse(input.opensAt) : NaN
   const end = typeof input.closesAt === "string" ? Date.parse(input.closesAt) : NaN

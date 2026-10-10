@@ -131,6 +131,48 @@ describe("activity review administration UI", () => {
     expect(html).toContain("4–500")
   })
 
+  it("defaults to automatic roster inclusion without requiring a first manual roster confirmation", () => {
+    const html = renderToStaticMarkup(createElement(ActivityReviewSettingsForm, { roundId: context.roundId, settings: { ...context.settings, enabled: true, rosterConfirmed: false, version: 0 }, canManage: true, saveAction: success }))
+    expect(html).toContain("报名后自动纳入互评名册")
+    expect(html.match(/<input[^>]*type="checkbox"[^>]*>/g)?.[0]).toContain('checked=""')
+    expect(html).toContain("取消后重新报名可恢复资格")
+    expect(html).toContain("手动移出的成员需管理员重新加入")
+    expect(html).toContain("启用后仍须处于开放时间内")
+    expect(html).not.toContain("请先确认参与名册，再启用互评")
+  })
+
+  it("preserves manual mode and its roster confirmation requirement", () => {
+    const html = renderToStaticMarkup(createElement(ActivityReviewSettingsForm, { roundId: context.roundId, settings: { ...context.settings, enabled: true, autoIncludeRegistered: false, rosterConfirmed: false, version: 0 }, canManage: true, saveAction: success }))
+    expect(html.match(/<input[^>]*type="checkbox"[^>]*>/g)?.[0]).not.toContain("checked=")
+    expect(html).toContain("请先确认参与名册，再启用互评")
+    expect(html).toContain("再确认到场名册，最后启用互评")
+  })
+
+  it("keeps matching rounds on the existing manual roster workflow", () => {
+    const settings = { ...context.settings, enabled: true, autoIncludeSupported: false, autoIncludeRegistered: true, rosterConfirmed: false }
+    const html = renderToStaticMarkup(createElement(ActivityReviewSettingsForm, { roundId: context.roundId, settings, canManage: true, saveAction: success }))
+    expect(html).not.toContain("报名后自动纳入互评名册")
+    expect(html).toContain("请先确认参与名册，再启用互评")
+    const roster = renderToStaticMarkup(createElement(ActivityReviewRoster, { context: { ...context, settings }, memberOptions: members, saveAction: success }))
+    expect(roster).not.toContain("有效报名自动纳入名册")
+  })
+
+  it("shows the persisted automatic inclusion setting while keeping manual supplements available", () => {
+    const automatic = renderToStaticMarkup(createElement(ActivityReviewRoster, { context: { ...context, settings: { ...context.settings, autoIncludeRegistered: true } }, memberOptions: members, saveAction: success }))
+    expect(automatic).toContain("有效报名自动纳入名册")
+    expect(automatic).toContain("补录实际到场成员")
+    const manual = renderToStaticMarkup(createElement(ActivityReviewRoster, { context: { ...context, settings: { ...context.settings, autoIncludeRegistered: false } }, memberOptions: members, saveAction: success }))
+    expect(manual).not.toContain("有效报名自动纳入名册")
+    expect(manual).toContain("从未取消的报名预选")
+  })
+
+  it("describes automatic inclusion changes in the settings history", () => {
+    const html = renderToStaticMarkup(createElement(ReviewHistory, { entries: [{ id: "settings-history", action: "settings_changed", actorId: "admin-one", actorKind: "admin", reason: "改为管理员确认到场名单", createdAt: "2026-10-10T12:00:00Z", details: { before: { auto_include_registered: true }, after: { auto_include_registered: false } } }] }))
+    expect(html).toContain("报名后自动纳入互评名册")
+    expect(html).toContain("是 → 否")
+    expect(html).not.toContain("auto_include_registered")
+  })
+
   it("provides no submission forms when the database is unavailable", () => {
     const html = renderToStaticMarkup(createElement(ActivityReviewsDashboard, { data: { ...data, setupRequired: true }, actions, onNavigate: () => {} }))
     expect(html).toContain("数据迁移尚未就绪")
@@ -158,11 +200,14 @@ describe("activity review administration UI", () => {
       { id: "admin-history", action: "review_moderated", actorId: "admin-one", actorKind: "admin", reason: "核对实际活动记录", createdAt: "2026-10-03T10:00:00Z", details: { before: { score: 4.5, valid: true, comment: "原评价" }, after: { score: 4.5, valid: false, comment: "原评价" } } },
       { id: "system-history", action: "review_invalidated_roster", actorId: null, actorKind: "system", reason: "名册变更", createdAt: "2026-10-03T11:00:00Z" },
       { id: "restore-history", action: "registration_restored", actorId: "admin-one", actorKind: "admin", reason: "核对到场后恢复报名", createdAt: "2026-10-03T12:00:00Z" },
+      { id: "automatic-history", action: "registration_auto_included", actorId: "player-one", actorKind: "player", reason: "有效报名自动纳入", createdAt: "2026-10-03T13:00:00Z" },
     ] }))
     expect(html).toContain("提交评分")
     expect(html).toContain("审核评分有效性")
     expect(html).toContain("因名册调整标记评分无效")
     expect(html).toContain("补录恢复报名")
+    expect(html).toContain("报名自动纳入互评名册")
+    expect(html).not.toContain("registration_auto_included")
     expect(html).toContain("核对到场后恢复报名")
     expect(html).toContain("玩家 player-o")
     expect(html).toContain("管理员 admin-on")

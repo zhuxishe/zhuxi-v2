@@ -70,6 +70,7 @@ export async function submitSurvey(input: SubmitSurveyInput) {
   revalidatePath("/app/matching/survey")
   revalidatePath("/app/matching")
   revalidatePath("/app/matches")
+  revalidatePath("/admin/activity-reviews")
   revalidatePath(`/admin/matching/rounds/${input.roundId}`)
   return { success: true }
 }

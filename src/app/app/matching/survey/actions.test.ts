@@ -99,6 +99,7 @@ describe("survey submission availability", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("manage_my_registration", {
       p_round_id: "round", p_operation: "create", p_expected_updated_at: null, p_custom_answers: {}, p_config_revision: 2,
     })
+    expect(mocks.revalidate).toHaveBeenCalledWith("/admin/activity-reviews")
     expect(mocks.upsert).not.toHaveBeenCalled()
   })
 

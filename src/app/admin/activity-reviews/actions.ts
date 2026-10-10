@@ -28,7 +28,7 @@ export async function saveActivityReviewSettingsAction(input: SaveActivityReview
   await requireAdmin()
   const error = validateReviewSettings(input)
   if (error) return { error }
-  return mutate(input.roundId, "admin_save_round_peer_review_settings", { p_round_id: input.roundId, p_enabled: input.enabled, p_opens_at: input.opensAt, p_closes_at: input.closesAt, p_expected_version: input.expectedVersion, p_reason: input.reason.trim() })
+  return mutate(input.roundId, "admin_save_round_peer_review_settings", { p_round_id: input.roundId, p_enabled: input.enabled, p_opens_at: input.opensAt, p_closes_at: input.closesAt, p_expected_version: input.expectedVersion, p_reason: input.reason.trim(), ...(input.autoIncludeRegistered === undefined ? {} : { p_auto_include_registered: input.autoIncludeRegistered }) })
 }
 export async function confirmActivityReviewRosterAction(input: ConfirmActivityReviewRosterInput) {
   await requireAdmin()

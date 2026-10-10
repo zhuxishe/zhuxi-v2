@@ -106,6 +106,20 @@ describe("peer feedback administrator action contract", () => {
       p_round_id: roundId, p_enabled: false, p_opens_at: at, p_closes_at: end, p_expected_version: 0, p_reason: reason,
     })
   })
+  it.each([true, false])("passes the explicit automatic roster mode %s through the versioned settings save", async (autoIncludeRegistered) => {
+    const end = "2026-10-10T12:00:00.000Z"
+    expect(await saveActivityReviewSettingsAction({ roundId, enabled: true, autoIncludeRegistered, opensAt: at, closesAt: end, expectedVersion: 2, reason })).toEqual({ success: true })
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("admin_save_round_peer_review_settings", {
+      p_round_id: roundId, p_enabled: true, p_opens_at: at, p_closes_at: end, p_expected_version: 2, p_reason: reason, p_auto_include_registered: autoIncludeRegistered,
+    })
+    expect(mocks.revalidate).toHaveBeenCalledWith("/admin/activity-reviews")
+    expect(mocks.revalidate).toHaveBeenCalledWith("/app")
+    expect(mocks.revalidate).toHaveBeenCalledWith(`/app/matches/rounds/${roundId}/reviews`)
+  })
+  it("rejects a malformed automatic roster mode before touching database settings", async () => {
+    expect(await saveActivityReviewSettingsAction({ roundId, enabled: true, autoIncludeRegistered: "false" as unknown as boolean, opensAt: at, closesAt: "2026-10-10T12:00:00.000Z", expectedVersion: 2, reason })).toEqual({ error: "PEER_SETTINGS_INVALID" })
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
   it("confirms the exact roster with optimistic concurrency", async () => {
     await confirmActivityReviewRosterAction({ roundId, memberIds: [memberId, otherMemberId], expectedVersion: 2, reason })
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("admin_confirm_round_peer_review_roster", { p_round_id: roundId, p_member_ids: [memberId, otherMemberId], p_expected_version: 2, p_reason: reason })

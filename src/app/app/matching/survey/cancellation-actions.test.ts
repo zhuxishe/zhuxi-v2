@@ -20,6 +20,7 @@ describe("registration cancellation action", () => {
       p_round_id: roundId, p_operation: "cancel", p_expected_updated_at: input.expectedUpdatedAt,
     })
     expect(mocks.revalidate).toHaveBeenCalledWith("/app", "layout")
+    expect(mocks.revalidate).toHaveBeenCalledWith("/admin/activity-reviews")
     expect(mocks.revalidate).toHaveBeenCalledWith(`/app/matches/rounds/${roundId}`)
     expect(mocks.revalidate).toHaveBeenCalledWith(`/admin/matching/rounds/${roundId}`)
   })

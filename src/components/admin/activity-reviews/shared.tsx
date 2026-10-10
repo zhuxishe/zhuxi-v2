@@ -98,7 +98,7 @@ function HistoryChanges({ before, after, expanded = false }: { before: unknown; 
   const previous = record(before)
   const next = record(after)
   const fields = [
-    ["version", "版本"], ["score", "分数"], ["valid", "评分有效"], ["enabled", "互评启用"], ["included", "在名册中"],
+    ["version", "版本"], ["score", "分数"], ["valid", "评分有效"], ["enabled", "互评启用"], ["auto_include_registered", "报名后自动纳入互评名册"], ["included", "在名册中"],
     ["opens_at", "开放时间"], ["closes_at", "截止时间"], ["status", "处理状态"], ["comment", "文字评价"], ["internal_note", "内部处理说明"],
     ["category", "举报类型"], ["details", "举报内容"],
   ].filter(([field]) => field in previous || field in next)
@@ -124,7 +124,7 @@ function historyValue(value: unknown, field: string) {
 
 function auditActionLabel(action: string) {
   const labels: Record<string, string> = {
-    settings_changed: "更新开放设置", roster_confirmed: "确认参与名册", participant_changed: "调整参与成员", registration_restored: "补录恢复报名",
+    settings_changed: "更新开放设置", roster_confirmed: "确认参与名册", participant_changed: "调整参与成员", registration_restored: "补录恢复报名", registration_auto_included: "报名自动纳入互评名册",
     review_created: "提交评分", review_revised: "修改评分", review_moderated: "审核评分有效性", review_invalidated_roster: "因名册调整标记评分无效",
     report_created: "提交举报", report_updated: "修改举报内容", report_supplemented: "补充举报信息", report_moderated: "处理举报", feedback_submitted: "提交活动反馈",
   }

@@ -7,7 +7,7 @@ const nullable = (value: unknown) => typeof value === "string" ? value : null
 const number = (value: unknown, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback
 export function mapReviewSettings(value: unknown): ActivityReviewSettings {
   const r = record(value)
-  return { enabled: r.enabled === true, opensAt: nullable(r.opens_at), closesAt: nullable(r.closes_at), openedAt: nullable(r.opened_at), rosterConfirmed: r.roster_confirmed === true, version: number(r.version) }
+  return { enabled: r.enabled === true, autoIncludeRegistered: r.auto_include_registered !== false, autoIncludeSupported: r.auto_include_supported !== false, opensAt: nullable(r.opens_at), closesAt: nullable(r.closes_at), openedAt: nullable(r.opened_at), rosterConfirmed: r.roster_confirmed === true, version: number(r.version) }
 }
 export function reviewWindowStatus(s: ActivityReviewSettings, now = Date.now()): ActivityReviewStatus {
   if (!s.enabled) return s.openedAt ? "paused" : "unavailable"

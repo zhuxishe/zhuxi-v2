@@ -24,6 +24,7 @@ export async function cancelRegistration(input: { roundId: string; expectedUpdat
   revalidatePath("/app/matching")
   revalidatePath("/app/matching/survey")
   revalidatePath("/app/matches")
+  revalidatePath("/admin/activity-reviews")
   revalidatePath(`/app/matches/rounds/${input.roundId}`)
   revalidatePath(`/admin/matching/rounds/${input.roundId}`)
   return { success: true }

@@ -41,7 +41,7 @@ export function emptyReviewContext(roundId: string, setupRequired = false): Acti
   return { ...mapReviewContext({ round_id: roundId }), eligible: false, setupRequired }
 }
 function mapMember(r: JsonRecord): AdminActivityReviewMember {
-  return { memberId: text(r.member_id), fullName: text(r.full_name), nickname: nullable(r.nickname), source: text(r.source, "registered"), included: r.included === true, eligible: r.eligible === true, registered: r.registered === true || r.source === "registered" }
+  return { memberId: text(r.member_id), fullName: text(r.full_name), nickname: nullable(r.nickname), source: text(r.source, "registered"), included: r.included === true, eligible: r.eligible === true, registered: r.registered === true || r.source === "registered", canRestore: r.can_restore === true }
 }
 export function mapAdminReviewContext(value: unknown): AdminActivityReviewContext {
   const r = record(value)

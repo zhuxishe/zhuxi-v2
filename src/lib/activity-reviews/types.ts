@@ -102,6 +102,7 @@ export interface AdminActivityReviewMember {
   included: boolean
   eligible: boolean
   registered: boolean
+  canRestore?: boolean
 }
 export interface ActivityReviewAudit {
   id: string

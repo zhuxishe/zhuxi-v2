@@ -87,6 +87,35 @@ describe("activity review administration UI", () => {
     expect(filterAdminReviews(reviews, names, "", "all", "member-b").map((review) => review.id)).toEqual(["review-1"])
   })
 
+  it("leaves a cancelled attendee unselected but available for explicit admin restoration", () => {
+    const cancelled = { ...context.participants[1], eligible: false, registered: false, canRestore: true }
+    const restoredContext = { ...context, participants: [context.participants[0], cancelled], candidates: [context.candidates[0], cancelled] }
+    const html = renderToStaticMarkup(createElement(ActivityReviewRoster, { context: restoredContext, memberOptions: members, saveAction: success }))
+    const checkboxes = html.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? []
+    expect(html).toContain("已选 1 人")
+    expect(html).toContain("已取消 · 补录后恢复")
+    expect(checkboxes).toHaveLength(2)
+    expect(checkboxes[1]).not.toContain("checked=")
+    expect(checkboxes[1]).not.toContain("disabled=")
+  })
+
+  it("still disables an unavailable account that cannot be restored", () => {
+    const unavailable = { ...context.participants[1], included: false, eligible: false, registered: false, canRestore: false }
+    const html = renderToStaticMarkup(createElement(ActivityReviewRoster, { context: { ...context, participants: [context.participants[0], unavailable], candidates: [context.candidates[0], unavailable] }, memberOptions: members, saveAction: success }))
+    const checkboxes = html.match(/<input[^>]*type="checkbox"[^>]*>/g) ?? []
+    expect(checkboxes[1]).toContain("disabled=")
+    expect(html).toContain("账号不可用")
+  })
+
+  it("maps restoration as a separate admin choice, not existing player eligibility", () => {
+    const mapped = mapAdminReviewContext({ participants: [
+      { member_id: "cancelled", included: true, eligible: false, can_restore: true },
+      { member_id: "existing", included: true, eligible: true },
+    ] })
+    expect(mapped.participants[0]).toMatchObject({ eligible: false, canRestore: true })
+    expect(mapped.participants[1]).toMatchObject({ eligible: true, canRestore: false })
+  })
+
   it("blocks roster confirmation before the first settings save", () => {
     const html = renderToStaticMarkup(createElement(ActivityReviewRoster, { context: { ...context, settings: { ...context.settings, version: 0, rosterConfirmed: false } }, memberOptions: members, saveAction: success }))
     expect(html).toContain("请先在开放设置中保存时间")
@@ -128,10 +157,13 @@ describe("activity review administration UI", () => {
       { id: "player-history", action: "review_created", actorId: "player-one", actorKind: "player", reason: "", createdAt: "2026-10-03T09:00:00Z" },
       { id: "admin-history", action: "review_moderated", actorId: "admin-one", actorKind: "admin", reason: "核对实际活动记录", createdAt: "2026-10-03T10:00:00Z", details: { before: { score: 4.5, valid: true, comment: "原评价" }, after: { score: 4.5, valid: false, comment: "原评价" } } },
       { id: "system-history", action: "review_invalidated_roster", actorId: null, actorKind: "system", reason: "名册变更", createdAt: "2026-10-03T11:00:00Z" },
+      { id: "restore-history", action: "registration_restored", actorId: "admin-one", actorKind: "admin", reason: "核对到场后恢复报名", createdAt: "2026-10-03T12:00:00Z" },
     ] }))
     expect(html).toContain("提交评分")
     expect(html).toContain("审核评分有效性")
     expect(html).toContain("因名册调整标记评分无效")
+    expect(html).toContain("补录恢复报名")
+    expect(html).toContain("核对到场后恢复报名")
     expect(html).toContain("玩家 player-o")
     expect(html).toContain("管理员 admin-on")
     expect(html).not.toContain("管理员 player-o")

@@ -124,7 +124,7 @@ function historyValue(value: unknown, field: string) {
 
 function auditActionLabel(action: string) {
   const labels: Record<string, string> = {
-    settings_changed: "更新开放设置", roster_confirmed: "确认参与名册", participant_changed: "调整参与成员",
+    settings_changed: "更新开放设置", roster_confirmed: "确认参与名册", participant_changed: "调整参与成员", registration_restored: "补录恢复报名",
     review_created: "提交评分", review_revised: "修改评分", review_moderated: "审核评分有效性", review_invalidated_roster: "因名册调整标记评分无效",
     report_created: "提交举报", report_updated: "修改举报内容", report_supplemented: "补充举报信息", report_moderated: "处理举报", feedback_submitted: "提交活动反馈",
   }

@@ -243,6 +243,190 @@ try {
   await ok('ordinary players cannot write another participant registration',async()=>{
     await assert.rejects(()=>as(9,()=>query("INSERT INTO public.match_round_submissions(round_id,member_id,game_type_pref,gender_pref,availability,custom_answers) VALUES($1,$2,'都可以','都可以','{}','{}')",[round(6),member(13)])))
   })
+
+  // Keep every preceding assertion against the originally released migration.
+  // Seed cancelled attendance before upgrading, then exercise the additive fix.
+  const signup = async (n,m) => (await query('SELECT * FROM public.match_round_submissions WHERE round_id=$1 AND member_id=$2',[round(n),member(m)]))[0]
+  const openRegistration = async n => as(11,()=>query("UPDATE public.match_rounds SET status='open',survey_start=now()-interval '1 day',survey_end=now()+interval '1 day' WHERE id=$1",[round(n)]))
+  const closeRegistration = async n => as(11,()=>query("UPDATE public.match_rounds SET status='closed' WHERE id=$1",[round(n)]))
+  const cancelRegistration = async (n,m) => {
+    const current=await signup(n,m)
+    await call(m,'manage_my_registration',[round(n),'cancel',current.updated_at,await revision(n),{}])
+  }
+  const snapshot = async () => {
+    const result={}
+    for (const table of ['public.match_rounds','public.match_round_submissions','private.round_peer_review_settings',
+      'private.round_peer_review_participants','private.round_peer_reviews','private.round_peer_review_audit','public.community_notifications']) {
+      result[table]=(await query(`SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]') AS records FROM ${table} t`))[0].records
+    }
+    return result
+  }
+  const unchangedRegistration = (before,after) => {
+    const preserved = value => Object.fromEntries(Object.entries(value).filter(([key])=>!['cancelled_at','config_revision','audit_reason','updated_at'].includes(key)))
+    assert.deepEqual(preserved(after),preserved(before))
+    assert.equal(after.cancelled_at,null)
+  }
+  const restores = async n => query("SELECT * FROM private.round_peer_review_audit WHERE round_id=$1 AND action='registration_restored' ORDER BY id",[round(n)])
+  for (const n of [7,8,9,10]) {
+    await createRound(n)
+    await query(`INSERT INTO private.round_peer_review_settings(round_id,enabled,opens_at,closes_at,roster_confirmed,opened_at)
+      VALUES($1,true,$2,$3,true,$2)`,[round(n),...times])
+  }
+  for (const m of [1,2,3]) await insertSignup(7,m,{note:`保留原始回答 ${m}`})
+  await confirm(7,[1,2,3])
+  await call(1,'player_save_round_peer_review',[round(7),member(2),4.5,'应保留的有效评价',0])
+  const invalidReview=await call(2,'player_save_round_peer_review',[round(7),member(1),3,'已审核无效的历史评价',0])
+  await call(10,'admin_moderate_round_peer_review',[invalidReview.id,false,invalidReview.version,'测试已审核无效评价不得自动恢复'])
+  await openRegistration(7); await cancelRegistration(7,2); await closeRegistration(7)
+  // Roster-created registrations can legitimately have no answers to required questions.
+  await confirm(8,[1,6]); await openRegistration(8); await cancelRegistration(8,6); await closeRegistration(8)
+  for (let m=15;m<=18;m++) {
+    await query("INSERT INTO public.members(id,user_id,status,account_status) VALUES($1,$2,'approved','active')",[member(m),user(m)])
+    await query('INSERT INTO public.member_identity(member_id,full_name) VALUES($1,$2)',[member(m),`测试成员${m}`])
+  }
+  await confirm(9,[1,2,15,16,17,18]); await openRegistration(9)
+  for (const m of [2,15,16,17,18]) await cancelRegistration(9,m)
+  await closeRegistration(9)
+  await query('UPDATE public.members SET user_id=NULL WHERE id=$1',[member(15)])
+  await query("UPDATE public.members SET account_status='suspended' WHERE id=$1",[member(16)])
+  await query("UPDATE public.members SET membership_type='staff' WHERE id=$1",[member(17)])
+  await query("UPDATE public.members SET status='pending' WHERE id=$1",[member(18)])
+  await confirm(10,[1,2]); await openRegistration(10); await cancelRegistration(10,2); await closeRegistration(10)
+  await db.exec("CREATE TABLE auth.users(id uuid PRIMARY KEY,email text); ALTER TABLE public.admin_users ADD COLUMN name text DEFAULT '测试管理员'")
+  await query('INSERT INTO auth.users(id,email) VALUES($1,$2)',[user(10),'admin@example.invalid'])
+  await call(10,'admin_delete_match_round',[round(10),'活动10',await revision(10),'测试管理员','测试已删除活动不得恢复取消报名'])
+  // A malformed legacy matching row must not gain restoration rights. Only this
+  // synthetic fixture bypasses the cancellation trigger; all tested calls use it.
+  await insertSignup(3,2,{})
+  await db.exec('ALTER TABLE public.match_round_submissions DISABLE TRIGGER member_master_guard_registration_cancellation')
+  try { await as(null,()=>query('UPDATE public.match_round_submissions SET cancelled_at=now() WHERE round_id=$1 AND member_id=$2',[round(3),member(2)]),'service_role') }
+  finally { await db.exec('ALTER TABLE public.match_round_submissions ENABLE TRIGGER member_master_guard_registration_cancellation') }
+  const beforeRestoreMigration=await snapshot()
+  const strictEligibilityBefore=(await query("SELECT pg_get_functiondef('private.peer_member_eligible(uuid,uuid)'::regprocedure) AS definition"))[0].definition
+  await db.exec(read('supabase/migrations/20261010114440_restore_cancelled_attendance_registration.sql'))
+  await ok('restoration migration changes no existing registration, roster, score, notification or audit data',async()=>{
+    assert.deepEqual(await snapshot(),beforeRestoreMigration)
+    assert.deepEqual(await acl(),originalAcl)
+  })
+  await ok('restoration does not globally relax player eligibility and passes its postflight',async()=>{
+    assert.equal((await query("SELECT pg_get_functiondef('private.peer_member_eligible(uuid,uuid)'::regprocedure) AS definition"))[0].definition,strictEligibilityBefore)
+    await db.exec(read('supabase/audits/restore-cancelled-attendance-postflight.sql'))
+  })
+  await ok('admin sees an explicit restoration option while cancelled player remains unable to review',async()=>{
+    const context=await call(11,'admin_get_round_peer_reviews',[round(7)])
+    for (const list of [context.participants,context.candidates]) {
+      const person=list.find(value=>value.member_id===member(2))
+      assert.equal(person.eligible,false); assert.equal(person.can_restore,true)
+    }
+    const playerContext=await call(2,'player_get_round_peer_reviews',[round(7)])
+    assert.equal(playerContext.eligible,false); assert.equal(playerContext.can_review,false)
+  })
+  await ok('saving a roster without a cancelled player leaves that registration cancelled',async()=>{
+    const before=await signup(1,2)
+    await confirm(1,[1,3])
+    assert.deepEqual(await signup(1,2),before)
+    assert.equal((await restores(1)).length,0)
+  })
+  await ok('ordinary admin explicitly restores closed ended attendance preserving registration and both score states',async()=>{
+    const before=await signup(7,2)
+    const scores=await query('SELECT * FROM private.round_peer_reviews WHERE round_id=$1 ORDER BY id',[round(7)])
+    const settings=(await query('SELECT * FROM private.round_peer_review_settings WHERE round_id=$1',[round(7)]))[0]
+    const notices=await query('SELECT * FROM public.community_notifications WHERE round_id=$1 ORDER BY id',[round(7)])
+    assert.ok(before.cancelled_at)
+    await confirm(7,[1,2,3])
+    unchangedRegistration(before,await signup(7,2))
+    assert.deepEqual(await query('SELECT * FROM private.round_peer_reviews WHERE round_id=$1 ORDER BY id',[round(7)]),scores)
+    assert.deepEqual(await query('SELECT * FROM public.community_notifications WHERE round_id=$1 ORDER BY id',[round(7)]),notices)
+    const after=(await query('SELECT * FROM private.round_peer_review_settings WHERE round_id=$1',[round(7)]))[0]
+    for (const field of ['enabled','opens_at','closes_at','opened_at']) assert.deepEqual(after[field],settings[field])
+    const audit=await restores(7)
+    assert.equal(audit.length,1); assert.equal(audit[0].subject_id,member(2))
+    assert.ok(audit[0].before_values.cancelled_at); assert.equal(audit[0].after_values.cancelled_at,null)
+    assert.equal(audit[0].reason,'确认现场参加并同步补录报名')
+  })
+  await ok('restored attendee can rate a new peer but cannot revive an invalidated historical score',async()=>{
+    assert.equal((await call(2,'player_get_round_peer_reviews',[round(7)])).can_review,true)
+    await call(2,'player_save_round_peer_review',[round(7),member(3),4,'恢复后对实际交流者评分',0])
+    const invalid=(await query('SELECT * FROM private.round_peer_reviews WHERE id=$1',[invalidReview.id]))[0]
+    assert.equal(invalid.valid,false)
+    await assert.rejects(()=>call(2,'player_save_round_peer_review',[round(7),member(1),4,'不应自动恢复',invalid.version]),error=>error.message.includes('PEER_REVIEW_INVALIDATED'))
+  })
+  await ok('unchanged repeated roster adds neither signup, notification nor restoration audit',async()=>{
+    const before=await query('SELECT * FROM public.match_round_submissions WHERE round_id=$1 ORDER BY id',[round(7)])
+    const notices=await query('SELECT * FROM public.community_notifications WHERE round_id=$1 ORDER BY id',[round(7)])
+    const audits=await restores(7)
+    await confirm(7,[1,2,3],10)
+    assert.deepEqual(await query('SELECT * FROM public.match_round_submissions WHERE round_id=$1 ORDER BY id',[round(7)]),before)
+    assert.deepEqual(await query('SELECT * FROM public.community_notifications WHERE round_id=$1 ORDER BY id',[round(7)]),notices)
+    assert.deepEqual(await restores(7),audits)
+  })
+  await ok('super admin restores an empty-answer registration without inventing required answers',async()=>{
+    const before=await signup(8,6)
+    assert.deepEqual(before.custom_answers,{}); assert.ok(before.cancelled_at)
+    await confirm(8,[1,6],10)
+    unchangedRegistration(before,await signup(8,6))
+    assert.equal((await call(6,'player_get_round_peer_reviews',[round(8)])).can_review,true)
+  })
+  await ok('player can cancel restored empty-answer registration again and immediately loses scoring eligibility',async()=>{
+    const originalId=(await signup(8,6)).id
+    await openRegistration(8); await cancelRegistration(8,6)
+    const cancelled=await signup(8,6)
+    assert.equal(cancelled.id,originalId); assert.deepEqual(cancelled.custom_answers,{}); assert.ok(cancelled.cancelled_at)
+    assert.equal((await call(6,'player_get_round_peer_reviews',[round(8)])).can_review,false)
+    await assert.rejects(()=>call(6,'player_save_round_peer_review',[round(8),member(1),4,'取消后不能评分',0]),error=>error.message.includes('PEER_NOT_ELIGIBLE'))
+    await closeRegistration(8)
+  })
+  const unchangedFailure = async (name,operation,message) => {
+    const before=await snapshot()
+    await no(name,operation,message)
+    assert.deepEqual(await snapshot(),before,`${name}: transaction must leave no partial writes`)
+  }
+  await unchangedFailure('stale roster version cannot restore a cancelled registration',()=>call(11,'admin_confirm_round_peer_review_roster',[round(9),[member(1),member(2)],0,'测试过期保存不恢复报名']),'PEER_VERSION_CONFLICT')
+  for (const [m,label] of [[15,'no linked account'],[16,'suspended account'],[17,'non-player account'],[18,'unapproved account']]) {
+    await unchangedFailure(`roster containing ${label} restores no other member and creates no partial signup`,()=>confirm(9,[1,2,13,m]),'PEER_NOT_ELIGIBLE')
+  }
+  for (const [actor,label] of [[2,'ordinary player'],[12,'moderator']]) {
+    await unchangedFailure(`${label} cannot restore cancelled attendance`,()=>confirm(9,[1,2],actor),'PEER_ADMIN_REQUIRED')
+  }
+  await unchangedFailure('unauthenticated caller cannot restore cancelled attendance',()=>call(null,'admin_confirm_round_peer_review_roster',[round(9),[member(1),member(2)],1,'不能使用未登录身份恢复']),'PEER_ADMIN_REQUIRED')
+  await unchangedFailure('deleted activity cannot restore cancelled attendance',()=>confirm(10,[1,2]),'PEER_ROUND_NOT_FOUND')
+  await unchangedFailure('matching questionnaire cancellation cannot be restored by attendance confirmation',()=>confirm(3,[1,2]),'PEER_NOT_ELIGIBLE')
+  await ok('ordinary player cannot forge a restoration marker to reopen own closed signup',async()=>{
+    const before=await snapshot()
+    const updated=await as(2,async()=>{
+      const current=await signup(9,2)
+      await query("SELECT set_config('app.round_roster_restore',$1,true),set_config('app.member_master_submission_self_service','off',true),set_config('app.member_master_audit_reason','伪造管理员补录理由',true)",[current.id])
+      return query('UPDATE public.match_round_submissions SET cancelled_at=NULL WHERE id=$1 RETURNING id',[current.id])
+    })
+    // The existing closed-round RLS policy hides the write instead of throwing.
+    assert.deepEqual(updated,[]); assert.deepEqual(await snapshot(),before)
+  })
+  for (const [field,value] of [['custom_answers',JSON.stringify({note:'不能改写原回答'})],['created_at','2000-01-01T00:00:00Z']]) {
+    await unchangedFailure(`even a live super admin restoration marker cannot alter ${field}`,()=>as(10,async()=>{
+      const current=await signup(9,2)
+      await query("SELECT set_config('app.round_roster_restore',$1,true),set_config('app.member_master_submission_self_service','off',true),set_config('app.member_master_audit_reason','测试恢复必须保留原有字段',true)",[current.id])
+      return query(`UPDATE public.match_round_submissions SET cancelled_at=NULL,${field}=$2 WHERE id=$1 RETURNING id`,[current.id,value])
+    }),'REGISTRATION_STATE_CHANGED')
+  }
+  await ok('restoring an attendee does not enable a paused review window',async()=>{
+    await query('UPDATE private.round_peer_review_settings SET enabled=false WHERE round_id=$1',[round(8)])
+    await confirm(8,[1,6])
+    assert.equal((await signup(8,6)).cancelled_at,null)
+    assert.equal((await call(6,'player_get_round_peer_reviews',[round(8)])).can_review,false)
+  })
+  await ok('restoring an attendee does not extend an expired review deadline',async()=>{
+    await query("UPDATE private.round_peer_review_settings SET opens_at=now()-interval '2 days',closes_at=now()-interval '1 day' WHERE round_id=$1",[round(9)])
+    await confirm(9,[1,2])
+    assert.equal((await signup(9,2)).cancelled_at,null)
+    assert.equal((await call(2,'player_get_round_peer_reviews',[round(9)])).can_review,false)
+  })
+  await ok('API roles cannot directly execute any private restoration helper',async()=>{
+    for (const role of ['anon','authenticated','service_role']) {
+      for (const name of ['private.peer_roster_registration_restore_eligible(uuid,uuid)','private.round_roster_restore_authorized(uuid,uuid,uuid)','private.restore_round_roster_registration(uuid,uuid,text)']) {
+        assert.equal((await query('SELECT has_function_privilege($1,$2,\'EXECUTE\') AS allowed',[role,name]))[0].allowed,false)
+      }
+    }
+  })
   console.log(`PASS ${passed} registration and roster database checks`)
 } catch (error) {
   console.error(error.message)

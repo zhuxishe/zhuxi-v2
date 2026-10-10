@@ -16,9 +16,9 @@ import { useUnsavedRoundContent } from "./use-unsaved-round-content"
 import { roundLabelDefaults } from "./round-text-defaults"
 import { RoundDeleteSection } from "./RoundDeleteSection"
 
-interface Props { roundId: string; initial: RoundContentDraft; revision: number; locked: boolean; status: string; canDelete?: boolean; hasMatches?: boolean }
+interface Props { roundId: string; initial: RoundContentDraft; revision: number; locked: boolean; status: string; canDelete?: boolean; hasMatches?: boolean; adminAccount?: string }
 
-export function RoundContentEditor({ roundId, initial, revision: initialRevision, locked, status, canDelete = false, hasMatches = false }: Props) {
+export function RoundContentEditor({ roundId, initial, revision: initialRevision, locked, status, canDelete = false, hasMatches = false, adminAccount = "" }: Props) {
   const router = useRouter()
   const [draft, setDraft] = useState(initial)
   const [saved, setSaved] = useState(initial)
@@ -81,7 +81,7 @@ export function RoundContentEditor({ roundId, initial, revision: initialRevision
         <Link href={`/admin/matching/rounds/${roundId}`} className="inline-flex items-center px-3 text-sm text-muted-foreground">返回详情</Link>
       </div>
     </form>
-    <RoundDeleteSection roundId={roundId} roundName={saved.roundName.trim()} revision={revision} canDelete={canDelete} hasMatches={hasMatches || status === "matched"} busy={pending || dirty} />
+    <RoundDeleteSection roundId={roundId} roundName={saved.roundName.trim()} revision={revision} canDelete={canDelete} adminAccount={adminAccount} hasMatches={hasMatches || status === "matched"} busy={pending || dirty} />
     </div>
     <div className="min-w-0 xl:sticky xl:top-6"><RoundContentPreview draft={draft} /></div>
   </div>

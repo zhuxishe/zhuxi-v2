@@ -196,5 +196,9 @@ try {
     assert.ok(record.deleted_at);assert.equal(record.deleted_by,null);assert.equal(record.status,'closed')
   })
   await ok('read-only postflight verifies the final database state', () => db.exec(read('supabase/audits/matching-round-delete-postflight.sql')))
+  if (process.env.MATCH_ROUND_DELETE_AUDIT_EXTENSION) {
+    const { auditDeletionMetadata } = await import(process.env.MATCH_ROUND_DELETE_AUDIT_EXTENSION)
+    await auditDeletionMetadata(db, { query, as, call, member, user, round, read })
+  }
   console.log(`All ${passed} isolated PostgreSQL checks passed`)
 } finally { await db.close() }

@@ -3149,8 +3149,12 @@ export type Database = {
         Returns: Json
       }
       admin_delete_match_round: {
-        Args: { p_round_id: string; p_confirm_name: string; p_expected_revision: number }
+        Args: { p_round_id: string; p_confirm_name: string; p_expected_revision: number; p_operator_name: string; p_reason: string }
         Returns: boolean
+      }
+      admin_list_deleted_match_rounds: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: Json
       }
       admin_delete_operational_record: {
         Args: { p_entity: string; p_id: string; p_reason: string }

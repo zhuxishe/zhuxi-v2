@@ -47,6 +47,20 @@ describe("administrator survey reopening", () => {
     expect(mocks.from).toHaveBeenCalledTimes(1)
   })
 
+  it("reopens a completed fixed activity with a collection deadline after the event", async () => {
+    const update = query({ id: "round" })
+    const registration = { ...round, purpose: "registration", content_config: { eventStart: "2026-09-01T03:00:00Z", eventEnd: "2026-09-01T06:00:00Z", location: { zh: "东京" } } }
+    mocks.from.mockReturnValueOnce(query(registration)).mockReturnValueOnce(query(null)).mockReturnValueOnce(update)
+    expect(await updateRoundStatus("round", "open", opening)).toEqual({ success: true })
+    expect(update.update).toHaveBeenCalledWith({ status: "open", survey_start: "2026-09-29T01:00:00.000Z", survey_end: "2026-09-30T09:00:00.000Z" })
+  })
+
+  it("still requires valid event times before reopening fixed registration", async () => {
+    mocks.from.mockReturnValueOnce(query({ ...round, purpose: "registration", content_config: { eventStart: "2026-09-01T06:00:00Z", eventEnd: "2026-09-01T03:00:00Z", location: { zh: "东京" } } }))
+    expect((await updateRoundStatus("round", "open", opening)).error).toContain("结束必须晚于开始")
+    expect(mocks.from).toHaveBeenCalledTimes(1)
+  })
+
   it("requires confirming dates even when the existing deadline is still in the future", async () => {
     mocks.from.mockReturnValueOnce(query({ ...round, survey_end: "2026-10-01T00:00:00Z" }))
     expect((await updateRoundStatus("round", "open")).error).toContain("确认")

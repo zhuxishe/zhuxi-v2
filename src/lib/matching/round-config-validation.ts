@@ -59,10 +59,10 @@ export function validateRoundDraft(input: RoundContentDraft): ReturnType<typeof 
   return validateRoundConfig(input.contentConfig)
 }
 
-export function validateRoundPublishing(purpose: string, config: RoundContentConfig, now = new Date()) {
+export function validateRoundPublishing(purpose: string, config: RoundContentConfig) {
   if (purpose !== "registration") return null
   const start = Date.parse(config.eventStart), end = Date.parse(config.eventEnd)
-  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start || start <= now.getTime()) return "固定时间活动须设置未来的开始时间及结束时间，再开放报名"
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return "固定时间活动须设置有效的开始时间及结束时间，结束必须晚于开始"
   if (!config.location.zh.trim()) return "请先填写活动地点，再开放报名"
   return null
 }

@@ -25,7 +25,6 @@ export async function updateRoundStatus(roundId: string, status: string, opening
     window = parsed.window
     const publishingError = validateRoundPublishing(round.purpose, normalizeRoundConfig(round.content_config))
     if (publishingError) return { error: publishingError }
-    if (round.purpose === "registration" && Date.parse(window.survey_end) > Date.parse(normalizeRoundConfig(round.content_config).eventStart)) return { error: "报名截止时间不能晚于活动开始时间" }
     const { data: session, error } = await supabase.from("match_sessions")
       .select("id").eq("round_id", roundId).limit(1).maybeSingle()
     if (error) return { error: "无法确认匹配状态，请稍后重试" }

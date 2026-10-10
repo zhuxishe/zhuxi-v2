@@ -61,7 +61,7 @@ export function RoundContentEditor({ roundId, initial, revision: initialRevision
       <div className="rounded-xl border bg-card p-4 text-sm">
         <p>编辑内容即时显示在右侧预览，保存前不影响玩家页面。</p>
         {status === "open" && <p className="mt-2 text-muted-foreground">本期已开放，保存后会立即更新玩家看到的文案。</p>}
-        {locked && <p className="mt-2 text-amber-700">本期已有回答或匹配结果，用途、活动时间和问题结构已锁定。可修正文案；如需改变题意或结构，请复制为新一期。</p>}
+        {locked && <p className="mt-2 text-amber-700">{draft.purpose === "registration" ? "本期已有报名，用途和问题结构已锁定。可修改活动时间和文案；如需改变题意或结构，请复制为新一期。" : "本期已有回答或匹配结果，用途、活动时间和问题结构已锁定。可修正文案；如需改变题意或结构，请复制为新一期。"}</p>}
       </div>
       <fieldset disabled={pending} className="space-y-5 disabled:opacity-70">
         <RoundBasicFields draft={draft} locked={locked} onChange={setDraft} />

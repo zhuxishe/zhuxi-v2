@@ -15,6 +15,12 @@ async function mutate(roundId: string, rpc: string, args: Record<string, unknown
     revalidatePath("/app/matches")
     revalidatePath(`/app/matches/rounds/${roundId}`)
     revalidatePath(`/app/matches/rounds/${roundId}/reviews`)
+    if (rpc === "admin_confirm_round_peer_review_roster") {
+      revalidatePath("/admin/matching")
+      revalidatePath("/app/matching")
+      revalidatePath("/app/matching/survey")
+      revalidatePath("/app/community/notifications")
+    }
     return { success: true }
   } catch (error) { return { error: activityReviewErrorCode(error) } }
 }

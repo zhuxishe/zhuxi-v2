@@ -21,13 +21,21 @@ describe("matching content configuration", () => {
     revised.questions[0].options[0].id = "changed"
     expect(roundAnswerStructure("registration", original)).not.toBe(roundAnswerStructure("registration", revised))
   })
-  it("locks modules, question order, requiredness and fixed event time", () => {
+  it("locks modules and requiredness", () => {
     const original = config(), revised = config()
     revised.modules.interests = false
     expect(roundAnswerStructure("matching", original)).not.toBe(roundAnswerStructure("matching", revised))
     revised.modules.interests = true
     revised.questions[0].required = false
     expect(roundAnswerStructure("matching", original)).not.toBe(roundAnswerStructure("matching", revised))
+  })
+  it("keeps registration event times editable without unlocking other purposes", () => {
+    const original = config(), revised = config()
+    revised.eventStart = "2026-10-10T03:00:00Z"
+    revised.eventEnd = "2026-10-10T06:00:00Z"
+    expect(roundAnswerStructure("registration", original)).toBe(roundAnswerStructure("registration", revised))
+    expect(roundAnswerStructure("matching", original)).not.toBe(roundAnswerStructure("matching", revised))
+    expect(roundAnswerStructure("announcement", original)).not.toBe(roundAnswerStructure("announcement", revised))
   })
   it.each(["__proto__", "constructor", "prototype"])("rejects dangerous object key %s", (id) => {
     const value = config(); value.questions[0].id = id
@@ -50,10 +58,16 @@ describe("matching content configuration", () => {
     expect(validateRoundConfig({ ...value, eventEnd: "2026-10-10T11:00" }).error).toBeTruthy()
   })
   it("requires time and location before opening fixed registration only", () => {
-    expect(validateRoundPublishing("registration", config(), new Date("2026-10-01"))).toBeTruthy()
+    expect(validateRoundPublishing("registration", config())).toBeTruthy()
     expect(validateRoundPublishing("matching", config())).toBeNull()
     expect(validateRoundPublishing("announcement", config())).toBeNull()
     const value = config(); value.eventStart = "2026-10-10T03:00:00Z"; value.eventEnd = "2026-10-10T06:00:00Z"; value.location.zh = "东京"
-    expect(validateRoundPublishing("registration", value, new Date("2026-10-01"))).toBeNull()
+    expect(validateRoundPublishing("registration", value)).toBeNull()
+  })
+  it("permits opening registration for a past activity but still requires a valid interval and location", () => {
+    const value = config(); value.eventStart = "2020-10-10T03:00:00Z"; value.eventEnd = "2020-10-10T06:00:00Z"; value.location.zh = "东京"
+    expect(validateRoundPublishing("registration", value)).toBeNull()
+    expect(validateRoundPublishing("registration", { ...value, eventEnd: value.eventStart })).toContain("结束必须晚于开始")
+    expect(validateRoundPublishing("registration", { ...value, location: { zh: "", ja: "" } })).toContain("地点")
   })
 })

@@ -36,10 +36,11 @@ export function normalizeRoundConfig(value: unknown): RoundContentConfig {
   }
 }
 
-/** The answer contract excludes display wording, but includes question and option identities. */
+/** Registration dates describe the event; they do not change existing answers. */
 export function roundAnswerStructure(purpose: RoundPurpose, config: RoundContentConfig) {
   return JSON.stringify({
-    purpose, modules: config.modules, eventStart: config.eventStart, eventEnd: config.eventEnd,
+    purpose, modules: config.modules,
+    ...(purpose === "registration" ? {} : { eventStart: config.eventStart, eventEnd: config.eventEnd }),
     questions: config.questions.map(({ id, type, required, options }) => ({ id, type, required, options: options.map((option) => option.id) })),
   })
 }

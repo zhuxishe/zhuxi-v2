@@ -7,6 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { getRoundPurpose, isRoundSetupError, normalizeRoundConfig, roundAnswerStructure, ROUND_SETUP_ERROR } from "@/lib/matching/round-config"
 import { validateRoundDraft, validateRoundPublishing } from "@/lib/matching/round-config-validation"
 import { parseSurveyOpening } from "@/lib/matching/survey-opening"
+import { formatTokyoDateTimeLocal } from "@/lib/player-activity/tokyo-datetime"
 import type { RoundContentDraft } from "@/types/matching-round"
 import type { Json } from "@/types/database.types"
 
@@ -22,22 +23,33 @@ export async function saveRoundContent(roundId: string, expectedRevision: number
   if (error || !round || round.deleted_at) return { error: "轮次不存在或已删除" }
   if (!("config_revision" in round)) return { error: ROUND_SETUP_ERROR }
   if (round.config_revision !== expectedRevision) return { error: "内容已被其他管理员修改，请刷新后重试" }
+  // Keep stored seconds when the minute-precision editor has not changed a field.
+  const window = {
+    survey_start: draft.surveyStart === formatTokyoDateTimeLocal(round.survey_start) ? round.survey_start : parsed.window.survey_start,
+    survey_end: draft.surveyEnd === formatTokyoDateTimeLocal(round.survey_end) ? round.survey_end : parsed.window.survey_end,
+  }
   if (round.status === "open") {
-    const opening = parseSurveyOpening(draft)
-    if (opening.error) return { error: opening.error }
+    const windowChanged = Date.parse(round.survey_start) !== Date.parse(window.survey_start)
+      || Date.parse(round.survey_end) !== Date.parse(window.survey_end)
+    if (windowChanged) {
+      const opening = parseSurveyOpening(draft)
+      if (opening.error) return { error: opening.error }
+    }
     const publishingError = validateRoundPublishing(draft.purpose, validated.config)
     if (publishingError) return { error: publishingError }
   }
-  if (draft.purpose === "registration" && validated.config.eventStart && Date.parse(parsed.window.survey_end) > Date.parse(validated.config.eventStart)) return { error: "报名截止时间不能晚于活动开始时间" }
   const { count, error: countError } = await createAdminClient().from("match_round_submissions").select("id", { count: "exact", head: true }).eq("round_id", roundId)
   if (countError) return { error: "无法确认已有回答，请稍后重试" }
-  const structureChanged = getRoundPurpose(round.purpose) !== draft.purpose
-    || round.activity_start !== draft.activityStart || round.activity_end !== draft.activityEnd
-    || roundAnswerStructure(getRoundPurpose(round.purpose), normalizeRoundConfig(round.content_config)) !== roundAnswerStructure(draft.purpose, validated.config)
-  if (structureChanged && ((count ?? 0) > 0 || round.status === "matched")) return { error: "已有回答或匹配结果，不能修改用途、活动时间或问题结构；请复制为新一期" }
+  const previousPurpose = getRoundPurpose(round.purpose)
+  const registrationDatesEditable = previousPurpose === "registration" && draft.purpose === "registration"
+  const activityDatesChanged = round.activity_start !== draft.activityStart || round.activity_end !== draft.activityEnd
+  const structureChanged = previousPurpose !== draft.purpose
+    || (!registrationDatesEditable && activityDatesChanged)
+    || roundAnswerStructure(previousPurpose, normalizeRoundConfig(round.content_config)) !== roundAnswerStructure(draft.purpose, validated.config)
+  if (structureChanged && ((count ?? 0) > 0 || round.status === "matched")) return { error: registrationDatesEditable ? "已有报名，不能修改用途或问题结构；请复制为新一期" : "已有回答或匹配结果，不能修改用途、活动时间或问题结构；请复制为新一期" }
   const { data: changed, error: updateError } = await db.from("match_rounds").update({
     round_name: draft.roundName.trim(), purpose: draft.purpose, content_config: validated.config as unknown as Json,
-    ...parsed.window, activity_start: draft.activityStart, activity_end: draft.activityEnd,
+    ...window, activity_start: draft.activityStart, activity_end: draft.activityEnd,
   }).eq("id", roundId).eq("config_revision", expectedRevision).select("config_revision").maybeSingle()
   if (updateError) {
     if (isRoundSetupError(updateError)) return { error: ROUND_SETUP_ERROR }

@@ -109,6 +109,9 @@ describe("peer feedback administrator action contract", () => {
   it("confirms the exact roster with optimistic concurrency", async () => {
     await confirmActivityReviewRosterAction({ roundId, memberIds: [memberId, otherMemberId], expectedVersion: 2, reason })
     expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("admin_confirm_round_peer_review_roster", { p_round_id: roundId, p_member_ids: [memberId, otherMemberId], p_expected_version: 2, p_reason: reason })
+    for (const path of ["/admin/matching", "/app/matching", "/app/matching/survey", "/app/community/notifications", "/app/matches"]) {
+      expect(mocks.revalidate).toHaveBeenCalledWith(path)
+    }
   })
   it("marks a review invalid without deleting it", async () => {
     await moderateActivityReviewAction({ roundId, reviewId: id, valid: false, expectedVersion: 3, reason })

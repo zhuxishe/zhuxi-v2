@@ -4,6 +4,7 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { RoundDetailHeader } from "./RoundDetailHeader"
 import { RoundSubmissionRecords } from "./RoundSubmissionRecords"
 import { RoundQuestionEditor } from "./RoundQuestionEditor"
+import { RoundBasicFields } from "./RoundBasicFields"
 import { normalizeRoundConfig } from "@/lib/matching/round-config"
 
 const round = { id: "test", round_name: "秋季迎新派对", status: "closed", survey_start: "2026-09-01T00:00:00Z", survey_end: "2026-09-29T00:00:00Z", activity_start: "2026-10-10", activity_end: "2026-10-10" }
@@ -40,5 +41,14 @@ describe("round administration purpose boundaries", () => {
     expect(html).toMatch(/type="checkbox"[^>]*disabled/)
     expect(html).toContain('value="备注"')
     expect(html).toMatch(/disabled[^>]*aria-label="删除问题"/)
+  })
+
+  it("keeps fixed activity dates editable while purpose and matching dates stay locked", () => {
+    const draft = { roundName: "活动", purpose: "registration" as const, surveyStart: "2026-09-01T09:00", surveyEnd: "2026-10-16T09:00", activityStart: "2026-10-10", activityEnd: "2026-10-10", contentConfig: { ...config, eventStart: "2026-10-10T04:00:00Z", eventEnd: "2026-10-10T08:00:00Z" } }
+    const registration = renderToStaticMarkup(createElement(RoundBasicFields, { draft, locked: true, onChange: noop }))
+    expect(registration).toMatch(/<select[^>]* disabled=""/)
+    expect(registration).not.toMatch(/<input[^>]* disabled=""/)
+    const matching = renderToStaticMarkup(createElement(RoundBasicFields, { draft: { ...draft, purpose: "matching" }, locked: true, onChange: noop }))
+    expect(matching).toMatch(/type="date"[^>]* disabled=""/)
   })
 })

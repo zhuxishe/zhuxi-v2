@@ -63,7 +63,7 @@ export function ActivityReviewRoster({ context, memberOptions, saveAction, onSav
         <div className="space-y-2 rounded-lg bg-muted/30 p-3">
           <label className="block space-y-2 text-sm font-medium"><span className="inline-flex items-center gap-2"><UserPlus className="size-4" />补录实际到场成员</span><input aria-label="检索补录成员" value={supplementSearch} onChange={(event) => setSupplementSearch(event.target.value)} placeholder="输入已有成员的姓名或昵称" className={fieldClass} /></label>
           {supplementQuery ? <div className="space-y-2">{supplementMatches.length ? supplementMatches.map((member) => <div key={member.memberId} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2"><span className="min-w-0 break-words text-sm">{member.fullName || "未填写姓名"}<span className="ml-2 text-xs text-muted-foreground">{member.nickname || "未填写昵称"}</span></span><button type="button" onClick={() => { setSelected((current) => [...current, member.memberId]); setSupplementSearch("") }} className={secondaryButtonClass} aria-label={`补录 ${member.fullName || member.nickname || "成员"}`}>补录</button></div>) : <p className="text-xs text-muted-foreground">没有可补录的匹配成员，或该成员已在上方名册中。</p>}</div> : null}
-          <p className="text-xs leading-5 text-muted-foreground">补录、移除与重新确认均会记录操作理由。请在下方写明人员调整及实际到场情况。移除成员会将与其相关的已有评分标记为无效；重新加入后需单独审核恢复。</p>
+          <p className="text-xs leading-5 text-muted-foreground">固定活动保存名册时同步补齐报名，无需玩家再次报名。补录、移除与重新确认均会记录操作理由。移除成员会将与其相关的已有评分标记为无效；重新加入后需单独审核恢复。</p>
         </div>
         <AuditReasonField id="review-roster-reason" value={reason} onChange={setReason} disabled={disabled} label="名册确认与调整理由" />
       </fieldset>

@@ -561,5 +561,244 @@ if (process.env.MEMBER_NUMBER_BASELINE_JSON && process.env.MEMBER_NUMBER_HISTORY
   })
 }
 
+// The one-time 249/250 correction is tested against fresh isolated databases.
+// Keep this independent of the allocation tests and any optional live snapshots.
+{
+  const { randomUUID } = await import('node:crypto')
+  const swapMigration = read('supabase/migrations/20261012121626_swap_member_numbers_249_250.sql')
+  const swapTables = [
+    'public.members', 'auth.users', 'public.member_identity', 'public.legacy_members',
+    'public.community_notifications', 'private.member_role_assignments',
+    'public.match_round_submissions', 'public.match_results', 'public.activity_records',
+    'public.member_language', 'public.member_interests', 'private.member_profile_audit_log',
+  ]
+  async function swapState(isolated) {
+    const tables = {}
+    for (const table of swapTables) {
+      tables[table] = (await isolated.query(`SELECT to_jsonb(row) AS row FROM ${table} AS row ORDER BY to_jsonb(row)::text`)).rows.map(row => row.row)
+    }
+    return {
+      tables,
+      triggers: (await isolated.query("SELECT tgrelid::regclass::text AS table_name,tgname,tgenabled FROM pg_trigger WHERE NOT tgisinternal ORDER BY table_name,tgname")).rows,
+      sequence: (await isolated.query('SELECT last_value::text,is_called FROM private.member_number_sequence')).rows,
+      constraints: (await isolated.query("SELECT conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='public.members'::regclass ORDER BY conname")).rows,
+    }
+  }
+  async function loadSwapFixture({ empty = false, unreviewedIdentity = false } = {}) {
+    const isolated = new PGlite()
+    for (const sql of bootstrapSQL) await isolated.exec(sql)
+    await isolated.exec(`
+      CREATE TABLE public.community_notifications(
+        id uuid PRIMARY KEY, member_id uuid REFERENCES public.members(id),
+        type text NOT NULL, title text, is_read boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TABLE private.member_role_assignments(
+        id uuid PRIMARY KEY, member_id uuid NOT NULL REFERENCES public.members(id),
+        role_key text NOT NULL, assigned_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz
+      );
+      ALTER TABLE public.match_round_submissions ADD CONSTRAINT swap_fixture_submissions_member_fk FOREIGN KEY(member_id) REFERENCES public.members(id);
+      ALTER TABLE public.match_results ADD CONSTRAINT swap_fixture_match_a_fk FOREIGN KEY(member_a_id) REFERENCES public.members(id);
+      ALTER TABLE public.match_results ADD CONSTRAINT swap_fixture_match_b_fk FOREIGN KEY(member_b_id) REFERENCES public.members(id);
+      ALTER TABLE public.legacy_members ADD CONSTRAINT swap_fixture_legacy_canonical_fk FOREIGN KEY(canonical_member_id) REFERENCES public.members(id);
+    `)
+    const fixture = {
+      isolated,
+      formal: unreviewedIdentity ? randomUUID() : '627b6d93-b5f0-4cb6-82c8-4f9e76b2225a',
+      internal: '9fc90347-548d-4999-b75a-d40c15e43716',
+      third: randomUUID(), formalUser: randomUUID(), internalUser: randomUUID(),
+    }
+    if (!empty) {
+      const createdAt = '2026-10-08T05:06:07.123Z'
+      for (const [id, authId, name, number] of [
+        [fixture.formal, fixture.formalUser, '祝安冬', 'ZXS_250'],
+        [fixture.internal, fixture.internalUser, '测试专用·', 'ZXS_249'],
+      ]) {
+        await isolated.query('INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES($1,$2,$3::jsonb)', [authId, `${authId}@fixture.local`, JSON.stringify({ fixture: name })])
+        await isolated.query(`INSERT INTO public.members(id,user_id,email,status,member_number,account_status,profile_stage,record_source,record_scope,onboarding_step,submitted_at,last_profile_saved_at,account_linked_at,created_at,updated_at)
+          VALUES($1,$2,$3,'approved',$4,'active','complete','app','current',4,$5,$5,$5,$5,$5)`, [id, authId, `${authId}@fixture.local`, number, createdAt])
+        await isolated.query("INSERT INTO public.member_identity(id,member_id,full_name,gender,age_range,nationality,current_city,created_at,updated_at) VALUES($1,$2,$3,'other','20-30','中国','东京',$4,$4)", [randomUUID(), id, name, createdAt])
+        await isolated.query("INSERT INTO private.member_role_assignments(id,member_id,role_key,assigned_at) VALUES($1,$2,'member',$3)", [randomUUID(), id, createdAt])
+        await isolated.query("INSERT INTO public.community_notifications(id,member_id,type,title,created_at) VALUES($1,$2,'fixture','Existing notification',$3)", [randomUUID(), id, createdAt])
+        await isolated.query("INSERT INTO public.match_round_submissions(member_id,game_type_pref,gender_pref,availability,message) VALUES($1,'fixture','any','{}'::jsonb,'Existing registration')", [id])
+        await isolated.query("INSERT INTO public.member_language(member_id,japanese_level,created_at,updated_at) VALUES($1,'fixture',$2,$2)", [id, createdAt])
+      }
+      await isolated.query("INSERT INTO public.match_results(member_a_id,member_b_id,cancellation_reason) VALUES($1,$2,'Existing matching')", [fixture.formal, fixture.internal])
+      await isolated.query("INSERT INTO public.activity_records(id,participant_ids,late_member_ids,no_show_member_ids,notes) VALUES($1,$2::uuid[],'{}','{}','Existing activity')", [randomUUID(), [fixture.formal, fixture.internal]])
+    }
+    await isolated.exec(migration)
+    return fixture
+  }
+  async function rejectedSwap(name, mutate, expected = /MEMBER_NUMBER_SWAP_/) {
+    await check(name, async () => {
+      const fixture = await loadSwapFixture()
+      const { isolated } = fixture
+      try {
+        await mutate(fixture)
+        const before = await swapState(isolated)
+        await assert.rejects(isolated.exec(swapMigration), expected)
+        await isolated.exec('ROLLBACK')
+        assert.deepEqual(await swapState(isolated), before, 'Rejected number swap changed data, audit, trigger state, sequence or constraints')
+      } finally { await isolated.close() }
+    })
+  }
+
+  await check('249/250 swap changes only the two member numbers, preserves all timestamps and relations, and appends accurate correction audit', async () => {
+    const { isolated, formal, internal, third } = await loadSwapFixture()
+    try {
+      const before = await swapState(isolated)
+      await isolated.exec(swapMigration)
+      const after = await swapState(isolated)
+      const expectedMembers = before.tables['public.members'].map(row => ({ ...row, member_number: row.id === formal ? 'ZXS_249' : row.id === internal ? 'ZXS_250' : row.member_number }))
+      assert.deepEqual(after.tables['public.members'], expectedMembers)
+      for (const table of swapTables.filter(table => !['public.members', 'private.member_profile_audit_log'].includes(table))) {
+        assert.deepEqual(after.tables[table], before.tables[table], `Number swap changed ${table}`)
+      }
+      assert.deepEqual(after.triggers, before.triggers)
+      assert.deepEqual(after.sequence, before.sequence)
+      assert.deepEqual(after.constraints, before.constraints)
+      const oldIds = new Set(before.tables['private.member_profile_audit_log'].map(row => row.id))
+      const oldAudit = after.tables['private.member_profile_audit_log'].filter(row => oldIds.has(row.id))
+      assert.deepEqual(oldAudit, before.tables['private.member_profile_audit_log'], 'Original audit rows changed')
+      const newAudit = after.tables['private.member_profile_audit_log'].filter(row => !oldIds.has(row.id))
+      assert.equal(newAudit.length, 9, 'Existing audit triggers and two semantic correction records must be preserved')
+      const corrections = newAudit.filter(row => row.metadata?.member_number_event === 'pair_swap')
+      assert.equal(corrections.length, 2, 'One semantic correction record is required per member')
+      for (const [id, oldNumber, newNumber] of [[formal, 'ZXS_250', 'ZXS_249'], [internal, 'ZXS_249', 'ZXS_250']]) {
+        const event = corrections.find(row => row.member_id_snapshot === id)
+        assert.ok(event)
+        assert.deepEqual(event.changed_fields, ['member_number'])
+        assert.equal(event.before_values.member_number, oldNumber)
+        assert.equal(event.after_values.member_number, newNumber)
+        assert.equal(event.source, 'migration')
+        assert.ok(event.reason)
+        assert.equal(event.metadata.correction_scope, 'member_number_249_250_swap_2026_10_12')
+        assert.equal(event.metadata.counterpart_member_id, id === formal ? internal : formal)
+      }
+      await isolated.exec(swapMigration)
+      assert.deepEqual(await swapState(isolated), after, 'Repeated swap is not idempotent')
+      await isolated.query("INSERT INTO public.members(id,status,record_source,account_status) VALUES($1,'pending','app','unbound')", [third])
+      await assert.rejects(isolated.query("UPDATE public.members SET member_number='ZXS_249' WHERE id=$1", [third]), /MEMBER_NUMBER_TAKEN/)
+      await isolated.query("UPDATE public.members SET member_number='ZXS_251' WHERE id=$1", [formal])
+      await assert.rejects(isolated.query("UPDATE public.members SET member_number='ZXS_249' WHERE id=$1", [third]), /MEMBER_NUMBER_RETIRED/)
+    } finally { await isolated.close() }
+  })
+  await check('249/250 correction skips a fresh database without relevant names or numbers', async () => {
+    const { isolated } = await loadSwapFixture({ empty: true })
+    try {
+      const before = await swapState(isolated)
+      await isolated.exec(swapMigration)
+      assert.deepEqual(await swapState(isolated), before)
+    } finally { await isolated.close() }
+  })
+  await rejectedSwap('249/250 correction rejects a missing target without leaving changes', async ({ isolated, formal }) => {
+    await isolated.query("UPDATE public.member_identity SET full_name='Different formal fixture' WHERE member_id=$1", [formal])
+  })
+  await check('249/250 correction rejects a recreated same-name account with an unreviewed UUID', async () => {
+    const { isolated } = await loadSwapFixture({ unreviewedIdentity: true })
+    try {
+      const before = await swapState(isolated)
+      await assert.rejects(isolated.exec(swapMigration), /MEMBER_NUMBER_SWAP_IDENTITY_MISMATCH/)
+      await isolated.exec('ROLLBACK')
+      assert.deepEqual(await swapState(isolated), before)
+    } finally { await isolated.close() }
+  })
+  await rejectedSwap('249/250 correction rejects a conflicting duplicate target name', async ({ isolated, third }) => {
+    await isolated.query("INSERT INTO public.members(id,status,record_source,account_status) VALUES($1,'pending','app','unbound')", [third])
+    await isolated.query("INSERT INTO public.member_identity(member_id,full_name,gender,age_range,nationality,current_city) VALUES($1,'祝安冬','other','fixture','fixture','fixture')", [third])
+  })
+  await rejectedSwap('249/250 correction rejects a closed formal account', async ({ isolated, formal }) => {
+    await isolated.query("UPDATE public.members SET account_status='closed' WHERE id=$1", [formal])
+  })
+  await rejectedSwap('249/250 correction rejects anomalous approved lifecycle fields', async ({ isolated, formal }) => {
+    await isolated.exec('ALTER TABLE public.members DISABLE TRIGGER member_master_sync_lifecycle')
+    await isolated.query("UPDATE public.members SET profile_stage='in_progress',onboarding_step=1,submitted_at=NULL WHERE id=$1", [formal])
+    await isolated.exec('ALTER TABLE public.members ENABLE TRIGGER member_master_sync_lifecycle')
+  })
+  await rejectedSwap('249/250 correction rejects unrelated historical ownership of either number', async ({ isolated, third }) => {
+    await isolated.query("INSERT INTO public.members(id,status,record_source,account_status,member_number) VALUES($1,'pending','import','unbound','IMP-swap-history')", [third])
+    await isolated.query(`INSERT INTO private.member_profile_audit_log(member_id,member_id_snapshot,action_type,section,changed_fields,before_values,after_values,source,metadata)
+      VALUES($1,$1,'member_lifecycle_update','account',ARRAY['member_number'],'{}'::jsonb,'{"member_number":"ZXS_249"}'::jsonb,'migration','{"member_number":"ZXS_249","member_number_event":"allocated"}'::jsonb)`, [third])
+  })
+  await rejectedSwap('249/250 correction rejects another account holding a normalized alias of a target number', async ({ isolated, third }) => {
+    await isolated.query("INSERT INTO public.members(id,status,record_source,account_status,member_number) VALUES($1,'pending','import','unbound','zxs_0250')", [third])
+  }, /MEMBER_NUMBER_SWAP_THIRD_PARTY_CLAIM/)
+  await rejectedSwap('249/250 correction rejects a linked legacy record', async ({ isolated, formal }) => {
+    await isolated.query("INSERT INTO public.legacy_members(id,canonical_member_id,member_no,full_name) VALUES($1,$2,'No.fixture','Fixture legacy profile')", [randomUUID(), formal])
+  }, /MEMBER_NUMBER_SWAP_LEGACY_LINK/)
+  await rejectedSwap('249/250 correction rejects published member updates that could expose transient numbers', async ({ isolated }) => {
+    await isolated.exec('CREATE PUBLICATION swap_fixture_realtime FOR TABLE public.members')
+  }, /MEMBER_NUMBER_SWAP_REALTIME_PUBLICATION/)
+  await rejectedSwap('249/250 correction rolls back an unexpected notification change from an existing trigger', async ({ isolated }) => {
+    await isolated.exec(`
+      CREATE OR REPLACE FUNCTION private.member_number_audit_change() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        UPDATE public.community_notifications SET title='Unexpected notification mutation' WHERE member_id=NEW.id;
+        RETURN NULL;
+      END;$$;
+    `)
+  }, /MEMBER_NUMBER_SWAP_DEPENDENCY_CHANGED/)
+  await rejectedSwap('249/250 correction rolls back an unexpected registration change through a member foreign key', async ({ isolated }) => {
+    await isolated.exec(`
+      CREATE OR REPLACE FUNCTION private.member_number_audit_change() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        UPDATE public.match_round_submissions SET message='Unexpected registration mutation' WHERE member_id=NEW.id;
+        RETURN NULL;
+      END;$$;
+    `)
+  }, /MEMBER_NUMBER_SWAP_DEPENDENCY_CHANGED/)
+  await rejectedSwap('249/250 correction rejects an unknown member trigger before changing data', async ({ isolated }) => {
+    await isolated.exec(`
+      CREATE FUNCTION private.member_number_swap_test_unknown_trigger() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;
+      CREATE TRIGGER zz_member_number_swap_test_unknown_trigger AFTER UPDATE ON public.members
+        FOR EACH ROW EXECUTE FUNCTION private.member_number_swap_test_unknown_trigger();
+    `)
+  }, /MEMBER_NUMBER_SWAP_TRIGGER_MISMATCH/)
+  await rejectedSwap('249/250 correction rejects an unreviewed function hidden behind a known trigger name', async ({ isolated }) => {
+    await isolated.exec(`
+      CREATE FUNCTION private.member_number_swap_test_unreviewed_function() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;
+      DROP TRIGGER member_number_before_write ON public.members;
+      CREATE TRIGGER member_number_before_write BEFORE UPDATE OF member_number ON public.members
+        FOR EACH ROW EXECUTE FUNCTION private.member_number_swap_test_unreviewed_function();
+    `)
+  }, /MEMBER_NUMBER_SWAP_TRIGGER_MISMATCH/)
+  for (const auditTrigger of ['member_master_prepare_audit_event', 'member_master_reject_audit_mutation']) {
+    await rejectedSwap(`249/250 correction rejects disabled audit protection ${auditTrigger}`, async ({ isolated }) => {
+      await isolated.exec(`ALTER TABLE private.member_profile_audit_log DISABLE TRIGGER ${auditTrigger}`)
+    }, /MEMBER_NUMBER_SWAP_TRIGGER_MISMATCH/)
+    await rejectedSwap(`249/250 correction rejects missing audit protection ${auditTrigger}`, async ({ isolated }) => {
+      await isolated.exec(`DROP TRIGGER ${auditTrigger} ON private.member_profile_audit_log`)
+    }, /MEMBER_NUMBER_SWAP_TRIGGER_MISMATCH/)
+  }
+  await rejectedSwap('249/250 correction rejects already reversed numbers with two correction markers for only one member', async ({ isolated, formal, internal }) => {
+    await isolated.exec('ALTER TABLE public.members DISABLE TRIGGER member_number_before_write')
+    await isolated.query('UPDATE public.members SET member_number=NULL WHERE id=$1', [internal])
+    await isolated.query("UPDATE public.members SET member_number='ZXS_249' WHERE id=$1", [formal])
+    await isolated.query("UPDATE public.members SET member_number='ZXS_250' WHERE id=$1", [internal])
+    await isolated.exec('ALTER TABLE public.members ENABLE TRIGGER member_number_before_write')
+    await isolated.query(`INSERT INTO private.member_profile_audit_log(member_id,member_id_snapshot,action_type,section,changed_fields,before_values,after_values,reason,source,metadata)
+      SELECT $1::uuid,$1::uuid,'member_lifecycle_update','account',ARRAY['member_number'],'{"member_number":"ZXS_250"}'::jsonb,'{"member_number":"ZXS_249"}'::jsonb,
+        'Invalid duplicate correction evidence','migration','{"member_number_event":"pair_swap","correction_scope":"member_number_249_250_swap_2026_10_12"}'::jsonb
+      FROM generate_series(1,2)`, [formal])
+  }, /MEMBER_NUMBER_SWAP_NUMBER_MISMATCH/)
+  await rejectedSwap('249/250 failure after the validator is disabled restores all data and trigger states on rollback', async ({ isolated, formal }) => {
+    await isolated.query("SELECT set_config('test.member_number_swap_target',$1,false)", [formal])
+    await isolated.exec(`
+      CREATE OR REPLACE FUNCTION private.member_number_audit_change() RETURNS trigger LANGUAGE plpgsql AS $swap_abort$
+      BEGIN
+        IF NEW.id = current_setting('test.member_number_swap_target', true)::uuid
+           AND NEW.member_number = 'ZXS_249' THEN
+          IF (SELECT tgenabled FROM pg_trigger WHERE tgname='member_number_before_write') IS DISTINCT FROM 'D'::"char" THEN
+            RAISE EXCEPTION 'TEST_SWAP_FAILURE_DID_NOT_REACH_DISABLED_GUARD';
+          END IF;
+          RAISE EXCEPTION 'TEST_SWAP_AFTER_FAILURE';
+        END IF;
+        RETURN NEW;
+      END;
+      $swap_abort$;
+    `)
+  }, /TEST_SWAP_AFTER_FAILURE/)
+}
+
 await db.close()
 console.log(`PASS ${passed} member-number database checks`)

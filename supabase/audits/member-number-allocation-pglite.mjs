@@ -800,5 +800,376 @@ if (process.env.MEMBER_NUMBER_BASELINE_JSON && process.env.MEMBER_NUMBER_HISTORY
   }, /TEST_SWAP_AFTER_FAILURE/)
 }
 
+// Whitespace/short-name restoration and release of reviewed unused numbers are
+// verified separately from the initial allocation and the earlier pair swap.
+{
+  const { randomUUID } = await import('node:crypto')
+  const reconciliationMigrationPath = 'supabase/migrations/20261012134601_normalize_roster_names_and_reconcile_numbers.sql'
+  const reconciliationScope = 'roster_name_whitespace_reconciliation_2026_10_12'
+  const reviewed = [
+    { id: 'a1a1bd49-9248-44c2-b32b-9bcd9c765da4', name: '黄 浩淳', before: 'ZXS_261', after: 'ZXS_125', allocation: 2416, nameAudit: 2417, firstName: '黄 浩淳' },
+    { id: '41864dff-e981-493b-9f45-4b78fe73e1be', name: '戚 晏瑄', before: 'ZXS_259', after: 'ZXS_201', allocation: 2274, nameAudit: 2275, firstName: '戚 晏瑄' },
+    { id: '5a30803f-fa7b-445c-8343-a0a81be6063c', name: '叶一达', before: 'ZXS_255', after: 'ZXS_196', allocation: 1750, nameAudit: 1751, firstName: '叶' },
+    { id: '5b488c7e-b66f-4046-bf42-aed40699d367', name: '程竹涓', before: 'ZXS_256', after: 'ZXS_255', allocation: 1967, nameAudit: 1968, firstName: '程竹涓' },
+    { id: '3edcf451-447d-4eae-8403-5664d497efa1', name: '胡妤欣', before: 'ZXS_260', after: 'ZXS_256', allocation: 2318, nameAudit: 2319, firstName: '胡妤欣' },
+  ]
+  const reconciliationTables = [
+    'public.members', 'auth.users', 'public.member_identity', 'public.legacy_members',
+    'public.community_notifications', 'private.member_role_assignments',
+    'public.match_round_submissions', 'public.match_results', 'public.activity_records',
+    'public.member_language', 'public.member_interests', 'private.member_profile_audit_log',
+  ]
+  async function reconciliationState(isolated) {
+    const tables = {}
+    for (const table of reconciliationTables) {
+      tables[table] = (await isolated.query(`SELECT to_jsonb(row) AS row FROM ${table} AS row ORDER BY to_jsonb(row)::text`)).rows.map(row => row.row)
+    }
+    return {
+      tables,
+      triggers: (await isolated.query("SELECT tgrelid::regclass::text AS table_name,tgname,tgenabled,pg_get_triggerdef(oid) AS definition FROM pg_trigger WHERE NOT tgisinternal ORDER BY table_name,tgname")).rows,
+      sequence: (await isolated.query('SELECT last_value::text,log_cnt::text,is_called FROM private.member_number_sequence')).rows,
+      constraints: (await isolated.query("SELECT conname,pg_get_constraintdef(oid) AS definition FROM pg_constraint WHERE conrelid='public.members'::regclass ORDER BY conname")).rows,
+    }
+  }
+  async function loadReconciliationFixture({ empty = false } = {}) {
+    const isolated = new PGlite()
+    for (const sql of bootstrapSQL) await isolated.exec(sql)
+    await isolated.exec(`
+      CREATE TABLE public.community_notifications(
+        id uuid PRIMARY KEY, member_id uuid REFERENCES public.members(id),
+        type text NOT NULL, title text, is_read boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE TABLE private.member_role_assignments(
+        id uuid PRIMARY KEY, member_id uuid NOT NULL REFERENCES public.members(id),
+        role_key text NOT NULL, assigned_at timestamptz NOT NULL DEFAULT now(), revoked_at timestamptz
+      );
+      ALTER TABLE public.match_round_submissions ADD CONSTRAINT reconciliation_submissions_member_fk FOREIGN KEY(member_id) REFERENCES public.members(id);
+      ALTER TABLE public.match_results ADD CONSTRAINT reconciliation_match_a_fk FOREIGN KEY(member_a_id) REFERENCES public.members(id);
+      ALTER TABLE public.match_results ADD CONSTRAINT reconciliation_match_b_fk FOREIGN KEY(member_b_id) REFERENCES public.members(id);
+      ALTER TABLE public.legacy_members ADD CONSTRAINT reconciliation_legacy_canonical_fk FOREIGN KEY(canonical_member_id) REFERENCES public.members(id);
+    `)
+    // Install the original allocation on a clean database, so its one-time
+    // backfill does not stand in for the reconciliation being tested.
+    await isolated.exec(migration)
+    const fixture = { isolated, third: randomUUID(), retired: randomUUID() }
+    if (empty) return fixture
+    await isolated.exec(`
+      ALTER TABLE public.members DISABLE TRIGGER member_number_before_write;
+      ALTER TABLE public.members DISABLE TRIGGER member_number_audit_change;
+      ALTER TABLE public.members DISABLE TRIGGER member_master_audit_member_change;
+    `)
+    const createdAt = '2026-10-08T05:06:07.123Z'
+    const anchors = [
+      { id: '627b6d93-b5f0-4cb6-82c8-4f9e76b2225a', name: '祝安冬', before: 'ZXS_249' },
+      { id: '9fc90347-548d-4999-b75a-d40c15e43716', name: '测试专用·', before: 'ZXS_250' },
+    ]
+    for (const target of [...reviewed, ...anchors, { id: fixture.retired, name: 'Truly retired fixture', before: 'ZXS_248', closed: true }]) {
+      const authId = randomUUID()
+      await isolated.query('INSERT INTO auth.users(id,email,raw_user_meta_data) VALUES($1,$2,$3::jsonb)', [authId, `${authId}@fixture.local`, JSON.stringify({ fixture: target.name })])
+      await isolated.query(`INSERT INTO public.members(id,user_id,email,status,member_number,account_status,profile_stage,record_source,record_scope,onboarding_step,submitted_at,last_profile_saved_at,account_linked_at,created_at,updated_at)
+        VALUES($1,$2,$3,'approved',$4,$5,'complete','app','current',4,$6,$6,$6,$6,$6)`, [target.id, authId, `${authId}@fixture.local`, target.before, target.closed ? 'closed' : 'active', createdAt])
+      await isolated.query("INSERT INTO public.member_identity(id,member_id,full_name,gender,age_range,nationality,current_city,created_at,updated_at) VALUES($1,$2,$3,'other','20-30','中国','东京',$4,$4)", [randomUUID(), target.id, target.name, createdAt])
+      await isolated.query("INSERT INTO private.member_role_assignments(id,member_id,role_key,assigned_at) VALUES($1,$2,'member',$3)", [randomUUID(), target.id, createdAt])
+      await isolated.query("INSERT INTO public.community_notifications(id,member_id,type,title,created_at) VALUES($1,$2,'fixture','Existing notification',$3)", [randomUUID(), target.id, createdAt])
+      await isolated.query("INSERT INTO public.match_round_submissions(member_id,game_type_pref,gender_pref,availability,message) VALUES($1,'fixture','any','{}'::jsonb,'Existing registration')", [target.id])
+      await isolated.query("INSERT INTO public.member_language(member_id,japanese_level,created_at,updated_at) VALUES($1,'fixture',$2,$2)", [target.id, createdAt])
+    }
+    await isolated.query("INSERT INTO public.match_results(member_a_id,member_b_id,cancellation_reason) VALUES($1,$2,'Existing matching')", [reviewed[0].id, reviewed[1].id])
+    await isolated.query("INSERT INTO public.activity_records(id,participant_ids,late_member_ids,no_show_member_ids,notes) VALUES($1,$2::uuid[],'{}','{}','Existing activity')", [randomUUID(), reviewed.map(row => row.id)])
+    for (const target of reviewed) {
+      for (const eventId of [target.allocation - 1, target.allocation]) {
+        const metadata = eventId === target.allocation ? { member_number_event: 'allocated', member_number_origin: 'automatic', member_number: target.before, offline_roster_version: '2026-10-06' } : {}
+        await isolated.query(`INSERT INTO private.member_profile_audit_log(id,member_id,member_id_snapshot,action_type,section,changed_fields,before_values,after_values,source,metadata,created_at)
+          OVERRIDING SYSTEM VALUE VALUES($1,$2,$2,'member_lifecycle_update',$6,ARRAY['member_number'],'{"member_number":null}'::jsonb,$3::jsonb,'system',$4::jsonb,$5)`, [eventId, target.id, JSON.stringify({ member_number: target.before }), JSON.stringify(metadata), createdAt, eventId === target.allocation ? 'account' : 'member'])
+      }
+      await isolated.query(`INSERT INTO private.member_profile_audit_log(id,member_id,member_id_snapshot,action_type,section,changed_fields,before_values,after_values,source,metadata,created_at)
+        OVERRIDING SYSTEM VALUE VALUES($1,$2,$2,'onboarding_step_saved','onboarding_step_1',ARRAY['full_name'],'{"full_name":null}'::jsonb,$3::jsonb,'app','{}'::jsonb,$4)`, [target.nameAudit, target.id, JSON.stringify({ full_name: target.firstName }), createdAt])
+    }
+    await isolated.query(`INSERT INTO private.member_profile_audit_log(id,member_id,member_id_snapshot,action_type,section,changed_fields,before_values,after_values,source,metadata,created_at)
+      OVERRIDING SYSTEM VALUE VALUES(2051,$1,$1,'admin_section_update','identity',ARRAY['full_name'],'{"full_name":"叶"}'::jsonb,'{"full_name":"叶一达"}'::jsonb,'admin','{}'::jsonb,$2)`, [reviewed[2].id, createdAt])
+    await isolated.query(`INSERT INTO private.member_profile_audit_log(id,member_id,member_id_snapshot,action_type,section,changed_fields,before_values,after_values,source,metadata,created_at)
+      OVERRIDING SYSTEM VALUE VALUES(1000,$1,$1,'member_lifecycle_update','account',ARRAY['member_number'],'{"member_number":null}'::jsonb,'{"member_number":"ZXS_248"}'::jsonb,'system','{"member_number_event":"allocated","member_number":"ZXS_248","member_number_origin":"automatic"}'::jsonb,$2),
+            (1001,$1,$1,'member_lifecycle_update','account',ARRAY['account_status'],'{"member_number":"ZXS_248","account_status":"active"}'::jsonb,'{"member_number":"ZXS_248","account_status":"closed"}'::jsonb,'system','{"member_number_event":"retired","member_number":"ZXS_248","member_number_origin":"account_lifecycle"}'::jsonb,$2)`, [fixture.retired, createdAt])
+    await isolated.exec(`
+      SELECT setval(pg_get_serial_sequence('private.member_profile_audit_log','id'),2417,true);
+      SELECT setval('private.member_number_sequence',261,true);
+      ALTER TABLE public.members ENABLE TRIGGER member_number_before_write;
+      ALTER TABLE public.members ENABLE TRIGGER member_number_audit_change;
+      ALTER TABLE public.members ENABLE TRIGGER member_master_audit_member_change;
+    `)
+    return fixture
+  }
+  async function reconciliationRegister(isolated, name) {
+    const authId = randomUUID()
+    const memberId = randomUUID()
+    await isolated.query('INSERT INTO auth.users(id,email) VALUES($1,$2)', [authId, `${authId}@fixture.local`])
+    await isolated.query("INSERT INTO public.members(id,user_id,email,status,record_source,account_status) VALUES($1,$2,$3,'pending','app','active')", [memberId, authId, `${authId}@fixture.local`])
+    await reconciliationSaveName(isolated, authId, name)
+    return { authId, memberId, number: (await isolated.query('SELECT member_number FROM public.members WHERE id=$1', [memberId])).rows[0].member_number }
+  }
+  async function reconciliationSaveName(isolated, authId, name) {
+    await isolated.exec('BEGIN')
+    try {
+      await isolated.exec('SET LOCAL ROLE authenticated')
+      await isolated.query("SELECT set_config('request.jwt.claim.sub',$1,true),set_config('request.jwt.claim.role','authenticated',true)", [authId])
+      await isolated.query('SELECT public.save_my_onboarding_step(1::smallint,$1::jsonb)', [JSON.stringify(namePayload(name))])
+      await isolated.exec('COMMIT')
+    } catch (error) {
+      await isolated.exec('ROLLBACK')
+      throw error
+    }
+  }
+  async function rejectedReconciliation(name, mutate, expected = /MEMBER_NUMBER_RECONCILIATION_/) {
+    await check(name, async () => {
+      const fixture = await loadReconciliationFixture()
+      try {
+        await mutate(fixture)
+        const before = await reconciliationState(fixture.isolated)
+        await assert.rejects(fixture.isolated.exec(read(reconciliationMigrationPath)), expected)
+        await fixture.isolated.exec('ROLLBACK')
+        assert.deepEqual(await reconciliationState(fixture.isolated), before, 'Rejected reconciliation changed member/Auth/business/audit rows, trigger states, sequence or constraints')
+      } finally { await fixture.isolated.close() }
+    })
+  }
+
+  await check('name reconciliation restores three roster numbers, shifts the two legitimate new members, preserves prior swap anchors and all other rows', async () => {
+    const { isolated } = await loadReconciliationFixture()
+    try {
+      const before = await reconciliationState(isolated)
+      await isolated.exec(read(reconciliationMigrationPath))
+      const after = await reconciliationState(isolated)
+      const changedNumbers = new Map(reviewed.map(target => [target.id, target.after]))
+      assert.deepEqual(after.tables['public.members'], before.tables['public.members'].map(row => ({ ...row, member_number: changedNumbers.get(row.id) || row.member_number })))
+      for (const table of reconciliationTables.filter(table => !['public.members', 'private.member_profile_audit_log'].includes(table))) {
+        assert.deepEqual(after.tables[table], before.tables[table], `Reconciliation changed ${table}`)
+      }
+      assert.deepEqual(after.triggers, before.triggers)
+      assert.deepEqual(after.sequence, before.sequence, 'Correction must not advance or rewind the number sequence')
+      assert.deepEqual(after.constraints, before.constraints)
+      const oldIds = new Set(before.tables['private.member_profile_audit_log'].map(row => row.id))
+      assert.deepEqual(after.tables['private.member_profile_audit_log'].filter(row => oldIds.has(row.id)), before.tables['private.member_profile_audit_log'])
+      const correctionEvents = after.tables['private.member_profile_audit_log'].filter(row => row.metadata?.member_number_event === 'roster_reconciliation' && row.metadata?.correction_scope === reconciliationScope)
+      assert.equal(correctionEvents.length, reviewed.length)
+      for (const target of reviewed) {
+        const event = correctionEvents.find(row => row.member_id_snapshot === target.id)
+        assert.ok(event, `Missing correction for ${target.name}`)
+        assert.deepEqual(event.changed_fields, ['member_number'])
+        assert.equal(event.before_values.member_number, target.before)
+        assert.equal(event.after_values.member_number, target.after)
+        assert.equal(event.source, 'migration')
+        assert.ok(event.reason)
+      }
+      const released = (await isolated.query('SELECT * FROM private.member_number_released_manifest() ORDER BY member_number')).rows
+      assert.deepEqual(released.map(row => row.member_number), ['ZXS_257', 'ZXS_258', 'ZXS_259', 'ZXS_260', 'ZXS_261'])
+      await isolated.exec(read(reconciliationMigrationPath))
+      assert.deepEqual(await reconciliationState(isolated), after, 'Repeating reconciliation must be idempotent')
+    } finally { await isolated.close() }
+  })
+  await check('future half-width and full-width whitespace names receive their reserved numbers while preserving the entered name and existing number on edits', async () => {
+    const { isolated } = await loadReconciliationFixture({ empty: true })
+    try {
+      await isolated.exec(read(reconciliationMigrationPath))
+      for (const [name, number] of [[' 吴 璠 ', 'ZXS_081'], ['陈　风', 'ZXS_001']]) {
+        const registered = await reconciliationRegister(isolated, name)
+        assert.equal(registered.number, number)
+        assert.equal((await isolated.query('SELECT full_name FROM public.member_identity WHERE member_id=$1', [registered.memberId])).rows[0].full_name, name.trim())
+        await reconciliationSaveName(isolated, registered.authId, name.replace(/[ 　]/g, ''))
+        assert.equal((await isolated.query('SELECT member_number FROM public.members WHERE id=$1', [registered.memberId])).rows[0].member_number, number)
+      }
+      const registered = await reconciliationRegister(isolated, 'New numbered fixture')
+      await reconciliationSaveName(isolated, registered.authId, '黄　浩淳')
+      assert.equal((await isolated.query('SELECT member_number FROM public.members WHERE id=$1', [registered.memberId])).rows[0].member_number, registered.number)
+    } finally { await isolated.close() }
+  })
+  await check('normalized duplicate roster names reject registration instead of silently choosing a reserved number', async () => {
+    const { isolated } = await loadReconciliationFixture({ empty: true })
+    try {
+      await isolated.exec(read(reconciliationMigrationPath))
+      await isolated.exec(`CREATE OR REPLACE FUNCTION private.member_number_roster() RETURNS TABLE(full_name text,member_number text)
+        LANGUAGE sql IMMUTABLE SET search_path='' AS $$VALUES ('歧义 名','ZXS_081'),('歧义　名','ZXS_082')$$;`)
+      await assert.rejects(reconciliationRegister(isolated, '歧 义名'), /MEMBER_NUMBER_.*AMBIGUOUS/)
+    } finally { await isolated.close() }
+  })
+  await check('released numbers allocate once in order 257 through 261 and then continue at 262 without resetting the high-water sequence', async () => {
+    const { isolated } = await loadReconciliationFixture()
+    try {
+      await isolated.exec(read(reconciliationMigrationPath))
+      for (let n = 257; n <= 262; n++) {
+        const registered = await reconciliationRegister(isolated, `Pool recipient ${n}`)
+        assert.equal(registered.number, `ZXS_${n}`)
+        assert.equal((await isolated.query('SELECT last_value::int AS last FROM private.member_number_sequence')).rows[0].last, n < 262 ? 261 : 262)
+      }
+      assert.deepEqual((await isolated.query('SELECT member_number FROM private.member_number_released_manifest() WHERE private.member_number_is_released(member_number)')).rows, [])
+    } finally { await isolated.close() }
+  })
+  await check('replaying a completed repair after 257 is consumed preserves the consumed pool and every audit row', async () => {
+    const { isolated } = await loadReconciliationFixture()
+    try {
+      await isolated.exec(read(reconciliationMigrationPath))
+      assert.equal((await reconciliationRegister(isolated, 'Consumed release replay fixture')).number, 'ZXS_257')
+      const before = await reconciliationState(isolated)
+      const poolBefore = (await isolated.query('SELECT member_number,private.member_number_is_released(member_number) AS available FROM private.member_number_released_manifest() ORDER BY member_number')).rows
+      assert.equal(poolBefore.find(row => row.member_number === 'ZXS_257').available, false)
+      assert.equal(poolBefore.find(row => row.member_number === 'ZXS_258').available, true)
+      await isolated.exec(read(reconciliationMigrationPath))
+      assert.deepEqual(await reconciliationState(isolated), before)
+      assert.deepEqual((await isolated.query('SELECT member_number,private.member_number_is_released(member_number) AS available FROM private.member_number_released_manifest() ORDER BY member_number')).rows, poolBefore)
+    } finally { await isolated.close() }
+  })
+  await rejectedReconciliation('replaying completed repair rejects a missing release proof and preserves the entire pre-replay state', async ({ isolated }) => {
+    await isolated.exec(read(reconciliationMigrationPath))
+    await isolated.exec('ALTER TABLE private.member_profile_audit_log DISABLE TRIGGER member_master_reject_audit_mutation')
+    const removed = await isolated.query("DELETE FROM private.member_profile_audit_log WHERE metadata->>'member_number_event'='pool_release' AND metadata->>'member_number'='ZXS_258' RETURNING id")
+    assert.equal(removed.rows.length, 1)
+    await isolated.exec('ALTER TABLE private.member_profile_audit_log ENABLE TRIGGER member_master_reject_audit_mutation')
+  }, /MEMBER_NUMBER_RECONCILIATION_INCOMPLETE_RELEASE_EVIDENCE/)
+  await rejectedReconciliation('replaying completed repair rejects five correction markers belonging to an unrelated member', async ({ isolated, retired }) => {
+    await isolated.exec(read(reconciliationMigrationPath))
+    await isolated.exec('ALTER TABLE private.member_profile_audit_log DISABLE TRIGGER member_master_reject_audit_mutation')
+    const changed = await isolated.query("UPDATE private.member_profile_audit_log SET member_id=$1,member_id_snapshot=$1 WHERE metadata->>'member_number_event'='roster_reconciliation' AND metadata->>'correction_scope'=$2 RETURNING id", [retired, reconciliationScope])
+    assert.equal(changed.rows.length, 5)
+    await isolated.exec('ALTER TABLE private.member_profile_audit_log ENABLE TRIGGER member_master_reject_audit_mutation')
+  }, /MEMBER_NUMBER_RECONCILIATION_IDENTITY_MISMATCH/)
+  await check('issued and closed numbers cannot enter the release pool again, and truly retired 248 stays blocked', async () => {
+    const { isolated, retired } = await loadReconciliationFixture()
+    try {
+      await isolated.exec(read(reconciliationMigrationPath))
+      const first = await reconciliationRegister(isolated, 'Pool recipient to close')
+      assert.equal(first.number, 'ZXS_257')
+      await isolated.query("UPDATE public.members SET account_status='closed' WHERE id=$1", [first.memberId])
+      assert.equal((await reconciliationRegister(isolated, 'Next after closed pool member')).number, 'ZXS_258')
+      assert.equal((await isolated.query("SELECT private.member_number_is_released('ZXS_257') AS available")).rows[0].available, false)
+      assert.equal((await isolated.query("SELECT private.member_number_is_released('ZXS_248') AS available")).rows[0].available, false)
+      await isolated.exec('ALTER TABLE public.members DISABLE TRIGGER member_number_before_write')
+      await isolated.query('UPDATE public.members SET member_number=NULL WHERE id=$1', [retired])
+      await isolated.exec('ALTER TABLE public.members ENABLE TRIGGER member_number_before_write')
+      const applicant = await reconciliationRegister(isolated, 'Retired number claimant')
+      await assert.rejects(isolated.query("UPDATE public.members SET member_number='ZXS_248' WHERE id=$1", [applicant.memberId]), /MEMBER_NUMBER_RETIRED/)
+      await isolated.exec('ALTER TABLE public.members DISABLE TRIGGER member_number_before_write')
+      await isolated.query('UPDATE public.members SET member_number=NULL WHERE id=$1', [first.memberId])
+      await isolated.exec('ALTER TABLE public.members ENABLE TRIGGER member_number_before_write')
+      await assert.rejects(isolated.query("UPDATE public.members SET member_number='ZXS_257' WHERE id=$1", [applicant.memberId]), /MEMBER_NUMBER_RETIRED/)
+    } finally { await isolated.close() }
+  })
+  await check('failed released-number registration rolls back its claim and leaves the next sequence value unchanged', async () => {
+    const { isolated } = await loadReconciliationFixture()
+    try {
+      await isolated.exec(read(reconciliationMigrationPath))
+      const originalAuditFunction = extractFunction(migration, 'private.member_number_audit_change')
+      await isolated.exec(`CREATE OR REPLACE FUNCTION private.member_number_audit_change() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN IF NEW.member_number='ZXS_257' THEN RAISE EXCEPTION 'TEST_RELEASED_CLAIM_FAILURE'; END IF; RETURN NULL; END;$$;`)
+      const beforeSequence = (await isolated.query('SELECT last_value::text,is_called FROM private.member_number_sequence')).rows
+      const beforeAudit = (await isolated.query('SELECT to_jsonb(a) AS row FROM private.member_profile_audit_log a ORDER BY id')).rows
+      await assert.rejects(reconciliationRegister(isolated, 'Failed pool recipient'), /TEST_RELEASED_CLAIM_FAILURE/)
+      assert.deepEqual((await isolated.query('SELECT last_value::text,is_called FROM private.member_number_sequence')).rows, beforeSequence)
+      // The unnumbered account insertion is a separate successful operation;
+      // its lifecycle audit survives, while the failed allocation does not.
+      const auditAfter = (await isolated.query('SELECT to_jsonb(a) AS row FROM private.member_profile_audit_log a ORDER BY id')).rows
+      assert.deepEqual(auditAfter.slice(0, beforeAudit.length), beforeAudit)
+      assert.equal(auditAfter.some(row => row.row.metadata?.member_number_event === 'allocated' && row.row.metadata?.member_number === 'ZXS_257' && row.row.source !== 'migration'), false)
+      await isolated.exec(originalAuditFunction)
+      assert.equal((await reconciliationRegister(isolated, 'Successful pool recipient')).number, 'ZXS_257')
+    } finally { await isolated.close() }
+  })
+  await check('new private release and reconciliation helpers remain unavailable to all API roles', async () => {
+    const { isolated } = await loadReconciliationFixture({ empty: true })
+    try {
+      await isolated.exec(read(reconciliationMigrationPath))
+      const helpers = (await isolated.query(`SELECT p.oid::regprocedure::text AS signature FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+        WHERE n.nspname='private' AND p.proname LIKE 'member_number_%' ORDER BY p.proname`)).rows
+      for (const role of ['anon', 'authenticated', 'service_role']) {
+        for (const helper of helpers) {
+          const permission = (await isolated.query('SELECT has_function_privilege($1,$2,\'EXECUTE\') AS allowed', [role, helper.signature])).rows[0].allowed
+          assert.equal(permission, false, `${role} may execute ${helper.signature}`)
+        }
+      }
+    } finally { await isolated.close() }
+  })
+
+  await rejectedReconciliation('reconciliation rejects a changed target name', async ({ isolated }) => {
+    await isolated.query("UPDATE public.member_identity SET full_name='黄浩淳' WHERE member_id=$1", [reviewed[0].id])
+  })
+  await rejectedReconciliation('reconciliation rejects a closed target', async ({ isolated }) => {
+    await isolated.query("UPDATE public.members SET account_status='closed' WHERE id=$1", [reviewed[0].id])
+  })
+  await rejectedReconciliation('reconciliation rejects abnormal approved lifecycle fields', async ({ isolated }) => {
+    await isolated.exec('ALTER TABLE public.members DISABLE TRIGGER member_master_sync_lifecycle')
+    await isolated.query("UPDATE public.members SET profile_stage='in_progress',onboarding_step=1,submitted_at=NULL WHERE id=$1", [reviewed[0].id])
+    await isolated.exec('ALTER TABLE public.members ENABLE TRIGGER member_master_sync_lifecycle')
+  })
+  await rejectedReconciliation('reconciliation rejects changed original allocation evidence', async ({ isolated }) => {
+    await isolated.exec('ALTER TABLE private.member_profile_audit_log DISABLE TRIGGER member_master_reject_audit_mutation')
+    await isolated.query("UPDATE private.member_profile_audit_log SET metadata=metadata||'{\"member_number_origin\":\"manual\"}'::jsonb WHERE id=$1", [reviewed[0].allocation])
+    await isolated.exec('ALTER TABLE private.member_profile_audit_log ENABLE TRIGGER member_master_reject_audit_mutation')
+  })
+  await rejectedReconciliation('reconciliation rejects missing short-name correction evidence for 叶一达', async ({ isolated }) => {
+    await isolated.exec('ALTER TABLE private.member_profile_audit_log DISABLE TRIGGER member_master_reject_audit_mutation')
+    await isolated.query('DELETE FROM private.member_profile_audit_log WHERE id=2051')
+    await isolated.exec('ALTER TABLE private.member_profile_audit_log ENABLE TRIGGER member_master_reject_audit_mutation')
+  })
+  await rejectedReconciliation('reconciliation rejects another account claiming a target number through a normalized alias', async ({ isolated, third }) => {
+    await isolated.query("INSERT INTO public.members(id,status,record_source,account_status,member_number) VALUES($1,'pending','import','unbound','zxs_0125')", [third])
+  })
+  await rejectedReconciliation('reconciliation rejects unrelated prior ownership of a restored roster number', async ({ isolated, third }) => {
+    await isolated.query("INSERT INTO public.members(id,status,record_source,account_status) VALUES($1,'pending','import','unbound')", [third])
+    await isolated.query(`INSERT INTO private.member_profile_audit_log(member_id,member_id_snapshot,action_type,section,changed_fields,before_values,after_values,source,metadata)
+      VALUES($1,$1,'member_lifecycle_update','account',ARRAY['member_number'],'{}'::jsonb,'{"member_number":"ZXS_125"}'::jsonb,'system','{"member_number_event":"allocated","member_number":"ZXS_125"}'::jsonb)`, [third])
+  })
+  await rejectedReconciliation('reconciliation rejects unreviewed historical ownership of released 257', async ({ isolated, third }) => {
+    await isolated.query("INSERT INTO public.members(id,status,record_source,account_status) VALUES($1,'pending','import','unbound')", [third])
+    await isolated.query(`INSERT INTO private.member_profile_audit_log(member_id,member_id_snapshot,action_type,section,changed_fields,before_values,after_values,source,metadata)
+      VALUES($1,$1,'member_lifecycle_update','account',ARRAY['member_number'],'{}'::jsonb,'{"member_number":"ZXS_257"}'::jsonb,'system','{"member_number_event":"retired","member_number":"ZXS_257"}'::jsonb)`, [third])
+  })
+  await rejectedReconciliation('reconciliation rejects a genuine new registration after the reviewed preflight without leaving any changes', async ({ isolated }) => {
+    const registered = await reconciliationRegister(isolated, 'AfterPreflightNew')
+    assert.equal(registered.number, 'ZXS_262', 'Fixture must represent a newly allocated account beyond the reviewed high-water mark')
+  }, /MEMBER_NUMBER_RECONCILIATION_NEW_REGISTRATION_AFTER_PREFLIGHT/)
+  await rejectedReconciliation('reconciliation rejects a member publication that could expose transient number updates', async ({ isolated }) => {
+    await isolated.exec('CREATE PUBLICATION reconciliation_fixture_realtime FOR TABLE public.members')
+  })
+  await rejectedReconciliation('reconciliation rejects an unknown member trigger', async ({ isolated }) => {
+    await isolated.exec(`CREATE FUNCTION private.reconciliation_unknown_trigger() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;
+      CREATE TRIGGER zz_reconciliation_unknown_trigger AFTER UPDATE ON public.members FOR EACH ROW EXECUTE FUNCTION private.reconciliation_unknown_trigger();`)
+  })
+  await rejectedReconciliation('reconciliation rejects a replaced function under a known trigger name', async ({ isolated }) => {
+    await isolated.exec(`CREATE FUNCTION private.reconciliation_unknown_function() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN RETURN NEW; END;$$;
+      DROP TRIGGER member_number_before_write ON public.members;
+      CREATE TRIGGER member_number_before_write BEFORE UPDATE OF member_number ON public.members FOR EACH ROW EXECUTE FUNCTION private.reconciliation_unknown_function();`)
+  })
+  for (const [table, trigger] of [['public.members', 'member_number_before_write'], ['public.members', 'members_updated_at'], ['private.member_profile_audit_log', 'member_master_prepare_audit_event'], ['private.member_profile_audit_log', 'member_master_reject_audit_mutation']]) {
+    await rejectedReconciliation(`reconciliation rejects disabled protection ${trigger}`, async ({ isolated }) => {
+      await isolated.exec(`ALTER TABLE ${table} DISABLE TRIGGER ${trigger}`)
+    })
+  }
+  for (const [table, column, value] of [['public.community_notifications', 'title', 'Unexpected notification mutation'], ['public.match_round_submissions', 'message', 'Unexpected registration mutation']]) {
+    await rejectedReconciliation(`reconciliation rolls back hidden ${table} side effects`, async ({ isolated }) => {
+      await isolated.exec(`CREATE OR REPLACE FUNCTION private.member_number_audit_change() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN UPDATE ${table} SET ${column}='${value}' WHERE member_id=NEW.id; RETURN NULL; END;$$;`)
+    })
+  }
+  await rejectedReconciliation('reconciliation rolls back changed original audit events during writes', async ({ isolated }) => {
+    await isolated.exec(`CREATE OR REPLACE FUNCTION private.member_number_audit_change() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        ALTER TABLE private.member_profile_audit_log DISABLE TRIGGER member_master_reject_audit_mutation;
+        UPDATE private.member_profile_audit_log SET reason='Unexpected original evidence mutation' WHERE id=2416;
+        ALTER TABLE private.member_profile_audit_log ENABLE TRIGGER member_master_reject_audit_mutation;
+        RETURN NULL;
+      END;$$;`)
+  })
+  await rejectedReconciliation('reconciliation failure after validators are disabled restores all guards and data', async ({ isolated }) => {
+    await isolated.exec(`CREATE OR REPLACE FUNCTION private.member_number_audit_change() RETURNS trigger LANGUAGE plpgsql AS $$
+      BEGIN
+        IF NEW.id='${reviewed[0].id}'::uuid AND NEW.member_number IS NULL THEN
+          IF (SELECT tgenabled FROM pg_trigger WHERE tgname='member_number_before_write') IS DISTINCT FROM 'D'::"char" THEN
+            RAISE EXCEPTION 'TEST_RECONCILIATION_FAILURE_DID_NOT_REACH_DISABLED_GUARD';
+          END IF;
+          RAISE EXCEPTION 'TEST_RECONCILIATION_AFTER_FAILURE';
+        END IF;
+        RETURN NULL;
+      END;$$;`)
+  }, /TEST_RECONCILIATION_AFTER_FAILURE/)
+}
+
 await db.close()
 console.log(`PASS ${passed} member-number database checks`)

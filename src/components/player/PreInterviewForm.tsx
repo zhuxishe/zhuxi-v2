@@ -7,6 +7,11 @@ import type { PreInterviewFormData } from "@/types"
 import { EMPTY_FORM } from "@/types"
 import { isValidBirthDate } from "@/lib/member-master/birth-date"
 import { isOnboardingDegree } from "@/lib/member-master/onboarding"
+import type { QuestionnaireRuntime, QuestionnaireAnswers } from "@/lib/questionnaires/types"
+import { validateAnswers } from "@/lib/questionnaires/validation"
+import { answersToLegacy } from "@/lib/questionnaires/defaults"
+import { QuestionnaireFields, questionnaireText } from "./QuestionnaireFields"
+import { questionnaireAnswers, questionnaireContext, questionnaireError, questionnaireLegacy } from "./questionnaire-client"
 import {
   savePreInterviewStep,
   submitPreInterviewForm,
@@ -27,6 +32,7 @@ interface Props {
   defaultValues?: PreInterviewFormData
   initialStep?: 0 | 1 | 2 | 3
   initialLastSavedAt?: string | null
+  questionnaire?: QuestionnaireRuntime | null
 }
 
 const ERROR_TRANSLATIONS: Record<MemberMasterActionError, string> = {
@@ -47,17 +53,20 @@ export function PreInterviewForm({
   defaultValues,
   initialStep = 0,
   initialLastSavedAt = null,
+  questionnaire,
 }: Props) {
   const t = useTranslations("interview")
   const locale = useLocale()
-  const STEPS = [t("stepBasic"), t("stepAcademic"), t("stepInterests"), t("stepPersonality")]
+  const STEPS = questionnaire && !questionnaire.isBaseline ? questionnaire.template.sections.map((section) => questionnaireText(section.title, locale)) : [t("stepBasic"), t("stepAcademic"), t("stepInterests"), t("stepPersonality")]
   const router = useRouter()
   const [step, setStep] = useState(initialStep)
-  const [data, setData] = useState<PreInterviewFormData>(defaultValues ?? EMPTY_FORM)
+  const [data, setData] = useState<PreInterviewFormData>(questionnaireLegacy(questionnaire, defaultValues ?? EMPTY_FORM))
   const [busy, setBusy] = useState<"saving" | "submitting" | null>(null)
   const [lastSavedAt, setLastSavedAt] = useState<string | null>(initialLastSavedAt)
   const [error, setError] = useState<string | null>(null)
   const operationPending = useRef(false)
+  const runtime = useRef(questionnaire)
+  const configured = Boolean(questionnaire && !questionnaire.isBaseline)
   const nicknameLength = step === 0 ? [...data.nickname.normalize("NFKC").trim()].length : 0
   const nicknameError = nicknameLength === 1
     ? t("nicknameTooShortError")
@@ -79,6 +88,9 @@ export function PreInterviewForm({
   }
 
   function canProceed(): boolean {
+    if (configured && runtime.current) {
+      return validateAnswers(runtime.current.template, questionnaireAnswers(runtime.current, data), { sectionId: runtime.current.template.sections[step]?.id, existingAnswers: runtime.current.answers }).ok
+    }
     if (step === 0) {
       return !nicknameError && !!(data.full_name.trim() && data.gender && isValidBirthDate(data.birth_date) && data.nationality && data.current_city)
     }
@@ -94,14 +106,21 @@ export function PreInterviewForm({
     return true
   }
 
-  function translateError(code: MemberMasterActionError | undefined) {
-    return code ? t(ERROR_TRANSLATIONS[code]) : t("submitError")
+  function translateError(code: string | undefined) {
+    return code && code in ERROR_TRANSLATIONS ? t(ERROR_TRANSLATIONS[code as MemberMasterActionError]) : code ? questionnaireError(code, locale) : t("submitError")
+  }
+
+  function updateQuestionnaire(answers: QuestionnaireAnswers) {
+    if (!runtime.current) return
+    runtime.current = { ...runtime.current, answers }
+    setData((previous) => ({ ...previous, ...answersToLegacy(runtime.current!.template, answers) }))
   }
 
   async function saveCurrentStep() {
     try {
-      const result = await savePreInterviewStep((step + 1) as OnboardingStep, data)
+      const result = await savePreInterviewStep((step + 1) as OnboardingStep, data, questionnaireContext(runtime.current, data))
       if (result.success) {
+        if (result.questionnaire) runtime.current = result.questionnaire
         setLastSavedAt(result.lastSavedAt ?? new Date().toISOString())
         return true
       }
@@ -135,7 +154,7 @@ export function PreInterviewForm({
       if (!(await saveCurrentStep())) return
 
       setBusy("submitting")
-      const result = await submitPreInterviewForm()
+      const result = await submitPreInterviewForm(questionnaireContext(runtime.current, data))
       if (!result.success) {
         setError(translateError(result.error))
         return
@@ -154,7 +173,7 @@ export function PreInterviewForm({
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
       <HomeLink className="mb-6" />
-      <h1 className="text-2xl font-bold text-foreground mb-2">{t("title")}</h1>
+      <h1 className="text-2xl font-bold text-foreground mb-2">{configured && runtime.current ? questionnaireText(runtime.current.template.title, locale) : t("title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">{t("subtitle")}</p>
 
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
@@ -175,10 +194,12 @@ export function PreInterviewForm({
       <FormStepIndicator steps={STEPS} currentStep={step} className="mb-8" />
 
       <fieldset className="animate-fade-in min-w-0" disabled={busy !== null}>
+        {configured && runtime.current ? <QuestionnaireFields template={runtime.current.template} answers={questionnaireAnswers(runtime.current, data)} onChange={updateQuestionnaire} sectionId={runtime.current.template.sections[step]?.id} /> : <>
         {step === 0 && <InterviewStep1 data={data} onChange={update} />}
         {step === 1 && <InterviewStep2 data={data} onChange={update} />}
         {step === 2 && <InterviewStep3 data={data} onChange={update} />}
         {step === 3 && <InterviewStep4 data={data} onChange={update} />}
+        </>}
       </fieldset>
 
       {(nicknameError || error) && (

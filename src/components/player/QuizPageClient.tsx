@@ -1,15 +1,19 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { useRouter } from "next/navigation"
-import { useTranslations } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { PersonalityQuiz } from "./PersonalityQuiz"
 import { QuizResult } from "./QuizResult"
-import { submitQuiz } from "@/app/app/profile/quiz/actions"
+import { startQuizRetake, submitQuiz } from "@/app/app/profile/quiz/actions"
 import type { DimensionScores } from "@/lib/constants/personality-quiz"
 import type { QuizConfig } from "@/types/quiz-config"
 import type { QuizAnswer } from "@/lib/forms/player-enrichment"
 import { Button } from "@/components/ui/button"
+import type { QuestionnaireAnswers, QuestionnaireRuntime } from "@/lib/questionnaires/types"
+import { answersFromLegacy, quizTemplateToConfig } from "@/lib/questionnaires/defaults"
+import { QuestionnaireQuiz } from "./QuestionnaireQuiz"
+import { questionnaireError } from "./questionnaire-client"
 
 interface ExistingResult {
   scores: DimensionScores
@@ -19,28 +23,43 @@ interface ExistingResult {
 interface Props {
   existing: ExistingResult | null
   quizConfig: QuizConfig
+  questionnaire?: QuestionnaireRuntime | null
 }
 
-export function QuizPageClient({ existing, quizConfig }: Props) {
+export function QuizPageClient({ existing, quizConfig, questionnaire }: Props) {
   const router = useRouter()
   const t = useTranslations("quiz")
   const tErr = useTranslations("errors")
+  const locale = useLocale()
   const [result, setResult] = useState<ExistingResult | null>(existing)
   const [showQuiz, setShowQuiz] = useState(!existing)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [pendingAnswers, setPendingAnswers] = useState<QuizAnswer[] | null>(null)
+  const [pendingAnswers, setPendingAnswers] = useState<QuizAnswer[] | QuestionnaireAnswers | null>(null)
 
-  async function handleComplete(answers: { questionId: number; score: number }[]) {
-    if (submitting) return
+  const [runtime, setRuntime] = useState(questionnaire)
+  const [config, setConfig] = useState(quizConfig)
+  const operationPending = useRef(false)
+
+  async function handleComplete(answers: QuizAnswer[] | QuestionnaireAnswers) {
+    if (submitting || operationPending.current) return
+    operationPending.current = true
     setSubmitting(true)
     setPendingAnswers(answers)
     setError(null)
     try {
-      const res = await submitQuiz(answers)
+      const context = runtime?.versionId ? {
+        versionId: runtime.versionId, revision: runtime.revision,
+        answers: Array.isArray(answers) ? answersFromLegacy(runtime.template, { answers }) : answers,
+      } : undefined
+      const res = await submitQuiz(Array.isArray(answers) ? answers : [], context)
       if (res.error) {
         setError(res.error)
         return
+      }
+      if (res.questionnaire) {
+        setRuntime(res.questionnaire)
+        setConfig(quizTemplateToConfig(res.questionnaire.template))
       }
       setResult({ scores: res.scores, personalityType: res.personalityType })
       setShowQuiz(false)
@@ -49,11 +68,25 @@ export function QuizPageClient({ existing, quizConfig }: Props) {
     } catch {
       setError("networkError")
     } finally {
+      operationPending.current = false
       setSubmitting(false)
     }
   }
 
-  function handleRetake() {
+  async function handleRetake() {
+    if (submitting || operationPending.current) return
+    if (runtime) {
+      operationPending.current = true
+      setSubmitting(true)
+      setError(null)
+      try {
+        const next = await startQuizRetake()
+        if (next.error) { setError(next.error); return }
+        setRuntime(next.questionnaire)
+        if (next.questionnaire) setConfig(quizTemplateToConfig(next.questionnaire.template))
+      } catch { setError("networkError"); return }
+      finally { operationPending.current = false; setSubmitting(false) }
+    }
     setResult(null)
     setShowQuiz(true)
     setError(null)
@@ -62,15 +95,19 @@ export function QuizPageClient({ existing, quizConfig }: Props) {
 
   if (!showQuiz && result) {
     return (
+      <>
+      {submitting && <p role="status" className="text-center text-sm text-muted-foreground">{t("calculating")}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{tErr.has(error) ? tErr(error) : questionnaireError(error, locale)}</p>}
       <QuizResult
         scores={result.scores}
         personalityType={result.personalityType}
-        dimensions={quizConfig.dimensions}
-        typeLabels={quizConfig.typeLabels}
-        typeDescriptions={quizConfig.typeDescriptions}
-        invertN={quizConfig.scoring.invertN}
+        dimensions={config.dimensions}
+        typeLabels={config.typeLabels}
+        typeDescriptions={config.typeDescriptions}
+        invertN={config.scoring.invertN}
         onRetake={handleRetake}
       />
+      </>
     )
   }
 
@@ -79,7 +116,7 @@ export function QuizPageClient({ existing, quizConfig }: Props) {
       {submitting && <p role="status" className="text-center text-sm text-muted-foreground">{t("calculating")}</p>}
       {error && (
         <div className="max-w-lg mx-auto space-y-3">
-          <p role="alert" className="text-sm text-destructive">{tErr.has(error) ? tErr(error) : tErr("submitFailed")}</p>
+          <p role="alert" className="text-sm text-destructive">{tErr.has(error) ? tErr(error) : questionnaireError(error, locale)}</p>
           <Button variant="outline" disabled={submitting} onClick={() => {
             if (error === "invalidQuizAnswers") window.location.reload()
             else if (pendingAnswers) void handleComplete(pendingAnswers)
@@ -88,7 +125,7 @@ export function QuizPageClient({ existing, quizConfig }: Props) {
       )}
       {/* Keep the questionnaire mounted during requests so every answer survives a failure. */}
       <fieldset disabled={submitting}>
-        <PersonalityQuiz questions={quizConfig.questions} onComplete={handleComplete} />
+        {runtime && !runtime.isBaseline ? <QuestionnaireQuiz key={runtime.versionId} template={runtime.template} initialAnswers={runtime.answers} onComplete={handleComplete} /> : <PersonalityQuiz questions={config.questions} onComplete={handleComplete} />}
       </fieldset>
     </div>
   )

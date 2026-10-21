@@ -95,7 +95,7 @@ function DateWheel({ label, min, max, value, onChange, scrollRef }: {
   )
 }
 
-export function BirthdayPicker({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+export function BirthdayPicker({ value, onChange, label, hint, required = true }: { value: string; onChange: (value: string) => void; label?: string; hint?: string; required?: boolean }) {
   const t = useTranslations("interview")
   const id = useId()
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -132,7 +132,7 @@ export function BirthdayPicker({ value, onChange }: { value: string; onChange: (
 
   return (
     <div>
-      <label htmlFor={id} className="text-sm font-medium text-foreground">{t("birthDate")} *</label>
+      <label htmlFor={id} className="text-sm font-medium text-foreground">{label ?? t("birthDate")}{required ? " *" : ""}</label>
       <button
         ref={triggerRef}
         id={id}
@@ -149,7 +149,7 @@ export function BirthdayPicker({ value, onChange }: { value: string; onChange: (
         </span>
         <ChevronDown aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
       </button>
-      <p id={`${id}-hint`} className="mt-1.5 text-xs leading-5 text-muted-foreground">{t("birthDateHint")}</p>
+      <p id={`${id}-hint`} className="mt-1.5 text-xs leading-5 text-muted-foreground">{hint ?? t("birthDateHint")}</p>
       <Dialog open={session !== null} onOpenChange={(open) => { if (!open) setSession(null) }}>
         {session && current && date && (
           <DialogContent

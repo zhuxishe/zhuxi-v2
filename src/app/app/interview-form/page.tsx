@@ -7,6 +7,7 @@ import {
   hydrateOnboardingDraft,
   type OnboardingIdentityDraft,
 } from "@/lib/member-master/onboarding"
+import { getPlayerQuestionnaire } from "@/lib/questionnaires/server"
 import { PreInterviewForm } from "@/components/player/PreInterviewForm"
 
 export default async function AppInterviewFormPage() {
@@ -42,8 +43,11 @@ export default async function AppInterviewFormPage() {
     }
   }
 
+  const questionnaire = await getPlayerQuestionnaire("interview")
+
   return (
     <PreInterviewForm
+      questionnaire={questionnaire}
       defaultValues={hydrateOnboardingDraft(identity)}
       initialStep={getOnboardingResumeStep(player.hasIdentity ? player.onboardingStep : 0, identity)}
       initialLastSavedAt={player.lastProfileSavedAt}

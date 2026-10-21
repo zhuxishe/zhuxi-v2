@@ -31,6 +31,7 @@ vi.mock("@/app/app/interview-form/actions", () => ({
   submitPreInterviewForm: mocks.submit,
 }))
 vi.mock("./InterviewStep2", () => ({ InterviewStep2: () => null }))
+vi.mock("./QuestionnaireFields", () => ({ QuestionnaireFields: () => null, questionnaireText: (text: { zh: string }) => text.zh }))
 
 import { PreInterviewForm } from "./PreInterviewForm"
 

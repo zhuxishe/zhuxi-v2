@@ -1,3 +1,4 @@
+vi.mock("@/components/player/questionnaire-submit", () => ({ resolveQuestionnaireSubmission: async () => undefined }))
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { submitSupplementary } from "@/app/app/profile/supplementary/actions"
 import { submitPersonality } from "@/app/app/profile/personality/actions"

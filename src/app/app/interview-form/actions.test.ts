@@ -1,3 +1,4 @@
+vi.mock("@/components/player/questionnaire-submit", () => ({ resolveQuestionnaireSubmission: async () => undefined }))
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({

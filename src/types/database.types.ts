@@ -3109,6 +3109,13 @@ export type Database = {
       }
     }
     Functions: {
+      get_admin_questionnaires: { Args: Record<PropertyKey, never>; Returns: Json }
+      initialize_questionnaire_template: { Args: { p_kind: string; p_template: Json }; Returns: Json }
+      save_questionnaire_draft: { Args: { p_kind: string; p_expected_revision: number; p_template: Json }; Returns: Json }
+      publish_questionnaire_draft: { Args: { p_kind: string; p_expected_revision: number }; Returns: Json }
+      get_my_questionnaire: { Args: { p_kind: string }; Returns: Json }
+      start_my_questionnaire_retake: { Args: { p_kind: string }; Returns: Json }
+      save_my_questionnaire: { Args: { p_kind: string; p_version_id: string; p_answers: Json; p_step?: number; p_complete?: boolean; p_expected_revision?: number }; Returns: Json }
       manage_my_registration: {
         Args: {
           p_round_id: string

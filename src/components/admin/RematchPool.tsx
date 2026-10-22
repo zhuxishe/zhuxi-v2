@@ -18,10 +18,11 @@ interface Props {
   poolMembers: PoolMember[]
   submissionPrefs?: Record<string, SubmissionPrefInfo>
   auditReason: string
+  readOnly?: boolean
   onRefresh: () => void
 }
 
-export function RematchPool({ sessionId, poolMembers, submissionPrefs, auditReason, onRefresh }: Props) {
+export function RematchPool({ sessionId, poolMembers, submissionPrefs, auditReason, onRefresh, readOnly = false }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -70,14 +71,14 @@ export function RematchPool({ sessionId, poolMembers, submissionPrefs, auditReas
             size="sm"
             variant="outline"
             onClick={() => setShowManual(true)}
-            disabled={poolMembers.length < 2 || !adminAuditReasonIsValid(auditReason)}
+            disabled={readOnly || isPending || poolMembers.length < 2 || !adminAuditReasonIsValid(auditReason)}
           >
             <UserPlus className="size-3.5" /> 手动配对
           </Button>
           <Button
             size="sm"
             onClick={handleRematch}
-            disabled={isPending || poolMembers.length < 2 || !adminAuditReasonIsValid(auditReason)}
+            disabled={readOnly || isPending || poolMembers.length < 2 || !adminAuditReasonIsValid(auditReason)}
           >
             <RefreshCw className={`size-3.5 ${isPending ? "animate-spin" : ""}`} />
             运行再匹配
@@ -103,14 +104,14 @@ export function RematchPool({ sessionId, poolMembers, submissionPrefs, auditReas
       {success && <p className="text-sm text-green-600">{success}</p>}
 
       {/* 手动配对弹窗 */}
-      <ManualPairDialog
+      {!readOnly && <ManualPairDialog
         open={showManual}
         onOpenChange={setShowManual}
         sessionId={sessionId}
         poolMembers={dialogMembers}
         auditReason={auditReason}
         onPaired={handlePaired}
-      />
+      />}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest"
 import {
   COMMUNITY_SECURITY_NOTIFICATION_TYPES,
   COMMUNITY_RESTRICTED_NOTIFICATION_TYPES,
+  COMMUNITY_MATCHING_PUBLICATION_NOTIFICATION_TYPES,
   resolveCommunityNotificationTarget,
 } from "./notifications"
 
@@ -59,6 +60,7 @@ describe("community notification visibility after a permanent ban", () => {
       ...COMMUNITY_SECURITY_NOTIFICATION_TYPES,
       "registration_submitted",
       "matching_submitted",
+      ...COMMUNITY_MATCHING_PUBLICATION_NOTIFICATION_TYPES,
       "birthday_completion",
     ])
     expect(COMMUNITY_RESTRICTED_NOTIFICATION_TYPES).not.toContain("like")

@@ -19,7 +19,7 @@ const memberIds = ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8
 const reason = "管理员核对后手动配对"
 type OccupancyResponse = { data: { id: string }[] | null; error: { message: string } | null }
 
-function createDb(responses: OccupancyResponse[]) {
+function createDb(responses: OccupancyResponse[], sessionStatus = "draft") {
   const pending = [...responses]
   const lookup = vi.fn(() => {
     const response = pending.shift()
@@ -34,7 +34,7 @@ function createDb(responses: OccupancyResponse[]) {
   const db = {
     from: vi.fn((table: string) => {
       if (table === "match_sessions") return {
-        select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn().mockResolvedValue({ data: { round_id: "round-id" }, error: null }) })) })),
+        select: vi.fn(() => ({ eq: vi.fn(() => ({ single: vi.fn().mockResolvedValue({ data: { round_id: "round-id", status: sessionStatus }, error: null }) })) })),
       }
       if (table === "match_results") return { select: vi.fn(() => chain), insert }
       throw new Error(`Unexpected table: ${table}`)
@@ -58,6 +58,15 @@ describe("manual matching occupancy checks", () => {
 
     await expect(manualPair(sessionId, memberIds, reason)).resolves.toEqual({ error: "无法检查成员当前配对，请稍后重试" })
     expect(lookup).toHaveBeenCalledTimes(failedIndex + 1)
+    expect(insert).not.toHaveBeenCalled()
+    expect(mocks.buildRoundCandidates).not.toHaveBeenCalled()
+  })
+
+  it("does not calculate or insert manual pairs into published sessions", async () => {
+    const { db, insert, lookup } = createDb([], "confirmed")
+    mocks.createClient.mockResolvedValue(db)
+    await expect(manualPair(sessionId, memberIds, reason)).resolves.toEqual({ error: "该匹配已发布，请先撤回发布后再调整" })
+    expect(lookup).not.toHaveBeenCalled()
     expect(insert).not.toHaveBeenCalled()
     expect(mocks.buildRoundCandidates).not.toHaveBeenCalled()
   })

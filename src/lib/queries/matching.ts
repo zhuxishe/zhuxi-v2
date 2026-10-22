@@ -130,9 +130,9 @@ export async function fetchPlayerMatches(memberId: string) {
   const { data, error } = await supabase
     .from("match_results")
     .select(`
-      id, best_slot, rank, created_at, status, cancellation_status,
+      id, best_slot, rank, created_at, status, cancellation_status, publication_version,
       group_members,
-      session:match_sessions!inner (id, session_name, created_at, status),
+      session:match_sessions!inner (id, session_name, created_at, status, publication_version, published_at, round:match_rounds(round_name)),
       member_a:members!match_results_member_a_id_fkey (
         id,
         member_identity (full_name, nickname, hobby_tags),
@@ -147,15 +147,18 @@ export async function fetchPlayerMatches(memberId: string) {
       )
     `)
     .eq("status", "confirmed")
+    .gt("publication_version", 0)
     .eq("session.status", "confirmed")
     .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId},group_members.cs.{${memberId}}`)
     .order("created_at", { ascending: false })
 
   if (error) throw error
-  return data ?? []
+  return (data ?? []).filter(isCurrentPublishedMatch)
 }
 
 export async function fetchMatchDetail(matchId: string, memberId: string) {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(matchId)) return null
+  validateUuids([matchId, memberId])
   // 用 admin client 绕过 RLS：玩家需要看到搭档的资料
   const { createAdminClient } = await import("@/lib/supabase/admin")
   const supabase = createAdminClient()
@@ -164,10 +167,10 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
     .from("match_results")
     .select(`
       id, member_a_id, member_b_id, group_members, best_slot, rank, status,
-      created_at,
+      created_at, publication_version,
       cancellation_status, cancellation_reason, cancellation_requested_by,
       cancellation_requested_at,
-      session:match_sessions (id, session_name, created_at),
+      session:match_sessions!inner (id, session_name, created_at, status, publication_version, published_at, round:match_rounds(round_name)),
       member_a:members!match_results_member_a_id_fkey (
         id,
         member_identity (full_name, nickname, hobby_tags),
@@ -182,9 +185,15 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
       )
     `)
     .eq("id", matchId)
-    .single()
+    .in("status", ["confirmed", "cancelled"])
+    .gt("publication_version", 0)
+    .eq("session.status", "confirmed")
+    .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId},group_members.cs.{${memberId}}`)
+    .maybeSingle()
 
-  if (error) return null
+  if (error) throw error
+  if (!data) return null
+  if (!isCurrentPublishedMatch(data)) return null
   // Verify player is a participant（支持多人组）
   const isParticipant =
     data.member_a_id === memberId ||
@@ -192,6 +201,12 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
     (Array.isArray(data.group_members) && data.group_members.includes(memberId))
   if (!isParticipant) return null
   return data
+}
+
+function isCurrentPublishedMatch(result: { status: string; publication_version: number; session: unknown }) {
+  const session = (Array.isArray(result.session) ? result.session[0] : result.session) as { status?: string; publication_version?: number } | null
+  return session?.status === "confirmed" && result.publication_version > 0
+    && (result.status === "cancelled" || result.publication_version === session.publication_version)
 }
 
 /** Fetch pair relationships for members in a given session's results */

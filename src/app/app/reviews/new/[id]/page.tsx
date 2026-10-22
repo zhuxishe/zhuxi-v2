@@ -4,26 +4,11 @@ import { getTranslations } from "next-intl/server"
 import { checkReviewExists } from "@/lib/queries/reviews"
 import { MutualReviewForm } from "@/components/player/MutualReviewForm"
 import { GroupReviewSelector } from "@/components/player/GroupReviewSelector"
+import { fetchMatchDetail } from "@/lib/queries/matching"
 
 interface Props {
   params: Promise<{ id: string }>
   searchParams: Promise<{ reviewee?: string }>
-}
-
-/** 用 admin client 获取匹配详情（绕过 RLS） */
-async function fetchMatchForReview(matchResultId: string) {
-  const { createAdminClient } = await import("@/lib/supabase/admin")
-  const supabase = createAdminClient()
-
-  const { data } = await supabase
-    .from("match_results")
-    .select(`
-      member_a_id, member_b_id, group_members
-    `)
-    .eq("id", matchResultId)
-    .single()
-
-  return data
 }
 
 /** 获取组员名字（admin client） */
@@ -54,8 +39,8 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
   const { id: matchResultId } = await params
   const { reviewee: revieweeParam } = await searchParams
 
-  const mr = await fetchMatchForReview(matchResultId)
-  if (!mr) notFound()
+  const mr = await fetchMatchDetail(matchResultId, player.memberId)
+  if (!mr || mr.status !== "confirmed") notFound()
 
   const groupMembers = mr.group_members as string[] | null
   const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0
@@ -108,6 +93,7 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
           reviewerId={player.memberId}
           revieweeId={revieweeParam}
           matchResultId={matchResultId}
+          publicationVersion={mr.publication_version}
         />
       </div>
     )
@@ -128,6 +114,7 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
         reviewerId={player.memberId}
         revieweeId={revieweeId}
         matchResultId={matchResultId}
+        publicationVersion={mr.publication_version}
       />
     </div>
   )

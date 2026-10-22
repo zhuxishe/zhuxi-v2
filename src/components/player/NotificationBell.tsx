@@ -124,7 +124,7 @@ export function NotificationBell({ items, unreadCount, locale }: NotificationBel
                   {notification.body && <span className="mt-0.5 line-clamp-2 block text-xs text-muted-foreground">{notification.body}</span>}
                   {notification.unavailable && (
                     <span className="mt-1 block text-xs text-muted-foreground">
-                      {locale.startsWith("ja") ? "この内容は利用できません" : "该内容已不可用"}
+                      {notification.unavailableHint ?? (locale.startsWith("ja") ? "この内容は利用できません" : "该内容已不可用")}
                     </span>
                   )}
                   <span className="mt-1 block text-[11px] text-muted-foreground">{relativeTime(notification.createdAt, locale)}</span>

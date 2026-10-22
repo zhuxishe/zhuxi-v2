@@ -4,59 +4,48 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
+import { matchingPublicationError } from "@/lib/matching/publication-errors"
 
-export async function approveCancellation(resultId: string, rawReason: string) {
-  const admin = await requireAdmin()
+async function reviewCancellation(
+  operation: "admin_approve_matching_cancellation" | "admin_reject_matching_cancellation",
+  resultId: string,
+  rawReason: string,
+  expectedPublicationVersion: number,
+  expectedRequestedAt: string | null,
+) {
+  await requireAdmin()
   const reasonResult = normalizeAdminAuditReason(rawReason)
   if (!reasonResult.ok) return { error: reasonResult.error }
+  if (!Number.isSafeInteger(expectedPublicationVersion) || expectedPublicationVersion < 0) {
+    return { error: "发布版本无效，请刷新后重试" }
+  }
+  if (typeof expectedRequestedAt !== "string" || expectedRequestedAt.length === 0) {
+    return { error: "取消申请版本无效，请刷新后重试" }
+  }
   const supabase = await createClient()
-
-  const { error } = await supabase
-    .from("match_results")
-    .update({
-      status: "cancelled",
-      cancellation_status: "approved",
-      cancellation_reviewed_by: admin.id,
-      cancellation_reviewed_at: new Date().toISOString(),
-      audit_reason: reasonResult.reason,
-    })
-    .eq("id", resultId)
-    .eq("cancellation_status", "pending")
-
+  // Approval only cancels this pair/group; other published results stay available.
+  // The RPC checks the pending request and publication version in one transaction.
+  const { error } = await supabase.rpc(operation, {
+    p_result_id: resultId,
+    p_reason: reasonResult.reason,
+    p_expected_publication_version: expectedPublicationVersion,
+    p_expected_requested_at: expectedRequestedAt,
+  })
   if (error) {
-    console.error("[approveCancellation]", error)
-    return { error: "操作失败" }
+    console.error(`[${operation}]`, error)
+    return { error: matchingPublicationError(error, "审批失败，请刷新后重试") }
   }
 
-  revalidatePath("/admin/matching/cancellations")
-  revalidatePath("/admin/matching")
-  revalidatePath("/app/matches")
+  revalidatePath("/admin/matching", "layout")
+  revalidatePath("/app/matches", "layout")
+  revalidatePath("/app", "layout")
   return { success: true }
 }
 
-export async function rejectCancellation(resultId: string, rawReason: string) {
-  const admin = await requireAdmin()
-  const reasonResult = normalizeAdminAuditReason(rawReason)
-  if (!reasonResult.ok) return { error: reasonResult.error }
-  const supabase = await createClient()
+export async function approveCancellation(resultId: string, rawReason: string, expectedPublicationVersion: number, expectedRequestedAt: string | null) {
+  return reviewCancellation("admin_approve_matching_cancellation", resultId, rawReason, expectedPublicationVersion, expectedRequestedAt)
+}
 
-  const { error } = await supabase
-    .from("match_results")
-    .update({
-      cancellation_status: "rejected",
-      cancellation_reviewed_by: admin.id,
-      cancellation_reviewed_at: new Date().toISOString(),
-      audit_reason: reasonResult.reason,
-    })
-    .eq("id", resultId)
-    .eq("cancellation_status", "pending")
-
-  if (error) {
-    console.error("[rejectCancellation]", error)
-    return { error: "操作失败" }
-  }
-
-  revalidatePath("/admin/matching/cancellations")
-  revalidatePath("/admin/matching")
-  return { success: true }
+export async function rejectCancellation(resultId: string, rawReason: string, expectedPublicationVersion: number, expectedRequestedAt: string | null) {
+  return reviewCancellation("admin_reject_matching_cancellation", resultId, rawReason, expectedPublicationVersion, expectedRequestedAt)
 }

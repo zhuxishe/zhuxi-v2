@@ -712,7 +712,15 @@
     "pageDescription": "申込み・アンケート・マッチングの状況を確認できます。",
     "matchingTitle": "プレイヤーマッチング",
     "matchingDescription": "既存の相手、相互評価、キャンセル申請の状況を確認できます。",
-    "matchingEmpty": "2人用・複数人用のマッチング機能を準備中です。今後の予定はこちらに表示されます。"
+    "matchingEmpty": "公開済みのマッチングはまだありません。今後の結果はこちらに表示されます。",
+    "recommendedTime": "おすすめの共通日時",
+    "timePending": "スタッフが確認中です",
+    "publicationUnmatched": "今回はマッチングしませんでした。今後の案内はサイト内通知をご確認ください。",
+    "publicationWaiting": "アンケートを受け付けました。次回以降のマッチング結果をお待ちください。",
+    "publicationWithdrawn": "今回のマッチング情報は撤回されました。今後の案内はサイト内通知をご確認ください。",
+    "publicationCancelled": "今回のマッチングはキャンセルされました。保存された履歴を確認できます。",
+    "publicationChanged": "マッチング情報が撤回または更新されました。ページを更新してご確認ください。入力した理由はここに保持されています。",
+    "saveFailed": "送信できませんでした。しばらくしてから再度お試しください。"
   },
   "reviews": {
     "title": "相互評価",
@@ -1312,6 +1320,7 @@
     "retry": "再試行"
   },
   "errors": {
+    "matchPublicationChanged": "マッチング情報が撤回または更新されました。更新後にご確認ください。入力内容は保持されています。",
     "matchingProfileIncomplete": "プロフィールのアンケートを完了してから、マッチングにお申し込みください。",
     "matchingProfileCheckFailed": "プロフィールの完了状況を確認できませんでした。もう一度お試しください。",
     "saveFailed": "保存に失敗しました。後でお試しください",

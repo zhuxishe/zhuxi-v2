@@ -1,18 +1,20 @@
 import { createAdminClient } from "@/lib/supabase/admin"
+import { validateUuids } from "@/lib/sanitize"
 
 /**
  * 获取玩家已取消的匹配历史（limit 20）
  * 使用 adminClient 绕过 RLS
  */
 export async function fetchPlayerMatchHistory(memberId: string) {
+  validateUuids([memberId])
   const supabase = createAdminClient()
 
   const { data, error } = await supabase
     .from("match_results")
     .select(`
-      id, best_slot, rank, created_at, status, group_members,
+      id, best_slot, rank, created_at, status, group_members, publication_version,
       cancellation_status,
-      session:match_sessions!inner (session_name),
+      session:match_sessions!inner (session_name, status, round:match_rounds(round_name)),
       member_a:members!match_results_member_a_id_fkey (
         id, member_identity (full_name, nickname, hobby_tags),
         member_interests (game_type_pref, scenario_theme_tags),
@@ -25,6 +27,8 @@ export async function fetchPlayerMatchHistory(memberId: string) {
       )
     `)
     .eq("status", "cancelled")
+    .gt("publication_version", 0)
+    .eq("session.status", "confirmed")
     .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId},group_members.cs.{${memberId}}`)
     .order("created_at", { ascending: false })
     .limit(20)

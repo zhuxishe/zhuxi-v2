@@ -42,7 +42,7 @@ export function CommunityNotificationList({ items, locale }: { items: CommunityN
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-semibold">{item.title}</span>
                 {item.body && <span className="mt-0.5 line-clamp-2 block text-xs leading-5 text-muted-foreground">{item.body}</span>}
-                {item.unavailable && <span className="mt-1 block text-xs text-muted-foreground">{label("该内容已不可用", "この内容は利用できません")}</span>}
+                {item.unavailable && <span className="mt-1 block text-xs text-muted-foreground">{item.unavailableHint ?? label("该内容已不可用", "この内容は利用できません")}</span>}
                 <span className="mt-1 block text-[11px] text-muted-foreground">{relativeNotificationTime(item.createdAt, locale)}</span>
               </span>
               {!item.readAt && <span className="mt-1 size-2 rounded-full bg-primary" aria-label={label("未读", "未読")} />}

@@ -8,10 +8,11 @@ import { fetchPlayerParticipationRecords } from "@/lib/queries/player-participat
 import { PlayerMatchesSection } from "@/components/player/matches/PlayerMatchesSection"
 import { PlayerParticipationRecords } from "@/components/player/profile/PlayerParticipationRecords"
 import { fetchMyActivityReviewRounds } from "@/lib/activity-reviews/queries"
+import { fetchMyMatchingPublications } from "@/lib/queries/matching-publications"
 
 export default async function PlayerMatchesPage() {
   const player = await requirePlayer()
-  const [t, locale, matches, history, reviewedIds, participation, reviewRounds] = await Promise.all([
+  const [t, locale, matches, history, reviewedIds, participation, reviewRounds, publications] = await Promise.all([
     getTranslations("playerMatches"),
     getLocale(),
     fetchPlayerMatches(player.memberId),
@@ -19,12 +20,14 @@ export default async function PlayerMatchesPage() {
     fetchReviewedMatchIds(player.memberId),
     fetchPlayerParticipationRecords(player.memberId),
     fetchMyActivityReviewRounds(),
+    fetchMyMatchingPublications(),
   ])
   const labels = {
     partner: t("partner"), interests: t("interests"), socialStyle: t("socialStyle"),
     gameType: t("gameType"), review: t("review"), reviewed: t("reviewed"),
     cancelBadgePending: t("cancelBadgePending"), cancelBadgeApproved: t("cancelBadgeApproved"),
     cancelBadgeRejected: t("cancelBadgeRejected"), matchEnded: t("matchEnded"),
+    recommendedTime: t("recommendedTime"), timePending: t("timePending"),
   }
   const allGroupIds = new Set<string>()
   for (const match of [...matches, ...history]) {
@@ -44,6 +47,8 @@ export default async function PlayerMatchesPage() {
       nameMap={new Map(groupNames.map((member) => [member.id, member.name]))}
       reviewedIds={reviewedIds} dateFmt={locale === "ja" ? "ja-JP" : "zh-CN"} labels={labels}
       copy={{ title: t("matchingTitle"), description: t("matchingDescription"), empty: t("matchingEmpty"), historyTitle: t("historyTitle") }}
+      publications={publications}
+      publicationLabels={{ unmatched: t("publicationUnmatched"), waiting: t("publicationWaiting"), withdrawn: t("publicationWithdrawn"), cancelled: t("publicationCancelled") }}
     />
     <PlayerParticipationRecords records={participation} reviewRounds={reviewRounds} initialNow={new Date().toISOString()} />
   </div>

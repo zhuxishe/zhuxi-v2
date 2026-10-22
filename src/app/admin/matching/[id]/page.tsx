@@ -237,6 +237,8 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         id: session.id,
         session_name: session.session_name,
         status: session.status,
+        publication_version: session.publication_version,
+        results_ready: session.results_ready,
         total_candidates: session.total_candidates,
         total_matched: session.total_matched,
         total_unmatched: session.total_unmatched,

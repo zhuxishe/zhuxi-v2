@@ -2,7 +2,8 @@ import { requirePlayer } from "@/lib/auth/player"
 import { fetchMatchDetail } from "@/lib/queries/matching"
 import { fetchReviewedMatchIds } from "@/lib/queries/reviews"
 import { fetchGroupMemberNames } from "@/lib/queries/group-members"
-import { getTranslations } from "next-intl/server"
+import { getTranslations, getLocale } from "next-intl/server"
+import { formatPublishedMatchSlot, publishedMatchTitle } from "@/lib/matching/publication-display"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -16,6 +17,7 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
   const { id } = await params
   const player = await requirePlayer()
   const t = await getTranslations("playerMatches")
+  const locale = await getLocale()
   const [match, reviewedIds] = await Promise.all([
     fetchMatchDetail(id, player.memberId),
     fetchReviewedMatchIds(player.memberId),
@@ -34,7 +36,7 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
     ? { name: `${groupMembers.length}人组`, hobbyTags: [] as string[], gameTypePref: null, scenarioThemeTags: [] as string[], expressionStyleTags: [] as string[], groupRoleTags: [] as string[] }
     : extractPartner(match, player.memberId)
 
-  const session = unwrap(match.session) as { session_name?: string } | undefined
+  const session = unwrap(match.session)
   const canCancel = match.status !== "cancelled" && !match.cancellation_status
 
   // 预解析翻译字符串（不能把函数传给 client 组件）
@@ -53,6 +55,10 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
     cancelBack: t("cancelBack"),
     confirmCancel: t("confirmCancel"),
     submitting: t("submitting"),
+    recommendedTime: t("recommendedTime"),
+    matchEnded: t("matchEnded"),
+    publicationChanged: t("publicationChanged"),
+    saveFailed: t("saveFailed"),
   }
 
   return (
@@ -69,7 +75,9 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
 
       <MatchDetailCard
         partner={partner}
-        sessionName={session?.session_name ?? ""}
+        sessionName={publishedMatchTitle(session)}
+        recommendedTime={formatPublishedMatchSlot(match.best_slot, locale) ?? t("timePending")}
+        ended={match.status === "cancelled"}
         reviewed={reviewedIds.has(match.id)}
         matchId={match.id}
         isGroup={isGroup}
@@ -89,7 +97,7 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
       )}
 
       {canCancel && (
-        <CancelRequestForm matchId={match.id} labels={labels} />
+        <CancelRequestForm matchId={match.id} publicationVersion={Number(session?.publication_version)} labels={labels} />
       )}
     </div>
   )

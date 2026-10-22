@@ -25,7 +25,7 @@ function pair(id: string, a: EnrichedMember, b: EnrichedMember, status = "draft"
 }
 function render(results: EnrichedMatchResult[], sessionStatus = "draft") {
   return renderToStaticMarkup(createElement(MatchSessionView, {
-    session: { id: "session", session_name: "测试轮次", status: sessionStatus, round_id: "round", total_candidates: 4, total_matched: 4, total_unmatched: 0 },
+    session: { id: "session", session_name: "测试轮次", status: sessionStatus, round_id: "round", results_ready: true, total_candidates: 4, total_matched: 4, total_unmatched: 0 },
     results, diagnostics: [], candidates: [],
   }))
 }

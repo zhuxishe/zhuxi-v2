@@ -10,6 +10,7 @@ const receipt = {
   id: "receipt", notification_type: "registration_submitted", recipient_member_id: "member",
   actor_profile_id: null as string | null, post_id: null as string | null, comment_id: null as string | null, report_id: null, announcement_id: null,
   round_id: "closed-round", title_zh: "报名已提交", title_ja: "申込みを受け付けました",
+  match_result_id: null as string | null, match_session_id: null as string | null, publication_version: null as number | null,
   body_zh: "报名信息已保存", body_ja: "申込内容を保存しました", group_count: 1, read_at: null as string | null,
   created_at: now, expires_at: "2026-12-28T01:00:00.000Z",
 }
@@ -18,6 +19,8 @@ let submissions: { round_id: string; member_id: string; cancelled_at?: string | 
 let requests: URL[]
 let banned: boolean
 let submissionsUnavailable: boolean
+let matchingSessions: { id: string; status: string; publication_version: number }[]
+let matchingResults: { id: string; session_id: string; status: string; publication_version: number; member_a_id: string; member_b_id: string; group_members: string[] | null }[]
 
 describe("notification delivery with the real Supabase request builder", () => {
   beforeEach(() => {
@@ -27,6 +30,8 @@ describe("notification delivery with the real Supabase request builder", () => {
     notifications = [receipt]
     submissions = [{ round_id: receipt.round_id, member_id: "member" }]
     requests = []; banned = false; submissionsUnavailable = false
+    matchingSessions = [{ id: "session", status: "confirmed", publication_version: 2 }]
+    matchingResults = [{ id: "result", session_id: "session", status: "confirmed", publication_version: 2, member_a_id: "member", member_b_id: "partner", group_members: null }]
     mocks.client.mockReturnValue(createClient("https://notifications-test.invalid", "test-key", {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
       global: { fetch: async (input, init) => {
@@ -53,6 +58,8 @@ describe("notification delivery with the real Supabase request builder", () => {
         }
         if (url.pathname.endsWith("/community_posts")) data = [{ id: "photo", post_type: "photo", status: "published" }]
         if (url.pathname.endsWith("/community_comments")) data = [{ id: "reply", status: "published" }]
+        if (url.pathname.endsWith("/match_sessions")) data = matchingSessions
+        if (url.pathname.endsWith("/match_results")) data = matchingResults
         return new Response(JSON.stringify(data), { headers: { "content-type": "application/json" } })
       } },
     }))
@@ -175,5 +182,32 @@ describe("notification delivery with the real Supabase request builder", () => {
     expect(result.unreadCount).toBe(1)
     expect(result.items[0]).toMatchObject({ href: "/app/matches/rounds/closed-round", unavailable: false })
     expect(result.items[0].body).toContain("已取消")
+  })
+
+  it("delivers a published matching notice through the existing bell even after a community ban", async () => {
+    banned = true
+    notifications = [{ ...receipt, notification_type: "matching_published", match_session_id: "session", match_result_id: "result", publication_version: 2 }]
+    const result = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    expect(result.items[0]).toMatchObject({ href: "/app/matches/result", unavailable: false, readAt: null })
+    expect(result.unreadCount).toBe(1)
+    expect(requests.find((url) => url.pathname.endsWith("/match_results"))?.searchParams.get("select")).toContain("publication_version")
+  })
+
+  it("retains an obsolete publication notice's identity and read state while hiding its former detail and body", async () => {
+    notifications = [{ ...receipt, notification_type: "matching_published", match_session_id: "session", match_result_id: "result", publication_version: 1, read_at: now, body_zh: "old partner information" }]
+    const result = await fetchCommunityNotifications("member", "zh", { limit: 8 })
+    expect(result.items[0]).toMatchObject({ id: receipt.id, readAt: now, createdAt: now, href: "/app/matches#matching", unavailable: true })
+    expect(result.items[0].body).toContain("撤回或更新")
+    expect(result.items[0].body).not.toContain("old partner")
+    expect(result.unreadCount).toBe(0)
+  })
+
+  it("withdrawal notices remain useful without a submission or any visible draft", async () => {
+    submissions = []
+    matchingSessions[0].status = "draft"
+    notifications = [{ ...receipt, notification_type: "matching_withdrawn", match_session_id: "session", publication_version: 2 }]
+    const result = await fetchCommunityNotifications("member", "ja", { limit: 8 })
+    expect(result.items[0]).toMatchObject({ href: "/app/matches#matching", unavailable: false })
+    expect(requests.some((url) => url.pathname.endsWith("/match_results"))).toBe(false)
   })
 })

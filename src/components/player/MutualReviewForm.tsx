@@ -14,9 +14,10 @@ interface Props {
   reviewerId: string
   revieweeId: string
   matchResultId: string
+  publicationVersion: number
 }
 
-export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchResultId }: Props) {
+export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchResultId, publicationVersion }: Props) {
   const router = useRouter()
   const t = useTranslations("reviews")
   const tErr = useTranslations("errors")
@@ -39,6 +40,7 @@ export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchRes
     setError(null)
     const result = await submitReview({
       match_result_id: matchResultId,
+      expected_publication_version: publicationVersion,
       reviewee_id: revieweeId,
       overall_score: overall, punctuality_score: punctuality,
       communication_score: communication, teamwork_score: teamwork, fun_score: fun,

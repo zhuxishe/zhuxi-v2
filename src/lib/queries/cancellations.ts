@@ -18,7 +18,7 @@ export async function fetchPendingCancellations() {
       id, cancellation_reason, cancellation_requested_by,
       cancellation_requested_at, cancellation_status,
       group_members,
-      session:match_sessions (id, session_name),
+      session:match_sessions (id, session_name, publication_version),
       member_a:members!match_results_member_a_id_fkey (${MEMBER_SELECT}),
       member_b:members!match_results_member_b_id_fkey (${MEMBER_SELECT})
     `)

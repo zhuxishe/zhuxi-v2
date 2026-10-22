@@ -16,6 +16,7 @@ const mocks = vi.hoisted(() => ({
   participationQuery: vi.fn(),
   groupQuery: vi.fn(),
   reviewRounds: [] as ActivityReviewRound[],
+  publications: [] as import("@/lib/matching/publication-display").MatchingPublication[],
 }))
 vi.mock("next-intl/server", () => ({ getTranslations: async () => (key: string) => key, getLocale: async () => "zh" }))
 vi.mock("next-intl", () => ({ useLocale: () => "zh", useTranslations: () => (key: string) => key }))
@@ -26,6 +27,7 @@ vi.mock("@/lib/queries/reviews", () => ({ fetchReviewedMatchIds: async () => moc
 vi.mock("@/lib/queries/group-members", () => ({ fetchGroupMemberNames: (...args: unknown[]) => mocks.groupQuery(...args) }))
 vi.mock("@/lib/queries/player-participation", () => ({ fetchPlayerParticipationRecords: (...args: unknown[]) => mocks.participationQuery(...args) }))
 vi.mock("@/lib/activity-reviews/queries", () => ({ fetchMyActivityReviewRounds: async () => mocks.reviewRounds }))
+vi.mock("@/lib/queries/matching-publications", () => ({ fetchMyMatchingPublications: async () => mocks.publications }))
 vi.mock("@/lib/matching/use-survey-window", () => ({ useSurveyWindow: () => "open" }))
 import PlayerMatchesPage from "./page"
 
@@ -52,6 +54,7 @@ describe("participation page composition", () => {
     mocks.participation = [registration]
     mocks.reviewedIds = new Set()
     mocks.reviewRounds = []
+    mocks.publications = []
     mocks.participationQuery.mockImplementation(async () => mocks.participation)
     mocks.groupQuery.mockResolvedValue([])
   })
@@ -112,5 +115,30 @@ describe("participation page composition", () => {
     expect(html).toContain("秋季迎新派对")
     expect(html).toContain('href="/app/matches/rounds/autumn/reviews"')
     expect(html).not.toContain('href="/app/matches/rounds/autumn"')
+  })
+
+  it("distinguishes published unmatched, withdrawn and later submissions without exposing a draft result link", async () => {
+    mocks.publications = ["unmatched", "waiting", "withdrawn"].map((status, index) => ({
+      round_id: `round-${index}`, round_name: `轮次${index}`, session_id: status === "waiting" ? null : `batch-${index}`,
+      session_name: status === "waiting" ? null : `批次${index}`, publication_version: status === "waiting" ? 0 : 1,
+      published_at: null, status: status as "unmatched" | "waiting" | "withdrawn", result_id: null,
+    }))
+    const html = await renderPage()
+    expect(html).toContain("publicationUnmatched")
+    expect(html).toContain("publicationWaiting")
+    expect(html).toContain("publicationWithdrawn")
+    expect(html).toContain("轮次0")
+    expect(html).not.toContain("matchingEmpty")
+    expect(html).not.toContain('href="/app/matches/batch-')
+  })
+
+  it("shows the saved recommended time rather than the result creation date", async () => {
+    mocks.matches = [{ ...pair, best_slot: "2026-11-03_晚上", created_at: "2026-10-23T00:00:00Z", session: { session_name: "第一批", round: { round_name: "秋季轮次" } } }]
+    const html = await renderPage()
+    expect(html).toContain("秋季轮次 · 第一批")
+    expect(html).toContain("recommendedTime")
+    expect(html).toContain("2026/11/3")
+    expect(html).toContain("晚上")
+    expect(html).not.toContain("2026/10/23")
   })
 })

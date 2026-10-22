@@ -11,14 +11,17 @@ interface Labels {
   cancelBack: string
   confirmCancel: string
   submitting: string
+  publicationChanged: string
+  saveFailed: string
 }
 
 interface Props {
   matchId: string
+  publicationVersion: number
   labels: Labels
 }
 
-export function CancelRequestForm({ matchId, labels }: Props) {
+export function CancelRequestForm({ matchId, publicationVersion, labels }: Props) {
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState("")
   const [loading, setLoading] = useState(false)
@@ -44,12 +47,13 @@ export function CancelRequestForm({ matchId, labels }: Props) {
     const fd = new FormData()
     fd.set("matchId", matchId)
     fd.set("reason", reason)
+    fd.set("publicationVersion", String(publicationVersion))
 
     const result = await requestCancellation(fd)
     setLoading(false)
 
     if (result.error) {
-      setError(result.error)
+      setError(result.error === "publicationChanged" ? labels.publicationChanged : result.error === "saveFailed" ? labels.saveFailed : result.error)
     } else {
       router.refresh()
     }

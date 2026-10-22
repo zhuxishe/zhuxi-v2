@@ -1,5 +1,6 @@
 import type { ComponentProps } from "react"
 import { MatchCard } from "@/components/player/MatchCard"
+import { formatPublishedMatchSlot, publishedMatchTitle } from "@/lib/matching/publication-display"
 
 interface Props {
   match: Record<string, unknown>
@@ -25,8 +26,8 @@ export function PlayerMatchResultCard({ match, memberId, nameMap, reviewedIds, d
   return <MatchCard
     matchId={match.id as string}
     partner={partner}
-    sessionName={String(session?.session_name ?? "")}
-    date={match.created_at ? new Date(match.created_at as string).toLocaleDateString(dateFmt) : ""}
+    sessionName={publishedMatchTitle(session)}
+    date={formatPublishedMatchSlot(match.best_slot, dateFmt) ?? labels.timePending ?? ""}
     reviewed={reviewedIds.has(match.id as string)}
     cancellationStatus={match.cancellation_status as string | null}
     isGroup={isGroup}

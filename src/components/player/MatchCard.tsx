@@ -27,6 +27,8 @@ interface Labels {
   cancelBadgeApproved: string
   cancelBadgeRejected: string
   matchEnded?: string
+  recommendedTime?: string
+  timePending?: string
 }
 
 interface MatchCardProps {
@@ -59,8 +61,9 @@ export function MatchCard({ matchId, partner, sessionName, date, reviewed, cance
             {isGroup ? `🎲 ${partner.name}` : `${labels.partner}: ${partner.name}`}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
-            {sessionName} · {date}
+            {sessionName}
           </p>
+          {date && <p className="text-xs text-muted-foreground mt-0.5">{labels.recommendedTime ? `${labels.recommendedTime}：` : ""}{date}</p>}
           {isGroup && groupMemberNames && groupMemberNames.length > 0 && (
             <p className="text-[11px] text-muted-foreground mt-0.5 truncate max-w-[220px]">
               {groupMemberNames.join("、")}

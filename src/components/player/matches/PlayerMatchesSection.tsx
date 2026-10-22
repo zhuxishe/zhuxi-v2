@@ -1,6 +1,8 @@
 import type { ComponentProps } from "react"
 import { ChevronDown, Users } from "lucide-react"
 import { PlayerMatchResultCard } from "./PlayerMatchResultCard"
+import { MatchingPublicationStatus } from "./MatchingPublicationStatus"
+import type { MatchingPublication } from "@/lib/matching/publication-display"
 
 interface Props {
   matches: Record<string, unknown>[]
@@ -11,18 +13,21 @@ interface Props {
   dateFmt: string
   labels: ComponentProps<typeof PlayerMatchResultCard>["labels"]
   copy: { title: string; description: string; empty: string; historyTitle: string }
+  publications: MatchingPublication[]
+  publicationLabels: Parameters<typeof MatchingPublicationStatus>[0]["labels"]
 }
 
-export function PlayerMatchesSection({ matches, history, copy, ...cardProps }: Props) {
+export function PlayerMatchesSection({ matches, history, copy, publications, publicationLabels, ...cardProps }: Props) {
   const hasResults = matches.length > 0 || history.length > 0
   return <section id="matching" className="scroll-mt-24 space-y-3" aria-labelledby="player-matches-title">
     <div className="flex items-start gap-3 rounded-2xl border border-border bg-card/60 p-4">
       <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-primary/8 text-primary"><Users className="size-5" aria-hidden="true" /></span>
       <div>
         <h2 id="player-matches-title" className="text-base font-semibold tracking-tight">{copy.title}</h2>
-        <p className="mt-1 text-xs leading-5 text-muted-foreground">{hasResults ? copy.description : copy.empty}</p>
+        <p className="mt-1 text-xs leading-5 text-muted-foreground">{hasResults || publications.length ? copy.description : copy.empty}</p>
       </div>
     </div>
+    <MatchingPublicationStatus publications={publications} labels={publicationLabels} />
     {matches.map((match) => <PlayerMatchResultCard key={String(match.id)} match={match} {...cardProps} />)}
     {history.length > 0 && <details className="group rounded-2xl border border-border bg-card/40">
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 rounded-2xl px-4 py-3 text-xs font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary [&::-webkit-details-marker]:hidden">

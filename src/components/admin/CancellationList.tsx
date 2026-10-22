@@ -43,7 +43,7 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
     ? request.group_member_names!.join("、")
     : `${getMemberName(request.member_a)} & ${getMemberName(request.member_b)}`
 
-  const session = unwrap(request.session) as { session_name?: string } | undefined
+  const session = unwrap(request.session) as { session_name?: string; publication_version?: number } | undefined
   const requestedAt = request.cancellation_requested_at
     ? formatAdminDateTime(request.cancellation_requested_at)
     : ""
@@ -51,7 +51,7 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
   async function handleAction(action: "approve" | "reject") {
     setLoading(action); setError(null)
     const fn = action === "approve" ? approveCancellation : rejectCancellation
-    const result = await fn(request.id, auditReason)
+    const result = await fn(request.id, auditReason, session?.publication_version ?? Number.NaN, request.cancellation_requested_at)
     setLoading("")
     if (result.error) setError(result.error)
     else router.refresh()

@@ -10,6 +10,7 @@ import { runFullMatching } from "@/lib/matching/run-matching"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
 import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
+import { matchingPublicationError, PUBLISHED_MATCH_EDIT_ERROR } from "@/lib/matching/publication-errors"
 import type { Json } from "@/types/database.types"
 
 /** 对取消池成员重新运行匹配算法 */
@@ -18,22 +19,23 @@ export async function runPoolRematch(sessionId: string, rawReason: string) {
   const reasonResult = normalizeAdminAuditReason(rawReason)
   if (!reasonResult.ok) return { error: reasonResult.error }
 
-  // 1. 获取已取消的成员 ID
-  const memberIds = await fetchCancelledPoolIds(sessionId)
-  if (memberIds.length < 2) {
-    return { error: "池中至少需要 2 人才能匹配" }
-  }
-
-  // 2. 获取 session 的 round_id（必须有轮次才能获取问卷）
+  // Check publication before reading the pool or running the existing algorithm.
   const supabase = await createClient()
-  const { data: session } = await supabase
+  const { data: session, error: sessionError } = await supabase
     .from("match_sessions")
-    .select("round_id")
+    .select("round_id, status")
     .eq("id", sessionId)
     .single()
+  if (sessionError) return { error: "无法读取匹配会话，请稍后重试" }
   const roundId = session?.round_id
   if (!roundId) {
     return { error: "该匹配会话无关联轮次，无法获取问卷数据" }
+  }
+  if (session.status !== "draft") return { error: PUBLISHED_MATCH_EDIT_ERROR }
+
+  const memberIds = await fetchCancelledPoolIds(sessionId)
+  if (memberIds.length < 2) {
+    return { error: "池中至少需要 2 人才能匹配" }
   }
 
   // 3. 构建 MatchCandidate（从本轮问卷统一读取）
@@ -67,7 +69,7 @@ export async function runPoolRematch(sessionId: string, rawReason: string) {
     const { error } = await supabase.from("match_results").insert(rows)
     if (error) {
       console.error("[runPoolRematch]", error)
-      return { error: "操作失败" }
+      return { error: matchingPublicationError(error, "操作失败") }
     }
   }
 

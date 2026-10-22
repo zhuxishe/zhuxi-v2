@@ -712,7 +712,15 @@
     "pageDescription": "查看你的报名、问卷与匹配安排。",
     "matchingTitle": "玩家匹配",
     "matchingDescription": "查看已有搭档、互评与取消申请状态。",
-    "matchingEmpty": "双人本与多人本匹配功能正在完善，后续安排会显示在这里。"
+    "matchingEmpty": "暂时没有已发布的匹配安排，后续结果会显示在这里。",
+    "recommendedTime": "推荐共同时间",
+    "timePending": "待工作人员确认",
+    "publicationUnmatched": "本批暂未匹配，后续安排请留意站内通知。",
+    "publicationWaiting": "问卷已提交，等待后续批次的匹配结果。",
+    "publicationWithdrawn": "本批匹配信息已撤回，后续安排请留意站内通知。",
+    "publicationCancelled": "本批匹配已取消，可查看保留的历史记录。",
+    "publicationChanged": "匹配信息已撤回或更新，请刷新页面后确认。你填写的原因仍保留在此处。",
+    "saveFailed": "提交失败，请稍后重试。"
   },
   "reviews": {
     "title": "互评",
@@ -1312,6 +1320,7 @@
     "retry": "重试"
   },
   "errors": {
+    "matchPublicationChanged": "匹配信息已撤回或更新，请刷新后确认。当前填写内容已保留。",
     "matchingProfileIncomplete": "请先完成资料补充后再报名匹配活动。",
     "matchingProfileCheckFailed": "暂时无法确认资料完成情况，请重试。",
     "saveFailed": "保存失败，请稍后重试",

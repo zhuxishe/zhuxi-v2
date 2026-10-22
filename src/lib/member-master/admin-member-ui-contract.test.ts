@@ -219,14 +219,15 @@ describe("admin member center UI contracts", () => {
     for (const actions of [sessionActions, manualActions, poolActions, cancellationActions, blacklistActions, roundActions]) {
       expect(actions).toContain("normalizeAdminAuditReason")
     }
-    for (const actions of [sessionActions, manualActions, poolActions, cancellationActions, blacklistActions, roundActions]) {
+    for (const actions of [sessionActions, manualActions, poolActions, blacklistActions, roundActions]) {
       expect(actions).toContain("audit_reason")
     }
-    expect(sessionActions).toContain('"admin_delete_operational_record"')
+    expect(cancellationActions).toContain("p_reason: reasonResult.reason")
+    expect(sessionActions).toContain('"admin_delete_match_session_draft"')
     expect(blacklistActions).toContain('"admin_delete_operational_record"')
     expect(sessionUi).toContain("auditReason={auditReason}")
-    expect(sessionUi).toContain("deleteSession(session.id, auditReason)")
-    expect(sessionUi).toContain("confirmSession(session.id, auditReason)")
+    expect(sessionUi).toContain("deleteSession(session.id, auditReason, publicationVersion)")
+    expect(sessionUi).toContain("confirmSession(session.id, auditReason, publicationVersion)")
     expect(sessionUi).toContain('r.status === "locked" ? unlockPair : lockPair')
     expect(sessionActions).toMatch(/unlockPair[\s\S]*status !== "locked"[\s\S]*audit_reason/)
   })

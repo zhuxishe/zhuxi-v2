@@ -90,6 +90,7 @@ export interface CommunityNotification {
   body: string
   href: string | null
   unavailable: boolean
+  unavailableHint?: string
   actor: CommunityProfile | null
   groupCount: number
   readAt: string | null

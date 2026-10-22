@@ -24,6 +24,8 @@ interface Labels {
   review: string
   reviewed: string
   groupMembers?: string
+  recommendedTime?: string
+  matchEnded?: string
 }
 
 interface Props {
@@ -33,10 +35,12 @@ interface Props {
   matchId: string
   isGroup?: boolean
   groupMemberNames?: string[]
+  recommendedTime?: string
+  ended?: boolean
   labels: Labels
 }
 
-export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGroup, groupMemberNames, labels }: Props) {
+export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGroup, groupMemberNames, recommendedTime, ended, labels }: Props) {
   const locale = useLocale()
   const tagGroups = buildTagList(partner, labels, locale)
 
@@ -50,13 +54,14 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGro
           {sessionName && (
             <p className="text-xs text-muted-foreground mt-0.5">{sessionName}</p>
           )}
+          {recommendedTime && <p className="text-xs text-muted-foreground mt-1">{labels.recommendedTime}：{recommendedTime}</p>}
           {isGroup && groupMemberNames && groupMemberNames.length > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
               {labels.groupMembers ?? "组员"}：{groupMemberNames.join("、")}
             </p>
           )}
         </div>
-        {reviewed ? (
+        {ended ? <span className="text-xs text-muted-foreground">{labels.matchEnded}</span> : reviewed ? (
           <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
             <CheckCircle className="size-3.5" /> {labels.reviewed}
           </span>

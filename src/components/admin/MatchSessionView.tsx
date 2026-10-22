@@ -20,7 +20,7 @@ import type { DiagnosticItem } from "./UnmatchedDiagnostics"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 
 interface Props {
-  session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number; round_id?: string | null }
+  session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number; round_id?: string | null; publication_version?: number; results_ready?: boolean }
   results: EnrichedMatchResult[]
   diagnostics: DiagnosticItem[]
   candidates: Array<{ preferred_time_slots: string[] }>
@@ -59,6 +59,9 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
   const [showCancelled, setShowCancelled] = useState(false)
   const [auditReason, setAuditReason] = useState("")
   const auditReasonValid = adminAuditReasonIsValid(auditReason)
+  const resultsReady = session.results_ready === true
+  const canEditResults = !readOnly && session.status === "draft" && resultsReady
+  const publicationVersion = session.publication_version ?? 0
 
   const relMap = useMemo(() => {
     const map = new Map<string, PairRelationship>()
@@ -126,7 +129,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
   const handleConfirm = () => {
     startTransition(async () => {
       setError("")
-      const res = await confirmSession(session.id, auditReason)
+      const res = await confirmSession(session.id, auditReason, publicationVersion)
       if (res.error) setError(res.error)
       else router.refresh()
     })
@@ -146,9 +149,9 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       pairRel={findRel(r.member_a?.id, r.member_b?.id)}
       submissionPrefs={submissionPrefs}
       canViewRawSubmissions={canViewRawSubmissions}
-      onLock={readOnly || !auditReasonValid ? undefined : (id) => handleAction(r.status === "locked" ? unlockPair : lockPair, id)}
-      onSplit={readOnly || !auditReasonValid ? undefined : (id) => handleAction(splitPair, id)}
-      onRestore={readOnly || !auditReasonValid ? undefined : (id) => handleAction(restorePair, id)}
+      onLock={!canEditResults || !auditReasonValid ? undefined : (id) => handleAction(r.status === "locked" ? unlockPair : lockPair, id)}
+      onSplit={!canEditResults || !auditReasonValid ? undefined : (id) => handleAction(splitPair, id)}
+      onRestore={!canEditResults || !auditReasonValid ? undefined : (id) => handleAction(restorePair, id)}
     />
   )
 
@@ -197,7 +200,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             size="sm"
             variant="outline"
             onClick={() => { setPreselectedA(""); setShowFreeManual(true) }}
-            disabled={!auditReasonValid}
+            disabled={!canEditResults || isPending || !auditReasonValid}
           >
             <UserPlus className="size-3.5" /> 手动配对
           </Button>
@@ -216,7 +219,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
               if (!confirm("确定要删除当前结果并重新匹配？")) return
               startTransition(async () => {
                 setError("")
-                const res = await deleteSession(session.id, auditReason)
+                const res = await deleteSession(session.id, auditReason, publicationVersion)
                 if (res.error) setError(res.error)
                 else {
                   const target = session.round_id
@@ -228,7 +231,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             }} disabled={isPending || !auditReasonValid}>
               <RefreshCw className="size-3.5" /> 重新匹配
             </Button>
-            <Button size="sm" onClick={handleConfirm} disabled={isPending || !auditReasonValid || conflictCount > 0}>
+            <Button size="sm" onClick={handleConfirm} disabled={isPending || !resultsReady || !auditReasonValid || conflictCount > 0}>
               <CheckCircle className="size-3.5" /> 确认发布
             </Button>
           </>
@@ -238,7 +241,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
             if (!confirm("撤回后玩家将无法看到匹配结果，确定吗？")) return
             startTransition(async () => {
               setError("")
-              const res = await unpublishSession(session.id, auditReason)
+              const res = await unpublishSession(session.id, auditReason, publicationVersion)
               if (res.error) setError(res.error)
               else router.refresh()
             })
@@ -249,6 +252,12 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {!readOnly && session.status === "draft" && !resultsReady && (
+        <p className="text-sm text-muted-foreground">匹配结果尚未生成完成，完成后才能发布。</p>
+      )}
+      {!readOnly && session.status === "confirmed" && (
+        <p className="text-sm text-muted-foreground">结果已发布。如需调整配对，请先撤回发布；取消申请仍可在审批页面处理。</p>
+      )}
       {conflictCount > 0 && (
         <div role="alert" className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950">
           发现 {conflictCount} 位成员被重复分配，请核对下方标记的配对。
@@ -298,6 +307,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           poolMembers={poolMembers}
           submissionPrefs={submissionPrefs}
           auditReason={auditReason}
+          readOnly={!canEditResults}
           onRefresh={() => router.refresh()}
         />
       )}
@@ -308,7 +318,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           diagnostics={diagnostics}
           submissionPrefs={submissionPrefs}
           canViewRawSubmissions={canViewRawSubmissions}
-          onManualPair={readOnly || !auditReasonValid ? undefined : handleManualPairFromUnmatched}
+          onManualPair={!canEditResults || !auditReasonValid ? undefined : handleManualPairFromUnmatched}
         />
       )}
 
@@ -336,7 +346,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       )}
 
       {/* Manual pair dialog */}
-      {!readOnly && (
+      {canEditResults && (
         <ManualPairDialog
           key={`${showFreeManual ? "open" : "closed"}:${preselectedA || "none"}`}
           open={showFreeManual}

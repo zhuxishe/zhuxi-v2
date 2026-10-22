@@ -174,18 +174,21 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
     }
   }
 
-  // 8. 收集中的轮次继续保持 open，不改变截止时间；已截止轮次沿用 matched。
-  const { data: matchedRound, error: roundStatusError } = await supabase
-    .from("match_rounds")
-    .update({ status: round.status === "open" ? "open" : "matched" })
-    .eq("id", roundId)
-    .eq("status", round.status)
-    .eq("survey_start", round.survey_start)
-    .eq("survey_end", round.survey_end)
-    .is("deleted_at", null)
-    .select("id")
-    .maybeSingle()
-  if (roundStatusError || !matchedRound) {
+  // 8. 原子核对收集状态并标记结果已生成完成，避免管理员发布中途写入的会话。
+  // 收集中的轮次继续保持 open；已截止轮次沿用 matched，截止时间均不改变。
+  const finalizer = supabase as unknown as OperationalRpcClient
+  const { data: completed, error: roundStatusError } = await finalizer.rpc<{ results_ready: boolean }>(
+    "admin_finalize_matching_session",
+    {
+      p_session_id: session.id,
+      p_round_id: roundId,
+      p_expected_status: round.status,
+      p_survey_start: round.survey_start,
+      p_survey_end: round.survey_end,
+      p_reason: reasonResult.reason,
+    },
+  )
+  if (roundStatusError || !completed?.results_ready) {
     const rpc = supabase as unknown as OperationalRpcClient
     const { error: compensationError } = await rpc.rpc<unknown>(
       "admin_delete_operational_record",

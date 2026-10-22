@@ -575,6 +575,10 @@ export type Database = {
       }
       community_notifications: {
         Row: {
+          match_result_id: string | null
+          match_session_id: string | null
+          match_publication_id: string | null
+          publication_version: number | null
           actor_profile_id: string | null
           announcement_id: string | null
           body_ja: string | null
@@ -594,6 +598,10 @@ export type Database = {
           title_zh: string | null
         }
         Insert: {
+          match_result_id?: string | null
+          match_session_id?: string | null
+          match_publication_id?: string | null
+          publication_version?: number | null
           actor_profile_id?: string | null
           announcement_id?: string | null
           body_ja?: string | null
@@ -613,6 +621,10 @@ export type Database = {
           title_zh?: string | null
         }
         Update: {
+          match_result_id?: string | null
+          match_session_id?: string | null
+          match_publication_id?: string | null
+          publication_version?: number | null
           actor_profile_id?: string | null
           announcement_id?: string | null
           body_ja?: string | null
@@ -1367,6 +1379,7 @@ export type Database = {
           locked_by: string | null
           member_a_id: string
           member_b_id: string | null
+          publication_version: number
           rank: number | null
           score_breakdown: Json | null
           session_id: string
@@ -1389,6 +1402,7 @@ export type Database = {
           locked_by?: string | null
           member_a_id: string
           member_b_id?: string | null
+          publication_version?: number
           rank?: number | null
           score_breakdown?: Json | null
           session_id: string
@@ -1411,6 +1425,7 @@ export type Database = {
           locked_by?: string | null
           member_a_id?: string
           member_b_id?: string | null
+          publication_version?: number
           rank?: number | null
           score_breakdown?: Json | null
           session_id?: string
@@ -1602,6 +1617,9 @@ export type Database = {
           created_by: string | null
           group_size: number
           id: string
+          publication_version: number
+          published_at: string | null
+          results_ready: boolean
           round_id: string | null
           session_name: string | null
           status: string
@@ -1617,6 +1635,9 @@ export type Database = {
           created_by?: string | null
           group_size?: number
           id?: string
+          publication_version?: number
+          published_at?: string | null
+          results_ready?: boolean
           round_id?: string | null
           session_name?: string | null
           status?: string
@@ -1632,6 +1653,9 @@ export type Database = {
           created_by?: string | null
           group_size?: number
           id?: string
+          publication_version?: number
+          published_at?: string | null
+          results_ready?: boolean
           round_id?: string | null
           session_name?: string | null
           status?: string
@@ -2227,6 +2251,7 @@ export type Database = {
       }
       mutual_reviews: {
         Row: {
+          match_publication_version: number | null
           activity_id: string | null
           audit_reason: string | null
           comment: string | null
@@ -2245,6 +2270,7 @@ export type Database = {
           would_play_again: boolean
         }
         Insert: {
+          match_publication_version?: number | null
           activity_id?: string | null
           audit_reason?: string | null
           comment?: string | null
@@ -2263,6 +2289,7 @@ export type Database = {
           would_play_again?: boolean
         }
         Update: {
+          match_publication_version?: number | null
           activity_id?: string | null
           audit_reason?: string | null
           comment?: string | null
@@ -3141,6 +3168,31 @@ export type Database = {
       }
     }
     Functions: {
+      admin_finalize_matching_session: {
+        Args: { p_session_id: string; p_round_id: string; p_expected_status: string; p_survey_start: string; p_survey_end: string; p_reason: string }
+        Returns: Json
+      }
+      admin_publish_match_session: {
+        Args: { p_session_id: string; p_reason: string; p_expected_publication_version: number }
+        Returns: Json
+      }
+      admin_approve_matching_cancellation: {
+        Args: { p_result_id: string; p_reason: string; p_expected_publication_version: number; p_expected_requested_at: string }
+        Returns: Json
+      }
+      admin_reject_matching_cancellation: {
+        Args: { p_result_id: string; p_reason: string; p_expected_publication_version: number; p_expected_requested_at: string }
+        Returns: Json
+      }
+      admin_unpublish_match_session: {
+        Args: { p_session_id: string; p_reason: string; p_expected_publication_version: number }
+        Returns: Json
+      }
+      admin_delete_match_session_draft: {
+        Args: { p_session_id: string; p_reason: string; p_expected_publication_version: number }
+        Returns: Json
+      }
+      get_my_matching_publications: { Args: Record<PropertyKey, never>; Returns: Json }
       admin_approve_pending_application: {
         Args: { p_member_id: string; p_reason: string; p_expected_updated_at: string }
         Returns: Json
@@ -3751,7 +3803,7 @@ export type Database = {
         Returns: number
       }
       request_my_match_cancellation: {
-        Args: { p_reason?: string; p_result_id: string }
+        Args: { p_reason: string; p_result_id: string; p_expected_publication_version: number }
         Returns: Json
       }
       restore_homepage_school_stats: {

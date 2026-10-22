@@ -24,42 +24,40 @@ describe("matching versus survey reopening", () => {
     vi.resetAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime(new Date("2026-09-29T10:00:00Z"))
-    mocks.rpc.mockResolvedValue({ error: null })
+    mocks.rpc.mockResolvedValue({ data: { results_ready: true }, error: null })
     mocks.candidates.mockResolvedValue({ submissions: [{ member_id: "one" }, { member_id: "two" }], candidates: [] })
     vi.spyOn(console, "error").mockImplementation(() => {})
   })
   afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers() })
 
   it("withdraws its session instead of overwriting a concurrently reopened round", async () => {
-    const update = query(null)
-    mocks.from.mockReturnValueOnce(query(round)).mockReturnValueOnce(query({ id: "session" })).mockReturnValueOnce(update)
+    mocks.from.mockReturnValueOnce(query(round)).mockReturnValueOnce(query({ id: "session" }))
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: "MATCH_ROUND_CHANGED" } })
     expect((await runRoundMatching("round", "test", "管理员确认运行匹配")).error).toContain("本次匹配已撤回")
-    expect(update.eq).toHaveBeenCalledWith("status", "closed")
-    expect(update.eq).toHaveBeenCalledWith("survey_start", round.survey_start)
-    expect(update.eq).toHaveBeenCalledWith("survey_end", round.survey_end)
-    expect(update.is).toHaveBeenCalledWith("deleted_at", null)
+    expect(mocks.rpc).toHaveBeenCalledWith("admin_finalize_matching_session", expect.objectContaining({
+      p_session_id: "session", p_round_id: "round", p_expected_status: "closed",
+      p_survey_start: round.survey_start, p_survey_end: round.survey_end,
+    }))
     expect(mocks.rpc).toHaveBeenCalledWith("admin_delete_operational_record", expect.objectContaining({ p_entity: "match_sessions", p_id: "session" }))
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 
   it("completes normal matching when the closed round and dates have not changed", async () => {
-    const update = query({ id: "round" })
-    mocks.from.mockReturnValueOnce(query(round)).mockReturnValueOnce(query({ id: "session" })).mockReturnValueOnce(update)
+    mocks.from.mockReturnValueOnce(query(round)).mockReturnValueOnce(query({ id: "session" }))
     expect(await runRoundMatching("round", "test", "管理员确认运行匹配")).toEqual({ success: true, sessionId: "session" })
-    expect(update.update).toHaveBeenCalledWith({ status: "matched" })
-    expect(mocks.rpc).not.toHaveBeenCalled()
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("admin_finalize_matching_session", {
+      p_session_id: "session", p_round_id: "round", p_expected_status: "closed",
+      p_survey_start: round.survey_start, p_survey_end: round.survey_end, p_reason: "管理员确认运行匹配",
+    })
   })
 
   it.each([openRound, { ...openRound, survey_end: round.survey_end }])("keeps an open or expired collection open and preserves its original dates", async (current) => {
-    const update = query({ id: "round" })
-    mocks.from.mockReturnValueOnce(query(current)).mockReturnValueOnce(query({ id: "session" })).mockReturnValueOnce(update)
+    mocks.from.mockReturnValueOnce(query(current)).mockReturnValueOnce(query({ id: "session" }))
     expect(await runRoundMatching("round", "test", "管理员确认运行匹配")).toEqual({ success: true, sessionId: "session" })
-    expect(update.update).toHaveBeenCalledWith({ status: "open" })
-    expect(update.eq).toHaveBeenCalledWith("status", "open")
-    expect(update.eq).toHaveBeenCalledWith("survey_start", current.survey_start)
-    expect(update.eq).toHaveBeenCalledWith("survey_end", current.survey_end)
-    expect(update.is).toHaveBeenCalledWith("deleted_at", null)
-    expect(mocks.rpc).not.toHaveBeenCalled()
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("admin_finalize_matching_session", {
+      p_session_id: "session", p_round_id: "round", p_expected_status: "open",
+      p_survey_start: current.survey_start, p_survey_end: current.survey_end, p_reason: "管理员确认运行匹配",
+    })
   })
 
   it.each([
@@ -76,13 +74,12 @@ describe("matching versus survey reopening", () => {
   })
 
   it("withdraws an open run if its collection state, dates or deletion status changed", async () => {
-    const update = query(null)
-    mocks.from.mockReturnValueOnce(query(openRound)).mockReturnValueOnce(query({ id: "session" })).mockReturnValueOnce(update)
+    mocks.from.mockReturnValueOnce(query(openRound)).mockReturnValueOnce(query({ id: "session" }))
+    mocks.rpc.mockResolvedValueOnce({ data: null, error: { message: "MATCH_ROUND_CHANGED" } })
     expect((await runRoundMatching("round", "test", "管理员确认运行匹配")).error).toContain("本次匹配已撤回")
-    expect(update.eq).toHaveBeenCalledWith("status", "open")
-    expect(update.eq).toHaveBeenCalledWith("survey_start", openRound.survey_start)
-    expect(update.eq).toHaveBeenCalledWith("survey_end", openRound.survey_end)
-    expect(update.is).toHaveBeenCalledWith("deleted_at", null)
+    expect(mocks.rpc).toHaveBeenCalledWith("admin_finalize_matching_session", expect.objectContaining({
+      p_expected_status: "open", p_survey_start: openRound.survey_start, p_survey_end: openRound.survey_end,
+    }))
     expect(mocks.rpc).toHaveBeenCalledWith("admin_delete_operational_record", expect.objectContaining({ p_entity: "match_sessions", p_id: "session" }))
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
@@ -91,13 +88,23 @@ describe("matching versus survey reopening", () => {
     const firstSession = query({ id: "session-one" })
     const nextSession = query({ id: "session-two" })
     mocks.from
-      .mockReturnValueOnce(query(openRound)).mockReturnValueOnce(firstSession).mockReturnValueOnce(query({ id: "round" }))
-      .mockReturnValueOnce(query(openRound)).mockReturnValueOnce(nextSession).mockReturnValueOnce(query({ id: "round" }))
+      .mockReturnValueOnce(query(openRound)).mockReturnValueOnce(firstSession)
+      .mockReturnValueOnce(query(openRound)).mockReturnValueOnce(nextSession)
     expect(await runRoundMatching("round", "first", "管理员首次运行匹配")).toEqual({ success: true, sessionId: "session-one" })
     expect(await runRoundMatching("round", "next", "管理员再次运行匹配")).toEqual({ success: true, sessionId: "session-two" })
     expect(mocks.candidates).toHaveBeenNthCalledWith(1, "round")
     expect(mocks.candidates).toHaveBeenNthCalledWith(2, "round")
     expect(firstSession.insert).toHaveBeenCalledWith(expect.objectContaining({ session_name: "first", round_id: "round" }))
     expect(nextSession.insert).toHaveBeenCalledWith(expect.objectContaining({ session_name: "next", round_id: "round" }))
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "admin_finalize_matching_session", expect.objectContaining({ p_session_id: "session-one", p_expected_status: "open" }))
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "admin_finalize_matching_session", expect.objectContaining({ p_session_id: "session-two", p_expected_status: "open" }))
+  })
+
+  it("does not expose a run whose readiness was not committed", async () => {
+    mocks.from.mockReturnValueOnce(query(openRound)).mockReturnValueOnce(query({ id: "session" }))
+    mocks.rpc.mockResolvedValueOnce({ data: { results_ready: false }, error: null })
+    expect((await runRoundMatching("round", "test", "管理员确认运行匹配")).error).toContain("本次匹配已撤回")
+    expect(mocks.rpc).toHaveBeenLastCalledWith("admin_delete_operational_record", expect.objectContaining({ p_entity: "match_sessions", p_id: "session" }))
+    expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 })

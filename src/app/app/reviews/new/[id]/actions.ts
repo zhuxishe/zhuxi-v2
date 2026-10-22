@@ -3,9 +3,11 @@
 import { revalidatePath } from "next/cache"
 import { requirePlayer } from "@/lib/auth/player"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { fetchMatchDetail } from "@/lib/queries/matching"
 
 interface ReviewInput {
   match_result_id: string
+  expected_publication_version: number
   reviewee_id: string
   overall_score: number
   punctuality_score: number
@@ -22,15 +24,13 @@ export async function submitReview(input: ReviewInput) {
   const player = await requirePlayer()
   const supabase = createAdminClient()
   if (input.reviewee_id === player.memberId) return { error: "unauthorized" }
+  if (!Number.isSafeInteger(input.expected_publication_version) || input.expected_publication_version < 1) return { error: "matchPublicationChanged" }
 
   // 安全：从 match_result 重新派生 reviewee_id，不信任客户端传值
-  const { data: mr } = await supabase
-    .from("match_results")
-    .select("member_a_id, member_b_id, group_members")
-    .eq("id", input.match_result_id)
-    .single()
+  const mr = await fetchMatchDetail(input.match_result_id, player.memberId)
 
-  if (!mr) return { error: "matchNotFound" }
+  if (!mr || mr.status !== "confirmed") return { error: "matchNotFound" }
+  if (mr.publication_version !== input.expected_publication_version) return { error: "matchPublicationChanged" }
 
   // 确认当前玩家是配对参与者，并派生对手 ID
   let revieweeId: string | null = null
@@ -62,6 +62,7 @@ export async function submitReview(input: ReviewInput) {
     .from("mutual_reviews")
     .insert({
       match_result_id: input.match_result_id,
+      match_publication_version: input.expected_publication_version,
       reviewer_id: player.memberId,
       reviewee_id: revieweeId, // 使用服务端派生值，非客户端传值
       overall_score: input.overall_score,
@@ -76,6 +77,7 @@ export async function submitReview(input: ReviewInput) {
     })
 
   if (error) {
+    if (/MATCH_PUBLICATION_STALE|MATCH_NOT_PUBLISHED|MATCH_PUBLICATION_NOT_PUBLISHED/.test(error.message)) return { error: "matchPublicationChanged" }
     console.error("[submitReview]", error)
     return { error: "saveFailed" }
   }

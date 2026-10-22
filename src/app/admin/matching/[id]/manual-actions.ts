@@ -13,6 +13,7 @@ import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
 import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
 import { validateUuids } from "@/lib/sanitize"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
+import { matchingPublicationError, PUBLISHED_MATCH_EDIT_ERROR } from "@/lib/matching/publication-errors"
 import type { MatchCandidate, ScoreComponent } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
 
@@ -265,10 +266,17 @@ export async function manualPair(
   if (memberIds.length > 6) return { error: "最多 6 人" }
 
   const supabase = await createClient()
-  const roundId = await getSessionRoundId(sessionId)
+  const { data: session, error: sessionError } = await supabase
+    .from("match_sessions")
+    .select("round_id, status")
+    .eq("id", sessionId)
+    .single()
+  if (sessionError) return { error: "无法读取匹配会话，请稍后重试" }
+  const roundId = session?.round_id
   if (!roundId) {
     return { error: "旧测试匹配记录仅支持查看，不能继续手动配对" }
   }
+  if (session.status !== "draft") return { error: PUBLISHED_MATCH_EDIT_ERROR }
 
   // ── 防重复校验 ──
   for (const mId of memberIds) {
@@ -356,7 +364,7 @@ export async function manualPair(
 
   if (error) {
     console.error("[manualPair]", error)
-    return { error: "操作失败" }
+    return { error: matchingPublicationError(error, "操作失败") }
   }
 
   // ── 清理未匹配诊断 ──

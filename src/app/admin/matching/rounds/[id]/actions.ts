@@ -248,7 +248,9 @@ function validateSubmissionData(data: SubmissionData) {
 }
 
 /** 更新已有问卷 */
-export async function updateSubmission(submissionId: string, data: SubmissionData, rawReason: string): Promise<SubmissionActionResult> {
+export async function updateSubmission(
+  submissionId: string, data: SubmissionData, rawReason: string, expectedUpdatedAt?: string | null,
+): Promise<SubmissionActionResult> {
   const admin = await requireAdmin()
   if (admin.role !== "super_admin") return { error: "仅超级管理员可覆盖原始问卷" }
   const reasonResult = normalizeAdminAuditReason(rawReason)
@@ -273,24 +275,31 @@ export async function updateSubmission(submissionId: string, data: SubmissionDat
   if (!round || round.deleted_at) return { error: "轮次不存在" }
   if (round.status === "matched") return { error: "该轮次已完成匹配，无法编辑" }
   if (getRoundPurpose(round?.purpose) !== "matching") return { error: "活动报名不使用匹配问卷编辑功能" }
+  if (expectedUpdatedAt === undefined || (expectedUpdatedAt !== null && !Number.isFinite(Date.parse(expectedUpdatedAt)))) {
+    return { error: "问卷版本信息缺失，请刷新后重新打开编辑。当前输入尚未保存。" }
+  }
   const profileError = await matchingProfileError(sub.member_id)
   if (profileError) return profileError
 
-  const { error } = await supabase
-    .from("match_round_submissions")
-    .update({
+  const { error } = await supabase.rpc("admin_update_matching_submission", {
+    p_submission_id: submissionId,
+    p_expected_updated_at: expectedUpdatedAt,
+    p_reason: reasonResult.reason,
+    p_answers: {
       game_type_pref: data.game_type_pref,
       gender_pref: data.gender_pref,
-      availability: data.availability as unknown as Json,
+      availability: data.availability,
       interest_tags: data.interest_tags,
       social_style: data.social_style,
       message: data.message,
-      audit_reason: reasonResult.reason,
-    })
-    .eq("id", submissionId)
+    },
+  })
 
   if (error) {
     console.error("[updateSubmission]", error)
+    if (error.message?.includes("MATCHING_SUBMISSION_CHANGED")) {
+      return { error: "问卷已被其他页面或成员修改，请刷新后核对。当前输入已保留，尚未覆盖新答卷。" }
+    }
     if (error.message?.includes("MATCHING_PROFILE_INCOMPLETE")) {
       return await matchingProfileError(sub.member_id) ?? { error: "成员资料完成状态已变化，请刷新后重试。报名未修改。" }
     }
@@ -351,6 +360,7 @@ export async function createSubmission(
 
   if (error) {
     console.error("[createSubmission]", error)
+    if (error.code === "23505") return { error: "该成员已提交过问卷，请刷新后核对。当前输入尚未保存。" }
     if (error.message?.includes("MATCHING_PROFILE_INCOMPLETE")) {
       return await matchingProfileError(memberId) ?? { error: "成员资料完成状态已变化，请刷新后重试。报名未新增。" }
     }

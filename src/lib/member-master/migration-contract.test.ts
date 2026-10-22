@@ -519,6 +519,7 @@ describe("user/member master migration contract", () => {
     expect(migrationNames).toContain("20261022161420_questionnaire_profile_snapshot_refresh.sql")
     expect(runbook).toContain(`当前仓库共有 ${migrationNames.length} 条 migration`)
     expect(migrationNames).toContain("20261022162627_matching_profile_readiness.sql")
+    expect(migrationNames).toContain("20261022175617_matching_survey_submission_concurrency.sql")
     expect(runbook).toContain("20261022162627_matching_profile_readiness.sql")
     expect(runbook).toContain("20261021110438_questionnaire_templates_versions.sql")
     expect(runbook).toContain("20261022161420_questionnaire_profile_snapshot_refresh.sql")

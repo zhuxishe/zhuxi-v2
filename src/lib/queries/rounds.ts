@@ -151,12 +151,13 @@ export async function fetchLatestRound() {
 /** 获取玩家在某轮次的提交 */
 export async function fetchMySubmission(roundId: string, memberId: string) {
   const supabase = await createClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("match_round_submissions")
     .select("*")
     .eq("round_id", roundId)
     .eq("member_id", memberId)
     .maybeSingle()
 
+  if (error) throw error
   return data
 }

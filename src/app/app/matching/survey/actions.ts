@@ -32,6 +32,7 @@ async function matchingProfileError() {
 
 interface SubmitSurveyInput extends Omit<SurveyAnswers, "customAnswers"> {
   roundId: string
+  submissionId?: string | null
   configRevision?: number
   customAnswers?: SurveyAnswers["customAnswers"]
   registrationIntent?: "create" | "update" | "rejoin"
@@ -39,7 +40,7 @@ interface SubmitSurveyInput extends Omit<SurveyAnswers, "customAnswers"> {
 }
 
 export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubmissionResult> {
-  const player = await requirePlayer()
+  await requirePlayer()
   if (!input || typeof input.roundId !== "string") return { error: "invalidSurveyInput" }
   const supabase = await createClient()
   // Selecting the full row also permits unchanged legacy matching while a schema upgrade is pending.
@@ -59,8 +60,11 @@ export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubm
     round.activity_start, round.activity_end)
   if (!validated.data) return { error: validated.error }
   const answers = validated.data
-  const contentFields = Object.hasOwn(round, "config_revision")
-    ? { custom_answers: answers.customAnswers, config_revision: round.config_revision } : {}
+  if ((input.submissionId != null && typeof input.submissionId !== "string")
+    || (input.submissionId && !Object.hasOwn(input, "expectedUpdatedAt"))
+    || (input.expectedUpdatedAt != null && (typeof input.expectedUpdatedAt !== "string" || !Number.isFinite(Date.parse(input.expectedUpdatedAt))))) {
+    return { error: "invalidSurveyInput" }
+  }
   if (round.purpose === "registration" && (
     (input.registrationIntent !== undefined && !["create", "update", "rejoin"].includes(input.registrationIntent))
     || (input.registrationIntent && input.registrationIntent !== "create" && !Object.hasOwn(input, "expectedUpdatedAt"))
@@ -70,15 +74,21 @@ export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubm
     p_round_id: input.roundId, p_operation: input.registrationIntent ?? "create",
     p_expected_updated_at: input.expectedUpdatedAt ?? null,
     p_config_revision: input.configRevision ?? 0, p_custom_answers: answers.customAnswers,
-  }) : await supabase.from("match_round_submissions").upsert({
-    round_id: input.roundId, member_id: player.memberId,
-    game_type_pref: answers.gameTypePref, gender_pref: answers.genderPref,
-    availability: answers.availability, interest_tags: answers.interestTags,
-    social_style: answers.socialStyle, message: answers.message, ...contentFields,
-  }, { onConflict: "round_id,member_id" })
+  }) : await supabase.rpc("save_my_matching_submission", {
+    p_round_id: input.roundId, p_submission_id: input.submissionId ?? null,
+    p_expected_updated_at: input.expectedUpdatedAt ?? null, p_config_revision: input.configRevision ?? 0,
+    p_answers: {
+      game_type_pref: answers.gameTypePref, gender_pref: answers.genderPref,
+      availability: answers.availability, interest_tags: answers.interestTags,
+      social_style: answers.socialStyle, message: answers.message, custom_answers: answers.customAnswers,
+    },
+  })
 
   if (error) {
-    console.error("[submitSurvey] upsert", error)
+    console.error("[submitSurvey] save", error)
+    if (round.purpose !== "registration" && (error.message?.includes("MATCHING_SUBMISSION_CHANGED") || error.code === "23505")) {
+      return { error: "surveyResponseChanged" }
+    }
     if (error.message?.includes("MATCHING_PROFILE_INCOMPLETE")) {
       // The database enforces this too, including a profile change after our initial read.
       return await matchingProfileError() ?? { error: "matchingProfileCheckFailed" }

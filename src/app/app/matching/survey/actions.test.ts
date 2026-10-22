@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), upsert: vi.fn(), rpc: vi.fn(), readiness: vi.fn() }))
+const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), rpc: vi.fn(), readiness: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from, rpc: mocks.rpc }) }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }))
@@ -27,7 +27,6 @@ describe("survey submission availability", () => {
     vi.useFakeTimers()
     vi.setSystemTime("2026-09-29T01:00:00Z")
     mocks.player.mockResolvedValue({ memberId: "canonical-member" })
-    mocks.upsert.mockResolvedValue({ error: null })
     mocks.rpc.mockResolvedValue({ error: null })
     mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, missing: [] })
     vi.spyOn(console, "error").mockImplementation(() => {})
@@ -45,23 +44,25 @@ describe("survey submission availability", () => {
     mocks.from.mockReturnValueOnce(readRound(data))
     expect(await submitSurvey(input)).toEqual({ error })
     expect(mocks.from).toHaveBeenCalledTimes(1)
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
   })
 
-  it("upserts the member's existing round answer and refreshes the notification layout and form", async () => {
-    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+  it("creates with an explicit absent answer token and refreshes the notification layout and form", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round))
     expect(await submitSurvey(input)).toEqual({ success: true })
-    expect(mocks.upsert).toHaveBeenCalledWith(expect.objectContaining({
-      round_id: "round", member_id: "canonical-member", message: input.message, availability: input.availability,
-    }), { onConflict: "round_id,member_id" })
+    expect(mocks.rpc).toHaveBeenCalledWith("save_my_matching_submission", {
+      p_round_id: "round", p_submission_id: null, p_expected_updated_at: null, p_config_revision: 0,
+      p_answers: expect.objectContaining({ message: input.message, availability: input.availability }),
+    })
+    expect(mocks.rpc.mock.calls[0][1]).not.toHaveProperty("p_member_id")
     expect(mocks.revalidate).toHaveBeenCalledWith("/app", "layout")
     expect(mocks.revalidate).toHaveBeenCalledWith("/app/matching/survey")
   })
 
   it("explains a closure between validation and the database write", async () => {
-    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+    mocks.from.mockReturnValueOnce(readRound(round))
       .mockReturnValueOnce(readRound({ ...round, status: "closed" }))
-    mocks.upsert.mockResolvedValue({ error: { code: "42501" } })
+    mocks.rpc.mockResolvedValue({ error: { code: "42501" } })
     expect(await submitSurvey(input)).toEqual({ error: "surveyClosed" })
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
@@ -76,21 +77,21 @@ describe("survey submission availability", () => {
     mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration", deleted_at: "2026-09-29T00:30:00Z" }))
     expect(await submitSurvey(input)).toEqual({ error: "roundNotFound" })
     expect(mocks.rpc).not.toHaveBeenCalled()
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
   })
 
   it("explains deletion during filling when the database rejects a concurrent write", async () => {
-    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+    mocks.from.mockReturnValueOnce(readRound(round))
       .mockReturnValueOnce(readRound({ ...round, deleted_at: "2026-09-29T01:00:00Z" }))
-    mocks.upsert.mockResolvedValue({ error: { message: "ROUND_DELETED" } })
+    mocks.rpc.mockResolvedValue({ error: { message: "ROUND_DELETED" } })
     expect(await submitSurvey(input)).toEqual({ error: "roundNotFound" })
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 
   it("explains deletion during filling when RLS hides the retained round", async () => {
-    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+    mocks.from.mockReturnValueOnce(readRound(round))
       .mockReturnValueOnce(readRound(null))
-    mocks.upsert.mockResolvedValue({ error: { message: "ROUND_NOT_FOUND" } })
+    mocks.rpc.mockResolvedValue({ error: { message: "ROUND_NOT_FOUND" } })
     expect(await submitSurvey(input)).toEqual({ error: "roundNotFound" })
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
@@ -103,7 +104,7 @@ describe("survey submission availability", () => {
       p_round_id: "round", p_operation: "create", p_expected_updated_at: null, p_custom_answers: {}, p_config_revision: 2,
     })
     expect(mocks.revalidate).toHaveBeenCalledWith("/admin/activity-reviews")
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
     expect(mocks.readiness).not.toHaveBeenCalled()
   })
 
@@ -138,20 +139,20 @@ describe("survey submission availability", () => {
   it("rejects submissions to announcements", async () => {
     mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "announcement" }))
     expect(await submitSurvey(input)).toEqual({ error: "surveyReadOnly" })
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
     expect(mocks.readiness).not.toHaveBeenCalled()
   })
 
   it("requires the current configuration revision", async () => {
     mocks.from.mockReturnValueOnce(readRound({ ...round, config_revision: 2 }))
     expect(await submitSurvey({ ...input, configRevision: 1 })).toEqual({ error: "surveyUpdated" })
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
   })
 
   it("explains a configuration edit which raced with submission", async () => {
-    mocks.from.mockReturnValueOnce(readRound({ ...round, config_revision: 0 })).mockReturnValueOnce({ upsert: mocks.upsert })
+    mocks.from.mockReturnValueOnce(readRound({ ...round, config_revision: 0 }))
       .mockReturnValueOnce(readRound({ ...round, config_revision: 1 }))
-    mocks.upsert.mockResolvedValue({ error: { code: "P0001" } })
+    mocks.rpc.mockResolvedValue({ error: { code: "P0001" } })
     expect(await submitSurvey(input)).toEqual({ error: "surveyUpdated" })
   })
 
@@ -160,7 +161,7 @@ describe("survey submission availability", () => {
       questions: [{ id: "need", type: "text", label: { zh: "必填", ja: "" }, required: true, options: [] }],
     } }))
     expect(await submitSurvey(input)).toEqual({ error: "customQuestionRequired" })
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
   })
 
   it.each(["supplementary", "personality", "quiz"])("rejects a direct matching submission missing %s without writing", async (missing) => {
@@ -168,7 +169,7 @@ describe("survey submission availability", () => {
     mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, [missing]: false, missing: [missing] })
     expect(await submitSurvey(input)).toEqual({ error: "matchingProfileIncomplete", missingProfiles: [missing] })
     expect(mocks.from).toHaveBeenCalledTimes(1)
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
     expect(mocks.rpc).not.toHaveBeenCalled()
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
@@ -179,7 +180,7 @@ describe("survey submission availability", () => {
     expect(await submitSurvey({ ...input, registrationIntent })).toEqual({
       error: "matchingProfileIncomplete", missingProfiles: ["supplementary", "personality", "quiz"],
     })
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
     expect(mocks.rpc).not.toHaveBeenCalled()
   })
 
@@ -187,27 +188,56 @@ describe("survey submission availability", () => {
     mocks.from.mockReturnValueOnce(readRound(round))
     mocks.readiness.mockRejectedValue(new Error("Read failed"))
     expect(await submitSurvey(input)).toEqual({ error: "matchingProfileCheckFailed" })
-    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
     expect(mocks.rpc).not.toHaveBeenCalled()
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 
   it("explains a profile change rejected by the database after the initial completeness check", async () => {
-    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+    mocks.from.mockReturnValueOnce(readRound(round))
     mocks.readiness.mockResolvedValueOnce({ supplementary: true, personality: true, quiz: true, missing: [] })
       .mockResolvedValueOnce({ supplementary: true, personality: false, quiz: false, missing: ["personality", "quiz"] })
-    mocks.upsert.mockResolvedValue({ error: { message: "MATCHING_PROFILE_INCOMPLETE" } })
+    mocks.rpc.mockResolvedValue({ error: { message: "MATCHING_PROFILE_INCOMPLETE" } })
     expect(await submitSurvey(input)).toEqual({ error: "matchingProfileIncomplete", missingProfiles: ["personality", "quiz"] })
     expect(mocks.readiness).toHaveBeenCalledTimes(2)
     expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 
   it("reports a retry if profile status cannot be re-read after a database rejection", async () => {
-    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+    mocks.from.mockReturnValueOnce(readRound(round))
     mocks.readiness.mockResolvedValueOnce({ supplementary: true, personality: true, quiz: true, missing: [] })
       .mockRejectedValueOnce(new Error("Read failed"))
-    mocks.upsert.mockResolvedValue({ error: { message: "MATCHING_PROFILE_INCOMPLETE" } })
+    mocks.rpc.mockResolvedValue({ error: { message: "MATCHING_PROFILE_INCOMPLETE" } })
     expect(await submitSurvey(input)).toEqual({ error: "matchingProfileCheckFailed" })
     expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("passes the exact saved answer identity and microsecond token to the atomic matching update", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    const version = "2026-09-29T00:10:00.123456Z"
+    expect(await submitSurvey({ ...input, submissionId: "answer", expectedUpdatedAt: version })).toEqual({ success: true })
+    expect(mocks.rpc).toHaveBeenCalledWith("save_my_matching_submission", expect.objectContaining({
+      p_submission_id: "answer", p_expected_updated_at: version,
+    }))
+  })
+
+  it.each([{ message: "MATCHING_SUBMISSION_CHANGED", code: "40001" }, { code: "23505" }])("reports an answer conflict without discarding input or claiming success", async (error) => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    mocks.rpc.mockResolvedValue({ error })
+    expect(await submitSurvey(input)).toEqual({ error: "surveyResponseChanged" })
+    expect(input.message).toBe("existing answer")
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("requires the loaded timestamp key for an existing matching answer", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    expect(await submitSurvey({ ...input, submissionId: "answer" })).toEqual({ error: "invalidSurveyInput" })
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  it("retains a historical NULL timestamp while identifying the existing answer", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    expect(await submitSurvey({ ...input, submissionId: "answer", expectedUpdatedAt: null })).toEqual({ success: true })
+    expect(mocks.rpc).toHaveBeenCalledWith("save_my_matching_submission", expect.objectContaining({ p_submission_id: "answer", p_expected_updated_at: null }))
   })
 })

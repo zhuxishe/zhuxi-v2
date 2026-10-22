@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { createRound } from "@/app/admin/matching/rounds/new/actions"
 import { Button } from "@/components/ui/button"
 import type { RoundPurpose } from "@/types"
+import { addCalendarDays } from "@/lib/calendar-date"
 
 export function RoundCreateForm() {
   const router = useRouter()
@@ -21,9 +22,7 @@ export function RoundCreateForm() {
   function handleActStartChange(v: string) {
     setActStart(v)
     if (v) {
-      const d = new Date(v)
-      if (purpose === "matching") d.setDate(d.getDate() + 13)
-      setActEnd(d.toISOString().split("T")[0])
+      setActEnd(addCalendarDays(v, purpose === "matching" ? 13 : 0))
     }
   }
 

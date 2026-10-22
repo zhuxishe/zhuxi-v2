@@ -29,7 +29,7 @@ function render(overrides: Partial<Parameters<typeof SurveyForm>[0]> = {}) {
   return SurveyForm({
     roundId: "round", roundName: "Test round", surveyStart: "2026-09-29T00:00:00Z", surveyEnd: "2026-09-29T09:00:00Z",
     initialNow: "2026-09-29T01:00:00Z", activityStart: "2026-10-01", activityEnd: "2026-10-14",
-    existing: { game_type_pref: "双人", gender_pref: "都可以", availability: { "2026-10-01": ["下午"] }, interest_tags: [], social_style: null, message: "my answer" },
+    existing: { id: "saved-1", updated_at: "2026-09-29T00:30:00.123456Z", game_type_pref: "双人", gender_pref: "都可以", availability: { "2026-10-01": ["下午"] }, interest_tags: [], social_style: null, message: "my answer" },
     ...overrides,
   })
 }
@@ -81,6 +81,25 @@ describe("survey form expiry and recovery", () => {
     await submitButton().onClick()
     expect(mocks.submit).toHaveBeenLastCalledWith(expect.objectContaining({ message: "my answer" }))
     expect(mocks.push).toHaveBeenCalledWith("/app/matching/survey/success?roundId=round")
+  })
+
+  it("sends the exact loaded answer id and version and keeps local input after a conflict", async () => {
+    mocks.submit.mockResolvedValue({ error: "surveyResponseChanged" })
+    await submitButton().onClick()
+    expect(mocks.submit).toHaveBeenCalledWith(expect.objectContaining({
+      submissionId: "saved-1", expectedUpdatedAt: "2026-09-29T00:30:00.123456Z", message: "my answer",
+    }))
+    const tree = render()
+    expect(find(tree, (_type, props) => props.role === "alert")?.children).toBe("surveyResponseChanged")
+    expect(find(tree, (_type, props) => Boolean(props.value))?.value).toEqual(expect.objectContaining({ message: "my answer" }))
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+
+  it("identifies a new matching submission as create-only", async () => {
+    states = [{ gameTypePref: "都可以", genderPref: "都可以", availability: { "2026-10-01": ["下午"] }, interestTags: [], socialStyle: null, message: null, customAnswers: {} }]
+    const tree = render({ existing: null })
+    await find(tree, (_type, props) => props.children === "submit")?.onClick?.()
+    expect(mocks.submit).toHaveBeenCalledWith(expect.objectContaining({ submissionId: null, expectedUpdatedAt: null }))
   })
 
   it("carries the fixed record source through a successful edit", async () => {

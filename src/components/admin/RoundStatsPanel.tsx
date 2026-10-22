@@ -1,3 +1,5 @@
+import { calendarDateRange, calendarWeekday } from "@/lib/calendar-date"
+
 interface Stats {
   total: number
   gameTypeDist: { duo: number; multi: number; either: number }
@@ -14,12 +16,7 @@ export function RoundStatsPanel({ stats, activityStart, activityEnd }: Props) {
   const { total, gameTypeDist } = stats
 
   // 生成日期范围
-  const dates: string[] = []
-  const start = new Date(activityStart)
-  const end = new Date(activityEnd)
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    dates.push(d.toISOString().split("T")[0])
-  }
+  const dates = calendarDateRange(activityStart, activityEnd)
   const slots = ["上午", "下午", "晚上"]
 
   // 计算热力图最大值
@@ -51,9 +48,9 @@ export function RoundStatsPanel({ stats, activityStart, activityEnd }: Props) {
               </thead>
               <tbody>
                 {dates.map((date) => {
-                  const d = new Date(date)
-                  const weekday = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()]
-                  const isWeekend = d.getDay() === 0 || d.getDay() === 6
+                  const dayOfWeek = calendarWeekday(date)
+                  const weekday = ["日", "月", "火", "水", "木", "金", "土"][dayOfWeek]
+                  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
                   return (
                     <tr key={date}>
                       <td className={`pr-2 py-0.5 whitespace-nowrap ${isWeekend ? "font-semibold" : ""}`}>

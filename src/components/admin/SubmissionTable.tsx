@@ -1,6 +1,7 @@
 "use client"
 
 import { formatAdminDateTime } from "@/lib/admin-datetime"
+import { calendarWeekday } from "@/lib/calendar-date"
 import { useState } from "react"
 import { ChevronDown, ChevronRight, Pencil } from "lucide-react"
 
@@ -58,38 +59,47 @@ export function SubmissionTable({ submissions, onEdit, editable = true, showRaw 
 
         return (
           <div key={sub.id} className="rounded-lg bg-card ring-1 ring-foreground/10">
-            <button
-              onClick={() => setExpandedId(expanded ? null : sub.id)}
-              className="flex w-full items-center justify-between px-4 py-3 text-left"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">{name}</span>
-                {school && <span className="text-xs text-muted-foreground">{school}</span>}
-                <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${GAME_TYPE_COLORS[sub.game_type_pref] ?? ""}`}>
-                  {sub.game_type_pref}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setExpandedId(expanded ? null : sub.id)}
+                aria-expanded={expanded}
+                aria-controls={`submission-${sub.id}`}
+                className="flex w-full items-center justify-between px-4 py-3 text-left"
+              >
+                <span className="flex items-center gap-3">
+                  <span className="text-sm font-medium">{name}</span>
+                  {school && <span className="text-xs text-muted-foreground">{school}</span>}
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${GAME_TYPE_COLORS[sub.game_type_pref] ?? ""}`}>
+                    {sub.game_type_pref}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    性别偏好: {sub.gender_pref}
+                  </span>
                 </span>
-                <span className="text-[10px] text-muted-foreground">
-                  性别偏好: {sub.gender_pref}
+                <span className="flex items-center gap-3">
+                  <span className="text-xs text-muted-foreground">{dayCount}天 {slotCount}时段</span>
+                  {editable && onEdit && (
+                    <span className="size-5.5" aria-hidden="true" />
+                  )}
+                  {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 </span>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-muted-foreground">{dayCount}天 {slotCount}时段</span>
-                {editable && onEdit && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onEdit(sub) }}
-                    className="p-1 rounded hover:bg-muted transition-colors"
-                    title="编辑问卷"
-                  >
-                    <Pencil className="size-3.5 text-muted-foreground" />
-                  </button>
-                )}
-                {expanded ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
-              </div>
-            </button>
+              </button>
+              {editable && onEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(sub)}
+                  className="absolute right-11 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-muted transition-colors"
+                  title="编辑问卷"
+                  aria-label="编辑问卷"
+                >
+                  <Pencil className="size-3.5 text-muted-foreground" />
+                </button>
+              )}
+            </div>
 
             {expanded && (
-              <div className="border-t border-border px-4 py-3 space-y-3">
+              <div id={`submission-${sub.id}`} className="border-t border-border px-4 py-3 space-y-3">
                 {/* 时段 Grid */}
                 <div>
                   <p className="text-xs font-medium mb-2">可用时段</p>
@@ -157,9 +167,9 @@ function AvailabilityMiniGrid({ availability }: { availability: Record<string, s
         </thead>
         <tbody>
           {dates.map((date) => {
-            const d = new Date(date)
-            const weekday = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()]
-            const isWeekend = d.getDay() === 0 || d.getDay() === 6
+            const dayOfWeek = calendarWeekday(date)
+            const weekday = ["日", "月", "火", "水", "木", "金", "土"][dayOfWeek]
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
             return (
               <tr key={date} className={isWeekend ? "bg-primary/5" : ""}>
                 <td className="pr-2 py-0.5 whitespace-nowrap">

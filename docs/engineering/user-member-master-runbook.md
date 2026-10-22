@@ -152,7 +152,7 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 ### 历史映射
 
-- 当前仓库共有 95 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条、媒体签名直传限制一条，以及本次玩家资料一致性、性格分数默认值兼容和空白回答完成判断修复三条，以及匹配管理内容编辑一条、理想活动人数选项兼容一条、报名与匹配提交通知一条、报名取消状态与自助操作两条，以及成员目录筛选排序一条、社区评论点赞一条、官方账号保留昵称豁免一条、独立活动互评采集一条、活动互评历史操作与举报修订一条，以及会员编号分配一条、后台成员只读统计一条、面试前生日及兼容一条、现有玩家生日补填通知一条，以及相册和头像私密临时直传一条，以及匹配管理活动安全删除一条、删除审计与垃圾箱一条、固定活动时间与互评名册补报名一条、管理员补录恢复已取消报名一条、报名自动纳入互评名册一条，以及限定两账号的249/250编号交换一条，以及姓名空格匹配和有限编号回收一条，以及通用问卷模板及不可变答卷版本一条（`20261021110438_questionnaire_templates_versions.sql`，发布流程见 [通用问卷管理](questionnaire-templates.md)），以及补充资料与性格自评当前答卷刷新兼容一条（`20261022161420_questionnaire_profile_snapshot_refresh.sql`，仅替换读取函数，不重置问卷模板或历史答卷），以及匹配报名资料完成检查一条（`20261022162627_matching_profile_readiness.sql`），以及待处理申请忽略与恢复一条（`20261022171533_pending_application_ignore.sql`，发布流程见 [申请队列忽略](pending-application-ignore.md)）。全新隔离 Preview 必须按依赖顺序登记全部 95 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条，最后按上述增量发布要求应用第 17、18、19 条，再按独立发布说明应用第 20 条，随后应用第 21、22 条，最后应用第 23、24、25、26、27、28、29、30、31、32 条。
+- 当前仓库共有 96 条 migration：原 `main` 的 50 条、成员主档及其发布/兼容修复共 13 条、内容管理 V2 的 Expand/Contract 两条、媒体签名直传限制一条，以及本次玩家资料一致性、性格分数默认值兼容和空白回答完成判断修复三条，以及匹配管理内容编辑一条、理想活动人数选项兼容一条、报名与匹配提交通知一条、报名取消状态与自助操作两条，以及成员目录筛选排序一条、社区评论点赞一条、官方账号保留昵称豁免一条、独立活动互评采集一条、活动互评历史操作与举报修订一条，以及会员编号分配一条、后台成员只读统计一条、面试前生日及兼容一条、现有玩家生日补填通知一条，以及相册和头像私密临时直传一条，以及匹配管理活动安全删除一条、删除审计与垃圾箱一条、固定活动时间与互评名册补报名一条、管理员补录恢复已取消报名一条、报名自动纳入互评名册一条，以及限定两账号的249/250编号交换一条，以及姓名空格匹配和有限编号回收一条，以及通用问卷模板及不可变答卷版本一条（`20261021110438_questionnaire_templates_versions.sql`，发布流程见 [通用问卷管理](questionnaire-templates.md)），以及补充资料与性格自评当前答卷刷新兼容一条（`20261022161420_questionnaire_profile_snapshot_refresh.sql`，仅替换读取函数，不重置问卷模板或历史答卷），以及匹配报名资料完成检查一条（`20261022162627_matching_profile_readiness.sql`），以及待处理申请忽略与恢复一条（`20261022171533_pending_application_ignore.sql`，发布流程见 [申请队列忽略](pending-application-ignore.md)），以及匹配轮次答卷原子版本校验一条（`20261022175617_matching_survey_submission_concurrency.sql`）。全新隔离 Preview 必须按依赖顺序登记全部 96 条；Contract 只能在兼容应用验收通过后执行，随后依次应用第 15、16 条，最后按上述增量发布要求应用第 17、18、19 条，再按独立发布说明应用第 20 条，随后应用第 21、22 条，最后应用第 23、24、25、26、27、28、29、30、31、32 条。
 - Production 远端登记 45 条：34 条 `202604*`、10 条 `202607*` 和 `20260806140912`。仓库的 `001`–`038`、`20260809094500`、六条成员迁移和新基线前向迁移均未以本地版本登记在 Production。
 - 34 条 April 历史中，27 条去注释/空白后与本地对应 SQL 一致；`015`–`017` 只多幂等包装；远端 `022` 加后续独立 session policy 修复后等价于当前本地 `022`。
 - 远端 `008` 历史曾把 `social_goal_secondary` 转为 `text[]`，但实际 Production catalog 已是 nullable `text`、默认 `NULL`，与代码和 Preview 类型一致。远端 `011` 没有本地的姓名回填，但 Production 8 条面试记录均已填充且与当前管理员名称一致。
@@ -350,3 +350,10 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 ## 匹配报名前资料检查
 
 `20261022162627_matching_profile_readiness.sql` 统一三项资料完成标准并在数据库强制 matching 报名门槛；只检查用户已绑定版本的必填题，保留有效历史答卷及重测前结果。管理员代报名同样检查，服务端历史导入及原取消流程保持可用。发布顺序、验收范围与测试命令见 [匹配报名资料检查](./matching-profile-readiness.md)。
+
+
+## 匹配轮次答卷并发保护增量发布
+
+`20261022175617_matching_survey_submission_concurrency.sql` 新增匹配问卷本人保存、超级管理员更新的 compare-and-save RPC，按加载时的答卷 ID 与精确 `updated_at` 原子比对；首提只允许创建，不再覆盖已有答卷。匹配专属 restrictive UPDATE policy 拦截绕过 RPC 的 Data API 覆盖，普通活动 registration 操作、服务端历史导入与 owner 执行的隐私清理不受此策略限制。匹配答卷更新戳在既有触发器之后单调递增；迁移本身不改写历史答卷、题目、选项、必填配置或面试前信息表。
+
+发布时先应用该单条迁移，再部署对应应用；已打开的旧页面可能需要刷新后重试，但不能覆盖较新答卷。不得重放整套历史 migration。`supabase/audits/matching-survey-concurrency-pglite.mjs` 使用隔离 PostgreSQL 验证真实 RPC、RLS、现有答案/资料完成/审计 guard、版本冲突、deadline、回执及 registration 路径；完整资料完成判定由既有 `matching-profile-readiness-pglite.mjs` 另行覆盖。部署后只读核对新增 RPC、最小 ACL、restrictive policy 和时间戳 trigger，并比对问卷定义及历史答卷摘要未发生部署性改写。

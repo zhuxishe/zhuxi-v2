@@ -9,6 +9,7 @@ import { Loader2, Trash2 } from "lucide-react"
 import { updateSubmission, createSubmission, deleteSubmission } from "@/app/admin/matching/rounds/[id]/actions"
 import { SCENARIO_THEME_OPTIONS } from "@/lib/constants/supplementary"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
+import { calendarDateRange, calendarWeekday } from "@/lib/calendar-date"
 
 const GAME_TYPES = ["双人", "多人", "都可以"] as const
 const GENDER_PREFS = ["男", "女", "都可以"] as const
@@ -30,23 +31,11 @@ interface Props {
   onSaved: () => void
 }
 
-/** 生成日期范围 */
-function generateDates(start: string, end: string): string[] {
-  const dates: string[] = []
-  const cur = new Date(start)
-  const last = new Date(end)
-  while (cur <= last) {
-    dates.push(cur.toISOString().slice(0, 10))
-    cur.setDate(cur.getDate() + 1)
-  }
-  return dates
-}
-
 export function SubmissionEditDialog({
   open, onOpenChange, roundId, mode, submission,
   availableMembers, activityStart, activityEnd, onSaved,
 }: Props) {
-  const dates = useMemo(() => generateDates(activityStart, activityEnd), [activityStart, activityEnd])
+  const dates = useMemo(() => calendarDateRange(activityStart, activityEnd), [activityStart, activityEnd])
 
   // 表单状态
   const [memberId, setMemberId] = useState("")
@@ -60,6 +49,7 @@ export function SubmissionEditDialog({
   )
   const [socialStyle, setSocialStyle] = useState(submission?.social_style ?? "")
   const [message, setMessage] = useState(submission?.message ?? "")
+  const [expectedUpdatedAt] = useState<string | null>(submission?.updated_at ?? null)
   const [error, setError] = useState("")
   const [isPending, startTransition] = useTransition()
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -98,7 +88,7 @@ export function SubmissionEditDialog({
         message: message || null,
       }
       const res = mode === "edit"
-        ? await updateSubmission(submission!.id, data, auditReason)
+        ? await updateSubmission(submission!.id, data, auditReason, expectedUpdatedAt)
         : await createSubmission(roundId, memberId, data, auditReason)
 
       if (res.error) { setError(res.error); return }
@@ -171,9 +161,9 @@ export function SubmissionEditDialog({
                 </thead>
                 <tbody>
                   {dates.map((date) => {
-                    const d = new Date(date)
-                    const weekday = ["日", "月", "火", "水", "木", "金", "土"][d.getDay()]
-                    const isWeekend = d.getDay() === 0 || d.getDay() === 6
+                    const dayOfWeek = calendarWeekday(date)
+                    const weekday = ["日", "月", "火", "水", "木", "金", "土"][dayOfWeek]
+                    const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
                     return (
                       <tr key={date} className={isWeekend ? "bg-primary/5" : ""}>
                         <td className="pr-2 py-1 whitespace-nowrap">

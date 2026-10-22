@@ -54,6 +54,13 @@ describe("survey participation navigation", () => {
     expect(nodes(page).some((props) => props.existing !== undefined)).toBe(false)
   })
 
+  it("uses the existing retry boundary instead of showing a blank form when saved answers cannot be read", async () => {
+    mocks.submission.mockRejectedValue(new Error("saved answer read failed"))
+    await expect(SurveyPage({ searchParams: Promise.resolve({ round: roundId }) }))
+      .rejects.toThrow("saved answer read failed")
+    expect(mocks.readiness).not.toHaveBeenCalled()
+  })
+
   it("allows a complete member and leaves fixed-time registration outside this gate", async () => {
     await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
     expect(mocks.readiness).not.toHaveBeenCalled()
@@ -76,7 +83,7 @@ describe("survey participation navigation", () => {
     const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId, from: "participation" }) })
     expect(hrefs(page)).toEqual([recordHref])
     expect(nodes(page).find((props) => props.fromParticipation !== undefined)).toMatchObject({
-      fromParticipation: true, existing: { cancelled_at: cancelledAt, updated_at: updatedAt, custom_answers: { food: "veg" } },
+      fromParticipation: true, existing: { id: "own-submission", cancelled_at: cancelledAt, updated_at: updatedAt, custom_answers: { food: "veg" } },
     })
   })
 

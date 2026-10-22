@@ -3172,6 +3172,25 @@ export type Database = {
         }
         Returns: Json
       }
+      save_my_matching_submission: {
+        Args: {
+          p_round_id: string
+          p_submission_id?: string | null
+          p_expected_updated_at?: string | null
+          p_config_revision?: number | null
+          p_answers?: Json
+        }
+        Returns: Json
+      }
+      admin_update_matching_submission: {
+        Args: {
+          p_submission_id: string
+          p_expected_updated_at: string | null
+          p_answers: Json
+          p_reason: string
+        }
+        Returns: Json
+      }
       admin_anonymize_member: {
         Args: { p_member_id: string; p_reason: string }
         Returns: Json

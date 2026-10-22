@@ -31,6 +31,7 @@ interface Props {
   configRevision?: number
   fromParticipation?: boolean
   existing?: {
+    id?: string
     updated_at?: string | null
     cancelled_at?: string | null
     game_type_pref: string
@@ -80,7 +81,9 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
     try {
       const res = await submitSurvey({ roundId, configRevision, ...validated.data,
         ...(purpose === "registration" ? { registrationIntent: existing ? existing.cancelled_at ? "rejoin" : "update" : "create",
-          expectedUpdatedAt: existing?.updated_at ?? null } : {}),
+          expectedUpdatedAt: existing?.updated_at ?? null } : {
+          submissionId: existing?.id ?? null, expectedUpdatedAt: existing?.updated_at ?? null,
+        }),
       })
       if (res.error) {
         if (res.error === "matchingProfileIncomplete" && "missingProfiles" in res) setMissingProfiles(res.missingProfiles ?? [])

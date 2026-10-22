@@ -117,7 +117,7 @@ export function RoundDetailClient({
       {matching && canImportMembers && !requiresPlayerAnswers ? <RoundImportPanel roundId={round.id} roundStatus={round.status} /> : null}
       {matching && <RoundStatsPanel stats={stats} activityStart={round.activity_start} activityEnd={round.activity_end} />}
       <RoundSubmissionRecords roundName={round.round_name} purpose={purpose} config={config} submissions={submissions} editable={editable} showRaw={canManageSubmissions} onEdit={handleEdit} onCreate={() => setCreateOpen(true)} />
-      {matching && canManageSubmissions && editSub && <SubmissionEditDialog key={editSub.id} open={editOpen} onOpenChange={setEditOpen} roundId={round.id} mode="edit" submission={editSub} activityStart={round.activity_start} activityEnd={round.activity_end} onSaved={handleSaved} />}
+      {matching && canManageSubmissions && editOpen && editSub && <SubmissionEditDialog key={editSub.id} open={editOpen} onOpenChange={setEditOpen} roundId={round.id} mode="edit" submission={editSub} activityStart={round.activity_start} activityEnd={round.activity_end} onSaved={handleSaved} />}
       {matching && canManageSubmissions && <SubmissionEditDialog open={createOpen} onOpenChange={setCreateOpen} roundId={round.id} mode="create" availableMembers={availableMembers} activityStart={round.activity_start} activityEnd={round.activity_end} onSaved={handleSaved} />}
     </div>
   )

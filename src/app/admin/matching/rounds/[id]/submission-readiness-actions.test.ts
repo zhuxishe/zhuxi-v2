@@ -35,7 +35,7 @@ function prepare(operation: "create" | "update", roundData = round) {
 function submit(operation: "create" | "update") {
   return operation === "create"
     ? createSubmission("round", "target-member", answers, "按成员要求核对报名")
-    : updateSubmission("submission", answers, "按成员要求核对报名")
+    : updateSubmission("submission", answers, "按成员要求核对报名", "2026-10-22T00:00:00.123456Z")
 }
 
 describe("admin matching submission profile requirements", () => {
@@ -62,9 +62,13 @@ describe("admin matching submission profile requirements", () => {
   it.each(["create", "update"] as const)("allows admin %s when all profiles are complete and retains the audit reason", async (operation) => {
     const mutation = prepare(operation)
     expect(await submit(operation)).toEqual({ success: true })
-    expect(operation === "create" ? mutation.insert : mutation.update).toHaveBeenCalledWith(expect.objectContaining({
+    if (operation === "create") expect(mutation.insert).toHaveBeenCalledWith(expect.objectContaining({
       message: "updated answer", audit_reason: "按成员要求核对报名",
     }))
+    else expect(mocks.rpc).toHaveBeenCalledWith("admin_update_matching_submission", {
+      p_submission_id: "submission", p_expected_updated_at: "2026-10-22T00:00:00.123456Z",
+      p_reason: "按成员要求核对报名", p_answers: answers,
+    })
     expect(mocks.revalidate).toHaveBeenCalledWith("/admin/matching/rounds/round")
   })
 
@@ -82,6 +86,7 @@ describe("admin matching submission profile requirements", () => {
     const error = { message: "MATCHING_PROFILE_INCOMPLETE" }
     mutation.insert.mockResolvedValue({ error })
     mutation.update.mockReturnValue({ eq: vi.fn().mockResolvedValue({ error }) })
+    if (operation === "update") mocks.rpc.mockResolvedValue({ error })
     mocks.readiness.mockResolvedValueOnce(complete).mockResolvedValueOnce(incomplete)
     expect(await submit(operation)).toEqual({ error: missingError })
     expect(mocks.readiness).toHaveBeenCalledTimes(2)
@@ -125,5 +130,19 @@ describe("admin matching submission profile requirements", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("admin_delete_operational_record", {
       p_entity: "match_round_submissions", p_id: "submission", p_reason: "按成员要求取消报名",
     })
+  })
+
+  it("rejects an admin edit missing its loaded timestamp and never obtains a fresh token to overwrite", async () => {
+    prepare("update")
+    expect((await updateSubmission("submission", answers, "核对并更正成员报名")).error).toContain("版本信息缺失")
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  it("reports an admin edit conflict without claiming success or clearing input", async () => {
+    prepare("update")
+    mocks.rpc.mockResolvedValue({ error: { message: "MATCHING_SUBMISSION_CHANGED", code: "40001" } })
+    expect((await submit("update")).error).toContain("已被其他页面或成员修改")
+    expect(answers.message).toBe("updated answer")
+    expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 })

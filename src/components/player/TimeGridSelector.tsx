@@ -2,6 +2,7 @@
 
 import { useCallback } from "react"
 import { useTranslations } from "next-intl"
+import { calendarDateRange, calendarWeekday } from "@/lib/calendar-date"
 
 /** DB keys — never change */
 const SLOTS = ["上午", "下午", "晚上"] as const
@@ -21,12 +22,7 @@ interface Props {
 export function TimeGridSelector({ startDate, endDate, value, onChange }: Props) {
   const t = useTranslations("timeGrid")
   // 生成日期列表
-  const dates: string[] = []
-  const start = new Date(startDate)
-  const end = new Date(endDate)
-  for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-    dates.push(d.toISOString().split("T")[0])
-  }
+  const dates = calendarDateRange(startDate, endDate)
 
   const toggleSlot = useCallback((date: string, slot: string) => {
     const current = value[date] ?? []
@@ -70,8 +66,7 @@ export function TimeGridSelector({ startDate, endDate, value, onChange }: Props)
       {/* 日期行 */}
       <div className="space-y-1">
         {dates.map((date) => {
-          const d = new Date(date)
-          const dayOfWeek = d.getDay()
+          const dayOfWeek = calendarWeekday(date)
           const weekday = t(`weekdays.${WEEKDAY_KEYS[dayOfWeek]}`)
           const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
           const selected = value[date] ?? []

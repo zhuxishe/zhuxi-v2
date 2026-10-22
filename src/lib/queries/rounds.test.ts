@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({ client: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: vi.fn() }))
-import { fetchLatestRound, fetchOpenRound, fetchRound, fetchRounds } from "./rounds"
+import { fetchLatestRound, fetchOpenRound, fetchRound, fetchRounds, fetchMySubmission } from "./rounds"
 
 const now = new Date("2026-09-29T01:00:00Z")
 const eligible = { id: "eligible", status: "open", survey_start: "2026-09-28T00:00:00Z", survey_end: "2026-09-30T00:00:00Z" }
@@ -76,5 +76,33 @@ describe("open round query against the collection window", () => {
     expect((await fetchOpenRound(now))?.id).toBe("eligible")
     await expect(fetchRound("deleted")).rejects.toMatchObject({ code: "PGRST116" })
     expect(requests.every((request) => request.searchParams.get("deleted_at") === "is.null")).toBe(true)
+  })
+})
+
+describe("saved survey answer reads", () => {
+  function source(body: unknown, status = 200) {
+    const fetch = vi.fn<typeof globalThis.fetch>(async () => new Response(JSON.stringify(body), {
+      status, headers: { "content-type": "application/json" },
+    }))
+    mocks.client.mockResolvedValue(createClient("https://survey-test.invalid", "test-key", {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { fetch },
+    }))
+    return fetch
+  }
+
+  it("distinguishes an empty successful lookup from a failed lookup", async () => {
+    source([])
+    expect(await fetchMySubmission("round-1", "member-1")).toBeNull()
+    source({ message: "query permission denied", code: "42501" }, 403)
+    await expect(fetchMySubmission("round-1", "member-1")).rejects.toMatchObject({ code: "42501" })
+  })
+
+  it("preserves the saved id and full precision version from the member-owned query", async () => {
+    const saved = { id: "saved-1", updated_at: "2026-10-23T01:02:03.123456+00:00", message: "saved answer" }
+    const fetch = source([saved])
+    expect(await fetchMySubmission("round-1", "member-1")).toEqual(saved)
+    const params = new URL(String(fetch.mock.calls[0][0])).searchParams
+    expect(params.get("round_id")).toBe("eq.round-1")
+    expect(params.get("member_id")).toBe("eq.member-1")
   })
 })

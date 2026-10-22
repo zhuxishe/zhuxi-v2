@@ -1331,6 +1331,7 @@
     "invalidSurveyInput": "填写内容的格式或选项无效，请检查后重试。",
     "customQuestionRequired": "请完成所有必填问题。",
     "surveyUpdated": "本期内容已更新，请刷新页面后确认并提交。",
+    "surveyResponseChanged": "这份答卷已在其他页面或后台被修改。本页填写内容仍保留，请先复制需要保留的内容，再刷新页面核对最新答卷。",
     "surveyReadOnly": "本期仅发布通知，无需提交问卷。",
     "registrationChanged": "报名状态已发生变化，请刷新页面后再操作。",
     "registrationCancelUnavailable": "当前无法自行取消报名。如需退出，请联系工作人员。",

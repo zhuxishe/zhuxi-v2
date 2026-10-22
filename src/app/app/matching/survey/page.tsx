@@ -93,6 +93,7 @@ export default async function SurveyPage({ searchParams }: { searchParams: Promi
         configRevision={round.config_revision ?? 0}
         fromParticipation={fromParticipation}
         existing={existing ? {
+          id: existing.id,
           updated_at: existing.updated_at,
           cancelled_at: existing.cancelled_at,
           game_type_pref: existing.game_type_pref,

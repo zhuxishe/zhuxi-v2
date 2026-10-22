@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
+import stationData from "@/data/stations.json"
 
 interface Station {
   name: string
@@ -8,8 +9,7 @@ interface Station {
   area: string
 }
 
- 
-const stations: Station[] = require("@/data/stations.json")
+const stations: Station[] = stationData
 
 interface Props {
   value: string

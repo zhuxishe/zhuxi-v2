@@ -20,7 +20,16 @@ export function questionnaireContext(runtime: QuestionnaireRuntime | null | unde
 }
 
 export function questionnaireLegacy<T extends object>(runtime: QuestionnaireRuntime | null | undefined, legacy: T): T {
-  return runtime ? { ...legacy, ...answersToLegacy(runtime.template, runtime.answers) } : legacy
+  if (!runtime) return legacy
+  const restored = { ...legacy } as Record<string, unknown>
+  for (const [field, value] of Object.entries(answersToLegacy(runtime.template, runtime.answers))) {
+    const fallback = (legacy as Record<string, unknown>)[field]
+    // Legacy builders give nullable database text/tags their editable empty shape.
+    // Keep nullable numbers (including unanswered sliders) and boolean false intact.
+    restored[field] = value === null && typeof fallback === "string" ? ""
+      : value === null && Array.isArray(fallback) ? [] : value
+  }
+  return restored as T
 }
 
 export function questionnaireError(error: string | undefined, locale = "zh") {

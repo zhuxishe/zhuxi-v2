@@ -75,6 +75,26 @@ INSERT INTO public.match_round_submissions(round_id,member_id,game_type_pref,gen
 VALUES('30000000-0000-0000-0000-000000000099','10000000-0000-0000-0000-000000000099','多人','都可以','{}','historical unchanged','{}',NULL);COMMIT;`)
 const before = (await db.query("SELECT md5(COALESCE(jsonb_agg(to_jsonb(s))::text,'')) digest FROM public.match_round_submissions s")).rows[0].digest
 await db.exec(migration)
+const implementationBefore=(await db.query(`SELECT p.oid::text AS oid,p.proname,p.prosrc,p.proacl::text AS acl,p.prosecdef,p.proconfig
+ FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+ WHERE n.nspname='private' AND p.proname IN ('save_my_matching_submission','admin_update_matching_submission','matching_submission_updated_at')
+ ORDER BY p.proname`)).rows
+const wrappersBefore=(await db.query(`SELECT p.oid::text AS oid,p.proname,p.proacl::text AS acl,p.prosecdef,p.proconfig
+ FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+ WHERE n.nspname='public' AND p.proname IN ('save_my_matching_submission','admin_update_matching_submission') ORDER BY p.proname`)).rows
+const timestampTriggerBefore=(await db.query("SELECT oid::text AS oid,tgfoid::text AS function_oid FROM pg_trigger WHERE tgrelid='public.match_round_submissions'::regclass AND tgname='z_matching_submission_updated_at'")).rows
+await db.exec(read('supabase/migrations/20261022180705_isolate_matching_submission_guard.sql'))
+const implementationAfter=(await db.query(`SELECT p.oid::text AS oid,p.proname,p.prosrc,p.proacl::text AS acl,p.prosecdef,p.proconfig
+ FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+ WHERE n.nspname='matching_submission_guard' AND p.proname IN ('save_my_matching_submission','admin_update_matching_submission','matching_submission_updated_at')
+ ORDER BY p.proname`)).rows
+const wrappersAfter=(await db.query(`SELECT p.oid::text AS oid,p.proname,p.proacl::text AS acl,p.prosecdef,p.proconfig
+ FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace
+ WHERE n.nspname='public' AND p.proname IN ('save_my_matching_submission','admin_update_matching_submission') ORDER BY p.proname`)).rows
+assert.equal(implementationBefore.length,3)
+assert.deepEqual(implementationAfter,implementationBefore)
+assert.deepEqual(wrappersAfter,wrappersBefore)
+assert.deepEqual((await db.query("SELECT oid::text AS oid,tgfoid::text AS function_oid FROM pg_trigger WHERE tgrelid='public.match_round_submissions'::regclass AND tgname='z_matching_submission_updated_at'")).rows,timestampTriggerBefore)
 assert.equal((await db.query("SELECT md5(COALESCE(jsonb_agg(to_jsonb(s))::text,'')) digest FROM public.match_round_submissions s")).rows[0].digest,before)
 const roundId=n=>`30000000-0000-0000-0000-${String(n).padStart(12,'0')}`
 const memberId=n=>`10000000-0000-0000-0000-${String(n).padStart(12,'0')}`
@@ -105,8 +125,9 @@ async function updateAdmin(id,stamp,payload=answers('admin correction'),reason='
  return (await db.query('select public.admin_update_matching_submission($1,$2,$3,$4) result',[id,stamp,JSON.stringify(payload),reason])).rows[0].result
 }
 async function stored(id){return (await db.query('select id,updated_at::text stamp,message,custom_answers from public.match_round_submissions where id=$1',[id])).rows[0]}
-let passed=1
+let passed=2
 console.log('PASS migration leaves existing historical answers and NULL timestamp untouched')
+console.log('PASS schema isolation preserves implementation bodies, OIDs, ACLs and the timestamp trigger binding')
 async function ok(name,fn){await fn();passed++;console.log('PASS '+name)}
 async function no(name,fn,match){await assert.rejects(fn,error=>error.message.includes(match),name);passed++;console.log('PASS '+name)}
 await newRound(1)
@@ -223,7 +244,10 @@ await ok('read-only postflight confirms function ACL/security, restrictive polic
  assert.equal(functions.length,4)
  assert.ok(functions.every(row=>row.exists&&row.expected_security&&row.empty_search_path&&row.authenticated_allowed&&row.anon_denied&&row.service_role_denied))
  assert.ok(checks.some(result=>result.rows[0]?.restrictive===true))
- assert.ok(checks.some(result=>result.rows[0]?.tgname==='z_matching_submission_updated_at'))
+ assert.ok(checks.some(result=>result.rows[0]?.tgname==='z_matching_submission_updated_at'&&result.rows[0]?.implementation_schema==='matching_submission_guard'))
+ const schema=checks.find(result=>result.rows[0]?.nspname==='matching_submission_guard')?.rows[0]
+ assert.ok(schema&&schema.owner==='postgres'&&schema.authenticated_usage&&schema.authenticated_cannot_create&&schema.anon_denied&&schema.service_role_denied)
+ assert.ok(schema.old_player_function_absent&&schema.old_admin_function_absent&&schema.old_timestamp_function_absent)
 })
 console.log(`All ${passed} matching concurrency database checks passed`)
 await db.close()

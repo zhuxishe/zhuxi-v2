@@ -5,13 +5,24 @@ import { ChevronLeft, ChevronRight, Check } from "lucide-react"
 import { useTranslations } from "next-intl"
 import { Button } from "@/components/ui/button"
 import type { QuizQuestionConfig } from "@/types/quiz-config"
-import { shuffleWithSeed } from "@/lib/questionnaires/quiz-order"
 
 interface Props {
   questions: QuizQuestionConfig[]
   initialAnswers?: { questionId: number; score: number }[]
   onAnswerChange?: () => void
   onComplete: (answers: { questionId: number; score: number }[]) => void
+}
+
+/** Fisher-Yates shuffle (stable per question via seed) */
+function shuffleWithSeed<T>(arr: T[], seed: number): T[] {
+  const a = [...arr]
+  let s = seed
+  for (let i = a.length - 1; i > 0; i--) {
+    s = (s * 9301 + 49297) % 233280
+    const j = Math.floor((s / 233280) * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
 export function PersonalityQuiz({ questions, initialAnswers = [], onComplete, onAnswerChange }: Props) {

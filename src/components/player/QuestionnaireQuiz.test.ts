@@ -3,7 +3,6 @@ import { renderToStaticMarkup } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { buildDefaultQuizConfig } from "@/lib/constants/personality-quiz"
 import { buildDefaultTemplate, quizAnswersFromTemplate } from "@/lib/questionnaires/defaults"
-import { quizOptionSeed, shuffleWithSeed } from "@/lib/questionnaires/quiz-order"
 import type { QuestionnaireAnswers, QuestionnaireQuestion, QuestionnaireTemplate } from "@/lib/questionnaires/types"
 
 const hooks = vi.hoisted(() => ({ values: [] as unknown[], cursor: 0 }))
@@ -30,9 +29,9 @@ vi.mock("@/components/ui/StationSearchSelect", () => ({ StationSearchSelect: () 
 
 import { PersonalityQuiz } from "./PersonalityQuiz"
 import { QuestionnaireQuiz } from "./QuestionnaireQuiz"
+import { QuestionnaireField } from "./QuestionnaireFields"
 
-// Captured from the original component before extracting its shuffle function.
-// These fixtures make the legacy comparison independent of the shared helper.
+// Captured from the original component; its existing shuffle stays unchanged.
 const originalQuestionOrder = [15, 9, 3, 2, 4, 11, 5, 1, 6, 8, 7, 10, 13, 12, 14]
 const originalOptionOrders: Record<number, number[]> = {
   1: [3, 1, 0, 2], 2: [3, 1, 2, 0], 3: [3, 1, 0, 2], 4: [1, 3, 2, 0], 5: [1, 3, 0, 2],
@@ -53,10 +52,6 @@ function content(html: string) {
     question: decode(/<p class="text-base font-medium leading-relaxed">([\s\S]*?)<\/p>/.exec(html)?.[1] ?? ""),
     options: [...html.matchAll(/<span class="text-sm leading-relaxed">([\s\S]*?)<\/span>/g)].map((match) => decode(match[1])),
   }
-}
-function visualMarkup(html: string) {
-  // The new renderer retains accessible option-group and pressed-state metadata.
-  return html.replace(/ (?:role="group"|aria-label="[^"]*"|aria-pressed="[^"]*"|type="button"|id="[^"]*")/g, "")
 }
 function renderedLegacy(current: number, answers: Record<number, number> = {}) {
   state([current, answers])
@@ -97,47 +92,65 @@ beforeEach(() => state([]))
 
 describe("original and versioned quiz rendering", () => {
   it.each(originalQuestionOrder.map((id, index) => ({ id, index })))("keeps original question $id and its option order at screen $index", ({ id, index }) => {
-    const template = buildDefaultTemplate("quiz")
     const original = renderedLegacy(index)
-    const versioned = renderedTemplate(template, index)
     const question = config.questions.find((question) => question.id === id)!
     expect(content(original)).toEqual({ question: question.text, options: originalOptionOrders[id].map((option) => question.options[option].text) })
-    expect(content(versioned)).toEqual(content(original))
-    expect(visualMarkup(versioned)).toBe(visualMarkup(original))
+  })
+
+  it.each(config.questions.map((question, index) => ({ id: question.id, index })))("renders configured question $id and options in template order at screen $index", ({ id, index }) => {
+    const template = buildDefaultTemplate("quiz")
+    const versioned = renderedTemplate(template, index)
+    const question = template.questions[index]
+    expect(question.id).toBe(`quiz_${id}`)
+    expect(content(versioned)).toEqual({ question: question.label.zh, options: question.options!.map((option) => option.label.zh) })
     expect(versioned).not.toContain('class="ml-1 text-destructive"')
   })
 
   it("keeps the same selected option and navigation when a published wording changes", () => {
     const template = buildDefaultTemplate("quiz")
-    const id = originalQuestionOrder[0]
-    const configured = template.questions.find((question) => question.id === `quiz_${id}`)!
+    const configured = template.questions[0]
     configured.label = { zh: "后台修改后的题干", ja: "変更された質問" }
     configured.options![0].label.zh = "后台修改后的选项"
     const selected = Number(configured.options![0].value)
-    const legacy = renderedLegacy(0, { [id]: selected })
     const modified = renderedTemplate(template, 0, { [configured.id]: selected })
     expect(content(modified).question).toBe("后台修改后的题干")
-    expect(content(modified).options).toEqual(originalOptionOrders[id].map((index) => configured.options![index].label.zh))
+    expect(content(modified).options).toEqual(configured.options!.map((option) => option.label.zh))
     expect(modified).toContain('aria-pressed="true"')
-    expect(modified.match(/bg-primary\/10 ring-primary/g)?.length).toBe(legacy.match(/bg-primary\/10 ring-primary/g)?.length)
+    expect(modified.match(/bg-primary\/10 ring-primary/g)).toHaveLength(1)
     expect(modified).toContain('width:7%')
   })
 })
 
 describe("custom question identity and data preservation", () => {
-  it("shuffles added nonnumeric IDs deterministically without changing stored template data", () => {
-    const template = withQuestions([singleQuestion(), singleQuestion({ id: "another_custom-id", label: { zh: "另一题", ja: "別の質問" } }), singleQuestion({ id: "third_custom-id" })])
+  it("keeps added questions and options in template order without changing stored template data", () => {
+    const template = withQuestions([singleQuestion(), singleQuestion({ id: "another_custom-id", label: { zh: "另一题", ja: "別の質問" } }), singleQuestion({ id: "third_custom-id", label: { zh: "第三题", ja: "三問目" } })])
     const before = structuredClone(template)
     const first = Array.from({ length: template.questions.length }, (_, index) => content(renderedTemplate(template, index)))
     const again = Array.from({ length: template.questions.length }, (_, index) => content(renderedTemplate(template, index)))
+    expect(first).toEqual(template.questions.map((question) => ({ question: question.label.zh, options: question.options!.map((option) => option.label.zh) })))
     expect(first).toEqual(again)
     expect(template).toEqual(before)
-    expect(quizOptionSeed(template.questions[0])).toBe(quizOptionSeed(structuredClone(template.questions[0])))
-    expect(quizOptionSeed({ id: "quiz_15", builtinField: "quiz_15" })).toBe(15 * 137)
-    expect(shuffleWithSeed([1, 2, 3], 42)).toHaveLength(3)
   })
 
-  it("stores the stable option value rather than its shuffled position or edited score", () => {
+  it("reflects published question and option rearrangement while skipping inactive questions", () => {
+    const first = singleQuestion({ id: "first", label: { zh: "第一题", ja: "一問目" } })
+    const second = singleQuestion({ id: "second", label: { zh: "第二题", ja: "二問目" } })
+    second.options = [second.options![3], second.options![1], second.options![0], second.options![2]]
+    const template = withQuestions([second, singleQuestion({ id: "hidden", active: false }), first])
+    expect(content(renderedTemplate(template, 0))).toEqual({ question: "第二题", options: ["delta", "beta", "alpha", "gamma"] })
+    expect(content(renderedTemplate(template, 1))).toEqual({ question: "第一题", options: ["alpha", "beta", "gamma", "delta"] })
+  })
+
+  it("passes non-single questions with their configured option order unchanged", () => {
+    const question = singleQuestion({ type: "multi" })
+    question.options = [question.options![2], question.options![0], question.options![3], question.options![1]]
+    const tree = view(withQuestions([question]), 0, {})
+    const field = elements(tree).find((element) => element.type === QuestionnaireField)!
+    expect(field.props.question).toBe(question)
+    expect((field.props.question as QuestionnaireQuestion).options!.map((option) => option.value)).toEqual(["gamma", "alpha", "delta", "beta"])
+  })
+
+  it("stores the stable option value rather than its display position or edited score", () => {
     const template = buildDefaultTemplate("quiz")
     const question = template.questions[14]
     question.options![0].score = 9

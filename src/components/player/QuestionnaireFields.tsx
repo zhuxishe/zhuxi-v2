@@ -12,7 +12,6 @@ import { MajorSearchSelect } from "@/components/ui/MajorSearchSelect"
 import { StationSearchSelect } from "@/components/ui/StationSearchSelect"
 import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
 import { localizePersonalityOption } from "@/lib/constants/personality-i18n"
-import { groupSizeSelection } from "@/lib/constants/supplementary"
 import { BOOLEAN_FIELDS } from "@/lib/questionnaires/defaults"
 import { PersonalitySlider } from "./PersonalitySlider"
 import { BirthdayPicker } from "./BirthdayPicker"
@@ -49,14 +48,7 @@ export function QuestionnaireField({ question, value, onChange, kind = "intervie
         const active = selected === option.value
         return <button key={option.id} type="button" onClick={() => onChange(option.value)} aria-pressed={active} className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${active ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground hover:bg-muted/80"}`}>{labels[option.value]}</button>
       })}</div>
-      const values = options.map((option) => option.value)
-      const selection = isSupplementaryBuiltin && question.builtinField === "ideal_group_size" && !values.includes(selected) ? groupSizeSelection(selected) : selected
-      if (isSupplementaryBuiltin && question.builtinField === "graduation_year" && /^\d{4}$/.test(selected) && Number(selected) >= 1900 && Number(selected) <= 2100 && !values.includes(selected)) {
-        values.push(selected)
-        values.sort((a, b) => Number(a) - Number(b))
-        labels[selected] = selected
-      }
-      return <SingleSelect options={values} value={selection} labels={labels} onChange={onChange} />
+      return <SingleSelect options={options.map((option) => option.value)} value={selected} labels={labels} onChange={onChange} />
     }
     if (question.type === "multi") return <MultiTagSelect options={options.map((option) => option.value)} value={Array.isArray(value) ? value : []} labels={labels} max={question.maxSelections} onChange={onChange} />
     if (question.type === "rating") {

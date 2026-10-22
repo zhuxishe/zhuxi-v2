@@ -16,6 +16,19 @@ export interface PendingApplicationsPage {
   pageSize: number
 }
 
+export interface IgnoredApplicationItem extends PendingApplicationItem {
+  ignoredAt: string
+  ignoredByName: string
+  ignoreReason: string
+}
+
+export interface IgnoredApplicationsPage {
+  items: IgnoredApplicationItem[]
+  total: number
+  page: number
+  pageSize: number
+}
+
 export interface PendingApplicationApprovalResult {
   id: string
   success: boolean

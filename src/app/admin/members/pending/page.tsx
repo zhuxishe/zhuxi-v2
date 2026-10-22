@@ -1,21 +1,26 @@
 import Link from "next/link"
 import { ArrowLeft, ArrowUpRight, Search } from "lucide-react"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchPendingApplications } from "@/lib/queries/pending-applications"
+import { fetchIgnoredApplications, fetchPendingApplications } from "@/lib/queries/pending-applications"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { PendingApplicationsQueue } from "@/components/admin/pending-applications/PendingApplicationsQueue"
+import { IgnoredApplicationsList } from "@/components/admin/pending-applications/IgnoredApplicationsList"
 import { Pagination } from "@/components/shared/Pagination"
 import { Button } from "@/components/ui/button"
 import { parseMemberDirectoryPage } from "@/components/admin/member-center-utils"
 
 export default async function PendingApplicationsPage({ searchParams }: {
-  searchParams: Promise<{ search?: string; page?: string }>
+  searchParams: Promise<{ search?: string; page?: string; ignoredPage?: string }>
 }) {
   const admin = await requireAdmin()
   const params = await searchParams
   const search = (params.search ?? "").trim().slice(0, 100)
   const requestedPage = parseMemberDirectoryPage(params.page)
-  const applications = await fetchPendingApplications({ search, page: requestedPage })
+  const requestedIgnoredPage = parseMemberDirectoryPage(params.ignoredPage)
+  const [applications, ignoredApplications] = await Promise.all([
+    fetchPendingApplications({ search, page: requestedPage }),
+    fetchIgnoredApplications({ search, page: requestedIgnoredPage }),
+  ])
 
   return (
     <div>
@@ -28,7 +33,7 @@ export default async function PendingApplicationsPage({ searchParams }: {
           <div>
             <p className="text-xs font-semibold tracking-widest text-primary">成员审核</p>
             <h1 className="heading-display mt-2 text-2xl sm:text-3xl">待处理申请</h1>
-            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">核对已提交的资料后填写说明，可逐个通过，也可勾选批量处理。</p>
+            <p className="mt-2 max-w-xl text-sm leading-6 text-muted-foreground">核对已提交的资料后填写说明，可逐个通过或勾选批量处理；无须继续跟进的申请可移入已忽略列表。</p>
           </div>
           <Link href="/admin/members" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-sm transition-colors hover:bg-muted">
             全部成员<ArrowUpRight aria-hidden="true" className="size-4" />
@@ -53,6 +58,7 @@ export default async function PendingApplicationsPage({ searchParams }: {
 
         <PendingApplicationsQueue key={`${search}:${requestedPage}`} items={applications.items} />
         <Pagination total={applications.total} page={applications.page} pageSize={applications.pageSize} />
+        <IgnoredApplicationsList key={`${search}:${requestedIgnoredPage}`} applications={ignoredApplications} search={search} pendingPage={requestedPage} />
       </div>
     </div>
   )

@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { ArrowUpRight, Check, CircleAlert } from "lucide-react"
+import { ArrowUpRight, Check, CircleAlert, EyeOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { formatAdminDateTime } from "@/lib/admin-datetime"
 import type { PendingApplicationItem as PendingApplication } from "@/types/pending-applications"
@@ -12,12 +12,13 @@ interface Props {
   selected: boolean
   onSelect: () => void
   onApprove: () => void
+  onIgnore: () => void
 }
 
-export function PendingApplicationRow({ item, selected, onSelect, onApprove }: Props) {
+export function PendingApplicationRow({ item, selected, onSelect, onApprove, onIgnore }: Props) {
   const name = item.fullName || "未填写姓名"
   return (
-    <li className={`grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-2 gap-y-3 border-b border-border/60 px-3 py-4 transition-colors last:border-0 sm:px-5 lg:grid-cols-[2.5rem_minmax(0,1.3fr)_minmax(0,1fr)_10rem_12rem] lg:items-center lg:gap-x-4 ${selected ? "bg-bamboo-muted/70" : "hover:bg-muted/30"}`}>
+    <li className={`grid grid-cols-[2.5rem_minmax(0,1fr)] items-start gap-x-2 gap-y-3 border-b border-border/60 px-3 py-4 transition-colors last:border-0 sm:px-5 lg:grid-cols-[2.5rem_minmax(0,1.3fr)_minmax(0,1fr)_9rem_15rem] lg:items-center lg:gap-x-4 ${selected ? "bg-bamboo-muted/70" : "hover:bg-muted/30"}`}>
       <ApprovalSelectionCheckbox label={`选择 ${name}`} checked={selected} disabled={Boolean(item.blockReason)} onChange={onSelect} />
       <div className="min-w-0 self-center">
         <Link href={`/admin/members/${item.id}`} className="font-semibold text-foreground underline-offset-4 hover:text-primary hover:underline focus-visible:rounded focus-visible:outline-2 focus-visible:outline-primary">
@@ -38,6 +39,9 @@ export function PendingApplicationRow({ item, selected, onSelect, onApprove }: P
         </Link>
         <Button type="button" variant="outline" className="min-h-10 border-primary/20 text-primary" disabled={Boolean(item.blockReason)} onClick={onApprove}>
           <Check className="size-4" aria-hidden="true" />快速通过
+        </Button>
+        <Button type="button" variant="ghost" className="min-h-10 px-2 text-muted-foreground" onClick={onIgnore}>
+          <EyeOff className="size-4" aria-hidden="true" />忽略
         </Button>
       </div>
       {item.blockReason ? (

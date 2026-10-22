@@ -9,6 +9,7 @@ import { ApprovalDialog } from "./ApprovalDialog"
 import { ApprovalResultList } from "./ApprovalResultList"
 import { ApprovalSelectionCheckbox } from "./ApprovalSelectionCheckbox"
 import { PendingApplicationRow } from "./PendingApplicationRow"
+import { ApplicationIgnoreDialog } from "./ApplicationIgnoreDialog"
 import type { ApprovalResult } from "./approval-results"
 
 export function PendingApplicationsQueue({ items }: { items: PendingApplication[] }) {
@@ -16,6 +17,8 @@ export function PendingApplicationsQueue({ items }: { items: PendingApplication[
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [completedIds, setCompletedIds] = useState<string[]>([])
   const [targets, setTargets] = useState<PendingApplication[] | null>(null)
+  const [ignoreTarget, setIgnoreTarget] = useState<PendingApplication | null>(null)
+  const [ignoreNotice, setIgnoreNotice] = useState<string | null>(null)
   const [report, setReport] = useState<{ targets: PendingApplication[]; results: ApprovalResult[] } | null>(null)
   const visible = items.filter((item) => !completedIds.includes(item.id))
   const eligible = visible.filter((item) => !item.blockReason)
@@ -36,6 +39,7 @@ export function PendingApplicationsQueue({ items }: { items: PendingApplication[
 
   return (
     <div className="space-y-4">
+      {ignoreNotice ? <p role="status" className="rounded-xl border border-primary/15 bg-bamboo-muted/50 px-4 py-3 text-sm font-medium text-primary">{ignoreNotice}</p> : null}
       {report ? <div className="rounded-xl border border-primary/15 bg-bamboo-muted/50 px-4 py-3">
         <p role="status" className="text-sm font-medium text-primary">
           本次已通过 {report.results.filter((result) => result.success).length} 人
@@ -61,11 +65,11 @@ export function PendingApplicationsQueue({ items }: { items: PendingApplication[
           </div>
         </div>
         {visible.length ? <>
-          <div aria-hidden="true" className="hidden grid-cols-[2.5rem_minmax(0,1.3fr)_minmax(0,1fr)_10rem_12rem] gap-x-4 border-b border-border/60 px-5 py-2.5 text-xs text-muted-foreground lg:grid">
+          <div aria-hidden="true" className="hidden grid-cols-[2.5rem_minmax(0,1.3fr)_minmax(0,1fr)_9rem_15rem] gap-x-4 border-b border-border/60 px-5 py-2.5 text-xs text-muted-foreground lg:grid">
             <span /><span>申请人</span><span>学校</span><span>提交时间（日本时间）</span><span className="text-right">审核操作</span>
           </div>
           <ul>
-            {visible.map((item) => <PendingApplicationRow key={item.id} item={item} selected={selected.some((value) => value.id === item.id)} onSelect={() => toggle(item.id)} onApprove={() => setTargets([item])} />)}
+            {visible.map((item) => <PendingApplicationRow key={item.id} item={item} selected={selected.some((value) => value.id === item.id)} onSelect={() => toggle(item.id)} onApprove={() => setTargets([item])} onIgnore={() => setIgnoreTarget(item)} />)}
           </ul>
         </> : <div className="flex flex-col items-center px-6 py-14 text-center">
           <span className="mb-4 rounded-full bg-bamboo-muted p-3 text-primary"><ClipboardCheck className="size-6" aria-hidden="true" /></span>
@@ -74,6 +78,12 @@ export function PendingApplicationsQueue({ items }: { items: PendingApplication[
         </div>}
       </section>
       {targets ? <ApprovalDialog targets={targets} onClose={() => setTargets(null)} onResults={receiveResults} /> : null}
+      {ignoreTarget ? <ApplicationIgnoreDialog mode="ignore" target={ignoreTarget} onClose={() => setIgnoreTarget(null)} onSuccess={() => {
+        setSelectedIds((previous) => previous.filter((id) => id !== ignoreTarget.id))
+        setIgnoreNotice(`${ignoreTarget.fullName || "该申请人"}已移入已忽略列表，待处理人数已更新。`)
+        setIgnoreTarget(null)
+        router.refresh()
+      }} /> : null}
     </div>
   )
 }

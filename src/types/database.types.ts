@@ -1656,6 +1656,38 @@ export type Database = {
           },
         ]
       }
+      member_application_ignores: {
+        Row: {
+          member_id: string
+          ignored_at: string
+          actor_admin_id: string
+          actor_name: string
+          reason: string
+        }
+        Insert: {
+          member_id: string
+          ignored_at?: string
+          actor_admin_id: string
+          actor_name: string
+          reason: string
+        }
+        Update: {
+          member_id?: string
+          ignored_at?: string
+          actor_admin_id?: string
+          actor_name?: string
+          reason?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_application_ignores_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: true
+            referencedRelation: "members"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       member_boundaries: {
         Row: {
           boundary_notes: string | null
@@ -3109,6 +3141,20 @@ export type Database = {
       }
     }
     Functions: {
+      admin_approve_pending_application: {
+        Args: { p_member_id: string; p_reason: string; p_expected_updated_at: string }
+        Returns: Json
+      }
+      admin_set_pending_application_ignored: {
+        Args: {
+          p_member_id: string
+          p_ignored: boolean
+          p_reason: string
+          p_expected_updated_at?: string | null
+          p_expected_ignored_at?: string | null
+        }
+        Returns: Json
+      }
       get_admin_questionnaires: { Args: Record<PropertyKey, never>; Returns: Json }
       initialize_questionnaire_template: { Args: { p_kind: string; p_template: Json }; Returns: Json }
       save_questionnaire_draft: { Args: { p_kind: string; p_expected_revision: number; p_template: Json }; Returns: Json }

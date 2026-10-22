@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({ admin: vi.fn(), client: vi.fn() }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.admin }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.client }))
-import { fetchPendingApplicationCount, fetchPendingApplicationForApproval, fetchPendingApplications } from "./pending-applications"
+import { fetchIgnoredApplications, fetchPendingApplicationCount, fetchPendingApplicationForApproval, fetchPendingApplications } from "./pending-applications"
 import { fetchDashboardStats } from "./admin"
 
 const id = "11111111-1111-4111-8111-111111111111"
@@ -18,7 +18,11 @@ const base = {
     activity_type_tags: ["桌游"], personality_self_tags: ["温和"],
   },
 }
-let rows: Array<Omit<typeof base, "member_identity"> & { member_identity: typeof base.member_identity | null }>
+const ignoreRecord = { member_id: id, ignored_at: "2026-10-23T10:00:00Z", actor_name: "管理员", reason: "非目标申请" }
+let rows: Array<Omit<typeof base, "member_identity"> & {
+  member_identity: typeof base.member_identity | null
+  application_ignore?: typeof ignoreRecord | null
+}>
 let requests: URL[]
 let denied: boolean
 
@@ -33,15 +37,20 @@ describe("pending applications with the real Supabase request builder", () => {
         const url = new URL(String(input)); requests.push(url)
         if (denied) return new Response(JSON.stringify({ code: "42501", message: "Denied" }), { status: 403 })
         const p = url.searchParams
-        const filtered = rows.filter((row) => {
+        let filtered = rows.filter((row) => {
           for (const key of ["id", "record_scope", "account_status", "status", "onboarding_step"] as const) {
             const filter = p.get(key)
             if (filter?.startsWith("eq.") && filter !== `eq.${row[key]}`) return false
             if (filter?.startsWith("neq.") && filter === `neq.${row[key]}`) return false
           }
           return (!p.get("profile_stage") || p.get("profile_stage")!.slice(4, -1).split(",").includes(row.profile_stage))
-            && (!p.get("select")?.includes("!inner") || row.member_identity !== null)
+            && (!p.get("select")?.includes("member_identity!inner(") || row.member_identity !== null)
+            && (p.get("application_ignore") !== "is.null" || !row.application_ignore)
+            && (!p.get("select")?.includes("application_ignore:member_application_ignores!inner(") || !!row.application_ignore)
         })
+        if (p.get("order") === "application_ignore(ignored_at).desc,id.asc") {
+          filtered = [...filtered].sort((a, b) => b.application_ignore!.ignored_at.localeCompare(a.application_ignore!.ignored_at) || a.id.localeCompare(b.id))
+        }
         const offset = Number(p.get("offset") ?? 0), limit = Number(p.get("limit") ?? filtered.length)
         const body = init?.method === "HEAD" ? null : JSON.stringify(filtered.slice(offset, offset + limit))
         return new Response(body, { headers: { "content-type": "application/json", "content-range": `0-${filtered.length - 1}/${filtered.length}` } })
@@ -53,11 +62,13 @@ describe("pending applications with the real Supabase request builder", () => {
     rows = [base, { ...base, id: "complete", profile_stage: "complete" },
       { ...base, id: "historical", record_scope: "historical" }, { ...base, id: "inactive", account_status: "suspended" },
       { ...base, id: "done", status: "approved" }, { ...base, id: "draft", profile_stage: "in_progress" },
-      { ...base, id: "step", onboarding_step: 3 }, { ...base, id: "identity", member_identity: null }]
+      { ...base, id: "step", onboarding_step: 3 }, { ...base, id: "identity", member_identity: null },
+      { ...base, id: "ignored", application_ignore: ignoreRecord }]
     expect(await fetchPendingApplicationCount()).toBe(2)
     expect((await fetchDashboardStats()).pending).toBe(2)
     expect((await fetchPendingApplications()).items.map((item) => item.id)).toEqual([id, "complete"])
     expect(await fetchPendingApplicationForApproval("done")).toBeNull()
+    expect(await fetchPendingApplicationForApproval("ignored")).toBeNull()
     expect((await fetchPendingApplicationForApproval(id))?.id).toBe(id)
     const scope = requests.filter((r) => r.searchParams.has("onboarding_step"))
     expect(scope.length).toBeGreaterThan(4)
@@ -68,6 +79,9 @@ describe("pending applications with the real Supabase request builder", () => {
       expect(request.searchParams.get("profile_stage")).toBe("in.(submitted,complete)")
       expect(request.searchParams.get("onboarding_step")).toBe("eq.4")
       expect(request.searchParams.get("select")).toContain("member_identity!inner(")
+      expect(request.searchParams.get("select")).toContain("application_ignore:member_application_ignores(member_id)")
+      expect(request.searchParams.get("application_ignore")).toBe("is.null")
+      expect(request.searchParams.has("id") && request.searchParams.get("id")?.startsWith("not.in.")).toBe(false)
     }
   })
 
@@ -118,6 +132,65 @@ describe("pending applications with the real Supabase request builder", () => {
     expect(requests).toHaveLength(1)
   })
 
+  it("lists only ignored applications in the same current active submitted scope with audit metadata", async () => {
+    rows = [base, { ...base, id: "ignored", application_ignore: ignoreRecord },
+      { ...base, id: "complete", profile_stage: "complete", application_ignore: ignoreRecord },
+      { ...base, id: "historical", record_scope: "historical", application_ignore: ignoreRecord },
+      { ...base, id: "inactive", account_status: "suspended", application_ignore: ignoreRecord },
+      { ...base, id: "done", status: "approved", application_ignore: ignoreRecord },
+      { ...base, id: "draft", profile_stage: "in_progress", application_ignore: ignoreRecord },
+      { ...base, id: "step", onboarding_step: 3, application_ignore: ignoreRecord },
+      { ...base, id: "identity", member_identity: null, application_ignore: ignoreRecord }]
+
+    const result = await fetchIgnoredApplications()
+    expect(result).toMatchObject({ total: 2, page: 1, pageSize: 50 })
+    expect(result.items.map((item) => item.id)).toEqual(["complete", "ignored"])
+    expect(result.items[0]).toMatchObject({ ignoredAt: ignoreRecord.ignored_at, ignoredByName: "管理员", ignoreReason: "非目标申请", updatedAt: base.updated_at })
+    expect(JSON.stringify(result)).not.toContain("nationality")
+    for (const request of requests) {
+      expect(request.pathname).toBe("/rest/v1/members")
+      expect(request.searchParams.get("record_scope")).toBe("eq.current")
+      expect(request.searchParams.get("account_status")).toBe("eq.active")
+      expect(request.searchParams.get("status")).toBe("eq.pending")
+      expect(request.searchParams.get("profile_stage")).toBe("in.(submitted,complete)")
+      expect(request.searchParams.get("onboarding_step")).toBe("eq.4")
+      expect(request.searchParams.get("select")).toContain("member_identity!inner(")
+      expect(request.searchParams.get("select")).toContain("application_ignore:member_application_ignores!inner(ignored_at,actor_name,reason)")
+      expect(request.searchParams.has("application_ignore")).toBe(false)
+    }
+  })
+
+  it("paginates ignored applications by newest ignore time with a stable member ID tie-break", async () => {
+    rows = Array.from({ length: 51 }, (_, index) => ({
+      ...base, id: String(index).padStart(3, "0"), application_ignore: { ...ignoreRecord, ignored_at: "2026-10-22T10:00:00Z" },
+    }))
+    rows[50].application_ignore!.ignored_at = "2026-10-23T10:00:00Z"
+    const first = await fetchIgnoredApplications()
+    expect(first.items[0].id).toBe("050")
+    expect(first.items[1].id).toBe("000")
+    const last = await fetchIgnoredApplications({ page: 99 })
+    expect(last).toMatchObject({ total: 51, page: 2, pageSize: 50 })
+    expect(last.items.map((item) => item.id)).toEqual(["049"])
+    expect(requests[3].searchParams.get("offset")).toBe("50")
+    expect(requests[3].searchParams.get("limit")).toBe("50")
+    expect(requests[3].searchParams.get("order")).toBe("application_ignore(ignored_at).desc,id.asc")
+    expect(requests[3].searchParams.has("application_ignore.order")).toBe(false)
+  })
+
+  it("returns an empty ignored page without fetching a list when no ignored candidates remain", async () => {
+    expect(await fetchIgnoredApplications({ page: -1 })).toEqual({ items: [], total: 0, page: 1, pageSize: 50 })
+    expect(requests).toHaveLength(1)
+  })
+
+  it("uses the same literal search escaping for the ignored list and its count", async () => {
+    rows = [{ ...base, application_ignore: ignoreRecord }]
+    await fetchIgnoredApplications({ search: 'A%,_()."\\' })
+    const pattern = '"%A\\\\%,\\\\_().\\"\\\\\\\\%"'
+    const expected = `(${["full_name", "nickname", "school_name"].map((field) => `${field}.ilike.${pattern}`).join(",")})`
+    expect(requests).toHaveLength(2)
+    for (const request of requests) expect(request.searchParams.get("member_identity.or")).toBe(expected)
+  })
+
   it("quotes PostgREST syntax and escapes literal LIKE wildcards for all three identity columns", async () => {
     await fetchPendingApplications({ search: 'A%,_()."\\' })
     const pattern = '"%A\\\\%,\\\\_().\\"\\\\\\\\%"'
@@ -135,6 +208,7 @@ describe("pending applications with the real Supabase request builder", () => {
     await expect(fetchPendingApplications()).rejects.toThrow("not admin")
     await expect(fetchPendingApplicationCount()).rejects.toThrow("not admin")
     await expect(fetchPendingApplicationForApproval(id)).rejects.toThrow("not admin")
+    await expect(fetchIgnoredApplications()).rejects.toThrow("not admin")
     expect(mocks.client).not.toHaveBeenCalled()
   })
 
@@ -142,5 +216,6 @@ describe("pending applications with the real Supabase request builder", () => {
     denied = true
     await expect(fetchPendingApplications()).rejects.toThrow("无法读取")
     await expect(fetchPendingApplicationForApproval(id)).rejects.toThrow("无法读取")
+    await expect(fetchIgnoredApplications()).rejects.toThrow("无法读取已忽略")
   })
 })

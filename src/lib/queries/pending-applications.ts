@@ -2,7 +2,7 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { memberApprovalBlockReason } from "@/lib/member-master/approval"
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { MemberCenterRecord } from "@/types/member-center"
-import type { PendingApplicationItem, PendingApplicationsPage } from "@/types/pending-applications"
+import type { IgnoredApplicationItem, IgnoredApplicationsPage, PendingApplicationItem, PendingApplicationsPage } from "@/types/pending-applications"
 
 const PAGE_SIZE = 50
 const IDENTITY_COLUMNS = "full_name,nickname,school_name,gender,age_range,nationality,current_city,hobby_tags,activity_type_tags,personality_self_tags"
@@ -19,12 +19,25 @@ interface ApplicationRow {
   updated_at: string
   member_identity: MemberCenterRecord | MemberCenterRecord[]
 }
+interface ApplicationIgnoreRow {
+  ignored_at: string
+  actor_name: string
+  reason: string
+}
+interface IgnoredApplicationRow extends ApplicationRow {
+  application_ignore: ApplicationIgnoreRow | ApplicationIgnoreRow[]
+}
 
 /** Keep the dashboard count, list and mutation eligibility on the same scope. */
-function pendingQuery(client: Client, columns: string, head = false, search = "") {
-  let query = client.from("members").select(columns, { count: "exact", head })
+function applicationQuery(client: Client, columns: string, head = false, search = "", ignored = false) {
+  const ignoreColumns = ignored
+    ? "application_ignore:member_application_ignores!inner(ignored_at,actor_name,reason)"
+    : "application_ignore:member_application_ignores(member_id)"
+  let query = client.from("members").select(`${columns},${ignoreColumns}`, { count: "exact", head })
     .eq("record_scope", "current").eq("account_status", "active").eq("status", "pending")
     .in("profile_stage", ["submitted", "complete"]).eq("onboarding_step", 4)
+  // An embedded null filter is a database-side anti-join, including for HEAD counts.
+  if (!ignored) query = query.is("application_ignore", null)
   if (search) {
     // PostgREST treats * as a LIKE alias, so use an escaped literal regex for it.
     const operator = search.includes("*") ? "imatch" : "ilike"
@@ -35,6 +48,10 @@ function pendingQuery(client: Client, columns: string, head = false, search = ""
     query = query.or(["full_name", "nickname", "school_name"].map((column) => `${column}.${operator}.${quoted}`).join(","), { referencedTable: "member_identity" })
   }
   return query
+}
+
+function pendingQuery(client: Client, columns: string, head = false, search = "") {
+  return applicationQuery(client, columns, head, search)
 }
 
 function displayText(value: unknown): string | null {
@@ -56,6 +73,12 @@ function toItem(row: ApplicationRow): PendingApplicationItem {
       identity,
     }),
   }
+}
+
+function toIgnoredItem(row: IgnoredApplicationRow): IgnoredApplicationItem {
+  const ignored = Array.isArray(row.application_ignore) ? row.application_ignore[0] : row.application_ignore
+  if (!ignored) throw new Error("无法读取已忽略申请，请刷新后重试")
+  return { ...toItem(row), ignoredAt: ignored.ignored_at, ignoredByName: ignored.actor_name, ignoreReason: ignored.reason }
 }
 
 async function countPending(client: Client, search = "") {
@@ -83,6 +106,24 @@ export async function fetchPendingApplications(input: { search?: string; page?: 
     .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1).returns<ApplicationRow[]>()
   if (error) throw new Error("无法读取待处理申请，请刷新后重试")
   return { items: (data ?? []).map(toItem), total, page, pageSize: PAGE_SIZE }
+}
+
+export async function fetchIgnoredApplications(input: { search?: string; page?: number } = {}): Promise<IgnoredApplicationsPage> {
+  await requireAdmin()
+  const client = createAdminClient()
+  const search = (input.search ?? "").trim().slice(0, 100)
+  const { count, error: countError } = await applicationQuery(client, "id,member_identity!inner(id)", true, search, true)
+  if (countError) throw new Error("无法读取已忽略申请，请刷新后重试")
+  const total = count ?? 0
+  const requestedPage = Number.isSafeInteger(input.page) && input.page! > 0 ? input.page! : 1
+  const page = Math.min(requestedPage, Math.max(1, Math.ceil(total / PAGE_SIZE)))
+  if (total === 0) return { items: [], total, page, pageSize: PAGE_SIZE }
+  const { data, error } = await applicationQuery(client, COLUMNS, false, search, true)
+    // member_id is both PK and FK, so PostgREST supports ordering parents by this to-one relation.
+    .order("application_ignore(ignored_at)", { ascending: false }).order("id", { ascending: true })
+    .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1).returns<IgnoredApplicationRow[]>()
+  if (error) throw new Error("无法读取已忽略申请，请刷新后重试")
+  return { items: (data ?? []).map(toIgnoredItem), total, page, pageSize: PAGE_SIZE }
 }
 
 /** Re-read a single current candidate immediately before its versioned approval. */

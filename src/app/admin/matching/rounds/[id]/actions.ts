@@ -12,6 +12,8 @@ import type { Json } from "@/types/database.types"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
 import { fetchMemberMatchingReadiness } from "@/lib/matching/readiness-server"
+import { canRunRoundMatching } from "@/components/admin/round-detail-rules"
+import { getSurveyWindowState } from "@/lib/matching/survey-window"
 
 async function matchingProfileError(memberId: string) {
   try {
@@ -51,7 +53,7 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
   if (!reasonResult.ok) return { error: reasonResult.error }
   const supabase = await createClient()
 
-  // 0. 前置状态校验：只有 closed 状态的轮次才能执行匹配
+  // 0. 已开放收集（含到期但未手动截止）或已截止的轮次可以执行匹配。
   const { data: round, error: roundErr } = await supabase
     .from("match_rounds")
     .select("*")
@@ -60,8 +62,11 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
 
   if (roundErr || !round || round.deleted_at) return { error: "轮次不存在" }
   if (getRoundPurpose(round.purpose) !== "matching") return { error: "只有收集时间后匹配的轮次可以运行匹配" }
-  if (round.status !== "closed") {
-    return { error: `当前轮次状态为「${roundStatusLabel(round.status)}」，只有「已截止」状态才能执行匹配` }
+  const windowState = getSurveyWindowState(round)
+  if (!canRunRoundMatching(round.status, windowState)) {
+    if (windowState === "scheduled") return { error: "问卷尚未到开放收集时间，暂不能执行匹配" }
+    if (windowState === "invalid") return { error: "问卷收集时间配置无效，暂不能执行匹配" }
+    return { error: `当前轮次状态为「${roundStatusLabel(round.status)}」，只有已开放收集或已截止的轮次才能执行匹配` }
   }
 
   // 1. 获取问卷提交（含用户资料）
@@ -169,14 +174,15 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
     }
   }
 
-  // 8. 更新轮次状态为 matched
+  // 8. 收集中的轮次继续保持 open，不改变截止时间；已截止轮次沿用 matched。
   const { data: matchedRound, error: roundStatusError } = await supabase
     .from("match_rounds")
-    .update({ status: "matched" })
+    .update({ status: round.status === "open" ? "open" : "matched" })
     .eq("id", roundId)
-    .eq("status", "closed")
+    .eq("status", round.status)
     .eq("survey_start", round.survey_start)
     .eq("survey_end", round.survey_end)
+    .is("deleted_at", null)
     .select("id")
     .maybeSingle()
   if (roundStatusError || !matchedRound) {

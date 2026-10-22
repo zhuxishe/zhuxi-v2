@@ -356,6 +356,8 @@ Supabase 依据：[`auth.admin.updateUserById`](https://supabase.com/docs/refere
 
 `20261022175617_matching_survey_submission_concurrency.sql` 新增匹配问卷本人保存、超级管理员更新的 compare-and-save RPC，按加载时的答卷 ID 与精确 `updated_at` 原子比对；首提只允许创建，不再覆盖已有答卷。匹配专属 restrictive UPDATE policy 拦截绕过 RPC 的 Data API 覆盖，普通活动 registration 操作、服务端历史导入与 owner 执行的隐私清理不受此策略限制。匹配答卷更新戳在既有触发器之后单调递增；迁移本身不改写历史答卷、题目、选项、必填配置或面试前信息表。
 
+收集时间后匹配的轮次在收集已开始后即可运行，运行后保持 `open`，继续接收截止时间内的新答卷及修改；到期后可直接运行，无需先手动截止，但不会延长收集期限。已手动截止的轮次仍沿用运行后转为 `matched` 的规则。每次运行读取当次答卷、创建独立的草稿会话，不覆盖其他会话或自动发布结果；会话详情和导出沿用读取最新答卷的行为，多草稿的重复发布与历史输入快照规则留待后续匹配和发布流程完善。运行期间状态、收集时间或删除状态变化时，沿用结果撤回补偿。
+
 发布时先应用该单条迁移，再部署对应应用；已打开的旧页面可能需要刷新后重试，但不能覆盖较新答卷。不得重放整套历史 migration。`supabase/audits/matching-survey-concurrency-pglite.mjs` 使用隔离 PostgreSQL 验证真实 RPC、RLS、现有答案/资料完成/审计 guard、版本冲突、deadline、回执及 registration 路径；完整资料完成判定由既有 `matching-profile-readiness-pglite.mjs` 另行覆盖。部署后只读核对新增 RPC、最小 ACL、restrictive policy 和时间戳 trigger，并比对问卷定义及历史答卷摘要未发生部署性改写。
 
 

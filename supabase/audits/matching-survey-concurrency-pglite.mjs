@@ -21,6 +21,9 @@ CREATE TABLE public.match_sessions(id uuid PRIMARY KEY DEFAULT gen_random_uuid()
 CREATE FUNCTION public.update_updated_at() RETURNS trigger LANGUAGE plpgsql AS $$BEGIN NEW.updated_at=now(); RETURN NEW; END$$;`)
 await db.exec(read('supabase/migrations/026_security_hardening.sql'))
 await db.exec(read('supabase/migrations/018_matching_rounds.sql'))
+const sessionStatusMigration=read('supabase/migrations/015_matching_enhance.sql')
+const sessionStatusStart=sessionStatusMigration.indexOf('ALTER TABLE public.match_sessions')
+await db.exec(sessionStatusMigration.slice(sessionStatusStart,sessionStatusMigration.indexOf(';',sessionStatusStart)+1))
 await db.exec(read('supabase/migrations/035_match_round_import_metadata.sql'))
 await db.exec(`ALTER TABLE public.match_round_submissions ADD COLUMN audit_reason text;`)
 for(const name of ['private.member_master_is_admin()','private.member_master_is_super_admin()','private.member_master_current_admin_id()','private.member_master_lock_non_anonymized_subjects(']) await db.exec(extract(master,name))
@@ -56,6 +59,8 @@ CREATE TABLE public.community_announcements(id uuid PRIMARY KEY);`)
 const deletion = read('supabase/migrations/20261010101614_matching_round_soft_delete.sql')
 const guardPatch = deletion.slice(deletion.indexOf("  definition := pg_get_functiondef('private.member_master_guard_round_submission_write()"), deletion.indexOf("  definition := pg_get_functiondef('private.guard_match_session_round_purpose()"))
 await db.exec('DO $migration$ DECLARE definition text; original text; replacement text; BEGIN '+guardPatch+' END $migration$;')
+const sessionGuardPatch=deletion.slice(deletion.indexOf("  definition := pg_get_functiondef('private.guard_match_session_round_purpose()"),deletion.indexOf("  definition := pg_get_functiondef('public.player_list_round_peer_review_events()"))
+await db.exec('DO $migration$ DECLARE definition text; original text; BEGIN '+sessionGuardPatch+' END $migration$;')
 const readiness = read('supabase/migrations/20261022162627_matching_profile_readiness.sql')
 const readinessStart = readiness.indexOf('CREATE FUNCTION private.guard_matching_profile_readiness()')
 await db.exec(readiness.slice(readinessStart,readiness.indexOf('REVOKE ALL ON FUNCTION',readinessStart)))
@@ -221,6 +226,52 @@ await ok('two requests sharing one exact token yield one success and one conflic
  const rejected=result.find(item=>item.status==='rejected')
  assert.ok(rejected.reason.message.includes('MATCHING_SUBMISSION_CHANGED'))
  assert.ok(['request A','request B'].includes((await stored(parallelBase.id)).message))
+})
+// Matching draft generation and answer collection have separate lifecycles. These
+// database checks exercise the real session guard and answer RPCs; they do not run
+// the JavaScript matching algorithm or claim that an old draft auto-refreshes.
+await newRound(11)
+const collectionWindow=async()=>(await db.query('select status,survey_start::text,survey_end::text,activity_start::text,activity_end::text,config_revision from public.match_rounds where id=$1',[roundId(11)])).rows[0]
+const openWindow=await collectionWindow()
+let collectingAnswer=await asRole(1,()=>save(11,{payload:answers('before draft')}))
+await ok('real matching-session guard accepts an open matching round and preserves its collection window',async()=>{
+ const session=await asRole(5,()=>db.query('insert into public.match_sessions(round_id) values($1) returning id,status',[roundId(11)]))
+ assert.equal(session.rows[0].status,'draft')
+ assert.deepEqual(await collectionWindow(),openWindow)
+})
+await ok('new member can first-submit after a matching draft exists',async()=>{
+ const joined=await asRole(2,()=>save(11,{payload:answers('joined after draft')}))
+ assert.equal((await stored(joined.id)).message,'joined after draft')
+ assert.deepEqual(await collectionWindow(),openWindow)
+})
+await ok('existing member can CAS-update after a matching draft exists without a duplicate receipt',async()=>{
+ collectingAnswer=await asRole(1,()=>save(11,{id:collectingAnswer.id,stamp:collectingAnswer.updated_at,payload:answers('updated after draft')}))
+ assert.equal((await stored(collectingAnswer.id)).message,'updated after draft')
+ const counts=(await db.query('select (select count(*) from public.match_round_submissions where round_id=$1)::int as answers,(select count(*) from public.community_notifications where round_id=$1)::int as receipts',[roundId(11)])).rows[0]
+ assert.deepEqual(counts,{answers:2,receipts:2})
+})
+await ok('another draft does not close, extend or revise the open collection window',async()=>{
+ await asRole(5,()=>db.query('insert into public.match_sessions(round_id) values($1)',[roundId(11)]))
+ assert.deepEqual(await collectionWindow(),openWindow)
+ assert.equal((await db.query('select count(*)::int as sessions from public.match_sessions where round_id=$1',[roundId(11)])).rows[0].sessions,2)
+})
+// Move only this isolated fixture's deadline to emulate time passing. Session
+// creation itself must leave that exact expired window and status untouched.
+await db.query("update public.match_rounds set survey_end=clock_timestamp()-interval '1 microsecond' where id=$1",[roundId(11)])
+const expiredWindow=await collectionWindow()
+await ok('an expired but still-open round accepts another matching draft without extending the deadline',async()=>{
+ await asRole(5,()=>db.query('insert into public.match_sessions(round_id) values($1)',[roundId(11)]))
+ assert.equal(expiredWindow.status,'open')
+ assert.deepEqual(await collectionWindow(),expiredWindow)
+})
+await no('matching draft creation never allows a new answer after the original cutoff',()=>asRole(5,()=>save(11,{revision:expiredWindow.config_revision})),'ROUND_CLOSED')
+await no('matching draft creation never allows an existing answer update after the original cutoff',()=>asRole(1,()=>save(11,{id:collectingAnswer.id,stamp:collectingAnswer.updated_at,revision:expiredWindow.config_revision,payload:answers('too late')})),'ROUND_CLOSED')
+await ok('deadline rejections retain answers, versions and the two original receipts',async()=>{
+ const row=await stored(collectingAnswer.id)
+ assert.equal(row.message,'updated after draft')
+ assert.equal((await db.query('select $1::timestamptz=$2::timestamptz as unchanged',[row.stamp,collectingAnswer.updated_at])).rows[0].unchanged,true)
+ assert.equal((await db.query('select count(*)::int as receipts from public.community_notifications where round_id=$1',[roundId(11)])).rows[0].receipts,2)
+ assert.deepEqual(await collectionWindow(),expiredWindow)
 })
 // Exercise the owner-definer write path used by the existing privacy RPC without
 // replacing or pretending to run its full many-table anonymization workflow.

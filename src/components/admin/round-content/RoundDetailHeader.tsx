@@ -29,7 +29,7 @@ export function RoundDetailHeader({ round, windowState, loading, count, matching
       <Link href={`/admin/matching/rounds/${round.id}/edit`}><Button size="sm" variant="outline"><Pencil className="mr-1 size-4" />内容、问卷与预览</Button></Link>
       {(round.status === "draft" || round.status === "closed" || windowState === "expired") && <Button size="sm" onClick={onOpen} disabled={loading}><Eye className="mr-1 size-4" />{round.status === "draft" ? "开放" : "重新开放"}{noun}</Button>}
       {round.status === "open" && <Button size="sm" variant="outline" onClick={onClose} disabled={loading}><EyeOff className="mr-1 size-4" />{purpose === "announcement" ? "下架通知" : `截止${noun}`}</Button>}
-      {purpose === "matching" && canRunRoundMatching(round.status) && <Button size="sm" onClick={onMatch} disabled={loading || count < 2 || !adminAuditReasonIsValid(matchingReason)}><Play className="mr-1 size-4" />运行匹配</Button>}
+      {purpose === "matching" && canRunRoundMatching(round.status, windowState) && <Button size="sm" onClick={onMatch} disabled={loading || count < 2 || !adminAuditReasonIsValid(matchingReason)}><Play className="mr-1 size-4" />运行匹配</Button>}
     </div>
   </div>
 }

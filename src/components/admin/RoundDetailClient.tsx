@@ -97,7 +97,7 @@ export function RoundDetailClient({
       {purpose === "registration" ? <RoundActivityReviewSummary roundId={round.id} summary={activityReviewSummary} /> : null}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {opening && <RoundOpeningDialog round={round} onClose={() => setOpening(false)} />}
-      {matching && canRunRoundMatching(round.status) && (
+      {matching && canRunRoundMatching(round.status, windowState) && (
         <div className="rounded-lg border bg-muted/20 p-3 space-y-1">
           <label htmlFor="round-matching-reason" className="text-sm font-medium">
             运行匹配理由

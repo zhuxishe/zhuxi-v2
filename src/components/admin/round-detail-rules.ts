@@ -1,5 +1,6 @@
-export function canRunRoundMatching(status: string) {
+export function canRunRoundMatching(status: string, windowState?: string) {
   return status === "closed"
+    || (status === "open" && (windowState === "open" || windowState === "expired"))
 }
 
 export function canUpdateRoundStatus(currentStatus: string, nextStatus: string) {

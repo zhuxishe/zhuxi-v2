@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { MatchingSurveyLink as Link } from "@/components/player/MatchingSurveyLink"
 import { CheckCircle2, Circle, Clock, LineChart, type LucideIcon } from "lucide-react"
 import type { ProfileCompleteness } from "@/lib/queries/profile"
 import { cn } from "@/lib/utils"

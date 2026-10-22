@@ -1,6 +1,8 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { buildMatchingCompletionHref, type MatchingCompletionContext } from "@/lib/matching/completion-flow"
+import { useQuestionnaireUnsavedChanges } from "./use-questionnaire-unsaved-changes"
 import { useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { PersonalityQuiz } from "./PersonalityQuiz"
@@ -11,7 +13,7 @@ import type { QuizConfig } from "@/types/quiz-config"
 import type { QuizAnswer } from "@/lib/forms/player-enrichment"
 import { Button } from "@/components/ui/button"
 import type { QuestionnaireAnswers, QuestionnaireRuntime } from "@/lib/questionnaires/types"
-import { answersFromLegacy, quizTemplateToConfig } from "@/lib/questionnaires/defaults"
+import { answersFromLegacy, quizAnswersFromTemplate, quizTemplateToConfig } from "@/lib/questionnaires/defaults"
 import { QuestionnaireQuiz } from "./QuestionnaireQuiz"
 import { questionnaireError } from "./questionnaire-client"
 
@@ -24,13 +26,15 @@ interface Props {
   existing: ExistingResult | null
   quizConfig: QuizConfig
   questionnaire?: QuestionnaireRuntime | null
+  completionContext?: MatchingCompletionContext | null
 }
 
-export function QuizPageClient({ existing, quizConfig, questionnaire }: Props) {
+export function QuizPageClient({ existing, quizConfig, questionnaire, completionContext }: Props) {
   const router = useRouter()
   const t = useTranslations("quiz")
   const tErr = useTranslations("errors")
   const locale = useLocale()
+  const unsaved = useQuestionnaireUnsavedChanges(locale)
   const [result, setResult] = useState<ExistingResult | null>(existing)
   const [showQuiz, setShowQuiz] = useState(!existing)
   const [submitting, setSubmitting] = useState(false)
@@ -61,9 +65,11 @@ export function QuizPageClient({ existing, quizConfig, questionnaire }: Props) {
         setRuntime(res.questionnaire)
         setConfig(quizTemplateToConfig(res.questionnaire.template))
       }
+      unsaved.markSaved()
       setResult({ scores: res.scores, personalityType: res.personalityType })
       setShowQuiz(false)
       setPendingAnswers(null)
+      if (completionContext) router.replace(buildMatchingCompletionHref(completionContext))
       router.refresh()
     } catch {
       setError("networkError")
@@ -118,14 +124,14 @@ export function QuizPageClient({ existing, quizConfig, questionnaire }: Props) {
         <div className="max-w-lg mx-auto space-y-3">
           <p role="alert" className="text-sm text-destructive">{tErr.has(error) ? tErr(error) : questionnaireError(error, locale)}</p>
           <Button variant="outline" disabled={submitting} onClick={() => {
-            if (error === "invalidQuizAnswers") window.location.reload()
+            if (error === "invalidQuizAnswers") { if (unsaved.confirmLeave()) window.location.reload() }
             else if (pendingAnswers) void handleComplete(pendingAnswers)
           }}>{t("retry")}</Button>
         </div>
       )}
       {/* Keep the questionnaire mounted during requests so every answer survives a failure. */}
       <fieldset disabled={submitting}>
-        {runtime && !runtime.isBaseline ? <QuestionnaireQuiz key={runtime.versionId} template={runtime.template} initialAnswers={runtime.answers} onComplete={handleComplete} /> : <PersonalityQuiz questions={config.questions} onComplete={handleComplete} />}
+        {runtime && !runtime.isBaseline ? <QuestionnaireQuiz key={runtime.versionId} template={runtime.template} initialAnswers={runtime.answers} onComplete={handleComplete} onAnswerChange={unsaved.markDirty} /> : <PersonalityQuiz questions={config.questions} initialAnswers={runtime ? quizAnswersFromTemplate(runtime.template, runtime.answers) : []} onComplete={handleComplete} onAnswerChange={unsaved.markDirty} />}
       </fieldset>
     </div>
   )

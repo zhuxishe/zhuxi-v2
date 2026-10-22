@@ -9,6 +9,8 @@ import { fetchPlayerRound } from "@/lib/queries/player-rounds"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
 import { participationRecordHref } from "@/lib/matching/participation-display"
 import type { RoundRecord } from "@/types/matching-round"
+import { fetchMyMatchingReadiness } from "@/lib/matching/readiness-server"
+import { MatchingProfileGate } from "@/components/player/MatchingProfileGate"
 
 function BackLink({ label, href }: { label: string; href: string }) {
   return (
@@ -61,6 +63,17 @@ export default async function SurveyPage({ searchParams }: { searchParams: Promi
         <StatusMessage text={statusText} hint={statusHint} />
       </div>
     )
+  }
+
+  if (getRoundPurpose(round.purpose) === "matching") {
+    let readiness
+    try { readiness = await fetchMyMatchingReadiness() }
+    catch {
+      return <MatchingProfileGate roundId={round.id} fromParticipation={fromParticipation} backHref={backHref} missing={[]} failed />
+    }
+    if (readiness.missing.length) {
+      return <MatchingProfileGate roundId={round.id} fromParticipation={fromParticipation} backHref={backHref} missing={readiness.missing} />
+    }
   }
 
   return (

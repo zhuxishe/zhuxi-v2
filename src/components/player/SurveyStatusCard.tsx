@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { MatchingSurveyLink as Link } from "@/components/player/MatchingSurveyLink"
 import { ClipboardCheck, Clock } from "lucide-react"
 import { useTranslations } from "next-intl"
 

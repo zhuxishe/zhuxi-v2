@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { MatchingSurveyLink as Link } from "@/components/player/MatchingSurveyLink"
 import { CalendarDays, ChevronRight, ClipboardCheck, MapPin, Pencil } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import type { PlayerParticipationRecord } from "@/types/player-participation"

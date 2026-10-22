@@ -1312,6 +1312,8 @@
     "retry": "再試行"
   },
   "errors": {
+    "matchingProfileIncomplete": "プロフィールのアンケートを完了してから、マッチングにお申し込みください。",
+    "matchingProfileCheckFailed": "プロフィールの完了状況を確認できませんでした。もう一度お試しください。",
     "saveFailed": "保存に失敗しました。後でお試しください",
     "submitFailed": "送信に失敗しました。後でお試しください",
     "networkError": "ネットワークエラー。接続を確認してください",

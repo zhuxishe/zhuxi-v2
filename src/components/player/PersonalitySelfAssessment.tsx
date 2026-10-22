@@ -1,6 +1,8 @@
 "use client"
 
 import { useRef, useState } from "react"
+import { buildMatchingCompletionHref, type MatchingCompletionContext } from "@/lib/matching/completion-flow"
+import { useQuestionnaireUnsavedChanges } from "./use-questionnaire-unsaved-changes"
 import { useRouter } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { buildPersonalityDraft, parsePersonality, type PersonalityDraft as PersonalitySelfData } from "@/lib/forms/player-enrichment"
@@ -20,13 +22,15 @@ import { questionnaireAnswers, questionnaireContext, questionnaireError, questio
 interface Props {
   existing?: Record<string, unknown> | null
   questionnaire?: QuestionnaireRuntime | null
+  completionContext?: MatchingCompletionContext | null
 }
 
-export function PersonalitySelfAssessment({ existing, questionnaire }: Props) {
+export function PersonalitySelfAssessment({ existing, questionnaire, completionContext }: Props) {
   const router = useRouter()
   const t = useTranslations("personality")
   const tErr = useTranslations("errors")
   const locale = useLocale()
+  const unsaved = useQuestionnaireUnsavedChanges(locale)
   const [data, setData] = useState(() => questionnaireLegacy(questionnaire, buildPersonalityDraft(existing)))
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -36,11 +40,13 @@ export function PersonalitySelfAssessment({ existing, questionnaire }: Props) {
 
   function updateQuestionnaire(answers: QuestionnaireAnswers) {
     if (!runtime.current) return
+    if (JSON.stringify(runtime.current.answers) !== JSON.stringify(answers)) unsaved.markDirty()
     runtime.current = { ...runtime.current, answers }
     setData((previous) => ({ ...previous, ...answersToLegacy(runtime.current!.template, answers) }))
   }
 
   function setField<K extends keyof PersonalitySelfData>(key: K, val: PersonalitySelfData[K]) {
+    if (JSON.stringify(data[key]) !== JSON.stringify(val)) unsaved.markDirty()
     setData((prev) => ({ ...prev, [key]: val }))
   }
 
@@ -56,7 +62,9 @@ export function PersonalitySelfAssessment({ existing, questionnaire }: Props) {
       const result = await submitPersonality(data, questionnaireContext(runtime.current, data))
       if (result.error) setError(tErr.has(result.error) ? tErr(result.error) : questionnaireError(result.error, locale))
       else {
-        router.push("/app/profile")
+        unsaved.markSaved()
+        if (completionContext) router.replace(buildMatchingCompletionHref(completionContext))
+        else router.push("/app/profile")
         router.refresh()
       }
     } catch {
@@ -111,7 +119,7 @@ export function PersonalitySelfAssessment({ existing, questionnaire }: Props) {
         <Button onClick={handleSubmit} disabled={submitting}>
           {submitting ? t("submitting") : t("submit")}
         </Button>
-        <Button variant="outline" disabled={submitting} onClick={() => router.back()}>{t("cancel")}</Button>
+        <Button variant="outline" disabled={submitting} onClick={() => { if (unsaved.confirmLeave()) router.back() }}>{t("cancel")}</Button>
       </div>
     </div>
   )

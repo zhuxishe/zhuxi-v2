@@ -1,5 +1,5 @@
 import Image from "next/image"
-import Link from "next/link"
+import { MatchingSurveyLink as Link } from "@/components/player/MatchingSurveyLink"
 import { ArrowRight } from "lucide-react"
 import type { PlayerHomeAction } from "./types"
 

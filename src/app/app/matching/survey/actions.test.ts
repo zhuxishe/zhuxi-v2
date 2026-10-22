@@ -1,9 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), upsert: vi.fn(), rpc: vi.fn() }))
+const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), upsert: vi.fn(), rpc: vi.fn(), readiness: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from, rpc: mocks.rpc }) }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }))
+vi.mock("@/lib/matching/readiness-server", () => ({ fetchMyMatchingReadiness: mocks.readiness }))
 import { submitSurvey } from "./actions"
 
 const round = { id: "round", status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-29T09:00:00Z", activity_start: "2026-10-01", activity_end: "2026-10-14" }
@@ -28,6 +29,7 @@ describe("survey submission availability", () => {
     mocks.player.mockResolvedValue({ memberId: "canonical-member" })
     mocks.upsert.mockResolvedValue({ error: null })
     mocks.rpc.mockResolvedValue({ error: null })
+    mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, missing: [] })
     vi.spyOn(console, "error").mockImplementation(() => {})
   })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
@@ -94,6 +96,7 @@ describe("survey submission availability", () => {
   })
 
   it("accepts a fixed activity registration without any availability and stores its schema revision", async () => {
+    mocks.readiness.mockRejectedValue(new Error("Profile checks must not affect fixed activities"))
     mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration", config_revision: 2 }))
     expect(await submitSurvey({ ...input, availability: {}, configRevision: 2 })).toEqual({ success: true })
     expect(mocks.rpc).toHaveBeenCalledWith("manage_my_registration", {
@@ -101,6 +104,7 @@ describe("survey submission availability", () => {
     })
     expect(mocks.revalidate).toHaveBeenCalledWith("/admin/activity-reviews")
     expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.readiness).not.toHaveBeenCalled()
   })
 
   it("passes explicit rejoin intent and the exact saved version without accepting another member", async () => {
@@ -135,6 +139,7 @@ describe("survey submission availability", () => {
     mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "announcement" }))
     expect(await submitSurvey(input)).toEqual({ error: "surveyReadOnly" })
     expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.readiness).not.toHaveBeenCalled()
   })
 
   it("requires the current configuration revision", async () => {
@@ -156,5 +161,53 @@ describe("survey submission availability", () => {
     } }))
     expect(await submitSurvey(input)).toEqual({ error: "customQuestionRequired" })
     expect(mocks.upsert).not.toHaveBeenCalled()
+  })
+
+  it.each(["supplementary", "personality", "quiz"])("rejects a direct matching submission missing %s without writing", async (missing) => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "matching" }))
+    mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, [missing]: false, missing: [missing] })
+    expect(await submitSurvey(input)).toEqual({ error: "matchingProfileIncomplete", missingProfiles: [missing] })
+    expect(mocks.from).toHaveBeenCalledTimes(1)
+    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.rpc).not.toHaveBeenCalled()
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it.each(["create", "update", "rejoin"] as const)("checks incomplete profiles for matching %s and retains the existing answer", async (registrationIntent) => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    mocks.readiness.mockResolvedValue({ supplementary: false, personality: false, quiz: false, missing: ["supplementary", "personality", "quiz"] })
+    expect(await submitSurvey({ ...input, registrationIntent })).toEqual({
+      error: "matchingProfileIncomplete", missingProfiles: ["supplementary", "personality", "quiz"],
+    })
+    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  it("fails closed with retry wording when profile completion cannot be read", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    mocks.readiness.mockRejectedValue(new Error("Read failed"))
+    expect(await submitSurvey(input)).toEqual({ error: "matchingProfileCheckFailed" })
+    expect(mocks.upsert).not.toHaveBeenCalled()
+    expect(mocks.rpc).not.toHaveBeenCalled()
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("explains a profile change rejected by the database after the initial completeness check", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+    mocks.readiness.mockResolvedValueOnce({ supplementary: true, personality: true, quiz: true, missing: [] })
+      .mockResolvedValueOnce({ supplementary: true, personality: false, quiz: false, missing: ["personality", "quiz"] })
+    mocks.upsert.mockResolvedValue({ error: { message: "MATCHING_PROFILE_INCOMPLETE" } })
+    expect(await submitSurvey(input)).toEqual({ error: "matchingProfileIncomplete", missingProfiles: ["personality", "quiz"] })
+    expect(mocks.readiness).toHaveBeenCalledTimes(2)
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("reports a retry if profile status cannot be re-read after a database rejection", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round)).mockReturnValueOnce({ upsert: mocks.upsert })
+    mocks.readiness.mockResolvedValueOnce({ supplementary: true, personality: true, quiz: true, missing: [] })
+      .mockRejectedValueOnce(new Error("Read failed"))
+    mocks.upsert.mockResolvedValue({ error: { message: "MATCHING_PROFILE_INCOMPLETE" } })
+    expect(await submitSurvey(input)).toEqual({ error: "matchingProfileCheckFailed" })
+    expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 })

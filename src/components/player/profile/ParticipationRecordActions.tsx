@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { MatchingSurveyLink as Link } from "@/components/player/MatchingSurveyLink"
 import { Pencil } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
 import type { RoundRecord } from "@/types/matching-round"

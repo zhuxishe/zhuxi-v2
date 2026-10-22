@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { MatchingSurveyLink as Link } from "@/components/player/MatchingSurveyLink"
 import { useTranslations } from "next-intl"
 import { ArrowRight, CalendarDays, ClipboardList, MapPin, Megaphone } from "lucide-react"
 import { formatSurveyTime } from "@/lib/matching/survey-window"
@@ -14,9 +14,12 @@ export function PlayerRecruitingRoundEntry({ round, locale, onClose }: { round: 
   const Icon = round.purpose === "matching" ? ClipboardList : round.purpose === "registration" ? CalendarDays : Megaphone
   const submitted = round.submitted && round.purpose !== "announcement"
   const href = submitted ? participationRecordHref(round.id) : roundHref(round.id)
+  // Keep the sheet mounted while the matching preflight displays missing-profile/retry dialogs.
+  // A successful navigation unmounts it; cancelling must leave this original entry visible.
+  const closeOnClick = round.purpose === "matching" && !submitted ? undefined : onClose
 
   return (
-    <Link href={href} onClick={onClose} className="block rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 transition-colors hover:bg-primary/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
+    <Link href={href} onClick={closeOnClick} className="block rounded-2xl border border-primary/15 bg-primary/[0.035] p-4 transition-colors hover:bg-primary/[0.07] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary">
       <span className="flex flex-wrap items-center justify-between gap-2 text-xs">
         <span className="inline-flex items-center gap-1.5 text-primary"><Icon className="size-4" aria-hidden="true" />{t(round.purpose)}</span>
         {submitted && <span className="rounded-full bg-primary/10 px-2.5 py-1 font-medium text-primary">{t(round.purpose === "registration" ? "registered" : "submitted")}</span>}

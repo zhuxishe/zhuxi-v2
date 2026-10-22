@@ -1,3 +1,8 @@
+// Gate interactions are covered separately; these tests verify participation composition and destinations.
+vi.mock("@/components/player/MatchingSurveyLink", async () => {
+  const { createElement } = await import("react")
+  return { MatchingSurveyLink: ({ children, ...props }: import("react").ComponentProps<"a">) => createElement("a", props, children) }
+})
 import { renderToReadableStream } from "react-dom/server"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { PlayerParticipationRecord } from "@/types/player-participation"

@@ -9,15 +9,21 @@ import { shuffleWithSeed } from "@/lib/questionnaires/quiz-order"
 
 interface Props {
   questions: QuizQuestionConfig[]
+  initialAnswers?: { questionId: number; score: number }[]
+  onAnswerChange?: () => void
   onComplete: (answers: { questionId: number; score: number }[]) => void
 }
 
-export function PersonalityQuiz({ questions, onComplete }: Props) {
+export function PersonalityQuiz({ questions, initialAnswers = [], onComplete, onAnswerChange }: Props) {
   const t = useTranslations("quiz")
   // 打乱题序（用固定种子，同一用户每次顺序一致）
   const shuffledQuestions = useMemo(() => shuffleWithSeed(questions, 42), [questions])
   const [current, setCurrent] = useState(0)
-  const [answers, setAnswers] = useState<Record<number, number>>({})
+  const [answers, setAnswers] = useState<Record<number, number>>(() => Object.fromEntries(
+    initialAnswers.filter((answer) => Number.isFinite(answer.score)
+      && questions.some((question) => question.id === answer.questionId && question.options.some((option) => option.score === answer.score)))
+      .map((answer) => [answer.questionId, answer.score]),
+  ))
   const total = shuffledQuestions.length
   const question = shuffledQuestions[current]
   const progress = total > 0 ? Math.round(((current + 1) / total) * 100) : 0
@@ -30,8 +36,9 @@ export function PersonalityQuiz({ questions, onComplete }: Props) {
 
   const selectOption = useCallback((score: number) => {
     if (!question) return
+    if (answers[question.id] !== score) onAnswerChange?.()
     setAnswers((prev) => ({ ...prev, [question.id]: score }))
-  }, [question])
+  }, [question, answers, onAnswerChange])
 
   function goNext() {
     if (current < total - 1) setCurrent((c) => c + 1)

@@ -508,7 +508,6 @@ describe("user/member master migration contract", () => {
       "utf8",
     )
 
-    expect(migrationNames).toHaveLength(93)
     expect(migrationNames).toContain("20261010101614_matching_round_soft_delete.sql")
     expect(migrationNames).toContain("20261010104253_matching_round_deletion_audit_trash.sql")
     expect(migrationNames).toContain("20261010104319_flexible_registration_and_roster_signup.sql")
@@ -518,7 +517,9 @@ describe("user/member master migration contract", () => {
     expect(migrationNames).toContain("20261012134601_normalize_roster_names_and_reconcile_numbers.sql")
     expect(migrationNames).toContain("20261021110438_questionnaire_templates_versions.sql")
     expect(migrationNames).toContain("20261022161420_questionnaire_profile_snapshot_refresh.sql")
-    expect(runbook).toContain("当前仓库共有 93 条 migration")
+    expect(runbook).toContain(`当前仓库共有 ${migrationNames.length} 条 migration`)
+    expect(migrationNames).toContain("20261022162627_matching_profile_readiness.sql")
+    expect(runbook).toContain("20261022162627_matching_profile_readiness.sql")
     expect(runbook).toContain("20261021110438_questionnaire_templates_versions.sql")
     expect(runbook).toContain("20261022161420_questionnaire_profile_snapshot_refresh.sql")
     expect(runbook).toContain("20261006123243_admin_member_overview.sql")

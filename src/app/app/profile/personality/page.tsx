@@ -1,3 +1,5 @@
+import { matchingQuestionnaireContext } from "@/lib/matching/completion-flow-server"
+import type { CompletionSearchParams } from "@/lib/matching/completion-flow"
 import { getPlayerQuestionnaire } from "@/lib/questionnaires/server"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerProfile } from "@/lib/queries/profile"
@@ -5,8 +7,9 @@ import { PersonalitySelfAssessment } from "@/components/player/PersonalitySelfAs
 import { questionnaireText } from "@/components/player/questionnaire-client"
 import { getLocale, getTranslations } from "next-intl/server"
 
-export default async function PersonalityPage() {
+export default async function PersonalityPage({ searchParams }: { searchParams: Promise<CompletionSearchParams> }) {
   const player = await requirePlayer()
+  const completionContext = await matchingQuestionnaireContext("personality", await searchParams)
   const locale = await getLocale()
   const t = await getTranslations("personality")
   const [profile, questionnaire] = await Promise.all([fetchPlayerProfile(player.memberId), getPlayerQuestionnaire("personality")])
@@ -18,6 +21,7 @@ export default async function PersonalityPage() {
       <PersonalitySelfAssessment
         existing={profile.member_personality}
         questionnaire={questionnaire}
+        completionContext={completionContext}
       />
     </div>
   )

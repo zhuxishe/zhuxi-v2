@@ -1,3 +1,8 @@
+// Destination rendering is tested here; the interactive gate has its own tests.
+vi.mock("@/components/player/MatchingSurveyLink", async () => {
+  const { createElement } = await import("react")
+  return { MatchingSurveyLink: ({ children, ...props }: import("react").ComponentProps<"a">) => createElement("a", props, children) }
+})
 import { createElement } from "react"
 import { renderToStaticMarkup } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
@@ -11,6 +16,7 @@ vi.mock("@/components/ui/dialog", () => ({
   DialogTitle: ({ children }: { children: React.ReactNode }) => children,
 }))
 import { PlayerRecruitingSheet } from "./PlayerRecruitingSheet"
+import { PlayerRecruitingRoundEntry } from "./PlayerRecruitingRoundEntry"
 
 const now = "2026-09-29T01:00:00Z"
 const round: PlayerHomeRoundItem = {
@@ -30,6 +36,26 @@ function render(rounds: PlayerHomeRoundItem[], includeActivity = false) {
 }
 
 describe("homepage recruiting entry destinations", () => {
+  it("keeps an unsubmitted matching entry mounted for incomplete-profile or read-failure dialogs", () => {
+    const onClose = vi.fn()
+    const entry = PlayerRecruitingRoundEntry({ round: { ...round, purpose: "matching" }, locale: "zh", onClose })
+    expect(entry.props.href).toBe("/app/matching/survey?round=round-1")
+    expect(entry.props.onClick).toBeUndefined()
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    { purpose: "matching" as const, submitted: true },
+    { purpose: "registration" as const, submitted: false },
+    { purpose: "announcement" as const, submitted: false },
+  ])("retains sheet closing for direct $purpose destinations (submitted=$submitted)", (patch) => {
+    const onClose = vi.fn()
+    const entry = PlayerRecruitingRoundEntry({ round: { ...round, ...patch }, locale: "zh", onClose })
+    expect(entry.props.onClick).toBe(onClose)
+    entry.props.onClick?.()
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it("shows an open questionnaire even when there are no large activities", () => {
     const html = render([{ ...round, purpose: "matching" }])
     expect(html).toContain("Autumn welcome")

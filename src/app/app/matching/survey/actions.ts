@@ -8,6 +8,27 @@ import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-conf
 import { validateSurveyAnswers } from "@/lib/matching/survey-answers"
 import type { SurveyAnswers } from "@/types/matching-round"
 import { registrationOperationError } from "@/lib/matching/registration-operation"
+import { fetchMyMatchingReadiness } from "@/lib/matching/readiness-server"
+import type { MatchingProfileKind } from "@/lib/matching/profile-readiness"
+
+interface SurveySubmissionResult {
+  success?: true
+  error?: string
+  missingProfiles?: MatchingProfileKind[]
+}
+
+async function matchingProfileError() {
+  try {
+    const readiness = await fetchMyMatchingReadiness()
+    if (readiness.missing.length > 0) {
+      return { error: "matchingProfileIncomplete", missingProfiles: readiness.missing }
+    }
+    return null
+  } catch (error) {
+    console.error("[submitSurvey] profile readiness", error)
+    return { error: "matchingProfileCheckFailed" }
+  }
+}
 
 interface SubmitSurveyInput extends Omit<SurveyAnswers, "customAnswers"> {
   roundId: string
@@ -17,7 +38,7 @@ interface SubmitSurveyInput extends Omit<SurveyAnswers, "customAnswers"> {
   expectedUpdatedAt?: string | null
 }
 
-export async function submitSurvey(input: SubmitSurveyInput) {
+export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubmissionResult> {
   const player = await requirePlayer()
   if (!input || typeof input.roundId !== "string") return { error: "invalidSurveyInput" }
   const supabase = await createClient()
@@ -30,6 +51,10 @@ export async function submitSurvey(input: SubmitSurveyInput) {
   const windowError = surveySubmissionError(round)
   if (windowError) return { error: windowError }
   if ((input.configRevision ?? 0) !== (round.config_revision ?? 0)) return { error: "surveyUpdated" }
+  if (getRoundPurpose(round.purpose) === "matching") {
+    const profileError = await matchingProfileError()
+    if (profileError) return profileError
+  }
   const validated = validateSurveyAnswers(input, getRoundPurpose(round.purpose), normalizeRoundConfig(round.content_config),
     round.activity_start, round.activity_end)
   if (!validated.data) return { error: validated.error }
@@ -54,6 +79,10 @@ export async function submitSurvey(input: SubmitSurveyInput) {
 
   if (error) {
     console.error("[submitSurvey] upsert", error)
+    if (error.message?.includes("MATCHING_PROFILE_INCOMPLETE")) {
+      // The database enforces this too, including a profile change after our initial read.
+      return await matchingProfileError() ?? { error: "matchingProfileCheckFailed" }
+    }
     const registrationError = registrationOperationError(error)
     if (registrationError && registrationError !== "registrationCancelUnavailable") return { error: registrationError }
     // Explain admin closure or content changes which raced with the initial read.

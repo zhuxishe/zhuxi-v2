@@ -11,6 +11,21 @@ import type { MatchingConfig } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
+import { fetchMemberMatchingReadiness } from "@/lib/matching/readiness-server"
+
+async function matchingProfileError(memberId: string) {
+  try {
+    const readiness = await fetchMemberMatchingReadiness(memberId)
+    if (readiness.missing.length > 0) {
+      const labels = { supplementary: "补充资料", personality: "性格自评", quiz: "性格测试" }
+      return { error: `该成员尚未完成：${readiness.missing.map((key) => labels[key]).join("、")}。请成员完善资料后再报名或修改报名。` }
+    }
+    return null
+  } catch (error) {
+    console.error("[adminSubmission] profile readiness", error)
+    return { error: "暂时无法检查成员资料完成状态，请重试。报名未新增或修改。" }
+  }
+}
 
 type OperationalRpcClient = {
   rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{
@@ -200,6 +215,11 @@ interface SubmissionData {
   message: string | null
 }
 
+interface SubmissionActionResult {
+  success?: true
+  error?: string
+}
+
 const SUBMISSION_GAME_TYPES = new Set(["双人", "多人", "都可以"])
 const SUBMISSION_GENDER_PREFS = new Set(["男", "女", "都可以"])
 const SUBMISSION_SLOTS = new Set(["上午", "下午", "晚上"])
@@ -228,7 +248,7 @@ function validateSubmissionData(data: SubmissionData) {
 }
 
 /** 更新已有问卷 */
-export async function updateSubmission(submissionId: string, data: SubmissionData, rawReason: string) {
+export async function updateSubmission(submissionId: string, data: SubmissionData, rawReason: string): Promise<SubmissionActionResult> {
   const admin = await requireAdmin()
   if (admin.role !== "super_admin") return { error: "仅超级管理员可覆盖原始问卷" }
   const reasonResult = normalizeAdminAuditReason(rawReason)
@@ -240,7 +260,7 @@ export async function updateSubmission(submissionId: string, data: SubmissionDat
   // 检查关联轮次状态
   const { data: sub } = await supabase
     .from("match_round_submissions")
-    .select("round_id")
+    .select("round_id, member_id")
     .eq("id", submissionId)
     .single()
   if (!sub) return { error: "问卷不存在" }
@@ -253,6 +273,8 @@ export async function updateSubmission(submissionId: string, data: SubmissionDat
   if (!round || round.deleted_at) return { error: "轮次不存在" }
   if (round.status === "matched") return { error: "该轮次已完成匹配，无法编辑" }
   if (getRoundPurpose(round?.purpose) !== "matching") return { error: "活动报名不使用匹配问卷编辑功能" }
+  const profileError = await matchingProfileError(sub.member_id)
+  if (profileError) return profileError
 
   const { error } = await supabase
     .from("match_round_submissions")
@@ -269,6 +291,9 @@ export async function updateSubmission(submissionId: string, data: SubmissionDat
 
   if (error) {
     console.error("[updateSubmission]", error)
+    if (error.message?.includes("MATCHING_PROFILE_INCOMPLETE")) {
+      return await matchingProfileError(sub.member_id) ?? { error: "成员资料完成状态已变化，请刷新后重试。报名未修改。" }
+    }
     return { error: "更新失败" }
   }
 
@@ -279,7 +304,7 @@ export async function updateSubmission(submissionId: string, data: SubmissionDat
 /** 新增问卷 */
 export async function createSubmission(
   roundId: string, memberId: string, data: SubmissionData, rawReason: string,
-) {
+): Promise<SubmissionActionResult> {
   const admin = await requireAdmin()
   if (admin.role !== "super_admin") return { error: "仅超级管理员可新增原始问卷" }
   const reasonResult = normalizeAdminAuditReason(rawReason)
@@ -307,6 +332,8 @@ export async function createSubmission(
     .eq("member_id", memberId)
     .maybeSingle()
   if (existing) return { error: "该成员已提交过问卷" }
+  const profileError = await matchingProfileError(memberId)
+  if (profileError) return profileError
 
   const { error } = await supabase
     .from("match_round_submissions")
@@ -324,6 +351,9 @@ export async function createSubmission(
 
   if (error) {
     console.error("[createSubmission]", error)
+    if (error.message?.includes("MATCHING_PROFILE_INCOMPLETE")) {
+      return await matchingProfileError(memberId) ?? { error: "成员资料完成状态已变化，请刷新后重试。报名未新增。" }
+    }
     return { error: "新增失败" }
   }
 

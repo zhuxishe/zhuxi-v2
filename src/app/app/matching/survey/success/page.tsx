@@ -1,4 +1,4 @@
-import Link from "next/link"
+import { MatchingSurveyLink as Link } from "@/components/player/MatchingSurveyLink"
 import { CheckCircle } from "lucide-react"
 import { getTranslations } from "next-intl/server"
 import { Button } from "@/components/ui/button"

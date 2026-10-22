@@ -13,6 +13,7 @@ import { SurveyForm } from "./SurveyForm"
 import { SurveyActionBar } from "./SurveyActionBar"
 import { RoundFormFields } from "./RoundFormFields"
 import { CancelRegistrationButton } from "./CancelRegistrationButton"
+import { MatchingProfileDialog } from "./MatchingProfileDialog"
 import { Button } from "@/components/ui/button"
 import { normalizeRoundConfig } from "@/lib/matching/round-config"
 
@@ -124,5 +125,22 @@ describe("editing an existing activity registration", () => {
     expect(mocks.submit).toHaveBeenCalledTimes(2)
     expect(mocks.submit.mock.calls[0][0]).toEqual(mocks.submit.mock.calls[1][0])
     expect(mocks.push).toHaveBeenCalledOnce()
+  })
+
+  it("keeps unsent matching answers when a late profile check is cancelled", async () => {
+    const matching = () => render({ purpose: "matching", roundId: "1731d454-c4e9-49f6-8c6c-1cb7ce8ee4db",
+      existing: { ...existing, availability: { "2026-10-01": ["下午"] } } })
+    const form = fields(matching())
+    form.onChange({ ...form.value, message: "保留当前答案" })
+    mocks.submit.mockResolvedValue({ error: "matchingProfileIncomplete", missingProfiles: ["quiz"] })
+    await bar(matching()).onSubmit()
+    const dialog = find<Parameters<typeof MatchingProfileDialog>[0]>(matching(), MatchingProfileDialog)!
+    expect(dialog).toMatchObject({ open: true, missing: ["quiz"] })
+    expect(bar(matching()).notice).toBeUndefined()
+    dialog.onCancel()
+    expect(find<Parameters<typeof MatchingProfileDialog>[0]>(matching(), MatchingProfileDialog)!.open).toBe(false)
+    expect(fields(matching()).value.message).toBe("保留当前答案")
+    expect(bar(matching()).disabled).toBe(false)
+    expect(mocks.push).not.toHaveBeenCalled()
   })
 })

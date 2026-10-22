@@ -1,17 +1,19 @@
 import { isValidElement, type ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ player: vi.fn(), round: vi.fn(), submission: vi.fn(), redirect: vi.fn() }))
+const mocks = vi.hoisted(() => ({ player: vi.fn(), round: vi.fn(), submission: vi.fn(), redirect: vi.fn(), readiness: vi.fn() }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("@/lib/queries/player-rounds", () => ({ fetchPlayerRound: mocks.round }))
 vi.mock("@/lib/queries/rounds", () => ({ fetchMySubmission: mocks.submission, fetchOpenRound: mocks.round, fetchLatestRound: mocks.round }))
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }))
 vi.mock("next-intl/server", () => ({ getTranslations: async () => (key: string) => key }))
 vi.mock("@/components/player/SurveyForm", () => ({ SurveyForm: "survey-form" }))
+vi.mock("@/lib/matching/readiness-server", () => ({ fetchMyMatchingReadiness: mocks.readiness }))
+vi.mock("@/components/player/MatchingProfileGate", () => ({ MatchingProfileGate: "profile-gate" }))
 import SurveyPage from "./page"
 import SurveySuccessPage from "./success/page"
 
-type NodeProps = { href?: string; children?: ReactNode; fromParticipation?: boolean; existing?: { cancelled_at?: string | null; updated_at?: string | null; custom_answers?: unknown } | null }
+type NodeProps = { href?: string; children?: ReactNode; fromParticipation?: boolean; missing?: string[]; failed?: boolean; existing?: { cancelled_at?: string | null; updated_at?: string | null; custom_answers?: unknown } | null }
 function nodes(node: ReactNode): NodeProps[] {
   if (Array.isArray(node)) return node.flatMap(nodes)
   if (!isValidElement<NodeProps>(node)) return []
@@ -29,11 +31,36 @@ describe("survey participation navigation", () => {
     vi.useFakeTimers()
     vi.setSystemTime("2026-09-30T00:00:00Z")
     mocks.player.mockResolvedValue({ memberId: "own-member" })
+    mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, missing: [] })
     mocks.round.mockResolvedValue(round)
     mocks.submission.mockResolvedValue({ id: "own-submission", availability: {} })
     mocks.redirect.mockImplementation((href: string) => { throw new Error(`redirect:${href}`) })
   })
   afterEach(() => vi.useRealTimers())
+
+  it("never renders editable matching answers for an incomplete direct-link visitor", async () => {
+    mocks.round.mockResolvedValue({ ...round, purpose: "matching" })
+    mocks.readiness.mockResolvedValue({ supplementary: false, personality: true, quiz: false, missing: ["supplementary", "quiz"] })
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId, from: "participation" }) })
+    expect(nodes(page).some((props) => props.existing !== undefined)).toBe(false)
+    expect(nodes(page)[0]).toMatchObject({ missing: ["supplementary", "quiz"], fromParticipation: true, backHref: recordHref })
+  })
+
+  it("fails closed when completion cannot be read and does not claim missing answers", async () => {
+    mocks.round.mockResolvedValue({ ...round, purpose: "matching" })
+    mocks.readiness.mockRejectedValue(new Error("offline"))
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
+    expect(nodes(page)[0]).toMatchObject({ failed: true, missing: [] })
+    expect(nodes(page).some((props) => props.existing !== undefined)).toBe(false)
+  })
+
+  it("allows a complete member and leaves fixed-time registration outside this gate", async () => {
+    await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
+    expect(mocks.readiness).not.toHaveBeenCalled()
+    mocks.round.mockResolvedValue({ ...round, purpose: "matching" })
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
+    expect(nodes(page).some((props) => props.existing !== undefined)).toBe(true)
+  })
 
   it("returns a record edit to its owned record and preserves the fixed source for submission", async () => {
     const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId, from: "participation" }) })

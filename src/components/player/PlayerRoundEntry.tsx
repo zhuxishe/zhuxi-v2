@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { MatchingSurveyLink as Link } from "@/components/player/MatchingSurveyLink"
 import { useTranslations } from "next-intl"
 import { useSurveyWindow } from "@/lib/matching/use-survey-window"
 import { formatSurveyTime } from "@/lib/matching/survey-window"

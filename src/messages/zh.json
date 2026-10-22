@@ -1312,6 +1312,8 @@
     "retry": "重试"
   },
   "errors": {
+    "matchingProfileIncomplete": "请先完成资料补充后再报名匹配活动。",
+    "matchingProfileCheckFailed": "暂时无法确认资料完成情况，请重试。",
     "saveFailed": "保存失败，请稍后重试",
     "submitFailed": "提交失败，请稍后重试",
     "networkError": "网络错误，请检查连接",

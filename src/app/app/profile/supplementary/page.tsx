@@ -1,3 +1,5 @@
+import { matchingQuestionnaireContext } from "@/lib/matching/completion-flow-server"
+import type { CompletionSearchParams } from "@/lib/matching/completion-flow"
 import { getPlayerQuestionnaire } from "@/lib/questionnaires/server"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerProfile } from "@/lib/queries/profile"
@@ -5,8 +7,9 @@ import { SupplementaryForm } from "@/components/player/SupplementaryForm"
 import { questionnaireText } from "@/components/player/questionnaire-client"
 import { getLocale, getTranslations } from "next-intl/server"
 
-export default async function SupplementaryPage() {
+export default async function SupplementaryPage({ searchParams }: { searchParams: Promise<CompletionSearchParams> }) {
   const player = await requirePlayer()
+  const completionContext = await matchingQuestionnaireContext("supplementary", await searchParams)
   const locale = await getLocale()
   const t = await getTranslations("supplementary")
   const [profile, questionnaire] = await Promise.all([fetchPlayerProfile(player.memberId), getPlayerQuestionnaire("supplementary")])
@@ -20,6 +23,7 @@ export default async function SupplementaryPage() {
         existingInterests={profile.member_interests}
         existingLanguage={profile.member_language}
         questionnaire={questionnaire}
+        completionContext={completionContext}
       />
     </div>
   )

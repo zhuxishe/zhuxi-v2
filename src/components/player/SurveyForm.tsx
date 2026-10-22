@@ -14,6 +14,9 @@ import { RoundDetails } from "./RoundDetails"
 import { RoundFormFields } from "./RoundFormFields"
 import { SurveyActionBar } from "./SurveyActionBar"
 import { CancelRegistrationButton } from "./CancelRegistrationButton"
+import { MatchingProfileDialog } from "./MatchingProfileDialog"
+import { type MatchingProfileKind } from "@/lib/matching/profile-readiness"
+import { buildMatchingCompletionHref } from "@/lib/matching/completion-flow"
 
 interface Props {
   roundId: string
@@ -55,10 +58,12 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
   const [cancelling, setCancelling] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [serverClosed, setServerClosed] = useState(false)
+  const [missingProfiles, setMissingProfiles] = useState<MatchingProfileKind[] | null>(null)
   const inFlight = useRef(false)
   const window = { status: "open", survey_start: surveyStart, survey_end: surveyEnd }
   const windowState = useSurveyWindow(window, initialNow)
-  const blocked = windowState !== "open" || serverClosed
+  const unavailable = windowState !== "open" || serverClosed
+  const blocked = unavailable || missingProfiles !== null
   const needsTime = purpose === "matching" && !Object.values(value.availability).some((slots) => slots.length > 0)
   const registered = purpose === "registration" && Boolean(existing) && !existing?.cancelled_at
   const unchanged = registered && !registrationAnswersChanged(config.questions, existing?.custom_answers ?? {}, value.customAnswers)
@@ -78,6 +83,7 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
           expectedUpdatedAt: existing?.updated_at ?? null } : {}),
       })
       if (res.error) {
+        if (res.error === "matchingProfileIncomplete" && "missingProfiles" in res) setMissingProfiles(res.missingProfiles ?? [])
         if (["surveyExpired", "surveyClosed", "surveyNotStarted", "roundNotFound", "surveyUpdated", "surveyReadOnly", "registrationChanged"].includes(res.error)) setServerClosed(true)
         setError(tErr.has(res.error) ? tErr(res.error) : res.error)
         return
@@ -93,6 +99,10 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
 
   return (
     <div className="space-y-6 pb-4">
+      <MatchingProfileDialog open={missingProfiles !== null} missing={missingProfiles ?? []}
+        onCancel={() => setMissingProfiles(null)}
+        onRetry={() => router.refresh()}
+        onComplete={() => router.push(buildMatchingCompletionHref({ roundId, fromParticipation }))} />
       <RoundDetails roundName={roundName} purpose={purpose} config={config} surveyEnd={surveyEnd} showFormHeading={!registered} />
       {purpose !== "announcement" && <>
         <fieldset disabled={blocked || submitting || cancelling} className="space-y-6 disabled:opacity-70">
@@ -101,7 +111,7 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
         </fieldset>
         <SurveyActionBar onSubmit={handleSubmit} disabled={blocked || submitting || cancelling || needsTime || unchanged} submitting={submitting}
           hideSubmit={registered && config.questions.length === 0}
-          error={error} notice={blocked ? t("unavailableWhileFilling") : undefined}
+          error={error} notice={unavailable ? t("unavailableWhileFilling") : undefined}
           hint={!blocked && needsTime ? t("noTimeSlotHint") : undefined}
           label={submitting ? t("submitting") : existing?.cancelled_at ? t("registration.rejoin") : existing ? t(purpose === "registration" ? "registration.update" : "update")
             : localizeRoundText(config.labels.submit, locale, t(purpose === "registration" ? "registration.submit" : "submit"))}>

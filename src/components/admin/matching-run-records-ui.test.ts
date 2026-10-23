@@ -69,6 +69,33 @@ describe("round batch records", () => {
     expect(html).toContain("原批输入和原评分版本")
     expect(html).toContain("不重新读取最新报名、人格权重或互评")
   })
+
+  it("shows captured eligibility on failed runs even when no session exists", () => {
+    const html = renderRecords([record(1, { status: "failed", session_id: null,
+      error_code: "CANDIDATES_INSUFFICIENT", counts_available: true,
+      submitted_count: 23, eligible_count: 0, excluded_count: 23,
+      exclusion_summary: [{ reason: "unbound", count: 22 }, { reason: "profile_incomplete", count: 23 }],
+    })])
+    expect(html).toContain("本批冻结输入：已保存报名 23 人 · 符合资格 0 人 · 未通过 23 人")
+    expect(html).toContain("未绑定账号 22 人")
+    expect(html).toContain("不能将原因人数相加")
+    expect(html).not.toContain("查看方案")
+  })
+
+  it("distinguishes uncaptured counts from confirmed zeros and keeps recovery independent", () => {
+    const run = record(1, { status: "failed", session_id: null, can_recover: true,
+      counts_available: false, submitted_count: 0, eligible_count: 0, excluded_count: 0,
+    })
+    const html = renderRecords([run])
+    expect(html).toContain("本批资格人数未知")
+    expect(html).not.toContain("已保存报名 0 人")
+    expect(html).toContain("恢复本批")
+    const redacted = renderRecords([{ ...run, counts_available: true,
+      submitted_count: 5, eligible_count: 4, excluded_count: 1, exclusion_summary: null,
+    }])
+    expect(redacted).toContain("已保存报名 5 人")
+    expect(redacted).toContain("排除原因暂不可读取")
+  })
 })
 
 describe("matching workbench session history", () => {

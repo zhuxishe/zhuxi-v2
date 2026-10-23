@@ -258,5 +258,6 @@ check(await scalar("SELECT count(*)::int FROM pg_proc p JOIN pg_namespace n ON n
 check(await scalar("SELECT has_table_privilege('authenticated','matching_publication.write_context','INSERT')"),false,'context cannot be forged')
 check(await scalar("SELECT has_function_privilege('anon','public.admin_publish_match_session(uuid,integer,text)','EXECUTE')"),false,'anonymous publish denied')
 check(await scalar("SELECT has_function_privilege('service_role','matching_publication.publish_session(uuid,integer,text)','EXECUTE')"),false,'service role cannot bypass operator authorization')
-await db.close()
+export const auditContext=process.env.MATCHING_CANCELLATION_BOUNDARY_SUITE==='1'?{db,query,scalar,read,extractFunction,admin,adminUser,members,users,role:async(user=adminUser)=>{await db.exec('RESET ROLE');if(user){await db.exec('SET ROLE authenticated');await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[user])}else await db.query("SELECT set_config('request.jwt.claim.sub','',false)")}}:null
+if(!auditContext)await db.close()
 console.log(JSON.stringify({passed:checks,scope:'real migration SQL, isolated PostgreSQL only'}))

@@ -12,10 +12,11 @@ import { RoundStatusBadge } from "./RoundStatusBadge"
 
 interface Props {
   round: RoundRecord; windowState: string; loading: boolean; count: number; matchingReason: string
+  matchingEligibleCount?: number; matchingEligibilityKnown?: boolean
   onOpen: () => void; onClose: () => void; onMatch: () => void
 }
 
-export function RoundDetailHeader({ round, windowState, loading, count, matchingReason, onOpen, onClose, onMatch }: Props) {
+export function RoundDetailHeader({ round, windowState, loading, count, matchingEligibleCount, matchingEligibilityKnown = true, matchingReason, onOpen, onClose, onMatch }: Props) {
   const purpose = getRoundPurpose(round.purpose)
   const config = normalizeRoundConfig(round.content_config)
   const noun = purpose === "matching" ? "问卷" : purpose === "registration" ? "报名" : "通知"
@@ -29,7 +30,7 @@ export function RoundDetailHeader({ round, windowState, loading, count, matching
       <Link href={`/admin/matching/rounds/${round.id}/edit`}><Button size="sm" variant="outline"><Pencil className="mr-1 size-4" />内容、问卷与预览</Button></Link>
       {(round.status === "draft" || round.status === "closed" || windowState === "expired") && <Button size="sm" onClick={onOpen} disabled={loading}><Eye className="mr-1 size-4" />{round.status === "draft" ? "开放" : "重新开放"}{noun}</Button>}
       {round.status === "open" && <Button size="sm" variant="outline" onClick={onClose} disabled={loading}><EyeOff className="mr-1 size-4" />{purpose === "announcement" ? "下架通知" : `截止${noun}`}</Button>}
-      {purpose === "matching" && canRunRoundMatching(round.status, windowState) && <Button size="sm" onClick={onMatch} disabled={loading || count < 2 || !adminAuditReasonIsValid(matchingReason)}><Play className="mr-1 size-4" />运行匹配</Button>}
+      {purpose === "matching" && canRunRoundMatching(round.status, windowState) && <Button size="sm" onClick={onMatch} disabled={loading || !matchingEligibilityKnown || (matchingEligibleCount ?? count) < 2 || !adminAuditReasonIsValid(matchingReason)}><Play className="mr-1 size-4" />运行匹配</Button>}
     </div>
   </div>
 }

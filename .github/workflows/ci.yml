@@ -45,5 +45,15 @@ jobs:
       - name: Unit tests
         run: pnpm run test:unit
 
+      - name: Matching database regression
+        env:
+          PGLITE_MODULE: ${{ runner.temp }}/matching-audit/node_modules/@electric-sql/pglite/dist/index.js
+          ESBUILD_MODULE: ${{ runner.temp }}/matching-audit/node_modules/esbuild/lib/main.js
+        run: |
+          npm install --prefix "$RUNNER_TEMP/matching-audit" --no-save --package-lock=false @electric-sql/pglite@0.3.14 esbuild@0.27.7
+          node supabase/audits/matching-cancellation-boundary-pglite.mjs
+          node supabase/audits/matching-eligibility-diagnostics-pglite.mjs
+          node supabase/audits/matching-phase5-flow-pglite.mjs
+
       - name: Production build
         run: pnpm run build

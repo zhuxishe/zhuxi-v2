@@ -1366,6 +1366,7 @@ export type Database = {
         Row: {
           audit_reason: string | null
           best_slot: string | null
+          cancellation_publication_version: number | null
           cancellation_reason: string | null
           cancellation_requested_at: string | null
           cancellation_requested_by: string | null
@@ -1389,6 +1390,7 @@ export type Database = {
         Insert: {
           audit_reason?: string | null
           best_slot?: string | null
+          cancellation_publication_version?: number | null
           cancellation_reason?: string | null
           cancellation_requested_at?: string | null
           cancellation_requested_by?: string | null
@@ -1412,6 +1414,7 @@ export type Database = {
         Update: {
           audit_reason?: string | null
           best_slot?: string | null
+          cancellation_publication_version?: number | null
           cancellation_reason?: string | null
           cancellation_requested_at?: string | null
           cancellation_requested_by?: string | null

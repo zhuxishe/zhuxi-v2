@@ -40,7 +40,7 @@ beforeEach(() => {
   mocks.rpc.mockImplementation(async (name: string) => {
     if (name === "admin_begin_matching_run_v3") return ok(started())
     if (name === "admin_get_matching_run") return ok({ run: runRecord() })
-    if (name === "admin_complete_matching_run") return ok(done())
+    if (name === "admin_complete_matching_run_v2") return ok(done())
     if (name === "admin_fail_matching_run") return ok({ run: runRecord("failed", { error_code: "SAVE_FAILED" }) })
     return ok({ staged: true })
   })
@@ -52,12 +52,35 @@ const start = (id = requestId) => runRoundMatching(roundId, "本轮匹配", reas
 describe("durable matching run orchestration", () => {
   it("stages the full pool then commits all results once, without direct session writes or compensation deletes", async () => {
     expect(await start()).toMatchObject({ success: true, sessionId: "original-session", runId: requestId })
-    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual(["admin_begin_matching_run_v3", "admin_stage_matching_run", "admin_complete_matching_run"])
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual(["admin_begin_matching_run_v3", "admin_stage_matching_run", "admin_complete_matching_run_v2"])
     expect(mocks.run).toHaveBeenCalledWith(input().candidates, DEFAULT_CONFIG, new Map(input().idMap as [string, string][]), new Map())
     expect(mocks.rpc).toHaveBeenCalledWith("admin_stage_matching_run", expect.objectContaining({ p_engine_input: input(), p_lease_token: token }))
     expect(mocks.from).not.toHaveBeenCalled()
     expect(mocks.authRpc).not.toHaveBeenCalled()
     expect(mocks.revalidate).toHaveBeenCalledWith("/app/matching/survey")
+  })
+
+  it("atomically saves each unmatched explanation against the full original cohort, including members assigned elsewhere", async () => {
+    const original = currentInput()
+    original.candidates = ["A", "B", "C"].map((submissionId) => ({
+      submissionId, name: `private-${submissionId}`, gameTypePref: "双人", genderPref: "都可以",
+      availability: { "2026-10-27": ["下午"] }, formInterestTags: [], formSocialStyle: null,
+      gender: "女", school: null, interestTags: [], socialTags: [], level: 0,
+      compatibilityScore: null, matchHistory: [], gameMode: null, hasProfile: true,
+    }))
+    original.idMap = original.candidates.map(({ submissionId }) => [submissionId, `member-${submissionId}`])
+    mocks.rpc.mockResolvedValueOnce(ok(started({ engine_input: original })))
+    mocks.run.mockReturnValueOnce({ rows: [{ member_a_id: "member-B", member_b_id: "member-C" }], unmatchedIds: ["A"] })
+
+    expect(await start()).toMatchObject({ success: true })
+    expect(mocks.rpc).toHaveBeenCalledWith("admin_complete_matching_run_v2", expect.objectContaining({
+      p_unmatched_ids: ["member-A"],
+      p_diagnostics: [{ member_id: "member-A", reason: "not_selected", details: {
+        version: "matching_diagnostic:1", code: "not_selected", cohort_size: 3,
+        shared_time_peer_count: 2, feasible_duo_count: 2, multi_max_shared_peer_count: 0, search_mode: "exhaustive",
+      } }],
+    }))
+    expect(mocks.from).not.toHaveBeenCalled()
   })
 
   it("returns the original success receipt after closed became matched, without capturing or calculating again", async () => {
@@ -186,7 +209,7 @@ describe("durable matching run orchestration", () => {
   it("queries the receipt after a lost completion response and returns success without marking failure or deleting", async () => {
     mocks.rpc.mockImplementation(async (name: string) => {
       if (name === "admin_begin_matching_run_v3") return ok(started())
-      if (name === "admin_complete_matching_run") return { data: null, error: { message: "response lost" } }
+      if (name === "admin_complete_matching_run_v2") return { data: null, error: { message: "response lost" } }
       if (name === "admin_get_matching_run") return ok(done())
       return ok({ staged: true })
     })

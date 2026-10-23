@@ -12,6 +12,7 @@ interface CancellationRequest {
   cancellation_reason: string | null
   cancellation_requested_by: string | null
   cancellation_requested_at: string | null
+  cancellation_publication_version: number | null
   session: unknown
   member_a: unknown
   member_b: unknown
@@ -51,7 +52,7 @@ function CancellationItem({ request }: { request: CancellationRequest }) {
   async function handleAction(action: "approve" | "reject") {
     setLoading(action); setError(null)
     const fn = action === "approve" ? approveCancellation : rejectCancellation
-    const result = await fn(request.id, auditReason, session?.publication_version ?? Number.NaN, request.cancellation_requested_at)
+    const result = await fn(request.id, auditReason, request.cancellation_publication_version ?? Number.NaN, request.cancellation_requested_at)
     setLoading("")
     if (result.error) setError(result.error)
     else router.refresh()

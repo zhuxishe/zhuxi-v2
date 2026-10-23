@@ -12,7 +12,7 @@ vi.mock("@/lib/matching/build-round-candidates", () => ({ buildRoundCandidates: 
 vi.mock("@/lib/queries/pair-relations-build", () => ({ fetchPairRelations: mocks.fetchPairRelations }))
 vi.mock("@/lib/matching/session-summary-sync", () => ({ syncSessionSummary: mocks.syncSessionSummary }))
 
-import { manualPair } from "./manual-actions"
+import { checkGroupCompatibility, manualPair } from "./manual-actions"
 
 const sessionId = "10000000-0000-4000-8000-000000000001"
 const memberIds = ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000002"]
@@ -157,5 +157,59 @@ describe("manual matching occupancy checks", () => {
     await expect(manualPair(sessionId, groupIds, reason)).resolves.toEqual({ error: "无共同可用时段，无法组建多人组" })
     expect(insert).not.toHaveBeenCalled()
     expect(db.rpc).not.toHaveBeenCalled()
+  })
+})
+
+describe("manual group preview checks the final selected pool", () => {
+  const groupIds = [...memberIds, "00000000-0000-4000-8000-000000000003"]
+  const members = groupIds.map((id, index) => ({ ...candidate(id), gameTypePref: "多人" as const,
+    gender: index === 2 ? "男" : "女", genderPref: index === 2 ? "都可以" as const : "男" as const }))
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    mocks.requireAdmin.mockResolvedValue({ id: "admin-id", role: "super_admin" })
+    mocks.createClient.mockResolvedValue(createDb([]).db)
+    mocks.fetchPairRelations.mockResolvedValue(new Map())
+  })
+
+  it.each([[0, 1, 2], [0, 2, 1], [1, 0, 2], [1, 2, 0], [2, 0, 1], [2, 1, 0]])(
+    "accepts the same complete female/female/male group regardless of selection order %j",
+    async (...order) => {
+      const selected = order.map((index) => members[index])
+      mocks.buildRoundCandidates.mockResolvedValue({ candidates: selected })
+      const preview = await checkGroupCompatibility(sessionId, selected.map((member) => member.submissionId))
+      expect(preview.compatible).toBe(true)
+      expect(preview.warnings).toEqual([])
+      expect(preview.constraints.find((item) => item.label === "性别兼容")?.status).toBe("pass")
+      expect(preview.bestSlot).toBe("2026-10-10_下午")
+    },
+  )
+
+  it("keeps a genuine final-pool gender conflict visible", async () => {
+    mocks.buildRoundCandidates.mockResolvedValue({ candidates: members.map((member) => ({ ...member, gender: "女", genderPref: "男" })) })
+    const preview = await checkGroupCompatibility(sessionId, groupIds)
+    expect(preview.compatible).toBe(false)
+    expect(preview.warnings.some((warning) => warning.includes("组内无人满足"))).toBe(true)
+    expect(preview.constraints.find((item) => item.label === "性别兼容")?.status).toBe("fail")
+  })
+
+  it("checks relations between all final members and retains the existing common-time rule", async () => {
+    mocks.buildRoundCandidates.mockResolvedValue({ candidates: [members[0], members[1], { ...members[2], availability: { "2026-10-11": ["下午"] } }] })
+    mocks.fetchPairRelations.mockResolvedValue(new Map([[`${groupIds[0]}||${groupIds[1]}`, {
+      playerA: groupIds[0], playerB: groupIds[1], status: "blacklist", totalPairCount: 0, hasMutualFive: false, reason: "测试冲突",
+    }]]))
+    const preview = await checkGroupCompatibility(sessionId, groupIds)
+    expect(preview.compatible).toBe(false)
+    expect(preview.warnings.some((warning) => warning.includes("黑名单"))).toBe(true)
+    expect(preview.warnings).toContain("无共同可用时段")
+    expect(preview.bestSlot).toBeNull()
+  })
+
+  it("preserves raw-constraint redaction for an ordinary administrator", async () => {
+    mocks.requireAdmin.mockResolvedValue({ id: "admin-id", role: "admin" })
+    mocks.buildRoundCandidates.mockResolvedValue({ candidates: members.map((member) => ({ ...member, gender: "女", genderPref: "男" })) })
+    const preview = await checkGroupCompatibility(sessionId, groupIds)
+    expect(preview.warnings).toEqual(["存在不满足的匹配约束"])
+    expect(preview.constraints.every((item) => item.details.every((detail) => detail.includes("仅超级管理员")))).toBe(true)
   })
 })

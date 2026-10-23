@@ -16,7 +16,7 @@
 
 `admin_publish_match_session`、`admin_unpublish_match_session`、`admin_delete_match_session_draft` 均接受 `p_session_id,p_expected_publication_version,p_reason`。发布期望 V，成功得到 V+1；重复 V 请求在当前正好 V+1 且已发布时幂等成功。撤回和删除使用当前 V；旧页面不能操作后来重发的版本。
 
-`admin_approve_matching_cancellation` / `admin_reject_matching_cancellation` 接受 `p_result_id,p_expected_publication_version,p_expected_requested_at,p_reason`，其中 requested_at 必须原样透传当前申请的数据库时间戳，避免拒绝后再次申请仍被旧审批页操作。批准仅取消本组、释放本组有效分配、向本组发送一次取消通知，其他组保持已发布。未发布取消审批仍可使用原流程。玩家 `request_my_match_cancellation` 需带当前 `p_expected_publication_version`；旧两参数调用明确拒绝旧客户端，不静默套用到新版本。
+`admin_approve_matching_cancellation` / `admin_reject_matching_cancellation` 接受 `p_result_id,p_expected_publication_version,p_expected_requested_at,p_reason`，其中 requested_at 必须原样透传当前申请的数据库时间戳，避免拒绝后再次申请仍被旧审批页操作。批准仅取消本组、释放本组有效分配、向本组发送一次取消通知，其他组保持已发布。撤回中的结果不接受旧取消审批；审批必须属于当前仍有效的发布版本。玩家 `request_my_match_cancellation` 需带当前 `p_expected_publication_version`；旧两参数调用明确拒绝旧客户端，不静默套用到新版本。
 
 发布事务一起完成 session/results 确认、版本成员名单、有效分配和通知。任何通知错误会回滚全部业务变化。撤回使该版本旧通知失效，并向相应成员发送撤回消息；重发使旧版本通知失效。已在其他批次获得有效匹配的人不会收到旧批次的错误“未匹配”或“撤回”消息。
 
@@ -44,3 +44,24 @@ PGLITE_MODULE=/absolute/path/to/@electric-sql/pglite/dist/index.js node supabase
 3. 执行 `supabase/audits/matching-publication-postflight.sql`。确认包装函数 invoker、实现 schema 未暴露、内部表 RLS/ACL、guard、重复分配计数和 legacy 内容摘要。
 4. 精确校验部署提交、CI、Vercel Ready，并用登录浏览器只读检查匹配列表、后台草稿及问卷。真实发布/取消/新通知用例在隔离数据中验证；不以测试为由修改真实匹配或真实答卷。
 5. 回滚应用前保留 migration。新增列和表兼容旧读取，但旧发布写将被保护拒绝；不能撤销数据库 guard 后继续使用旧的分步发布。若需回滚，应先暂停发布入口再交付审查后的定向回滚迁移，不删除历史版本或通知记录。
+
+
+## 第5批第一阶段：取消申请的发布边界
+
+增量迁移 `20261023173445_matching_cancellation_publication_boundary.sql` 只新增 nullable
+`match_results.cancellation_publication_version` 并替换 4 个既有函数体，不回填或删除历史业务数据。
+
+- 新申请冻结所属发布版本，审批同时核对请求版本、结果版本、当前会话版本及数据库申请时间戳。撤回后旧申请不能套用到重发版本。
+- 撤回清空该批结果的当前取消申请和审批元数据；原 `cancelled` 结果保持取消，是否恢复仍由原有操作决定。恢复后的草稿及重新发布的有效结果不继承旧“取消已批准”状态。
+- 清除前后的字段、申请理由及所属版本由原 `member_master_audit_related_change` AFTER 触发器写入 `private.member_profile_audit_log`。沿用既有私有权限和匿名化后的审计脱敏，不另建归档表或公开历史理由。
+- 同一版本拒绝后重新申请，会清空前次审批人和审批时间；旧时间戳仍不能审批新申请。
+- 审批列表及数量只计当前有效发布版本的待处理申请，审批提交请求所属版本，不用后来更新的会话版本替代。
+- 整组取消、同轮唯一有效匹配、发布/撤回通知去重、人工配对权限、评分、重开和旧冷却规则保持不变。
+
+隔离复现与回归：
+
+```sh
+PGLITE_MODULE=/absolute/path/to/@electric-sql/pglite/dist/index.js node supabase/audits/matching-cancellation-boundary-pglite.mjs
+```
+
+先通过原 SQL 复现“旧待审申请批准新版本”及“恢复重发残留已批准”，再执行真实新迁移，验证版本绑定、整池取消、审计留存、失败事务回滚、重试、私有访问和评分列权限。继承运行原发布专项 77 项。真实多连接并发由项目全流程回归另行核验。

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useState } from "react"
 import { ChevronDown, ChevronRight, AlertCircle, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { unmatchedDiagnosticMessages } from "@/lib/matching/unmatched-diagnostic-display"
 import { PlayerInfoPopover } from "./PlayerInfoPopover"
 import { displayGender } from "./player-info-format"
 import type { EnrichedMember, SubmissionPrefInfo } from "./match-detail-types"
@@ -23,67 +24,6 @@ interface Props {
   submissionPrefs?: Record<string, SubmissionPrefInfo>
   canViewRawSubmissions?: boolean
   onManualPair?: (memberId: string, name: string) => void
-}
-
-/** 分析未匹配原因 */
-function analyzeReasons(
-  d: DiagnosticItem,
-  allDiags: DiagnosticItem[],
-  prefs?: Props["submissionPrefs"],
-): string[] {
-  const reasons: string[] = []
-  const pref = d.member_id ? prefs?.[d.member_id] : undefined
-
-  if (!pref) {
-    reasons.push("未找到问卷数据")
-    return reasons
-  }
-
-  // 1. 游戏类型
-  if (pref.game_type_pref === "多人") {
-    const otherMulti = allDiags.filter((o) =>
-      o.member_id !== d.member_id &&
-      prefs?.[o.member_id]?.game_type_pref === "多人",
-    )
-    if (otherMulti.length < 2) {
-      reasons.push(`选择了"多人"，但未匹配的多人偏好者不足3人（仅${otherMulti.length + 1}人），无法组建多人组`)
-    }
-  }
-
-  // 2. 性别偏好
-  if (pref.gender_pref && pref.gender_pref !== "都可以") {
-    reasons.push(`性别偏好"${pref.gender_pref}"，限制了可选范围`)
-  }
-
-  // 3. 时段
-  if (pref.availability) {
-    const dates = Object.keys(pref.availability).sort()
-    if (dates.length > 0) {
-      const range = `${dates[0].replace(/^\d{4}-/, "")}~${dates[dates.length - 1].replace(/^\d{4}-/, "")}`
-      // 检查和其他未匹配者的时段重叠
-      const others = allDiags.filter((o) => o.member_id !== d.member_id)
-      let overlapCount = 0
-      for (const other of others) {
-        const otherAvail = prefs?.[other.member_id]?.availability
-        if (!otherAvail) continue
-        const hasOverlap = dates.some((date) =>
-          pref.availability?.[date]?.some((slot) => otherAvail[date]?.includes(slot)),
-        )
-        if (hasOverlap) overlapCount++
-      }
-      if (overlapCount === 0 && others.length > 0) {
-        reasons.push(`可用时段 ${range} 与其他未匹配者完全不重叠`)
-      } else if (overlapCount < 2 && pref.game_type_pref === "多人") {
-        reasons.push(`可用时段 ${range} 仅与 ${overlapCount} 人重叠，不足以组建多人组`)
-      }
-    }
-  }
-
-  if (reasons.length === 0) {
-    reasons.push("约束组合导致无法匹配（多项约束交叉限制）")
-  }
-
-  return reasons
 }
 
 export function UnmatchedDiagnostics({ diagnostics, submissionPrefs, canViewRawSubmissions = false, onManualPair }: Props) {
@@ -118,7 +58,7 @@ export function UnmatchedDiagnostics({ diagnostics, submissionPrefs, canViewRawS
             const name = d.member?.member_identity?.full_name ?? d.member_id
             const pref = submissionPrefs?.[d.member_id]
             const reasons = canViewRawSubmissions
-              ? analyzeReasons(d, diagnostics, submissionPrefs)
+              ? unmatchedDiagnosticMessages(d.details)
               : ["原始问卷与详细诊断已隐藏；配对校验仍在服务端执行"]
 
             return (

@@ -43,6 +43,19 @@ describe("round administration purpose boundaries", () => {
     expect(/(?:^|\s)disabled(?:\s|=|$)/.test(button![1])).toBe(disabled)
   })
 
+  it.each([
+    [0, 2, true, false], [500, 1, true, true], [500, 2, false, true],
+  ])("uses the full-cohort eligibility preview rather than loaded row count %s", (count, matchingEligibleCount, matchingEligibilityKnown, disabled) => {
+    const html = renderToStaticMarkup(createElement(RoundDetailHeader, {
+      round: { ...round, purpose: "matching" }, windowState: "closed", loading: false,
+      count, matchingEligibleCount, matchingEligibilityKnown, matchingReason: "核对本批资格并运行",
+      onOpen: noop, onClose: noop, onMatch: noop,
+    }))
+    const button = [...html.matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)].find((match) => match[2].includes("运行匹配"))
+    expect(button).toBeDefined()
+    expect(/(?:^|\s)disabled(?:\s|=|$)/.test(button![1])).toBe(disabled)
+  })
+
   it("does not render raw answers or export controls to ordinary administrators", () => {
     const html = renderToStaticMarkup(createElement(RoundSubmissionRecords, { roundName: "test", purpose: "registration", config, submissions: [{ id: "sub1", created_at: "2026-09-29T00:00:00Z", custom_answers: { q1: "PRIVATE ANSWER" } }], editable: false, showRaw: false, onEdit: noop, onCreate: noop }))
     expect(html).not.toContain("PRIVATE ANSWER")

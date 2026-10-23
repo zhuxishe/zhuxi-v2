@@ -9,6 +9,7 @@ import { ArrowLeft } from "lucide-react"
 import { fetchAdminActivityReviewRoundSummary } from "@/lib/activity-reviews/queries"
 import { getRoundPurpose } from "@/lib/matching/round-config"
 import { fetchRoundMatchingRuns } from "@/lib/queries/matching-runs"
+import { fetchMatchingEligibilitySummary } from "@/lib/matching/eligibility-summary"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -25,12 +26,18 @@ export default async function RoundDetailPage({ params }: Props) {
     notFound()
   }
 
-  const [submissions, stats, allMembers, activityReviewSummary, runs] = await Promise.all([
+  const [submissions, stats, allMembers, activityReviewSummary, runs, eligibility] = await Promise.all([
     fetchRoundSubmissions(id),
     fetchRoundStats(id),
     fetchMemberBriefList(),
     getRoundPurpose(round.purpose) === "registration" ? fetchAdminActivityReviewRoundSummary(id) : Promise.resolve(null),
     getRoundPurpose(round.purpose) === "matching" ? fetchRoundMatchingRuns(id) : Promise.resolve([]),
+    getRoundPurpose(round.purpose) === "matching"
+      ? fetchMatchingEligibilitySummary(id).then((summary) => ({ summary, error: null })).catch(() => ({
+        summary: null,
+        error: "暂时无法读取本轮资格人数，请刷新后重试；当前资格人数未知，不能据此判断无人符合资格。",
+      }))
+      : Promise.resolve({ summary: null, error: null }),
   ])
 
   return (
@@ -54,6 +61,8 @@ export default async function RoundDetailPage({ params }: Props) {
           canImportMembers={admin.role === "super_admin"}
           activityReviewSummary={activityReviewSummary}
           initialRuns={runs}
+          eligibilitySummary={eligibility.summary}
+          eligibilitySummaryError={eligibility.error}
         />
       </div>
     </div>

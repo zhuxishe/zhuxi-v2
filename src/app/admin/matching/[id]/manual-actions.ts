@@ -45,8 +45,8 @@ export interface ConstraintItem {
 }
 
 function displayGender(g: string | null): string {
-  if (g === "male") return "男"
-  if (g === "female") return "女"
+  if (g === "male" || g === "男") return "男"
+  if (g === "female" || g === "女") return "女"
   if (g === "other") return "其他"
   return "未知"
 }
@@ -206,22 +206,14 @@ export async function checkGroupCompatibility(
   const config = { ...DEFAULT_CONFIG }
   const pairRelations = await fetchPairRelations(memberIds)
 
-  // 检查每个成员能否加入组（获取详细原因）
-  const warnings: string[] = []
-  const blacklistReasons: string[] = []
-  for (let i = 1; i < candidates.length; i++) {
-    const existing = candidates.slice(0, i)
-    const result = checkGroupConstraints(candidates[i], existing, config, pairRelations)
-    if (!result.passed) {
-      for (const r of result.reasons) {
-        warnings.push(r)
-        // 分类：黑名单/冷却期 vs 其他
-        if (r.includes("黑名单") || r.includes("冷却期")) {
-          blacklistReasons.push(r)
-        }
-      }
-    }
-  }
+  // Only the final selected pool determines compatibility. A member's gender
+  // preference may be satisfied by someone selected later; prefixes are not
+  // proposed results and must not leave stale warnings on a valid final pool.
+  const finalCheck = candidates.length
+    ? checkGroupConstraints(candidates[0], candidates.slice(1), config, pairRelations)
+    : { passed: true, reasons: [] }
+  const warnings = [...finalCheck.reasons]
+  const blacklistReasons = warnings.filter((reason) => reason.includes("黑名单") || reason.includes("冷却期"))
 
   // 找严格公共时段（所有人都有的时段，不用 fallback）
   const bestSlot = findStrictCommonSlot(candidates)

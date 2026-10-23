@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { LEGACY_MATCHING_ENGINE_ALGORITHM_VERSION, LEGACY_MATCHING_RUN_ADAPTER_VERSION, MATCHING_ENGINE_ALGORITHM_VERSION, MATCHING_RUN_ADAPTER_VERSION, prepareMatchingRunInput, type MatchingEngineInput } from "./run-input"
 import { runFullMatching } from "./run-matching"
+import { buildUnmatchedDiagnostics } from "./unmatched-diagnostics"
 import { MATCHING_RUN_ERROR_MESSAGES, type MatchingRunRecord, type MatchingRunStatus } from "./run-lifecycle"
 import { createScoringV3Config, validateScoringPolicy } from "./scoring-policy"
 
@@ -174,9 +175,10 @@ async function executeRoundRun(roundId: string, sessionName: string, reason: str
     const idMap = new Map(engine.idMap)
     const result = runEngine(engine)
     failureCode = "SAVE_FAILED"
-    const { data, error } = await db.rpc<Receipt>("admin_complete_matching_run", {
+    const { data, error } = await db.rpc<Receipt>("admin_complete_matching_run_v2", {
       p_run_id: receipt.run.id, p_actor_admin_id: actorId, p_lease_token: receipt.lease_token,
       p_rows: result.rows, p_unmatched_ids: result.unmatchedIds.map((id) => idMap.get(id) ?? id),
+      p_diagnostics: buildUnmatchedDiagnostics(engine, result.unmatchedIds),
     })
     if (error || !data?.run || !receiptResult(data)) {
       if (error?.message.includes("STALE") || error?.message.includes("ROUND_CHANGED")) failureCode = "ROUND_CHANGED"

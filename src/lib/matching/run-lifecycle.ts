@@ -1,5 +1,34 @@
 export type MatchingRunStatus = "running" | "succeeded" | "failed" | "abandoned"
 
+export interface MatchingEligibilityExclusion {
+  reason: string
+  count: number
+}
+
+export interface MatchingEligibilitySummary {
+  round_id: string
+  checked_at: string
+  submitted_count: number
+  eligible_count: number
+  excluded_count: number
+  exclusion_summary: MatchingEligibilityExclusion[]
+}
+
+const ELIGIBILITY_REASON_LABELS: Record<string, string> = {
+  cancelled: "已取消报名",
+  member_not_approved: "审核未通过",
+  anonymized: "已匿名化",
+  not_player: "非玩家身份",
+  account_unavailable: "账号不可用",
+  not_current: "非当前成员",
+  unbound: "未绑定账号",
+  profile_incomplete: "必需资料不完整",
+}
+
+export function matchingEligibilityReasonLabel(reason: string): string {
+  return ELIGIBILITY_REASON_LABELS[reason] ?? "其他资格问题"
+}
+
 export interface MatchingRunRecord {
   id: string
   round_id: string
@@ -22,6 +51,12 @@ export interface MatchingRunRecord {
   session_deleted?: boolean
   algorithm_version?: string
   adapter_version?: number
+  captured_at?: string | null
+  submitted_count?: number | null
+  eligible_count?: number | null
+  excluded_count?: number | null
+  exclusion_summary?: MatchingEligibilityExclusion[] | null
+  counts_available?: boolean
 }
 
 export const MATCHING_RUN_ERROR_MESSAGES: Record<string, string> = {

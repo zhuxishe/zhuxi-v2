@@ -16,8 +16,9 @@ import { RoundDetailHeader } from "./round-content/RoundDetailHeader"
 import { RoundSubmissionRecords } from "./round-content/RoundSubmissionRecords"
 import { RoundActivityReviewSummary } from "./activity-reviews/RoundActivityReviewSummary"
 import type { AdminActivityReviewEvent } from "@/lib/activity-reviews/types"
-import type { MatchingRunRecord } from "@/lib/matching/run-lifecycle"
+import type { MatchingEligibilitySummary, MatchingRunRecord } from "@/lib/matching/run-lifecycle"
 import { MatchingRunRecords } from "./MatchingRunRecords"
+import { MatchingEligibilityCard } from "./MatchingEligibilityCard"
 import { clearMatchingRequestId, matchingRequestId } from "./matching-run-request"
 type Sub = Record<string, any>
 interface Stats {
@@ -35,6 +36,8 @@ interface Props {
   initialNow: string
   activityReviewSummary?: AdminActivityReviewEvent | null
   initialRuns?: MatchingRunRecord[]
+  eligibilitySummary?: MatchingEligibilitySummary | null
+  eligibilitySummaryError?: string | null
 }
 export function RoundDetailClient({
   round,
@@ -46,6 +49,8 @@ export function RoundDetailClient({
   initialNow,
   activityReviewSummary = null,
   initialRuns = [],
+  eligibilitySummary = null,
+  eligibilitySummaryError = null,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -82,7 +87,8 @@ export function RoundDetailClient({
     }
   }
   async function handleRunMatch() {
-    if (submissions.length < 2) { setError("至少需要 2 人提交问卷"); return }
+    if (!eligibilitySummary) { setError("当前资格人数未知，请刷新资格后重试"); return }
+    if (eligibilitySummary.eligible_count < 2) { setError("至少需要 2 人符合匹配资格；原报名保留"); return }
     setLoading(true)
     setError(null)
     try {
@@ -138,10 +144,11 @@ export function RoundDetailClient({
   }
   return (
     <div className="space-y-6">
-      <RoundDetailHeader round={round} windowState={windowState} loading={loading} count={activeCount} matchingReason={matchingReason} onOpen={() => setOpening(true)} onClose={() => handleStatusChange("closed")} onMatch={handleRunMatch} />
+      <RoundDetailHeader round={round} windowState={windowState} loading={loading} count={activeCount} matchingEligibleCount={eligibilitySummary?.eligible_count} matchingEligibilityKnown={eligibilitySummary !== null} matchingReason={matchingReason} onOpen={() => setOpening(true)} onClose={() => handleStatusChange("closed")} onMatch={handleRunMatch} />
       {purpose === "registration" ? <RoundActivityReviewSummary roundId={round.id} summary={activityReviewSummary} /> : null}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {opening && <RoundOpeningDialog round={round} onClose={() => setOpening(false)} />}
+      {matching && <MatchingEligibilityCard summary={eligibilitySummary} error={eligibilitySummaryError} loading={loading} onRefresh={() => router.refresh()} />}
       {matching && (canRunRoundMatching(round.status, windowState) || hasRecoverableRuns) && (
         <div className="rounded-lg border bg-muted/20 p-3 space-y-1">
           <label htmlFor="round-matching-reason" className="text-sm font-medium">

@@ -9,7 +9,7 @@ export async function fetchMatchSessions() {
 
   const { data, error } = await supabase
     .from("match_sessions")
-    .select("id, session_name, total_candidates, total_matched, created_at")
+    .select("id, session_name, total_candidates, total_matched, created_at, round_id, status, results_ready, publication_version")
     .order("created_at", { ascending: false })
 
   if (error) throw error

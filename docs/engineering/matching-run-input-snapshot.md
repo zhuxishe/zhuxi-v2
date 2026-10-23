@@ -47,3 +47,6 @@ PGLITE_MODULE=/absolute/path/to/@electric-sql/pglite/dist/index.js node supabase
 3. 执行 `supabase/audits/matching-run-input-postflight.sql`，确认 schema 未暴露、表 ACL/RLS、五个包装函数权限、finalize guard，且原业务字段与问卷摘要不变。正式既有会话不获得伪造快照。
 4. 部署精确提交，验证 CI、Vercel Ready、后台现有轮次和会话只读页面。真实候选资格、捕获、发布通知等变更用例使用隔离数据，不为验收修改正式答卷或发送真实通知。
 5. 旧应用仍可读取新列，但旧 run action 无法给新轮次运行封存输入，因而 finalize 会安全拒绝。回滚应用需暂停运行入口并提供定向兼容方案；不能关闭输入保护后静默产生无来源的新批次。
+
+
+后续运行生命周期由[匹配运行恢复](matching-run-lifecycle.md)接入：原始输入继续保存在本 schema 的快照中；运行编号与元数据独立留档，完整结果原子提交，失败恢复不再使用补偿删除。原资格、算法及发布规则保持不变。

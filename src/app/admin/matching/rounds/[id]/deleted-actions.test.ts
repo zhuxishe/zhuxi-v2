@@ -1,7 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), admin: vi.fn(), rpc: vi.fn() }))
+const mocks = vi.hoisted(() => ({ from: vi.fn(), admin: vi.fn(), rpc: vi.fn(), runRpc: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from, rpc: mocks.rpc }) }))
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ rpc: mocks.runRpc }) }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.admin }))
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }))
 import { createSubmission, deleteSubmission, runRoundMatching, updateSubmission } from "./actions"
@@ -23,8 +24,9 @@ describe("deleted round write guards", () => {
   })
 
   it("does not run matching for a deleted closed round", async () => {
-    expect(await runRoundMatching("round", "test", "重新核对匹配")).toEqual({ error: "轮次不存在" })
-    expect(mocks.from).toHaveBeenCalledTimes(1)
+    mocks.runRpc.mockResolvedValue({ data: null, error: { message: "MATCH_RUN_ROUND_UNAVAILABLE" } })
+    expect((await runRoundMatching("round", "test", "重新核对匹配", "10000000-0000-4000-8000-000000000001")).error).toContain("轮次不存在")
+    expect(mocks.from).not.toHaveBeenCalled()
     expect(mocks.rpc).not.toHaveBeenCalled()
   })
 

@@ -8,6 +8,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { fetchAdminActivityReviewRoundSummary } from "@/lib/activity-reviews/queries"
 import { getRoundPurpose } from "@/lib/matching/round-config"
+import { fetchRoundMatchingRuns } from "@/lib/queries/matching-runs"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -24,11 +25,12 @@ export default async function RoundDetailPage({ params }: Props) {
     notFound()
   }
 
-  const [submissions, stats, allMembers, activityReviewSummary] = await Promise.all([
+  const [submissions, stats, allMembers, activityReviewSummary, runs] = await Promise.all([
     fetchRoundSubmissions(id),
     fetchRoundStats(id),
     fetchMemberBriefList(),
     getRoundPurpose(round.purpose) === "registration" ? fetchAdminActivityReviewRoundSummary(id) : Promise.resolve(null),
+    getRoundPurpose(round.purpose) === "matching" ? fetchRoundMatchingRuns(id) : Promise.resolve([]),
   ])
 
   return (
@@ -42,6 +44,7 @@ export default async function RoundDetailPage({ params }: Props) {
           <ArrowLeft className="size-4" /> 返回匹配管理
         </Link>
         <RoundDetailClient
+          key={round.id}
           round={round}
           initialNow={new Date().toISOString()}
           submissions={submissions}
@@ -50,6 +53,7 @@ export default async function RoundDetailPage({ params }: Props) {
           canManageSubmissions={admin.role === "super_admin"}
           canImportMembers={admin.role === "super_admin"}
           activityReviewSummary={activityReviewSummary}
+          initialRuns={runs}
         />
       </div>
     </div>

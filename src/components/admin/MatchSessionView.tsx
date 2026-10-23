@@ -11,7 +11,7 @@ import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { RematchPool } from "./RematchPool"
 import { ManualPairDialog } from "./ManualPairDialog"
-import { lockPair, unlockPair, splitPair, restorePair, confirmSession, deleteSession, unpublishSession } from "@/app/admin/matching/[id]/actions"
+import { lockPair, unlockPair, splitPair, restorePair, confirmSession, unpublishSession } from "@/app/admin/matching/[id]/actions"
 import { buildSessionSummary } from "@/lib/matching/session-summary"
 import { findMemberConflicts } from "@/lib/matching/member-conflicts"
 import type { EnrichedMatchResult, PairRelationship, EnrichedMember, SubmissionPrefInfo } from "./match-detail-types"
@@ -218,20 +218,12 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
         {!readOnly && session.status === "draft" && (
           <>
             <Button size="sm" variant="outline" onClick={() => {
-              if (!confirm("确定要删除当前结果并重新匹配？")) return
-              startTransition(async () => {
-                setError("")
-                const res = await deleteSession(session.id, auditReason, publicationVersion)
-                if (res.error) setError(res.error)
-                else {
-                  const target = session.round_id
-                    ? `/admin/matching/rounds/${session.round_id}`
-                    : "/admin/matching"
-                  router.replace(target)
-                }
-              })
-            }} disabled={isPending || !auditReasonValid}>
-              <RefreshCw className="size-3.5" /> 重新匹配
+              const target = session.round_id
+                ? `/admin/matching/rounds/${session.round_id}`
+                : "/admin/matching"
+              router.push(target)
+            }} disabled={isPending}>
+              <RefreshCw className="size-3.5" /> 保留方案，返回运行
             </Button>
             <Button size="sm" onClick={handleConfirm} disabled={isPending || !resultsReady || !auditReasonValid || conflictCount > 0}>
               <CheckCircle className="size-3.5" /> 确认发布
@@ -266,6 +258,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       {!readOnly && session.status === "draft" && !resultsReady && (
         <p className="text-sm text-muted-foreground">匹配结果尚未生成完成，完成后才能发布。</p>
       )}
+      {!readOnly && session.status === "draft" && <p className="text-sm text-muted-foreground">返回轮次详情后可查看运行记录；在轮次允许运行时新增一批，当前方案仍保留。</p>}
       {!readOnly && session.status === "confirmed" && (
         <p className="text-sm text-muted-foreground">结果已发布。如需调整配对，请先撤回发布；取消申请仍可在审批页面处理。</p>
       )}

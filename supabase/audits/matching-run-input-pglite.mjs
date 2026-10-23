@@ -343,4 +343,7 @@ for(let i=0;i<poolMembers.length;i++){
 await role()
 check(await scalar('SELECT count(*)::int FROM matching_publication.write_context'),0,'all thirteen-person publication and withdrawal operations clear trusted contexts')
 console.log(`Matching input snapshot audit: ${checks} checks passed; isolated PGlite only.`)
-await db.close()
+// An opt-in child audit reuses this isolated schema; default execution still
+// closes the in-memory database after the original checks above.
+export const auditContext={db,query,scalar,role,read,admin,adminUser,superAdmin,superUser,members,users,legacy,engine}
+if(process.env.MATCHING_RUN_LIFECYCLE_SUITE!=='1')await db.close()

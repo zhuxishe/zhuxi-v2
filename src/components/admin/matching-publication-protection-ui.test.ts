@@ -44,5 +44,8 @@ describe("published matching controls", () => {
     }))
     expect(html).toContain("匹配结果尚未生成完成，完成后才能发布")
     expect(html).toContain("确认发布")
+    expect(html).toContain("保留方案，返回运行")
+    expect(html).toContain("当前方案仍保留")
+    expect(html).not.toContain("删除当前结果")
   })
 })

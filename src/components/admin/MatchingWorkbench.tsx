@@ -26,6 +26,10 @@ interface Session {
   total_candidates: number | null
   total_matched: number | null
   created_at: string
+  round_id: string | null
+  status: string
+  results_ready: boolean
+  publication_version: number
 }
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -42,6 +46,7 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
   const current = rounds.find((r) => r.id === selectedRoundId)
     ?? rounds.find((r) => r.status === "open")
     ?? rounds[0]
+  const roundSessions = sessions.filter((session) => session.round_id === current?.id)
 
   if (rounds.length === 0) {
     return (
@@ -79,20 +84,20 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
         </div>
         <div className="border-t border-border p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="text-sm font-semibold">历史匹配记录</h3>
-            <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">{sessions.length} 条</span>
+            <h3 className="text-sm font-semibold">本轮匹配方案</h3>
+            <span className="rounded-full bg-muted px-2.5 py-1 text-[11px] text-muted-foreground">{roundSessions.length} 条</span>
           </div>
           <div className="divide-y divide-border/70 rounded-lg border border-border">
-            {sessions.slice(0, 6).map((session) => (
+            {roundSessions.map((session) => (
               <Link key={session.id} href={`/admin/matching/${session.id}`} className="flex items-center justify-between gap-3 px-3 py-3">
                 <span>
                   <span className="block text-sm font-semibold">{session.session_name ?? "未命名"}</span>
-                  <span className="text-xs text-muted-foreground">{session.total_candidates ?? 0} 人参与 · {session.total_matched ?? 0} 人匹配</span>
+                  <span className="text-xs text-muted-foreground">{session.total_candidates ?? 0} 人参与 · {session.total_matched ?? 0} 人匹配 · {session.status === "confirmed" ? "已发布" : session.results_ready ? "草稿已完成" : "结果未完成"}</span>
                 </span>
                 <span className="text-xs text-muted-foreground">{formatAdminDateTime(session.created_at)}</span>
               </Link>
             ))}
-            {sessions.length === 0 && <p className="px-3 py-8 text-center text-sm text-muted-foreground">还没有历史匹配记录</p>}
+            {roundSessions.length === 0 && <p className="px-3 py-8 text-center text-sm text-muted-foreground">本轮还没有匹配方案；运行进度与恢复入口在轮次详情中。</p>}
           </div>
         </div>
       </section>
@@ -115,7 +120,7 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
           <h3 className="text-sm font-semibold">运行前关注</h3>
           <CheckRow ok label="轮次状态清晰" />
           {getRoundPurpose(current?.purpose) === "matching" ? <>
-            <CheckRow ok={current?.status === "closed"} label="问卷已截止后再运行" />
+            <CheckRow ok={current?.status === "open" || current?.status === "closed"} label="收集中可运行，旧方案保留" />
             <CheckRow ok label="Excel 导入需先补全性别" />
           </> : <CheckRow ok label={current?.purpose === "announcement" ? "通知只展示内容，无需填写" : "固定时间活动直接收集报名"} />}
         </section>

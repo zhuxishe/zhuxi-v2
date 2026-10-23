@@ -11,7 +11,9 @@ vi.mock("@/lib/queries/member-center", () => ({
   memberCenterErrorMessage: () => "保存失败",
 }))
 
-import { updateMemberStatus } from "./actions"
+import { submitInterviewEval, updateMemberStatus } from "./actions"
+import { EVAL_DIMENSIONS } from "@/lib/constants/interview"
+import type { InterviewEvalFormData } from "@/types"
 
 const submitted = {
   member: { status: "pending", recordSource: "app", profileStage: "submitted", onboardingStep: 4 },
@@ -69,5 +71,21 @@ describe("administrator approval action", () => {
     })
     expect(await updateMemberStatus("canonical-member", "approved", "历史成员复核")).toEqual({ success: true })
     expect(mocks.updateMemberSection).toHaveBeenCalledOnce()
+  })
+
+  it("keeps historical interview saves separate from the shared score values", async () => {
+    const data = {
+      ...Object.fromEntries(EVAL_DIMENSIONS.map(({ key }) => [key, 4])),
+      risk_level: "low", risk_notes: "", interviewer_notes: "面试记录",
+      attractiveness_score: 5, sexual_value_score: 5,
+    } as unknown as InterviewEvalFormData
+    expect(await submitInterviewEval("member-id", data, undefined, "录入面试评估")).toEqual({ success: true })
+    expect(mocks.updateMemberSection).toHaveBeenCalledOnce()
+    const payload = mocks.updateMemberSection.mock.calls[0][0].payload
+    expect(payload).not.toHaveProperty("attractiveness_score")
+    expect(payload).not.toHaveProperty("sexual_value_score")
+    expect(payload.communication).toBe(4)
+    expect(payload.interviewer_notes).toBe("面试记录")
+    expect(Object.keys(payload)).toHaveLength(20)
   })
 })

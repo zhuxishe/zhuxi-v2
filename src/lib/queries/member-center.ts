@@ -459,6 +459,8 @@ export function memberCenterErrorMessage(error: unknown): string {
   if (message.includes("SUPER_ADMIN_REQUIRED")) return "仅超级管理员可以执行此操作"
   if (message.includes("ADMIN_REQUIRED")) return "管理员身份已失效，请重新登录"
   if (message.includes("MEMBER_NOT_FOUND") || message.includes("MEMBER_MASTER_NOT_FOUND")) return "成员不存在或已被删除"
+  if (message.includes("COMPOSITE_SCORE_MEMBER_UNAVAILABLE")) return "成员不存在或账号已关闭，无法编辑综合评分"
+  if (message.includes("COMPOSITE_SCORE_USE_SHARED_EDITOR")) return "请前往面试评估中的综合评分模块修改评分"
   if (message.includes("REASON_REQUIRED")) return "请填写本次修改原因"
   if (message.includes("MEMBER_NUMBER_TAKEN")) return "该会员编号已被其他成员使用"
   if (message.includes("MEMBER_NUMBER_INVALID")) return "会员编号格式应为 ZXS_001，数字至少 3 位"

@@ -17,6 +17,8 @@ describe("memberCenterErrorMessage", () => {
       .toBe("当前资料已与该历史版本一致，无需恢复")
     expect(memberCenterErrorMessage(new Error("MEMBER_MASTER_EVENT_NOT_RESTORABLE")))
       .toBe("该事件没有可恢复的历史版本")
+    expect(memberCenterErrorMessage(new Error("COMPOSITE_SCORE_USE_SHARED_EDITOR"))).toContain("综合评分模块")
+    expect(memberCenterErrorMessage(new Error("COMPOSITE_SCORE_MEMBER_UNAVAILABLE"))).toContain("账号已关闭")
   })
 })
 

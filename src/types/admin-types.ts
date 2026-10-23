@@ -55,5 +55,4 @@ export interface InterviewEvalFormData {
   risk_level: RiskLevel
   risk_notes: string
   interviewer_notes: string
-  attractiveness_score: number
 }

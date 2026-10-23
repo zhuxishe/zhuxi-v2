@@ -11,7 +11,7 @@ const ALLOWED_FIELDS: Record<string, Set<string>> = {
   interests: new Set(["activity_area", "nearest_station", "graduation_year", "scenario_mode_pref", "ideal_group_size", "script_preference", "non_script_preference", "activity_frequency", "preferred_time_slots", "budget_range", "travel_radius", "social_goal_primary", "social_goal_secondary", "accept_beginners", "accept_cross_school", "scenario_theme_tags", "game_type_pref"]),
   personality: new Set(["extroversion", "initiative", "expression_style_tags", "group_role_tags", "warmup_speed", "planning_style", "coop_compete_tendency", "emotional_stability", "boundary_strength", "reply_speed"]),
   boundaries: new Set(["taboo_tags", "deal_breakers", "preferred_age_range", "preferred_gender_mix", "boundary_notes"]),
-  application: new Set(["interview_date", "interviewer", "attractiveness_score"]),
+  application: new Set(["interview_date", "interviewer"]),
 }
 
 function sanitize(data: Record<string, unknown>, section: string): Record<string, unknown> {

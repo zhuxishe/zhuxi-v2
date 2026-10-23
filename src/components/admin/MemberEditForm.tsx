@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { isValidBirthDate } from "@/lib/member-master/birth-date"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { SectionHeader } from "./MemberDetailCard"
 import { MemberEditIdentity } from "./MemberEditIdentity"
 import { MemberEditLanguage } from "./MemberEditLanguage"
@@ -68,7 +69,6 @@ export function MemberEditForm({ memberId, member }: Props) {
   const originalApplication: MemberApplicationEditData = {
     interview_date: member.interview_date,
     interviewer: member.interviewer,
-    attractiveness_score: member.attractiveness_score,
   }
   const [application, setApplication] = useState(originalApplication)
 
@@ -139,6 +139,7 @@ export function MemberEditForm({ memberId, member }: Props) {
         {/* 3. 面试评估（只读 — 走独立编辑页） */}
         <div className="p-5 space-y-3">
           <SectionHeader title="面试评估（只读）" color="amber" />
+          <Link href={`/admin/members/${memberId}/interview`} className="text-sm text-primary hover:underline">编辑面试评估与综合评分</Link>
           {!evals.length ? <p className="text-sm text-muted-foreground">未评估</p> : (
             <table className="w-full"><tbody>
               <ReadOnlyRow label="评估数" value={`${evals.length} 份`} />

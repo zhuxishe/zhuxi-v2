@@ -27,6 +27,8 @@ import { MemberDuplicateCandidateActions } from "./MemberDuplicateCandidateActio
 import { MemberNumberEditor } from "./MemberNumberEditor"
 import { MemberStatusActions } from "./MemberStatusActions"
 import { MemberStatusBadge } from "./MemberStatusBadge"
+import { MemberCompositeScoreSummary } from "./MemberCompositeScoreSummary"
+import type { MemberCompositeScores } from "@/types/member-composite-scores"
 import {
   canRestoreMemberAudit,
   formatMemberValue,
@@ -44,6 +46,7 @@ interface Props {
   activeTab: Member360Tab
   adminRole: AdminRole
   auditPage: MemberAuditPage | null
+  compositeScores?: MemberCompositeScores | null
 }
 
 function identityRecord(record: MemberCenterRecord | null): MemberCenterRecord | null {
@@ -146,7 +149,7 @@ function quizRecord(data: Member360, canViewHighRisk: boolean): MemberCenterReco
 
 function memberRecord(data: Member360): MemberCenterRecord {
   const raw = Object.fromEntries(
-    Object.entries(data.member.raw).filter(([key]) => key !== "status"),
+    Object.entries(data.member.raw).filter(([key]) => key !== "status" && key !== "attractiveness_score"),
   )
   return {
     ...raw,
@@ -230,7 +233,7 @@ function redactedFieldLabel(field: string) {
   return `${sectionLabel}·${memberFieldLabel(parts.at(-1) ?? field)}`
 }
 
-export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
+export function Member360Hub({ data, activeTab, adminRole, auditPage, compositeScores }: Props) {
   const memberId = data.member.memberId
   const legacyName = data.legacyRecords.find((record) => typeof record.full_name === "string")?.full_name
   const name = typeof data.identity?.full_name === "string"
@@ -336,11 +339,12 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage }: Props) {
         <div className="space-y-4">
           <RecordPanel title="申请流程" record={memberRecord(data)} />
           <RecordPanel title="身份核验" record={data.verification} />
+          {compositeScores ? <MemberCompositeScoreSummary scores={compositeScores} /> : null}
           <section className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between gap-3"><h3 className="font-semibold">面试评估</h3><span className="text-xs text-muted-foreground">{data.interviewEvaluations.length} 份</span></div>
             <div className="mt-4 grid gap-4 xl:grid-cols-2">
               {data.interviewEvaluations.length > 0 ? data.interviewEvaluations.map((evaluation, index) => (
-                <RecordPanel key={String(evaluation.id ?? index)} title={`评估 ${index + 1}`} record={evaluation} />
+                <RecordPanel key={String(evaluation.id ?? index)} title={`评估 ${index + 1}`} record={Object.fromEntries(Object.entries(evaluation).filter(([key]) => key !== "attractiveness_score"))} />
               )) : <p className="text-sm text-muted-foreground">尚无面试评估</p>}
             </div>
           </section>

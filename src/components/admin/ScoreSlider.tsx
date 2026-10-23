@@ -13,10 +13,10 @@ const SCORES = [1, 2, 3, 4, 5]
 
 export function ScoreSlider({ label, description, value, onChange }: Props) {
   return (
-    <div className="flex items-center gap-4">
+    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
       <div className="w-28 shrink-0">
         <p className="text-sm font-medium">{label}</p>
-        <p className="text-xs text-muted-foreground">{description}</p>
+        {description ? <p className="text-xs text-muted-foreground">{description}</p> : null}
       </div>
       <div className="flex gap-1.5">
         {SCORES.map((s) => (
@@ -24,6 +24,8 @@ export function ScoreSlider({ label, description, value, onChange }: Props) {
             key={s}
             type="button"
             onClick={() => onChange(s)}
+            aria-label={`${label} ${s} 分`}
+            aria-pressed={s === value}
             className={cn(
               "size-8 rounded-lg text-xs font-medium transition-colors",
               s <= value

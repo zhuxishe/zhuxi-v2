@@ -18,9 +18,6 @@ function calcAverage(evals: InterviewEvaluationRow[]): EvalScoreMap | null {
     const sum = evals.reduce((s, e) => s + (Number(e[dim.key as keyof InterviewEvaluationRow]) || 0), 0)
     avg[dim.key] = Math.round((sum / evals.length) * 10) / 10
   }
-  avg.attractiveness_score = Math.round(
-    (evals.reduce((s, e) => s + (Number(e.attractiveness_score) || 0), 0) / evals.length) * 10
-  ) / 10
   return avg
 }
 
@@ -85,7 +82,6 @@ export function EvalTabView({ evaluations }: Props) {
         {EVAL_DIMENSIONS.map((dim) => (
           <ScoreBar key={dim.key} label={dim.label} value={current?.[dim.key]} />
         ))}
-        <ScoreBar label="颜值" value={current?.attractiveness_score} />
       </div>
 
       {/* 备注 */}

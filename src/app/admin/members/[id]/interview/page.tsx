@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMember360, isMemberNotFoundError, member360ToLegacyDetail } from "@/lib/queries/member-center"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { InterviewEvalForm } from "@/components/admin/InterviewEvalForm"
+import { fetchMemberCompositeScores } from "@/lib/queries/member-composite-scores"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -13,8 +14,9 @@ export default async function InterviewEvalPage({ params }: Props) {
   const { id } = await params
 
   let member360
+  let compositeScores
   try {
-    member360 = await fetchMember360(id)
+    ;[member360, compositeScores] = await Promise.all([fetchMember360(id), fetchMemberCompositeScores(id)])
   } catch (error) {
     if (isMemberNotFoundError(error)) notFound()
     throw error
@@ -37,6 +39,7 @@ export default async function InterviewEvalPage({ params }: Props) {
           memberName={identity?.full_name ?? "未知"}
           adminName={admin.name}
           existing={myEval}
+          compositeScores={compositeScores}
         />
       </div>
     </div>

@@ -10,7 +10,7 @@ vi.mock("@/lib/queries/member-center", () => ({
   memberCenterErrorMessage: () => "保存失败",
 }))
 
-import { updateMemberIdentity } from "./actions"
+import { updateMemberApplication, updateMemberIdentity } from "./actions"
 
 describe("admin identity birthday compatibility", () => {
   beforeEach(() => {
@@ -43,5 +43,13 @@ describe("admin identity birthday compatibility", () => {
       expect((await updateMemberIdentity("member", { birth_date }, "本人申请更正")).error).toContain("有效生日")
     }
     expect(mocks.updateMemberSection).not.toHaveBeenCalled()
+  })
+
+  it("does not let application editing overwrite a shared composite score", async () => {
+    expect((await updateMemberApplication("member", { attractiveness_score: 5 }, "综合评分复核")).error).toContain("没有可保存字段")
+    expect(mocks.updateMemberSection).not.toHaveBeenCalled()
+    expect(await updateMemberApplication("member", { attractiveness_score: 5, interviewer: "面试官" }, "面试负责人更正"))
+      .toEqual({ success: true })
+    expect(mocks.updateMemberSection).toHaveBeenCalledWith(expect.objectContaining({ payload: { interviewer: "面试官" } }))
   })
 })

@@ -4,6 +4,7 @@ import { fetchMember360, fetchMemberAudit, isMemberNotFoundError } from "@/lib/q
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { Member360Hub } from "@/components/admin/Member360Hub"
 import { normalizeMember360Tab, parseMemberDirectoryPage } from "@/components/admin/member-center-utils"
+import { fetchMemberCompositeScores } from "@/lib/queries/member-composite-scores"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -15,8 +16,12 @@ export default async function MemberDetailPage({ params, searchParams }: Props) 
   const [{ id }, query] = await Promise.all([params, searchParams])
   const activeTab = normalizeMember360Tab(query.tab)
   let member360
+  let compositeScores
   try {
-    member360 = await fetchMember360(id)
+    ;[member360, compositeScores] = await Promise.all([
+      fetchMember360(id),
+      activeTab === "application" ? fetchMemberCompositeScores(id) : Promise.resolve(null),
+    ])
   } catch (error) {
     if (isMemberNotFoundError(error)) notFound()
     throw error
@@ -34,6 +39,7 @@ export default async function MemberDetailPage({ params, searchParams }: Props) 
           activeTab={activeTab}
           adminRole={admin.role}
           auditPage={auditPage}
+          compositeScores={compositeScores}
         />
       </div>
     </div>

@@ -7,12 +7,15 @@ import { EVAL_DIMENSIONS, RISK_LEVEL_OPTIONS } from "@/lib/constants/interview"
 import { submitInterviewEval } from "@/app/admin/members/[id]/interview/actions"
 import { Button } from "@/components/ui/button"
 import { ScoreSlider } from "./ScoreSlider"
+import { MemberCompositeScoreEditor } from "./MemberCompositeScoreEditor"
+import type { MemberCompositeScores } from "@/types/member-composite-scores"
 
 interface Props {
   memberId: string
   memberName: string
   adminName: string
   existing?: InterviewEvaluationRow
+  compositeScores: MemberCompositeScores | null
 }
 
 function buildInitial(existing?: InterviewEvaluationRow): InterviewEvalFormData {
@@ -23,13 +26,14 @@ function buildInitial(existing?: InterviewEvaluationRow): InterviewEvalFormData 
     time_commitment: 3, leadership_potential: 3, openness: 3,
     responsibility: 3, first_impression: 3, overall_recommendation: 3,
     risk_level: "low", risk_notes: "", interviewer_notes: "",
-    attractiveness_score: 3,
   }
   if (!existing) return defaults
-  return { ...defaults, ...existing } as InterviewEvalFormData
+  return Object.fromEntries(Object.entries(defaults).map(([key, fallback]) => [
+    key, existing[key as keyof InterviewEvaluationRow] ?? fallback,
+  ])) as unknown as InterviewEvalFormData
 }
 
-export function InterviewEvalForm({ memberId, memberName, adminName, existing }: Props) {
+export function InterviewEvalForm({ memberId, memberName, adminName, existing, compositeScores }: Props) {
   const router = useRouter()
   const [data, setData] = useState(() => buildInitial(existing))
   const [interviewDate, setInterviewDate] = useState(
@@ -90,10 +94,7 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing }:
         ))}
       </div>
 
-      <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
-        <h3 className="text-sm font-semibold">颜值评分</h3>
-        <ScoreSlider label="颜值" description="外貌整体印象" value={data.attractiveness_score} onChange={(v) => setField("attractiveness_score", v)} />
-      </div>
+      {compositeScores ? <MemberCompositeScoreEditor initial={compositeScores} /> : null}
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-4">
         <h3 className="text-sm font-semibold">风险评估</h3>
@@ -114,7 +115,7 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing }:
 
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10">
         <label className="block">
-          <span className="text-sm font-semibold">本次保存原因（必填）</span>
+          <span className="text-sm font-semibold">面试评估保存原因（必填）</span>
           <textarea
             value={reason}
             onChange={(event) => setReason(event.target.value)}
@@ -128,6 +129,7 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing }:
       </div>
 
       {error && <p className="text-sm text-destructive">{error}</p>}
+      {compositeScores ? <p className="text-xs text-muted-foreground">综合评分请使用上方的“保存综合评分”单独保存。</p> : null}
       <div className="flex gap-3">
         <Button onClick={handleSubmit} disabled={submitting || reason.trim().length < 4}>{submitting ? "保存中..." : "保存评估"}</Button>
         <Button variant="outline" onClick={() => router.back()}>取消</Button>

@@ -5,6 +5,7 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMember360, memberCenterErrorMessage, updateMemberSection } from "@/lib/queries/member-center"
 import { memberApprovalBlockReason } from "@/lib/member-master/approval"
 import type { InterviewEvalFormData } from "@/types"
+import { EVAL_DIMENSIONS } from "@/lib/constants/interview"
 
 function normalizedReason(rawReason: string) {
   const reason = rawReason.trim()
@@ -37,7 +38,9 @@ export async function submitInterviewEval(
     await updateMemberSection({
       memberId,
       section: "interview_evaluation",
-      payload: { ...data },
+      payload: Object.fromEntries([
+        ...EVAL_DIMENSIONS.map(({ key }) => key), "risk_level", "risk_notes", "interviewer_notes",
+      ].map((key) => [key, data[key as keyof InterviewEvalFormData]])),
       reason: reasonResult.reason,
     })
     revalidatePath(`/admin/members/${memberId}`)

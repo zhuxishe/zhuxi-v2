@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { DEFAULT_CONFIG } from "@/lib/matching/config"
+import { createScoringV3Config } from "@/lib/matching/scoring-policy"
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), authRpc: vi.fn(), from: vi.fn(), revalidate: vi.fn(), prepare: vi.fn(), run: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from, rpc: mocks.authRpc }) }))
@@ -20,6 +21,14 @@ function input() {
   const candidates = [{ submissionId: "already-matched" }, { submissionId: "new-applicant" }]
   return { candidates, config: structuredClone(DEFAULT_CONFIG), idMap: candidates.map(c => [c.submissionId, c.submissionId]), pairRelations: [], algorithm_version: "max_coverage_split:2", adapter_version: 1 }
 }
+function currentInput() {
+  return { ...input(), algorithm_version: "max_coverage_split:3", adapter_version: 2,
+    config: createScoringV3Config({ version: "weighted_feedback:1", quizVersionId: requestId,
+      dimensionWeights: { E: 0.3, A: 0.3, O: 0.15, C: 0.1, N: 0.15 },
+      activityFeedback: [{ id: token, round_id: roundId, reviewer_id: requestId, reviewee_id: token, score: 4, version: 1 }],
+    }),
+  }
+}
 const started = (extra = {}) => ({ run: runRecord(), acquired: true, lease_token: token, capture: { snapshot_id: "original-snapshot" }, ...extra })
 const done = (extra = {}) => ({ run: runRecord("succeeded", { session_id: "original-session", ...extra }), session_id: "original-session" })
 const ok = (data: unknown) => ({ data, error: null })
@@ -29,7 +38,7 @@ beforeEach(() => {
   mocks.prepare.mockImplementation(() => ({ engineInput: input() }))
   mocks.run.mockReturnValue({ rows: [{ member_a_id: "already-matched", member_b_id: "new-applicant", group_members: null, total_score: 0, score_breakdown: [], best_slot: "2026-10-27_下午", rank: 1 }], unmatchedIds: [] })
   mocks.rpc.mockImplementation(async (name: string) => {
-    if (name === "admin_begin_matching_run") return ok(started())
+    if (name === "admin_begin_matching_run_v3") return ok(started())
     if (name === "admin_get_matching_run") return ok({ run: runRecord() })
     if (name === "admin_complete_matching_run") return ok(done())
     if (name === "admin_fail_matching_run") return ok({ run: runRecord("failed", { error_code: "SAVE_FAILED" }) })
@@ -43,7 +52,7 @@ const start = (id = requestId) => runRoundMatching(roundId, "本轮匹配", reas
 describe("durable matching run orchestration", () => {
   it("stages the full pool then commits all results once, without direct session writes or compensation deletes", async () => {
     expect(await start()).toMatchObject({ success: true, sessionId: "original-session", runId: requestId })
-    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual(["admin_begin_matching_run", "admin_stage_matching_run", "admin_complete_matching_run"])
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual(["admin_begin_matching_run_v3", "admin_stage_matching_run", "admin_complete_matching_run"])
     expect(mocks.run).toHaveBeenCalledWith(input().candidates, DEFAULT_CONFIG, new Map(input().idMap as [string, string][]), new Map())
     expect(mocks.rpc).toHaveBeenCalledWith("admin_stage_matching_run", expect.objectContaining({ p_engine_input: input(), p_lease_token: token }))
     expect(mocks.from).not.toHaveBeenCalled()
@@ -84,7 +93,7 @@ describe("durable matching run orchestration", () => {
   it("new operation IDs are forwarded as separate runs and never delete the old plan", async () => {
     const nextId = "10000000-0000-4000-8000-000000000002"
     await start(); await start(nextId)
-    expect(mocks.rpc.mock.calls.filter(([name]) => name === "admin_begin_matching_run").map(([,args]) => args.p_request_id)).toEqual([requestId, nextId])
+    expect(mocks.rpc.mock.calls.filter(([name]) => name === "admin_begin_matching_run_v3").map(([,args]) => args.p_request_id)).toEqual([requestId, nextId])
     expect(mocks.rpc.mock.calls.some(([name]) => name.includes("delete") || name.includes("discard"))).toBe(false)
   })
 
@@ -96,6 +105,57 @@ describe("durable matching run orchestration", () => {
     expect(mocks.prepare).not.toHaveBeenCalled()
     expect(mocks.run.mock.calls[0][0][0].submissionId).toBe("original-member")
     expect(mocks.rpc.mock.calls.some(([name]) => name === "admin_stage_matching_run")).toBe(false)
+  })
+
+  it("recovers an old batch that failed before staging using its original raw capture and original scorer", async () => {
+    const capture = { snapshot_id: "captured-before-v3", source: { immutable: "original answers" } }
+    mocks.rpc.mockResolvedValueOnce(ok({ run: runRecord("failed", { algorithm_version: "max_coverage_split:2", adapter_version: 1 }) }))
+    mocks.rpc.mockResolvedValueOnce(ok(started({ capture, run: runRecord("running", { algorithm_version: "max_coverage_split:2", adapter_version: 1 }) })))
+    expect(await resumeRoundMatching(requestId, "恢复发布前捕获的原始输入")).toMatchObject({ success: true })
+    expect(mocks.prepare).toHaveBeenCalledExactlyOnceWith(capture)
+    expect(mocks.run).toHaveBeenCalledWith(input().candidates, DEFAULT_CONFIG, new Map(input().idMap as [string, string][]), new Map())
+    expect(mocks.rpc).toHaveBeenCalledWith("admin_begin_matching_run_v3", expect.objectContaining({ p_request_id: requestId }))
+  })
+
+  it("restores new batches from their staged weights and reviews without any live configuration query", async () => {
+    const original = currentInput()
+    const expected = structuredClone(original)
+    mocks.rpc.mockResolvedValueOnce(ok(started({ engine_input: original, run: runRecord("running", { algorithm_version: "max_coverage_split:3", adapter_version: 2 }) })))
+    expect(await start()).toMatchObject({ success: true })
+    expect(mocks.prepare).not.toHaveBeenCalled()
+    expect(mocks.run.mock.calls[0][1]).toEqual(expected.config)
+    expect(mocks.rpc.mock.calls.some(([name]) => name === "admin_stage_matching_run")).toBe(false)
+    expect(mocks.from).not.toHaveBeenCalled()
+    expect(original).toEqual(expected)
+  })
+
+  it.each([
+    { algorithm_version: "max_coverage_split:3", adapter_version: 1 },
+    { algorithm_version: "max_coverage_split:2", adapter_version: 2 },
+  ])("rejects mixed staged engine versions %j", (versions) => {
+    mocks.rpc.mockResolvedValueOnce(ok(started({ engine_input: { ...input(), ...versions } })))
+    return start().then(() => {
+      expect(mocks.rpc).toHaveBeenLastCalledWith("admin_fail_matching_run", expect.objectContaining({ p_error_code: "VERSION_UNSUPPORTED" }))
+      expect(mocks.run).not.toHaveBeenCalled()
+    })
+  })
+
+  it("does not run a staged policy with a different version than the durable batch record", async () => {
+    mocks.rpc.mockResolvedValueOnce(ok(started({ engine_input: input(), run: runRecord("running", { algorithm_version: "max_coverage_split:3", adapter_version: 2 }) })))
+    await start()
+    expect(mocks.rpc).toHaveBeenLastCalledWith("admin_fail_matching_run", expect.objectContaining({ p_error_code: "VERSION_UNSUPPORTED" }))
+    expect(mocks.run).not.toHaveBeenCalled()
+  })
+
+  it.each(["missing-policy", "legacy-graft", "incorrect-weight"])("fails safely on corrupt staged scoring configuration: %s", async (issue) => {
+    const engine = currentInput()
+    if (issue === "missing-policy") delete engine.config.scoringPolicy
+    if (issue === "legacy-graft") { engine.algorithm_version = "max_coverage_split:2"; engine.adapter_version = 1 }
+    if (issue === "incorrect-weight") engine.config.weights.interest_overlap = 15
+    mocks.rpc.mockResolvedValueOnce(ok(started({ engine_input: engine })))
+    await start()
+    expect(mocks.rpc).toHaveBeenLastCalledWith("admin_fail_matching_run", expect.objectContaining({ p_error_code: "INPUT_INVALID" }))
+    expect(mocks.run).not.toHaveBeenCalled()
   })
 
   it("records insufficient eligibility without deleting registrations or the captured input", async () => {
@@ -125,7 +185,7 @@ describe("durable matching run orchestration", () => {
 
   it("queries the receipt after a lost completion response and returns success without marking failure or deleting", async () => {
     mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === "admin_begin_matching_run") return ok(started())
+      if (name === "admin_begin_matching_run_v3") return ok(started())
       if (name === "admin_complete_matching_run") return { data: null, error: { message: "response lost" } }
       if (name === "admin_get_matching_run") return ok(done())
       return ok({ staged: true })
@@ -142,7 +202,7 @@ describe("durable matching run orchestration", () => {
 
   it("keeps unknown status pending when receipt lookup and failure recording are both unavailable", async () => {
     mocks.rpc.mockImplementation(async (name: string) => {
-      if (name === "admin_begin_matching_run") return ok(started())
+      if (name === "admin_begin_matching_run_v3") return ok(started())
       if (name === "admin_stage_matching_run") return ok({ staged: true })
       throw new Error("network unavailable")
     })

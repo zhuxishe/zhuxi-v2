@@ -20,6 +20,8 @@ export interface MatchingRunRecord {
   lease_expired?: boolean
   error_message?: string | null
   session_deleted?: boolean
+  algorithm_version?: string
+  adapter_version?: number
 }
 
 export const MATCHING_RUN_ERROR_MESSAGES: Record<string, string> = {

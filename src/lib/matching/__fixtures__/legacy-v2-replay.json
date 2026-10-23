@@ -1,0 +1,5423 @@
+{
+  "capturedFromCommit": "457dc1cb18aaee0688f8b93c4f530edf0fd924c1",
+  "config": {
+    "weights": {
+      "interest_overlap": 15,
+      "social_complement": 0,
+      "school_diversity": 10,
+      "compatibility_score": 15,
+      "repeat_penalty": 20,
+      "gameMode_match": 5,
+      "level_proximity": 10,
+      "personality_compatibility": 25
+    },
+    "complementPairs": [
+      [
+        "慢热",
+        "活跃"
+      ],
+      [
+        "善于倾听",
+        "话题广"
+      ],
+      [
+        "温和",
+        "喜欢竞技"
+      ],
+      [
+        "初心者",
+        "喜欢带节奏"
+      ]
+    ],
+    "hardConstraints": {
+      "enforceGender": true
+    },
+    "preferCrossSchool": true,
+    "repeatDecayFactor": 0.3,
+    "defaultCompatibilityScore": 3.93
+  },
+  "cases": [
+    {
+      "seed": 0,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 0,
+          "compatibilityScore": null,
+          "matchHistory": [
+            {
+              "name": "旧版样本1",
+              "count": 2
+            }
+          ],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 5,
+          "compatibilityScore": 2,
+          "matchHistory": [
+            {
+              "name": "旧版样本0",
+              "count": 2
+            }
+          ],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 0,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "normal",
+            "totalPairCount": 0,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ]
+      ],
+      "expected": {
+        "rows": [],
+        "totalCandidates": 2,
+        "totalMatched": 0,
+        "totalUnmatched": 2,
+        "unmatchedIds": [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000002"
+        ]
+      }
+    },
+    {
+      "seed": 1,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 3,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 8,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 5,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 13,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 5,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "avoid",
+            "totalPairCount": 2,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000003",
+            "group_members": null,
+            "total_score": 81.475,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.625,
+                "weightedScore": 9.375,
+                "detail": "合拍分均值: 3.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本2:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 0.1,
+                "weightedScore": 1,
+                "detail": "旧版样本1:Lv8 ↔ 旧版样本2:Lv13 (差5级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.9039999999999999,
+                "weightedScore": 22.599999999999998,
+                "detail": "E相似:90% A相似:93% O互补:70%"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          }
+        ],
+        "totalCandidates": 3,
+        "totalMatched": 2,
+        "totalUnmatched": 1,
+        "unmatchedIds": [
+          "a0000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "seed": 2,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 6,
+          "compatibilityScore": null,
+          "matchHistory": [
+            {
+              "name": "旧版样本1",
+              "count": 2
+            }
+          ],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 11,
+          "compatibilityScore": 4,
+          "matchHistory": [
+            {
+              "name": "旧版样本0",
+              "count": 2
+            }
+          ],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 10,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 1,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 10,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 6,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 10,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "reunion",
+            "totalPairCount": 2,
+            "hasMutualFive": true,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000002",
+              "a0000000-0000-4000-8000-000000000003",
+              "a0000000-0000-4000-8000-000000000004"
+            ],
+            "total_score": 60.9,
+            "score_breakdown": null,
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 4,
+        "totalMatched": 4,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    },
+    {
+      "seed": 3,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 9,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 14,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 15,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 4,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 15,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 9,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 15,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 14,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "cooldown",
+            "totalPairCount": 2,
+            "hasMutualFive": true,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000005",
+            "group_members": null,
+            "total_score": 83.99375,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.86625,
+                "weightedScore": 12.993749999999999,
+                "detail": "合拍分均值: 4.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本4:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本1:Lv14 ↔ 旧版样本4:Lv14 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.5,
+                "weightedScore": 12.5,
+                "detail": "一方或双方未完成性格测试，使用默认分"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_晚上",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000003",
+              "a0000000-0000-4000-8000-000000000004"
+            ],
+            "total_score": 57.3,
+            "score_breakdown": null,
+            "rank": 2,
+            "best_slot": "2026-10-27_晚上",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 5,
+        "totalMatched": 5,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    },
+    {
+      "seed": 4,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 12,
+          "compatibilityScore": null,
+          "matchHistory": [
+            {
+              "name": "旧版样本1",
+              "count": 2
+            }
+          ],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 2,
+          "compatibilityScore": 1,
+          "matchHistory": [
+            {
+              "name": "旧版样本0",
+              "count": 2
+            }
+          ],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 20,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 7,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 20,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 12,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 20,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 2,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000006",
+          "name": "旧版样本5",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 7,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 50,
+            "A": 55,
+            "O": 20,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "blacklist",
+            "totalPairCount": 2,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000006",
+          "a0000000-0000-4000-8000-000000000006"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000002",
+              "a0000000-0000-4000-8000-000000000003",
+              "a0000000-0000-4000-8000-000000000004",
+              "a0000000-0000-4000-8000-000000000005",
+              "a0000000-0000-4000-8000-000000000006"
+            ],
+            "total_score": 66.9,
+            "score_breakdown": null,
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 6,
+        "totalMatched": 5,
+        "totalUnmatched": 1,
+        "unmatchedIds": [
+          "a0000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "seed": 5,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 0,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "双人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 5,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 25,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 10,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 25,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "双人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 0,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 25,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 5,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000006",
+          "name": "旧版样本5",
+          "gender": "女",
+          "gameTypePref": "双人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 10,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 50,
+            "A": 55,
+            "O": 25,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000007",
+          "name": "旧版样本6",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 0,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 60,
+            "A": 48,
+            "O": 25,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "normal",
+            "totalPairCount": 0,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000006",
+          "a0000000-0000-4000-8000-000000000006"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000007",
+          "a0000000-0000-4000-8000-000000000007"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000006",
+            "group_members": null,
+            "total_score": 64.65,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0,
+                "weightedScore": 0,
+                "detail": "无互补匹配"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 0.3,
+                "weightedScore": 3,
+                "detail": "同校: 学校1"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.125,
+                "weightedScore": 1.875,
+                "detail": "合拍分均值: 1.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 1,
+                "weightedScore": 5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本5:双人本"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 0.1,
+                "weightedScore": 1,
+                "detail": "旧版样本1:Lv5 ↔ 旧版样本5:Lv10 (差5级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.751,
+                "weightedScore": 18.775,
+                "detail": "E相似:60% A相似:72% O互补:70%"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          }
+        ],
+        "totalCandidates": 7,
+        "totalMatched": 2,
+        "totalUnmatched": 5,
+        "unmatchedIds": [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000007"
+        ]
+      }
+    },
+    {
+      "seed": 6,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 3,
+          "compatibilityScore": null,
+          "matchHistory": [
+            {
+              "name": "旧版样本1",
+              "count": 2
+            }
+          ],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 8,
+          "compatibilityScore": 3,
+          "matchHistory": [
+            {
+              "name": "旧版样本0",
+              "count": 2
+            }
+          ],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 30,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 13,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 30,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 3,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 30,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 8,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000006",
+          "name": "旧版样本5",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 13,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 50,
+            "A": 55,
+            "O": 30,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000007",
+          "name": "旧版样本6",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 3,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 60,
+            "A": 48,
+            "O": 30,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000008",
+          "name": "旧版样本7",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 8,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 70,
+            "A": 41,
+            "O": 30,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "avoid",
+            "totalPairCount": 2,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000006",
+          "a0000000-0000-4000-8000-000000000006"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000007",
+          "a0000000-0000-4000-8000-000000000007"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000008",
+          "a0000000-0000-4000-8000-000000000008"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000005",
+            "group_members": null,
+            "total_score": 80.24375,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.61625,
+                "weightedScore": 9.243749999999999,
+                "detail": "合拍分均值: 3.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本4:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本1:Lv8 ↔ 旧版样本4:Lv8 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.5,
+                "weightedScore": 12.5,
+                "detail": "一方或双方未完成性格测试，使用默认分"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_晚上",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000003",
+            "member_b_id": "a0000000-0000-4000-8000-000000000006",
+            "group_members": null,
+            "total_score": 86.05,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校0 ↔ 学校1"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.5,
+                "weightedScore": 7.5,
+                "detail": "合拍分均值: 3.0/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本2:都行 ↔ 旧版样本5:双人本"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本2:Lv13 ↔ 旧版样本5:Lv13 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.8019999999999999,
+                "weightedScore": 20.049999999999997,
+                "detail": "E相似:70% A相似:79% O互补:70%"
+              }
+            ],
+            "rank": 2,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000004",
+              "a0000000-0000-4000-8000-000000000007",
+              "a0000000-0000-4000-8000-000000000008"
+            ],
+            "total_score": 68.2,
+            "score_breakdown": null,
+            "rank": 3,
+            "best_slot": "2026-10-27_晚上",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 8,
+        "totalMatched": 8,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    },
+    {
+      "seed": 7,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 6,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 11,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 35,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 1,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 35,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 6,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 35,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 11,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000006",
+          "name": "旧版样本5",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 1,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 50,
+            "A": 55,
+            "O": 35,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000007",
+          "name": "旧版样本6",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 6,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 60,
+            "A": 48,
+            "O": 35,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000008",
+          "name": "旧版样本7",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 11,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 70,
+            "A": 41,
+            "O": 35,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000009",
+          "name": "旧版样本8",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 1,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "reunion",
+            "totalPairCount": 2,
+            "hasMutualFive": true,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000006",
+          "a0000000-0000-4000-8000-000000000006"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000007",
+          "a0000000-0000-4000-8000-000000000007"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000008",
+          "a0000000-0000-4000-8000-000000000008"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000009",
+          "a0000000-0000-4000-8000-000000000009"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000003",
+            "group_members": null,
+            "total_score": 85.225,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.875,
+                "weightedScore": 13.125,
+                "detail": "合拍分均值: 4.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本2:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 0.1,
+                "weightedScore": 1,
+                "detail": "旧版样本1:Lv11 ↔ 旧版样本2:Lv1 (差10级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.9039999999999999,
+                "weightedScore": 22.599999999999998,
+                "detail": "E相似:90% A相似:93% O互补:70%"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000005",
+            "member_b_id": "a0000000-0000-4000-8000-000000000008",
+            "group_members": null,
+            "total_score": 83.99375,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校0 ↔ 学校1"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.86625,
+                "weightedScore": 12.993749999999999,
+                "detail": "合拍分均值: 4.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本4:都行 ↔ 旧版样本7:双人本"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本4:Lv11 ↔ 旧版样本7:Lv11 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.5,
+                "weightedScore": 12.5,
+                "detail": "一方或双方未完成性格测试，使用默认分"
+              }
+            ],
+            "rank": 2,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000006",
+            "member_b_id": "a0000000-0000-4000-8000-000000000009",
+            "group_members": null,
+            "total_score": 80.24375,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.61625,
+                "weightedScore": 9.243749999999999,
+                "detail": "合拍分均值: 3.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本5:双人本 ↔ 旧版样本8:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本5:Lv1 ↔ 旧版样本8:Lv1 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.5,
+                "weightedScore": 12.5,
+                "detail": "一方或双方未完成性格测试，使用默认分"
+              }
+            ],
+            "rank": 3,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000004",
+              "a0000000-0000-4000-8000-000000000007"
+            ],
+            "total_score": 74.9,
+            "score_breakdown": null,
+            "rank": 4,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 9,
+        "totalMatched": 9,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    },
+    {
+      "seed": 8,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 9,
+          "compatibilityScore": null,
+          "matchHistory": [
+            {
+              "name": "旧版样本1",
+              "count": 2
+            }
+          ],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 14,
+          "compatibilityScore": 5,
+          "matchHistory": [
+            {
+              "name": "旧版样本0",
+              "count": 2
+            }
+          ],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 40,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "cooldown",
+            "totalPairCount": 2,
+            "hasMutualFive": true,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ]
+      ],
+      "expected": {
+        "rows": [],
+        "totalCandidates": 2,
+        "totalMatched": 0,
+        "totalUnmatched": 2,
+        "unmatchedIds": [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000002"
+        ]
+      }
+    },
+    {
+      "seed": 9,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 12,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 2,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 45,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 7,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 45,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "blacklist",
+            "totalPairCount": 2,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000003",
+            "group_members": null,
+            "total_score": 73.975,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.125,
+                "weightedScore": 1.875,
+                "detail": "合拍分均值: 1.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本2:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 0.1,
+                "weightedScore": 1,
+                "detail": "旧版样本1:Lv2 ↔ 旧版样本2:Lv7 (差5级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.9039999999999999,
+                "weightedScore": 22.599999999999998,
+                "detail": "E相似:90% A相似:93% O互补:70%"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          }
+        ],
+        "totalCandidates": 3,
+        "totalMatched": 2,
+        "totalUnmatched": 1,
+        "unmatchedIds": [
+          "a0000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "seed": 10,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 0,
+          "compatibilityScore": null,
+          "matchHistory": [
+            {
+              "name": "旧版样本1",
+              "count": 2
+            }
+          ],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 5,
+          "compatibilityScore": 2,
+          "matchHistory": [
+            {
+              "name": "旧版样本0",
+              "count": 2
+            }
+          ],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 50,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 10,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 50,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 0,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 50,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "normal",
+            "totalPairCount": 0,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000002",
+              "a0000000-0000-4000-8000-000000000003",
+              "a0000000-0000-4000-8000-000000000004"
+            ],
+            "total_score": 60,
+            "score_breakdown": null,
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 4,
+        "totalMatched": 4,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    },
+    {
+      "seed": 11,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 3,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 8,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 55,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 13,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 55,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 3,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 55,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 8,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "avoid",
+            "totalPairCount": 2,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000005",
+            "group_members": null,
+            "total_score": 80.24375,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.61625,
+                "weightedScore": 9.243749999999999,
+                "detail": "合拍分均值: 3.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本4:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本1:Lv8 ↔ 旧版样本4:Lv8 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.5,
+                "weightedScore": 12.5,
+                "detail": "一方或双方未完成性格测试，使用默认分"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000003",
+              "a0000000-0000-4000-8000-000000000004"
+            ],
+            "total_score": 64.8,
+            "score_breakdown": null,
+            "rank": 2,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 5,
+        "totalMatched": 5,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    },
+    {
+      "seed": 12,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 6,
+          "compatibilityScore": null,
+          "matchHistory": [
+            {
+              "name": "旧版样本1",
+              "count": 2
+            }
+          ],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 11,
+          "compatibilityScore": 4,
+          "matchHistory": [
+            {
+              "name": "旧版样本0",
+              "count": 2
+            }
+          ],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 60,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 1,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 60,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 6,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 60,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 11,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000006",
+          "name": "旧版样本5",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 1,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 50,
+            "A": 55,
+            "O": 60,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "reunion",
+            "totalPairCount": 2,
+            "hasMutualFive": true,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000006",
+          "a0000000-0000-4000-8000-000000000006"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000002",
+              "a0000000-0000-4000-8000-000000000003",
+              "a0000000-0000-4000-8000-000000000004",
+              "a0000000-0000-4000-8000-000000000005",
+              "a0000000-0000-4000-8000-000000000006"
+            ],
+            "total_score": 63.5,
+            "score_breakdown": null,
+            "rank": 1,
+            "best_slot": "2026-10-27_晚上",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 6,
+        "totalMatched": 6,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    },
+    {
+      "seed": 13,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 9,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 14,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 65,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 4,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 65,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 9,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 65,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 14,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000006",
+          "name": "旧版样本5",
+          "gender": "女",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 4,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 50,
+            "A": 55,
+            "O": 65,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000007",
+          "name": "旧版样本6",
+          "gender": "男",
+          "gameTypePref": "双人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 9,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 60,
+            "A": 48,
+            "O": 65,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "cooldown",
+            "totalPairCount": 2,
+            "hasMutualFive": true,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000006",
+          "a0000000-0000-4000-8000-000000000006"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000007",
+          "a0000000-0000-4000-8000-000000000007"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000005",
+            "group_members": null,
+            "total_score": 83.99375,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.86625,
+                "weightedScore": 12.993749999999999,
+                "detail": "合拍分均值: 4.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本4:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本1:Lv14 ↔ 旧版样本4:Lv14 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.5,
+                "weightedScore": 12.5,
+                "detail": "一方或双方未完成性格测试，使用默认分"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000003",
+            "member_b_id": "a0000000-0000-4000-8000-000000000006",
+            "group_members": null,
+            "total_score": 84.175,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校0 ↔ 学校1"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.375,
+                "weightedScore": 5.625,
+                "detail": "合拍分均值: 2.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本2:都行 ↔ 旧版样本5:双人本"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本2:Lv4 ↔ 旧版样本5:Lv4 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.8019999999999999,
+                "weightedScore": 20.049999999999997,
+                "detail": "E相似:70% A相似:79% O互补:70%"
+              }
+            ],
+            "rank": 2,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000004",
+            "member_b_id": "a0000000-0000-4000-8000-000000000007",
+            "group_members": null,
+            "total_score": 81.925,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 运动 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 0.5,
+                "weightedScore": 5,
+                "detail": "学校信息不完整"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.625,
+                "weightedScore": 9.375,
+                "detail": "合拍分均值: 3.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.5,
+                "weightedScore": 2.5,
+                "detail": "偏好数据不完整"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本3:Lv9 ↔ 旧版样本6:Lv9 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.8019999999999999,
+                "weightedScore": 20.049999999999997,
+                "detail": "E相似:70% A相似:79% O互补:70%"
+              }
+            ],
+            "rank": 3,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          }
+        ],
+        "totalCandidates": 7,
+        "totalMatched": 6,
+        "totalUnmatched": 1,
+        "unmatchedIds": [
+          "a0000000-0000-4000-8000-000000000001"
+        ]
+      }
+    },
+    {
+      "seed": 14,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 12,
+          "compatibilityScore": null,
+          "matchHistory": [
+            {
+              "name": "旧版样本1",
+              "count": 2
+            }
+          ],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 2,
+          "compatibilityScore": 1,
+          "matchHistory": [
+            {
+              "name": "旧版样本0",
+              "count": 2
+            }
+          ],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 70,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 7,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 70,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 12,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 70,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 2,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000006",
+          "name": "旧版样本5",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 7,
+          "compatibilityScore": 5,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 50,
+            "A": 55,
+            "O": 70,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000007",
+          "name": "旧版样本6",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 12,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 60,
+            "A": 48,
+            "O": 70,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000008",
+          "name": "旧版样本7",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "都可以",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 2,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 70,
+            "A": 41,
+            "O": 70,
+            "C": 40,
+            "N": 70
+          }
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "blacklist",
+            "totalPairCount": 2,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000006",
+          "a0000000-0000-4000-8000-000000000006"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000007",
+          "a0000000-0000-4000-8000-000000000007"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000008",
+          "a0000000-0000-4000-8000-000000000008"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000005",
+            "group_members": null,
+            "total_score": 76.49375,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校1 ↔ 学校0"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.36624999999999996,
+                "weightedScore": 5.4937499999999995,
+                "detail": "合拍分均值: 2.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本4:都行"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本1:Lv2 ↔ 旧版样本4:Lv2 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.5,
+                "weightedScore": 12.5,
+                "detail": "一方或双方未完成性格测试，使用默认分"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000003",
+            "member_b_id": "a0000000-0000-4000-8000-000000000006",
+            "group_members": null,
+            "total_score": 87.925,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0.25,
+                "weightedScore": 0,
+                "detail": "互补匹配度: 25%"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "跨校: 学校0 ↔ 学校1"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.625,
+                "weightedScore": 9.375,
+                "detail": "合拍分均值: 3.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 0.7,
+                "weightedScore": 3.5,
+                "detail": "旧版样本2:都行 ↔ 旧版样本5:双人本"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本2:Lv7 ↔ 旧版样本5:Lv7 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.8019999999999999,
+                "weightedScore": 20.049999999999997,
+                "detail": "E相似:70% A相似:79% O互补:70%"
+              }
+            ],
+            "rank": 2,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000004",
+              "a0000000-0000-4000-8000-000000000007",
+              "a0000000-0000-4000-8000-000000000008"
+            ],
+            "total_score": 62.5,
+            "score_breakdown": null,
+            "rank": 3,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 8,
+        "totalMatched": 8,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    },
+    {
+      "seed": 15,
+      "candidates": [
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000001",
+          "name": "旧版样本0",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 0,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000002",
+          "name": "旧版样本1",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 5,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 10,
+            "A": 83,
+            "O": 75,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000003",
+          "name": "旧版样本2",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 10,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 20,
+            "A": 76,
+            "O": 75,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000004",
+          "name": "旧版样本3",
+          "gender": "女",
+          "gameTypePref": "多人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 0,
+          "compatibilityScore": 4,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 30,
+            "A": 69,
+            "O": 75,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000005",
+          "name": "旧版样本4",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 5,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000006",
+          "name": "旧版样本5",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 10,
+          "compatibilityScore": 1,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 50,
+            "A": 55,
+            "O": 75,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000007",
+          "name": "旧版样本6",
+          "gender": "男",
+          "gameTypePref": "多人",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": null,
+          "interestTags": [
+            "运动"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 0,
+          "compatibilityScore": 2,
+          "matchHistory": [],
+          "gameMode": null,
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 60,
+            "A": 48,
+            "O": 75,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000008",
+          "name": "旧版样本7",
+          "gender": "女",
+          "gameTypePref": "都可以",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "下午",
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校1",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "慢热"
+          ],
+          "level": 5,
+          "compatibilityScore": 3,
+          "matchHistory": [],
+          "gameMode": "双人本",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": {
+            "E": 70,
+            "A": 41,
+            "O": 75,
+            "C": 40,
+            "N": 70
+          }
+        },
+        {
+          "submissionId": "a0000000-0000-4000-8000-000000000009",
+          "name": "旧版样本8",
+          "gender": "男",
+          "gameTypePref": "都可以",
+          "genderPref": "女",
+          "availability": {
+            "2026-10-27": [
+              "晚上"
+            ]
+          },
+          "formInterestTags": [
+            "桌游"
+          ],
+          "formSocialStyle": null,
+          "school": "学校0",
+          "interestTags": [
+            "桌游",
+            "多人本"
+          ],
+          "socialTags": [
+            "活跃"
+          ],
+          "level": 10,
+          "compatibilityScore": null,
+          "matchHistory": [],
+          "gameMode": "都行",
+          "hasProfile": true,
+          "acceptBeginners": false,
+          "quizScores": null
+        }
+      ],
+      "relations": [
+        [
+          "a0000000-0000-4000-8000-000000000001||a0000000-0000-4000-8000-000000000002",
+          {
+            "playerA": "a0000000-0000-4000-8000-000000000001",
+            "playerB": "a0000000-0000-4000-8000-000000000002",
+            "status": "normal",
+            "totalPairCount": 0,
+            "hasMutualFive": false,
+            "reason": "原版恢复回归样本"
+          }
+        ]
+      ],
+      "idMap": [
+        [
+          "a0000000-0000-4000-8000-000000000001",
+          "a0000000-0000-4000-8000-000000000001"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000002",
+          "a0000000-0000-4000-8000-000000000002"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000003",
+          "a0000000-0000-4000-8000-000000000003"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000004",
+          "a0000000-0000-4000-8000-000000000004"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000005",
+          "a0000000-0000-4000-8000-000000000005"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000006",
+          "a0000000-0000-4000-8000-000000000006"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000007",
+          "a0000000-0000-4000-8000-000000000007"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000008",
+          "a0000000-0000-4000-8000-000000000008"
+        ],
+        [
+          "a0000000-0000-4000-8000-000000000009",
+          "a0000000-0000-4000-8000-000000000009"
+        ]
+      ],
+      "expected": {
+        "rows": [
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000002",
+            "member_b_id": "a0000000-0000-4000-8000-000000000008",
+            "group_members": null,
+            "total_score": 74.85,
+            "score_breakdown": [
+              {
+                "factor": "interest_overlap",
+                "label": "兴趣重合",
+                "weight": 15,
+                "rawScore": 1,
+                "weightedScore": 15,
+                "detail": "共同标签: 桌游, 多人本 (Jaccard=1.00)"
+              },
+              {
+                "factor": "social_complement",
+                "label": "社交互补",
+                "weight": 0,
+                "rawScore": 0,
+                "weightedScore": 0,
+                "detail": "无互补匹配"
+              },
+              {
+                "factor": "school_diversity",
+                "label": "学校多样性",
+                "weight": 10,
+                "rawScore": 0.3,
+                "weightedScore": 3,
+                "detail": "同校: 学校1"
+              },
+              {
+                "factor": "compatibility_score",
+                "label": "合拍分",
+                "weight": 15,
+                "rawScore": 0.375,
+                "weightedScore": 5.625,
+                "detail": "合拍分均值: 2.5/5.0"
+              },
+              {
+                "factor": "repeat_penalty",
+                "label": "重复配对",
+                "weight": 20,
+                "rawScore": 1,
+                "weightedScore": 20,
+                "detail": "首次配对 (满分)"
+              },
+              {
+                "factor": "gameMode_match",
+                "label": "游戏偏好",
+                "weight": 5,
+                "rawScore": 1,
+                "weightedScore": 5,
+                "detail": "旧版样本1:双人本 ↔ 旧版样本7:双人本"
+              },
+              {
+                "factor": "level_proximity",
+                "label": "经验等级",
+                "weight": 10,
+                "rawScore": 1,
+                "weightedScore": 10,
+                "detail": "旧版样本1:Lv5 ↔ 旧版样本7:Lv5 (差0级)"
+              },
+              {
+                "factor": "personality_compatibility",
+                "label": "人格兼容",
+                "weight": 25,
+                "rawScore": 0.649,
+                "weightedScore": 16.225,
+                "detail": "E相似:40% A相似:58% O互补:70%"
+              }
+            ],
+            "rank": 1,
+            "best_slot": "2026-10-27_下午",
+            "game_type": "双人"
+          },
+          {
+            "member_a_id": "a0000000-0000-4000-8000-000000000001",
+            "member_b_id": null,
+            "group_members": [
+              "a0000000-0000-4000-8000-000000000001",
+              "a0000000-0000-4000-8000-000000000003",
+              "a0000000-0000-4000-8000-000000000004",
+              "a0000000-0000-4000-8000-000000000005",
+              "a0000000-0000-4000-8000-000000000006",
+              "a0000000-0000-4000-8000-000000000007",
+              "a0000000-0000-4000-8000-000000000009"
+            ],
+            "total_score": 61.3,
+            "score_breakdown": null,
+            "rank": 2,
+            "best_slot": "2026-10-27_晚上",
+            "game_type": "多人"
+          }
+        ],
+        "totalCandidates": 9,
+        "totalMatched": 9,
+        "totalUnmatched": 0,
+        "unmatchedIds": []
+      }
+    }
+  ]
+}

@@ -18,6 +18,7 @@ import {
   scoreLevelProximity,
   scorePersonalityCompatibility,
 } from "./score-personality"
+import { scoreActivityFeedback, scoreExperienceBucket, scoreGameModeSet, scoreScoringInterestOverlap } from "./score-v3"
 
 /**
  * 计算两个候选人的兼容度评分
@@ -69,8 +70,19 @@ export function scorePairFactors(
 ): PairScore {
   const base = { userA: a.submissionId, userB: b.submissionId }
 
-  // 8因子评分
-  const breakdown: ScoreComponent[] = [
+  // The absent policy is the original version 2 path, including its output.
+  const policy = config.scoringPolicy
+  const breakdown: ScoreComponent[] = policy ? [
+    scoreScoringInterestOverlap(a, b, config.weights.interest_overlap),
+    { factor: "social_complement", label: "社交互补", weight: 0, rawScore: 0, weightedScore: 0, detail: "当前版本不单独计分" },
+    scoreSchoolDiversity(a, b, config),
+    { factor: "compatibility_score", label: "管理员综合分", weight: 0, rawScore: 0, weightedScore: 0, detail: "管理员A/B/C/D分不参与当前版本匹配" },
+    scoreRepeatPenalty(a, b, config),
+    scoreGameModeSet(a, b, config.weights.gameMode_match),
+    scoreExperienceBucket(a, b, config.weights.level_proximity),
+    scorePersonalityCompatibility(a, b, config.weights.personality_compatibility, policy.dimensionWeights),
+    scoreActivityFeedback(a, b, config.weights.activity_feedback ?? 0, policy),
+  ] : [
     scoreInterestOverlap(a, b, config.weights.interest_overlap),
     scoreSocialComplement(a, b, config),
     scoreSchoolDiversity(a, b, config),
@@ -84,7 +96,7 @@ export function scorePairFactors(
   const totalScore = breakdown.reduce((sum, c) => sum + c.weightedScore, 0)
 
   const topFactors = breakdown
-    .filter((c) => c.rawScore > 0.5)
+    .filter((c) => c.rawScore > 0.5 && (!policy || c.weightedScore > 0))
     .sort((a, b) => b.weightedScore - a.weightedScore)
     .slice(0, 3)
     .map((c) => c.label)

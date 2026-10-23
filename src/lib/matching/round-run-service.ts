@@ -3,9 +3,10 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
-import { MATCHING_ENGINE_ALGORITHM_VERSION, MATCHING_RUN_ADAPTER_VERSION, prepareMatchingRunInput, type MatchingEngineInput } from "./run-input"
+import { LEGACY_MATCHING_ENGINE_ALGORITHM_VERSION, LEGACY_MATCHING_RUN_ADAPTER_VERSION, MATCHING_ENGINE_ALGORITHM_VERSION, MATCHING_RUN_ADAPTER_VERSION, prepareMatchingRunInput, type MatchingEngineInput } from "./run-input"
 import { runFullMatching } from "./run-matching"
 import { MATCHING_RUN_ERROR_MESSAGES, type MatchingRunRecord, type MatchingRunStatus } from "./run-lifecycle"
+import { createScoringV3Config, validateScoringPolicy } from "./scoring-policy"
 
 type RpcError = { code?: string; message: string }
 type RpcClient = { rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{ data: T | null; error: RpcError | null }> }
@@ -88,18 +89,44 @@ async function recordFailure(db: RpcClient, receipt: Receipt, actorId: string, c
 }
 
 function restoreEngine(value: MatchingEngineInput): MatchingEngineInput {
-  if (value.algorithm_version !== MATCHING_ENGINE_ALGORITHM_VERSION || value.adapter_version !== MATCHING_RUN_ADAPTER_VERSION) {
+  const legacy = value.algorithm_version === LEGACY_MATCHING_ENGINE_ALGORITHM_VERSION && value.adapter_version === LEGACY_MATCHING_RUN_ADAPTER_VERSION
+  const current = value.algorithm_version === MATCHING_ENGINE_ALGORITHM_VERSION && value.adapter_version === MATCHING_RUN_ADAPTER_VERSION
+  if (!legacy && !current) {
     throw new Error("VERSION_UNSUPPORTED")
   }
   if (!Array.isArray(value.candidates) || !Array.isArray(value.idMap) || !Array.isArray(value.pairRelations) || !value.config) throw new Error("INPUT_INVALID")
+  if (legacy && value.config.scoringPolicy !== undefined) throw new Error("INPUT_INVALID")
+  if (current) {
+    const policy = value.config.scoringPolicy
+    validateScoringPolicy(policy)
+    // Each policy version has fixed base weights. A recovered snapshot cannot
+    // combine a new policy with stale or partially written legacy weights.
+    const expected = createScoringV3Config(policy)
+    if (Object.keys(expected.weights).some((factor) => value.config.weights[factor as keyof typeof expected.weights] !== expected.weights[factor as keyof typeof expected.weights])) throw new Error("INPUT_INVALID")
+  }
   return structuredClone(value)
+}
+
+function runEngine(engine: MatchingEngineInput) {
+  const idMap = new Map(engine.idMap)
+  const relations = new Map(engine.pairRelations)
+  // Version dispatch is explicit: v2 has no policy and therefore uses the
+  // unchanged legacy scorer; v3 uses only its captured policy and reviews.
+  switch (engine.algorithm_version) {
+    case LEGACY_MATCHING_ENGINE_ALGORITHM_VERSION:
+      return runFullMatching(engine.candidates, engine.config, idMap, relations)
+    case MATCHING_ENGINE_ALGORITHM_VERSION:
+      return runFullMatching(engine.candidates, engine.config, idMap, relations)
+    default:
+      throw new Error("VERSION_UNSUPPORTED")
+  }
 }
 
 async function executeRoundRun(roundId: string, sessionName: string, reason: string, requestId: string, actorId: string): Promise<RoundRunResult> {
   const db = createAdminClient() as unknown as RpcClient
   let receipt: Receipt
   try {
-    const { data, error } = await db.rpc<Receipt>("admin_begin_matching_run", {
+    const { data, error } = await db.rpc<Receipt>("admin_begin_matching_run_v3", {
       p_round_id: roundId, p_request_id: requestId, p_actor_admin_id: actorId, p_session_name: sessionName, p_reason: reason,
     })
     if (error || !data?.run) {
@@ -129,7 +156,9 @@ async function executeRoundRun(roundId: string, sessionName: string, reason: str
   let failureCode = "INPUT_INVALID"
   try {
     // A resumed operation uses the staged engine input, never current forms/history.
-    const engine = receipt.engine_input ? restoreEngine(receipt.engine_input) : prepareMatchingRunInput(receipt.capture).engineInput
+    const engine = restoreEngine(receipt.engine_input ?? prepareMatchingRunInput(receipt.capture).engineInput)
+    if ((receipt.run.algorithm_version !== undefined && receipt.run.algorithm_version !== engine.algorithm_version)
+      || (receipt.run.adapter_version !== undefined && receipt.run.adapter_version !== engine.adapter_version)) throw new Error("VERSION_UNSUPPORTED")
     if (engine.candidates.length < 2) {
       failureCode = "CANDIDATES_INSUFFICIENT"
       throw new Error(failureCode)
@@ -143,7 +172,7 @@ async function executeRoundRun(roundId: string, sessionName: string, reason: str
     }
     failureCode = "ENGINE_FAILED"
     const idMap = new Map(engine.idMap)
-    const result = runFullMatching(engine.candidates, engine.config, idMap, new Map(engine.pairRelations))
+    const result = runEngine(engine)
     failureCode = "SAVE_FAILED"
     const { data, error } = await db.rpc<Receipt>("admin_complete_matching_run", {
       p_run_id: receipt.run.id, p_actor_admin_id: actorId, p_lease_token: receipt.lease_token,

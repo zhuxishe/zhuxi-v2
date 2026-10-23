@@ -72,6 +72,9 @@ export interface MatchCandidate {
   compatibilityScore: number | null
   matchHistory: { name: string; count: number }[]
   gameMode: string | null
+  /** Version 3 scoring inputs; the original tags still serve hard constraints. */
+  gameModes?: string[]
+  scoringInterestTags?: string[]
   hasProfile: boolean
   // Extended fields for hard constraints
   tabooTags?: string[]
@@ -129,6 +132,38 @@ export interface MatchAssignment {
 
 // ── 匹配配置 ──
 
+export interface PersonalityDimensionWeights { E: number; A: number; O: number; C: number; N: number }
+
+/** Numeric, valid peer reviews frozen when a new matching run is captured. */
+export interface ActivityFeedbackRecord {
+  id: string
+  round_id: string
+  reviewer_id: string
+  reviewee_id: string
+  score: number
+  version: number
+}
+
+export interface ScoringPolicy {
+  version: "weighted_feedback:1"
+  quizVersionId: string
+  dimensionWeights: PersonalityDimensionWeights
+  activityFeedback: ActivityFeedbackRecord[]
+}
+
+export interface MultiPoolScoreBreakdown {
+  kind: "multi_pool"
+  version: "weighted_feedback:1"
+  factors: ScoreComponent[]
+  pairCount: number
+  feedbackPairCount: number
+  minimumMemberAverage: number
+  memberAverageDistribution: { min: number; max: number; mean: number }
+  /** Counts of pair scores in the stated intervals; no additional vetoes. */
+  pairScoreDistribution: { below40: number; from40to60: number; from60to80: number; atLeast80: number }
+  historyAdjustment: 0
+}
+
 export interface MatchingConfig {
   weights: {
     interest_overlap: number
@@ -139,6 +174,7 @@ export interface MatchingConfig {
     gameMode_match: number
     level_proximity: number
     personality_compatibility: number
+    activity_feedback?: number
   }
   complementPairs: [string, string][]
   hardConstraints: {
@@ -147,6 +183,8 @@ export interface MatchingConfig {
   preferCrossSchool: boolean
   repeatDecayFactor: number
   defaultCompatibilityScore: number // 无合拍分时的默认值
+  /** Absent on all original version 2 runs. */
+  scoringPolicy?: ScoringPolicy
 }
 
 // ── 匹配结果 (DB) ──

@@ -132,7 +132,7 @@ export function MatchPairCard({ result, pairRel, submissionPrefs = {}, canViewRa
         </p>
         {score_breakdown != null && (
           <ScoreBreakdownChart
-            breakdown={score_breakdown as Record<string, { raw: number; weighted: number; maxRaw: number }>}
+            breakdown={score_breakdown}
           />
         )}
       </div>

@@ -92,6 +92,7 @@ export function scorePersonalityCompatibility(
     weight,
     rawScore,
     weightedScore: weight * rawScore,
-    detail: `E相似:${(eSim * 100).toFixed(0)}% A相似:${(aSim * 100).toFixed(0)}% O互补:${(oScore * 100).toFixed(0)}%`,
+    detail: `E相似:${(eSim * 100).toFixed(0)}% A相似:${(aSim * 100).toFixed(0)}% O互补:${(oScore * 100).toFixed(0)}%`
+      + (dimWeights ? ` C相似:${(cSim * 100).toFixed(0)}% N相似:${(esSim * 100).toFixed(0)}%；本批维度权重 E/A/O/C/N=${w.E}/${w.A}/${w.O}/${w.C}/${w.N}` : ""),
   }
 }

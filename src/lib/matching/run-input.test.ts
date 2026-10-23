@@ -104,6 +104,24 @@ function fixture() {
   }
 }
 
+function scoringFixture() {
+  const capture = fixture()
+  return {
+    ...capture,
+    source: {
+      ...capture.source,
+      algorithm_version: "max_coverage_split:3",
+      adapter_version: 2,
+      scoring_policy: {
+        version: "weighted_feedback:1",
+        quizVersionId: id(800),
+        dimensionWeights: { E: 0.3, A: 0.3, O: 0.15, C: 0.1, N: 0.15 },
+        activityFeedback: [{ id: id(810), round_id: id(811), reviewer_id: MEMBER_A, reviewee_id: MEMBER_C, score: 1, version: 2 }],
+      },
+    },
+  }
+}
+
 describe("captured matching run inputs", () => {
   beforeEach(() => {
     mocks.queries.length = 0
@@ -203,6 +221,64 @@ describe("captured matching run inputs", () => {
     expect(prepared.engineInput.candidates[0].availability["2026-11-01"]).toEqual(["下午", "晚上"])
     expect(DEFAULT_CONFIG.weights.interest_overlap).toBe(15)
     expect(prepared.engineInput).toMatchObject({ algorithm_version: "max_coverage_split:2", adapter_version: 1 })
+  })
+
+  it("uses only the captured published dimension weights and numeric reviews for a new policy run", () => {
+    const capture = scoringFixture()
+    const original = structuredClone(capture)
+    const prepared = prepareMatchingRunInput(capture)
+    expect(prepared.engineInput).toMatchObject({ algorithm_version: "max_coverage_split:3", adapter_version: 2 })
+    expect(prepared.config.scoringPolicy).toEqual(capture.source.scoring_policy)
+    expect(Object.values(prepared.config.weights).reduce((sum, weight) => sum + (weight ?? 0), 0)).toBe(100)
+    expect(prepared.config.weights.compatibility_score).toBe(0)
+    expect(prepared.candidates).toHaveLength(3)
+    expect(prepared.candidates[0].gameModes).toEqual(["推理", "情感"])
+    expect(prepared.candidates[0].scoringInterestTags).not.toContain("推理")
+    // Mode tags still participate in the unchanged taboo/hard-veto path.
+    expect(prepared.candidates[0].interestTags).toContain("推理")
+    // A new activity score of 1 is a soft relationship input, never an automatic blacklist.
+    expect(prepared.pairRelations.get(pairKey(MEMBER_A, MEMBER_C))?.status).not.toBe("blacklist")
+    expect(prepared.pairRelations.get(pairKey(MEMBER_A, MEMBER_B))?.status).toBe("reunion")
+    expect(mocks.queries).toEqual([])
+    expect(capture).toEqual(original)
+  })
+
+  it("freezes the new policy with its run instead of following later published weights or review edits", () => {
+    const capture = scoringFixture()
+    const prepared = prepareMatchingRunInput(capture)
+    const frozen = structuredClone(prepared.engineInput)
+    capture.source.scoring_policy.dimensionWeights = { E: 1, A: 0, O: 0, C: 0, N: 0 }
+    capture.source.scoring_policy.quizVersionId = id(900)
+    capture.source.scoring_policy.activityFeedback[0].score = 5
+    prepared.config.scoringPolicy!.activityFeedback[0].score = 4
+    expect(prepared.engineInput).toEqual(frozen)
+    expect(prepareMatchingRunInput(capture).engineInput.config.scoringPolicy?.dimensionWeights.E).toBe(1)
+    expect(prepareMatchingRunInput(fixture()).engineInput.config).toEqual(DEFAULT_CONFIG)
+  })
+
+  it.each([
+    { algorithm_version: "max_coverage_split:3", adapter_version: 1 },
+    { algorithm_version: "max_coverage_split:2", adapter_version: 2 },
+    { algorithm_version: "max_coverage_split:4", adapter_version: 3 },
+    { algorithm_version: "max_coverage_split:3" },
+  ])("refuses mixed or unsupported raw capture versions %j", (versions) => {
+    expect(() => prepareMatchingRunInput({ ...fixture(), source: { ...fixture().source, ...versions } })).toThrow("VERSION_UNSUPPORTED")
+  })
+
+  it.each([
+    (capture: ReturnType<typeof scoringFixture>) => { capture.source.scoring_policy.dimensionWeights.E = 0.9 },
+    (capture: ReturnType<typeof scoringFixture>) => { capture.source.scoring_policy.activityFeedback[0].score = 0 },
+    (capture: ReturnType<typeof scoringFixture>) => { capture.source.scoring_policy.activityFeedback[0].version = 0 },
+    (capture: ReturnType<typeof scoringFixture>) => { capture.source.scoring_policy.quizVersionId = "" },
+    (capture: ReturnType<typeof scoringFixture>) => { delete (capture.source as Record<string, unknown>).scoring_policy },
+  ])("does not silently fall back to legacy defaults when a new capture policy is invalid", (change) => {
+    const capture = scoringFixture()
+    change(capture)
+    expect(() => prepareMatchingRunInput(capture)).toThrow()
+  })
+
+  it("does not graft a scoring policy onto an old pre-stage capture", () => {
+    expect(() => prepareMatchingRunInput({ ...fixture(), source: { ...fixture().source, scoring_policy: scoringFixture().source.scoring_policy } })).toThrow("legacy version")
   })
 
   it("accepts nullable version references and an ineligible missing member without restoring it", () => {

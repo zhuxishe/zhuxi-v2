@@ -1,14 +1,20 @@
-import { submissionToCandidate } from "./adapter-submission"
+import { enrichCandidateForScoringV3, submissionToCandidate } from "./adapter-submission"
 import { DEFAULT_CONFIG } from "./config"
 import { getImportMetadata, getImportedHistory } from "./import-metadata"
 import { buildPairRelations } from "./pair-history"
 import type { BlacklistRecord, FeedbackRecord, PairRelation } from "./pair-history"
 import { parseMatchingReadiness, type MatchingReadiness } from "./profile-readiness"
 import { mergeMatchHistory } from "./round-import-utils"
+import { createScoringV3Config, validateScoringPolicy } from "./scoring-policy"
 import type { MatchCandidate, MatchingConfig } from "./types"
 
-export const MATCHING_ENGINE_ALGORITHM_VERSION = "max_coverage_split:2" as const
-export const MATCHING_RUN_ADAPTER_VERSION = 1 as const
+export const MATCHING_ENGINE_ALGORITHM_VERSION = "max_coverage_split:3" as const
+export const MATCHING_RUN_ADAPTER_VERSION = 2 as const
+export const LEGACY_MATCHING_ENGINE_ALGORITHM_VERSION = "max_coverage_split:2" as const
+export const LEGACY_MATCHING_RUN_ADAPTER_VERSION = 1 as const
+
+export type MatchingAlgorithmVersion = typeof MATCHING_ENGINE_ALGORITHM_VERSION | typeof LEGACY_MATCHING_ENGINE_ALGORITHM_VERSION
+export type MatchingAdapterVersion = typeof MATCHING_RUN_ADAPTER_VERSION | typeof LEGACY_MATCHING_RUN_ADAPTER_VERSION
 
 type Row = Record<string, unknown>
 type HistoryEntry = { name: string; count: number }
@@ -27,8 +33,8 @@ export interface MatchingEngineInput {
   pairRelations: [string, PairRelation][]
   idMap: [string, string][]
   config: MatchingConfig
-  algorithm_version: typeof MATCHING_ENGINE_ALGORITHM_VERSION
-  adapter_version: typeof MATCHING_RUN_ADAPTER_VERSION
+  algorithm_version: MatchingAlgorithmVersion
+  adapter_version: MatchingAdapterVersion
 }
 
 export interface PreparedMatchingRunInput {
@@ -271,6 +277,18 @@ export function prepareMatchingRunInput(capture: unknown): PreparedMatchingRunIn
   const snapshotId = uuid(captured.snapshot_id, "snapshot_id")
   if (typeof captured.captured_at !== "string" || !Number.isFinite(Date.parse(captured.captured_at))) invalid("captured_at")
   const source = record(captured.source, "source")
+  // Untagged captures predate the scoring policy. They keep the exact original
+  // adapter and scoring configuration even when first staged after deployment.
+  const legacy = (source.algorithm_version === undefined && source.adapter_version === undefined)
+    || (source.algorithm_version === LEGACY_MATCHING_ENGINE_ALGORITHM_VERSION && source.adapter_version === LEGACY_MATCHING_RUN_ADAPTER_VERSION)
+  const current = source.algorithm_version === MATCHING_ENGINE_ALGORITHM_VERSION && source.adapter_version === MATCHING_RUN_ADAPTER_VERSION
+  if (!legacy && !current) throw new Error("VERSION_UNSUPPORTED")
+  if (legacy && source.scoring_policy !== undefined) invalid("source.scoring_policy legacy version")
+  let config = structuredClone(DEFAULT_CONFIG)
+  if (current) {
+    validateScoringPolicy(source.scoring_policy)
+    config = createScoringV3Config(source.scoring_policy)
+  }
   const roundId = uuid(record(source.round, "source.round").id, "source.round.id")
   array(source.questionnaire_refs, "source.questionnaire_refs")
   const allSubmissions = array(source.submissions, "source.submissions").map((row, index) => parseSubmissionIdentity(row, roundId, index))
@@ -289,16 +307,18 @@ export function prepareMatchingRunInput(capture: unknown): PreparedMatchingRunIn
   }
   const histories = historyMap(parseHistory(source.history_results))
   const pairRelations = buildPairRelations(parseFeedbacks(source.feedbacks), parseBlacklist(source.blacklist), histories)
-  const candidates = submissions.map((sub) => submissionToCandidate(sub, sub.member as Row, mergeMatchHistory(histories.get(sub.member_id as string) ?? [], getImportedHistory(sub.import_metadata))))
+  const candidates = submissions.map((sub) => {
+    const candidate = submissionToCandidate(sub, sub.member as Row, mergeMatchHistory(histories.get(sub.member_id as string) ?? [], getImportedHistory(sub.import_metadata)))
+    return current ? enrichCandidateForScoringV3(sub, sub.member as Row, candidate) : candidate
+  })
   const idMap = new Map(submissions.map((sub) => [sub.member_id as string, sub.member_id as string]))
-  const config = structuredClone(DEFAULT_CONFIG)
   const engineInput: MatchingEngineInput = structuredClone({
     candidates,
     pairRelations: [...pairRelations],
     idMap: [...idMap],
     config,
-    algorithm_version: MATCHING_ENGINE_ALGORITHM_VERSION,
-    adapter_version: MATCHING_RUN_ADAPTER_VERSION,
+    algorithm_version: current ? MATCHING_ENGINE_ALGORITHM_VERSION : LEGACY_MATCHING_ENGINE_ALGORITHM_VERSION,
+    adapter_version: current ? MATCHING_RUN_ADAPTER_VERSION : LEGACY_MATCHING_RUN_ADAPTER_VERSION,
   })
   return { snapshotId, capturedAt: captured.captured_at, submissions, candidates, pairRelations, idMap, config, engineInput, exclusions: eligibility.filter((row) => !row.eligible) }
 }

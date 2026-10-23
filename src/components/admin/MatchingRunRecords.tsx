@@ -29,7 +29,7 @@ export function MatchingRunRecords({ runs, loading, auditReason, onRefresh, onRe
     <header className="flex items-center justify-between gap-3 border-b px-4 py-3">
       <div>
         <h3 className="text-sm font-semibold">本轮运行记录（{runs.length}）</h3>
-        <p className="mt-1 text-xs text-muted-foreground">每次主动新增运行保留独立方案；网络重试沿用原运行编号。恢复使用原批输入，不重新读取最新报名。</p>
+        <p className="mt-1 text-xs text-muted-foreground">每次主动新增运行保留独立方案；网络重试沿用原运行编号。恢复使用原批输入和原评分版本，不重新读取最新报名、人格权重或互评。</p>
       </div>
       <Button size="sm" variant="outline" onClick={onRefresh} disabled={loading}><RefreshCw className="size-3.5" />刷新状态</Button>
     </header>
@@ -41,6 +41,7 @@ export function MatchingRunRecords({ runs, loading, auditReason, onRefresh, onRe
             <p className="text-sm font-medium">第 {run.batch_number} 批 · {run.session_name}</p>
             <p className="mt-1 break-all text-xs text-muted-foreground">运行编号：{run.id}</p>
             <p className="mt-1 text-xs text-muted-foreground">创建于 {formatAdminDateTime(run.created_at)} · 第 {run.attempt} 次尝试</p>
+            {run.algorithm_version && <p className="mt-1 text-xs text-muted-foreground">评分版本：{run.algorithm_version === "max_coverage_split:3" ? "100分基础权重与活动互评" : run.algorithm_version === "max_coverage_split:2" ? "原评分规则" : run.algorithm_version}（{run.algorithm_version} / 适配器 {run.adapter_version ?? "未知"}）</p>}
           </div>
           <span className="rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">{runStatus(run)}</span>
         </div>

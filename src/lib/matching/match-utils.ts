@@ -79,10 +79,16 @@ export function tryPair(
 
   const bonus = getReunionBonus(a, b, pairRelations)
   const penalty = (!strictAvoid && isAvoid) ? -20 : 0
+  const adjustment = bonus + penalty
+  const breakdown = config.scoringPolicy && adjustment !== 0 ? [...score.breakdown, {
+    factor: "history_adjustment", label: "旧历史规则调整", weight: 0,
+    rawScore: adjustment, weightedScore: adjustment,
+    detail: bonus > 0 ? "旧规则：重逢 +30；在100分基础分之外计算" : "旧规则：普通重复 -20；在100分基础分之外计算",
+  }] : score.breakdown
 
   return {
     i, j,
-    score: { ...score, totalScore: score.totalScore + bonus + penalty },
+    score: { ...score, totalScore: score.totalScore + bonus + penalty, breakdown },
     bestSlot: `${common[0].date}_${common[0].slot}`,
     bonus,
     isRepeat: isAvoid,

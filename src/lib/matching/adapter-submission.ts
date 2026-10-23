@@ -94,3 +94,22 @@ export function submissionToCandidate(
       : null,
   }
 }
+
+/** New runs score full mode sets without changing the tags used by hard vetoes. */
+export function enrichCandidateForScoringV3(
+  sub: SubmissionRow,
+  memberProfile: MemberRow | null,
+  candidate: MatchCandidate,
+): MatchCandidate {
+  const importedLegacy = getImportedLegacyProfile(sub.import_metadata)
+  const identity = getSingleRelation(memberProfile?.member_identity) ?? {}
+  const interests = getSingleRelation(memberProfile?.member_interests) ?? {}
+  const modes: string[] = interests.scenario_mode_pref?.length
+    ? interests.scenario_mode_pref : importedLegacy?.game_mode ? [importedLegacy.game_mode] : []
+  const scoringTags: string[] = [
+    ...(sub.interest_tags ?? []), ...(identity.hobby_tags ?? []),
+    ...(interests.scenario_theme_tags ?? []), ...(importedLegacy?.interest_tags ?? []),
+  ]
+  return { ...candidate, gameModes: [...new Set(modes)],
+    scoringInterestTags: [...new Set(scoringTags)].filter((tag) => !modes.includes(tag)) }
+}

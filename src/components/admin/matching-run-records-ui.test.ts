@@ -58,6 +58,17 @@ describe("round batch records", () => {
     expect(html).not.toContain("恢复本批")
     expect(html).not.toContain("查看方案")
   })
+
+  it("identifies old and new scoring versions while explaining frozen recovery", () => {
+    const html = renderRecords([
+      record(1, { algorithm_version: "max_coverage_split:2", adapter_version: 1 }),
+      record(2, { algorithm_version: "max_coverage_split:3", adapter_version: 2 }),
+    ])
+    expect(html).toContain("原评分规则")
+    expect(html).toContain("100分基础权重与活动互评")
+    expect(html).toContain("原批输入和原评分版本")
+    expect(html).toContain("不重新读取最新报名、人格权重或互评")
+  })
 })
 
 describe("matching workbench session history", () => {

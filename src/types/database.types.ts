@@ -1617,6 +1617,7 @@ export type Database = {
           created_by: string | null
           group_size: number
           id: string
+          input_snapshot_required: boolean
           publication_version: number
           published_at: string | null
           results_ready: boolean
@@ -1635,6 +1636,7 @@ export type Database = {
           created_by?: string | null
           group_size?: number
           id?: string
+          input_snapshot_required?: boolean
           publication_version?: number
           published_at?: string | null
           results_ready?: boolean
@@ -1653,6 +1655,7 @@ export type Database = {
           created_by?: string | null
           group_size?: number
           id?: string
+          input_snapshot_required?: boolean
           publication_version?: number
           published_at?: string | null
           results_ready?: boolean
@@ -3168,6 +3171,26 @@ export type Database = {
       }
     }
     Functions: {
+      admin_capture_matching_input: {
+        Args: { p_round_id: string; p_actor_admin_id: string; p_reason: string }
+        Returns: Json
+      }
+      admin_seal_matching_input: {
+        Args: { p_snapshot_id: string; p_session_id: string; p_actor_admin_id: string; p_engine_input: Json }
+        Returns: Json
+      }
+      admin_discard_matching_input: {
+        Args: { p_snapshot_id: string; p_actor_admin_id: string }
+        Returns: Json
+      }
+      admin_read_matching_input: {
+        Args: { p_session_id: string; p_actor_admin_id: string }
+        Returns: Json
+      }
+      admin_get_matching_input_metadata: {
+        Args: { p_session_id: string }
+        Returns: Json
+      }
       admin_finalize_matching_session: {
         Args: { p_session_id: string; p_round_id: string; p_expected_status: string; p_survey_start: string; p_survey_end: string; p_reason: string }
         Returns: Json

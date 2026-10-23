@@ -2,12 +2,10 @@
 
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
-import { buildRoundCandidates } from "@/lib/matching/build-round-candidates"
+import { prepareMatchingRunInput } from "@/lib/matching/run-input"
 import { runFullMatching } from "@/lib/matching/run-matching"
-import { DEFAULT_CONFIG } from "@/lib/matching/config"
-import type { MatchingConfig } from "@/lib/matching/types"
 import type { Json } from "@/types/database.types"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
@@ -69,47 +67,79 @@ export async function runRoundMatching(roundId: string, sessionName: string, raw
     return { error: `当前轮次状态为「${roundStatusLabel(round.status)}」，只有已开放收集或已截止的轮次才能执行匹配` }
   }
 
-  // 1. 获取问卷提交（含用户资料）
-  const { submissions, candidates } = await buildRoundCandidates(roundId)
-  if (submissions.length < 2) {
-    return { error: "至少需要 2 人提交问卷才能匹配" }
-  }
-
-  // 2. 获取成员 ID
-  const memberIds = submissions.map((s) => s.member_id)
-
-  // 3. 构建配对历史关系（黑名单、互评、配对次数，使用 member UUID 作为 key）
-  const pairRelations = await fetchPairRelations(memberIds)
-
-  // 4. 三阶段分流匹配（双人池 → 多人池 → 回流兜底）
-  // idMap: submissionId(=member_id) → member_id，用于结果写入
-  const config: MatchingConfig = { ...DEFAULT_CONFIG }
-  const idMap = new Map<string, string>()
-  for (const sub of submissions) idMap.set(sub.member_id, sub.member_id)
-
-  const result = runFullMatching(candidates, config, idMap, pairRelations)
-
-  // 5. 保存 match_session
-  const { data: session, error: sErr } = await supabase
-    .from("match_sessions")
-    .insert({
-      session_name: sessionName || `${new Date().toLocaleDateString("zh-CN")} 匹配`,
-      round_id: roundId,
-      algorithm: "max_coverage_split",
-      config: config as unknown as import("@/types/database.types").Json,
-      total_candidates: result.totalCandidates,
-      total_matched: result.totalMatched,
-      total_unmatched: result.totalUnmatched,
-      created_by: admin.id,
-      audit_reason: reasonResult.reason,
+  // 1–5. 一次读取全轮报名、资格及历史，再封存本次实际算法输入。
+  // 已获有效匹配者仍在本轮大池；不按 active_assignments 排除。
+  const snapshotRpc = createAdminClient() as unknown as OperationalRpcClient
+  let pendingSnapshotId: string | null = null
+  let session: { id: string } | null = null
+  let result: ReturnType<typeof runFullMatching> | undefined
+  let idMap: Map<string, string> | undefined
+  try {
+    const { data: capture, error: captureError } = await snapshotRpc.rpc<unknown>("admin_capture_matching_input", {
+      p_round_id: roundId, p_actor_admin_id: admin.id, p_reason: reasonResult.reason,
     })
-    .select("id")
-    .single()
-
-  if (sErr) {
-    console.error("[runRoundMatching:session]", sErr)
-    return { error: "操作失败" }
+    if (captureError) {
+      console.error("[runRoundMatching:capture]", captureError)
+      return { error: "暂时无法检查本轮候选资格和保存输入，请刷新后重试。本次未生成匹配结果。" }
+    }
+    if (capture && typeof capture === "object" && "snapshot_id" in capture && typeof capture.snapshot_id === "string") {
+      pendingSnapshotId = capture.snapshot_id
+    }
+    const prepared = prepareMatchingRunInput(capture)
+    if (prepared.candidates.length < 2) {
+      return { error: `本轮共 ${prepared.submissions.length + prepared.exclusions.length} 人报名，符合本批资格的有 ${prepared.candidates.length} 人，至少需要 2 人才能匹配。未符合资格者的报名仍保留。` }
+    }
+    idMap = prepared.idMap
+    result = runFullMatching(prepared.candidates, prepared.config, idMap, prepared.pairRelations)
+    const { data: createdSession, error: sessionError } = await supabase
+      .from("match_sessions")
+      .insert({
+        session_name: sessionName || `${new Date().toLocaleDateString("zh-CN")} 匹配`,
+        round_id: roundId,
+        algorithm: "max_coverage_split",
+        config: prepared.config as unknown as Json,
+        input_snapshot_required: true,
+        total_candidates: result.totalCandidates,
+        total_matched: result.totalMatched,
+        total_unmatched: result.totalUnmatched,
+        created_by: admin.id,
+        audit_reason: reasonResult.reason,
+      })
+      .select("id")
+      .single()
+    if (sessionError || !createdSession) {
+      console.error("[runRoundMatching:session]", sessionError)
+      return { error: "操作失败" }
+    }
+    session = createdSession
+    const { data: sealed, error: sealError } = await snapshotRpc.rpc<{ status: string }>("admin_seal_matching_input", {
+      p_snapshot_id: prepared.snapshotId,
+      p_session_id: session.id,
+      p_actor_admin_id: admin.id,
+      p_engine_input: prepared.engineInput,
+    })
+    if (sealError || sealed?.status !== "sealed") throw new Error("MATCHING_INPUT_SEAL_FAILED", { cause: sealError })
+    pendingSnapshotId = null
+  } catch (error) {
+    console.error("[runRoundMatching:input]", error)
+    if (session) {
+      const { error: compensationError } = await (supabase as unknown as OperationalRpcClient).rpc<unknown>("admin_delete_operational_record", {
+        p_entity: "match_sessions", p_id: session.id, p_reason: `输入快照保存失败补偿：${reasonResult.reason}`.slice(0, 500),
+      })
+      if (compensationError) return { error: "批次输入保存失败，且会话补偿删除失败，请立即人工检查" }
+    }
+    return { error: "批次输入检查或保存失败，本次未生成可发布的匹配结果，请重试。" }
+  } finally {
+    if (pendingSnapshotId) {
+      try {
+        const { error: discardError } = await snapshotRpc.rpc<unknown>("admin_discard_matching_input", {
+          p_snapshot_id: pendingSnapshotId, p_actor_admin_id: admin.id,
+        })
+        if (discardError) console.error("[runRoundMatching:discard]", discardError)
+      } catch (discardError) { console.error("[runRoundMatching:discard]", discardError) }
+    }
   }
+  if (!session || !result || !idMap) return { error: "批次输入保存失败，请重试。" }
 
   // 6. 保存 match_results
   const rows = result.rows.map((r) => ({

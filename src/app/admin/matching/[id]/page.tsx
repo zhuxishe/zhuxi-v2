@@ -9,6 +9,7 @@ import { MatchSessionView } from "@/components/admin/MatchSessionView"
 import type { EnrichedMember, SubmissionPrefInfo } from "@/components/admin/match-detail-types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchPoolMembers } from "@/lib/queries/pool-members"
+import { fetchMatchingInputSnapshot, selectSessionSubmissionInputs } from "@/lib/matching/input-snapshot-reader"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 
@@ -42,9 +43,10 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   })
 
   // Fetch pair relationships, pool members, diagnostics in parallel
-  const [pairRelationships, poolMembers] = await Promise.all([
+  const [pairRelationships, poolMembers, inputSnapshot] = await Promise.all([
     fetchPairRelationships([...new Set(memberIds)]),
     roundId ? fetchPoolMembers(id) : Promise.resolve([]),
+    fetchMatchingInputSnapshot(id),
   ])
   const supabase = createAdminClient()
 
@@ -91,6 +93,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   let allMemberOptions: { id: string; name: string }[] = []
   const submissionPrefs = new Map<string, SubmissionPrefInfo>()
   const importInfoMap = new Map<string, EnrichedMember["import_info"]>()
+  let inputSource = selectSessionSubmissionInputs(inputSnapshot, [], []).source
 
   if (roundId) {
     const includeImportMetadata = canViewRawSubmissions
@@ -114,8 +117,22 @@ export default async function MatchSessionDetailPage({ params }: Props) {
       .select(submissionSelect)
       .eq("round_id", roundId)
 
-    const submissionRows: any[] = subs ?? []
+    const liveSubmissionRows: any[] = subs ?? []
+    const savedMemberIds = new Set<string>(unmatchedMemberIds)
+    for (const result of results) {
+      if (result.member_a_id) savedMemberIds.add(result.member_a_id)
+      if (result.member_b_id) savedMemberIds.add(result.member_b_id)
+      for (const memberId of result.group_members ?? []) savedMemberIds.add(memberId)
+    }
+    const selectedInputs = selectSessionSubmissionInputs(inputSnapshot, liveSubmissionRows, savedMemberIds)
+    inputSource = selectedInputs.source
+    // Names and privacy state always come from current member records, never an old snapshot.
+    const currentMemberById = new Map(liveSubmissionRows.map((row: any) => [row.member_id, row.member]))
+    const submissionRows: any[] = selectedInputs.rows.map((row) => ({
+      ...row, member: currentMemberById.get(row.member_id) ?? null,
+    }))
     const needsFallbackImportLookup = canViewRawSubmissions
+      && inputSnapshot === null
       && !includeImportMetadata
       && submissionRows.some((sub: any) => {
       const member = getSingleRelation(sub.member as any)
@@ -144,7 +161,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         importInfoMap.set(memberId, info)
       }
 
-      timeSlotData = submissionRows.map((sub: any) => {
+      timeSlotData = selectedInputs.initialRows.map((sub: any) => {
         const avail = (sub.availability ?? {}) as Record<string, string[]>
         const slots: string[] = []
         for (const [date, times] of Object.entries(avail)) {
@@ -177,7 +194,8 @@ export default async function MatchSessionDetailPage({ params }: Props) {
       }
     }
 
-    allMemberOptions = submissionRows
+    // The existing manual dialog remains a live view, including later submissions.
+    allMemberOptions = liveSubmissionRows
       .filter((sub: any) => !activeMemberIds.has(sub.member_id))
       .map((sub: any) => {
         const member = getSingleRelation(sub.member as any)
@@ -267,6 +285,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         submissionPrefs={Object.fromEntries(submissionPrefs)}
         readOnly={readOnly}
         canViewRawSubmissions={canViewRawSubmissions}
+        inputSource={inputSource}
       />
     </div>
   )

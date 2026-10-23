@@ -1,0 +1,16 @@
+-- Read only. Run after the single incremental migration; compare business and
+-- questionnaire digests with the release preflight saved separately.
+SELECT jsonb_build_object(
+ 'schema_exposed',COALESCE((SELECT 'matching_run'=ANY(string_to_array(replace(split_part(setting,'=',2),' ',''),',')) FROM pg_db_role_setting settings CROSS JOIN LATERAL unnest(settings.setconfig) configs(setting) WHERE setting LIKE 'pgrst.db_schemas=%' LIMIT 1),false),
+ 'tables',(SELECT jsonb_agg(jsonb_build_object('name',c.relname,'rls',c.relrowsecurity,'anon_select',has_table_privilege('anon',c.oid,'SELECT'),'authenticated_select',has_table_privilege('authenticated',c.oid,'SELECT'),'service_select',has_table_privilege('service_role',c.oid,'SELECT'))) FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='matching_run' AND c.relkind='r'),
+ 'public_wrappers',(SELECT jsonb_agg(jsonb_build_object('name',p.proname,'signature',p.oid::regprocedure::text,'definer',p.prosecdef,'anon_execute',has_function_privilege('anon',p.oid,'EXECUTE'),'authenticated_execute',has_function_privilege('authenticated',p.oid,'EXECUTE'),'service_execute',has_function_privilege('service_role',p.oid,'EXECUTE'))) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='public' AND p.proname IN('admin_capture_matching_input','admin_seal_matching_input','admin_discard_matching_input','admin_read_matching_input','admin_get_matching_input_metadata')),
+ 'internal_functions',(SELECT jsonb_agg(jsonb_build_object('name',p.proname,'definer',p.prosecdef,'anon_execute',has_function_privilege('anon',p.oid,'EXECUTE'),'authenticated_execute',has_function_privilege('authenticated',p.oid,'EXECUTE'),'service_execute',has_function_privilege('service_role',p.oid,'EXECUTE'))) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='matching_run'),
+ 'guards',(SELECT jsonb_agg(jsonb_build_object('name',t.tgname,'enabled',t.tgenabled,'definition',pg_get_triggerdef(t.oid))) FROM pg_trigger t WHERE NOT t.tgisinternal AND t.tgname IN('matching_run_session_input','matching_run_member_erasure')),
+ 'finalizer_has_input_guard',(SELECT position('matching_run.assert_session_input(p_session_id)' IN p.prosrc)>0 FROM pg_proc p WHERE p.oid='matching_publication.finalize_session(uuid,uuid,text,timestamptz,timestamptz,text)'::regprocedure),
+ 'snapshot_count',(SELECT count(*) FROM matching_run.snapshots),
+ 'unsealed_count',(SELECT count(*) FROM matching_run.snapshots WHERE sealed_at IS NULL),
+ 'redacted_count',(SELECT count(*) FROM matching_run.snapshots WHERE redacted_at IS NOT NULL),
+ 'ready_without_sealed_input',(SELECT count(*) FROM public.match_sessions s WHERE s.input_snapshot_required AND s.results_ready AND NOT EXISTS(SELECT 1 FROM matching_run.snapshots snapshot WHERE snapshot.session_id=s.id AND snapshot.sealed_at IS NOT NULL)),
+ 'redacted_payload_remaining',(SELECT count(*) FROM matching_run.snapshots WHERE redacted_at IS NOT NULL AND(source IS NOT NULL OR engine_input IS NOT NULL)),
+ 'source_reads_effective_assignments',(SELECT position('active_assignments' IN prosrc)>0 FROM pg_proc WHERE oid='matching_run.source(uuid)'::regprocedure)
+) AS matching_run_input_postflight;

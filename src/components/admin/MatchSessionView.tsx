@@ -18,6 +18,7 @@ import type { EnrichedMatchResult, PairRelationship, EnrichedMember, SubmissionP
 import type { PoolMember } from "@/lib/queries/pool-members"
 import type { DiagnosticItem } from "./UnmatchedDiagnostics"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
+import type { MatchingSessionInputSource } from "@/lib/matching/input-snapshot-reader"
 
 interface Props {
   session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number; round_id?: string | null; publication_version?: number; results_ready?: boolean }
@@ -30,6 +31,7 @@ interface Props {
   submissionPrefs?: Record<string, SubmissionPrefInfo>
   readOnly?: boolean
   canViewRawSubmissions?: boolean
+  inputSource?: MatchingSessionInputSource
 }
 
 function memberName(m: EnrichedMember | null): string {
@@ -49,7 +51,7 @@ function matchesSearch(r: EnrichedMatchResult, query: string): boolean {
   return false
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false, canViewRawSubmissions = false }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false, canViewRawSubmissions = false, inputSource }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -252,6 +254,15 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
+      {inputSource && (
+        <p className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
+          {inputSource.kind === "snapshot"
+            ? `本批原始问卷与热力图使用运行时输入快照（${inputSource.capturedAt}）。报名 ${inputSource.submittedCount ?? session.total_candidates} 人，本批参与 ${inputSource.eligibleCount ?? session.total_candidates} 人，资格未通过 ${inputSource.excludedCount ?? 0} 人。${inputSource.exclusionSummary?.length ? `原因：${inputSource.exclusionSummary.join("；")}（同一人可有多个原因）。` : ""}人工调整仍按操作时的当前资料计算。${inputSource.manualAdjustmentCount ? `另有 ${inputSource.manualAdjustmentCount} 位初始候选之外的成员显示当前资料。` : ""}`
+            : inputSource.kind === "redacted"
+              ? "本批输入快照已因隐私处理脱敏，不使用当前问卷重建原始输入。"
+              : "历史批次未保存输入快照，问卷与热力图按当前资料显示。"}
+        </p>
+      )}
       {!readOnly && session.status === "draft" && !resultsReady && (
         <p className="text-sm text-muted-foreground">匹配结果尚未生成完成，完成后才能发布。</p>
       )}

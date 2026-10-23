@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), createClient: vi.fn(), revalidatePath: vi.fn(), syncSessionSummary: vi.fn() }))
+const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), createClient: vi.fn(), revalidatePath: vi.fn(), syncSessionSummary: vi.fn(), performAdjustment: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.requireAdmin }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }))
 vi.mock("@/lib/matching/session-summary-sync", () => ({ syncSessionSummary: mocks.syncSessionSummary }))
+vi.mock("@/lib/matching/adjustment-service", () => ({ performMatchingAdjustment: mocks.performAdjustment }))
 
 import { confirmSession, deleteSession, lockPair, restorePair, splitPair, unlockPair, unpublishSession } from "./actions"
 import type { MatchMemberResult } from "@/lib/matching/member-conflicts"
@@ -46,6 +47,7 @@ function createDb(options: {
 beforeEach(() => {
   vi.clearAllMocks()
   mocks.requireAdmin.mockResolvedValue({ id: "admin-id", role: "super_admin" })
+  mocks.performAdjustment.mockResolvedValue({ success: true })
 })
 
 describe("atomic matching publication actions", () => {
@@ -122,43 +124,35 @@ describe("atomic matching publication actions", () => {
   })
 })
 
-describe("published result edits and draft conflicts", () => {
-  it.each([lockPair, unlockPair, splitPair, restorePair])("blocks direct edit %s on a published session", async (action) => {
+describe("published result edits and controlled adjustment routing", () => {
+  it.each([lockPair, unlockPair])("blocks direct edit %s on a published session", async (action) => {
     const { db, resultUpdate } = createDb({ sessionStatus: "confirmed" })
     mocks.createClient.mockResolvedValue(db)
     await expect(action(cancelled.id, reason)).resolves.toEqual({ error: "该匹配已发布，请先撤回发布后再调整" })
     expect(resultUpdate).not.toHaveBeenCalled()
   })
 
-  it.each([
-    { id: "other", status: "draft", member_a_id: "C", member_b_id: "A" },
-    { id: "other", status: "locked", member_a_id: "C", group_members: ["C", "D", "A"] },
-  ])("does not restore a member occupied by $id", async (other) => {
-    const { db, resultUpdate } = createDb({ activeResults: [other] })
+  it.each([[splitPair, "split"], [restorePair, "restore"]] as const)("routes %s through an atomic, versioned operation", async (action, kind) => {
+    const { db, resultUpdate } = createDb()
     mocks.createClient.mockResolvedValue(db)
-    await expect(restorePair(cancelled.id, reason)).resolves.toEqual({ error: "该配对有成员已在其他有效配对或多人组中，请先拆分冲突配对" })
+    await expect(action(cancelled.id, reason, "operation", "revision")).resolves.toEqual({ success: true })
+    expect(mocks.performAdjustment).toHaveBeenCalledExactlyOnceWith({ sessionId: "session-id", kind, resultId: cancelled.id, rawReason: reason, operationId: "operation", expectedRevision: "revision" })
+    expect(resultUpdate).not.toHaveBeenCalled()
+    expect(mocks.syncSessionSummary).not.toHaveBeenCalled()
+  })
+
+  it("returns the atomic restore's conflict rather than editing or compensating separately", async () => {
+    const { db, resultUpdate } = createDb()
+    mocks.createClient.mockResolvedValue(db)
+    mocks.performAdjustment.mockResolvedValue({ error: "成员已有有效配对" })
+    await expect(restorePair(cancelled.id, reason, "operation")).resolves.toEqual({ error: "成员已有有效配对" })
     expect(resultUpdate).not.toHaveBeenCalled()
   })
 
-  it("preserves draft restoration and checks the original result status", async () => {
-    const { db, updateChain } = createDb()
-    mocks.createClient.mockResolvedValue(db)
-    await expect(restorePair(cancelled.id, reason)).resolves.toEqual({ success: true })
-    expect(updateChain.eq).toHaveBeenCalledWith("status", "cancelled")
-    expect(mocks.syncSessionSummary).toHaveBeenCalledWith(db, "session-id", reason)
-  })
-
-  it("does not claim success when a draft edit lost a status race", async () => {
+  it("does not claim success when a draft lock lost a status race", async () => {
     const { db } = createDb({ result: { ...cancelled, status: "draft" }, resultUpdate: { data: null, error: null } })
     mocks.createClient.mockResolvedValue(db)
     await expect(lockPair(cancelled.id, reason)).resolves.toEqual({ error: "配对状态已变化，请刷新后重试" })
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
-  })
-
-  it("returns the publication guard error if publishing won the race", async () => {
-    const { db } = createDb({ result: { ...cancelled, status: "draft" }, resultUpdate: { data: null, error: { code: "PT409", message: "MATCH_PUBLICATION_REQUIRES_WITHDRAWAL" } } })
-    mocks.createClient.mockResolvedValue(db)
-    await expect(splitPair(cancelled.id, reason)).resolves.toEqual({ error: "该匹配已发布，请先撤回发布后再调整" })
-    expect(mocks.syncSessionSummary).not.toHaveBeenCalled()
   })
 })

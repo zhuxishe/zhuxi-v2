@@ -217,12 +217,20 @@ describe("admin member center UI contracts", () => {
     const roundActions = source("src/app/admin/matching/rounds/[id]/actions.ts")
     const sessionUi = source("src/components/admin/MatchSessionView.tsx")
 
-    for (const actions of [sessionActions, manualActions, poolActions, cancellationActions, blacklistActions, roundActions]) {
+    for (const actions of [sessionActions, cancellationActions, blacklistActions, roundActions]) {
       expect(actions).toContain("normalizeAdminAuditReason")
     }
-    for (const actions of [sessionActions, manualActions, poolActions, blacklistActions, roundActions]) {
+    for (const actions of [sessionActions, blacklistActions, roundActions]) {
       expect(actions).toContain("audit_reason")
     }
+    const adjustmentService = source("src/lib/matching/adjustment-service.ts")
+    for (const actions of [manualActions, poolActions]) {
+      expect(actions).toContain("performMatchingAdjustment")
+      expect(actions).toContain("rawReason")
+      expect(actions).not.toContain('.from("match_results")')
+    }
+    expect(adjustmentService).toContain("normalizeAdminAuditReason(input.rawReason)")
+    expect(adjustmentService).toContain("p_reason: input.reason")
     expect(cancellationActions).toContain("p_reason: reasonResult.reason")
     expect(sessionActions).toContain('"admin_delete_match_session_draft"')
     expect(blacklistActions).toContain('"admin_delete_operational_record"')
@@ -308,8 +316,11 @@ describe("admin member center UI contracts", () => {
     )
     expect(page).toContain("score_breakdown: null")
     expect(view).toContain("canViewRawSubmissions &&")
-    expect(checks).toContain("redactRawConstraintDetails")
-    expect(checks).toContain('admin.role === "super_admin"')
+    const adjustmentService = source("src/lib/matching/adjustment-service.ts")
+    expect(checks).toContain("canViewRaw ? inspection.reasons")
+    expect(checks).toContain("canViewRaw && Array.isArray")
+    expect(adjustmentService).toContain('admin.role === "super_admin"')
+    expect(adjustmentService).toContain("await requireAdmin()")
     expect(exportRoute).toContain('admin.role !== "super_admin"')
     expect(exporter).toContain('admin.role !== "super_admin"')
   })

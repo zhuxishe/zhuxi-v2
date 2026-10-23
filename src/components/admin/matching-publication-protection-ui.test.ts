@@ -13,7 +13,7 @@ const poolMembers = ["A", "B"].map((id) => ({ id, name: `成员${id}`, memberDat
 
 describe("published matching controls", () => {
   it("keeps the pool visible but disables both modification paths after publication", () => {
-    const props = { sessionId: "session", poolMembers, auditReason: "核对取消池后执行操作", onRefresh: vi.fn() }
+    const props = { sessionId: "session", poolMembers, poolSummary: { submitted_count: 2, eligible_count: 2, excluded_count: 0, exclusion_summary: [], has_existing_multi_pool: false }, auditReason: "核对取消池后执行操作", onRefresh: vi.fn() }
     const draft = renderToStaticMarkup(createElement(RematchPool, props))
     const published = renderToStaticMarkup(createElement(RematchPool, { ...props, readOnly: true }))
     expect(draft).toContain("再匹配池（2 人）")
@@ -33,7 +33,7 @@ describe("published matching controls", () => {
     expect(html).toContain("如需调整配对，请先撤回发布")
     expect(html).toContain("取消申请仍可在审批页面处理")
     expect(html).not.toContain("确认发布")
-    expect(html).not.toContain("重新匹配")
+    expect(html).not.toContain(">重新匹配</button>")
     expect(html).toMatch(/<button[^>]*\sdisabled=""[^>]*>[^<]*<svg[\s\S]*?手动配对/)
   })
 

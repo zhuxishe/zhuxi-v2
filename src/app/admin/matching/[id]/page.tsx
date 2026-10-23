@@ -9,6 +9,7 @@ import { MatchSessionView } from "@/components/admin/MatchSessionView"
 import type { EnrichedMember, SubmissionPrefInfo } from "@/components/admin/match-detail-types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchPoolMembers } from "@/lib/queries/pool-members"
+import { fetchMatchingAdjustmentPreview, fetchMatchingAdjustmentRecords } from "@/lib/matching/adjustment-service"
 import { fetchMatchingInputSnapshot, selectSessionSubmissionInputs } from "@/lib/matching/input-snapshot-reader"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
@@ -43,11 +44,14 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   })
 
   // Fetch pair relationships, pool members, diagnostics in parallel
-  const [pairRelationships, poolMembers, inputSnapshot] = await Promise.all([
+  const [pairRelationships, manualPreview, poolPreview, adjustmentRecords, inputSnapshot] = await Promise.all([
     fetchPairRelationships([...new Set(memberIds)]),
-    roundId ? fetchPoolMembers(id) : Promise.resolve([]),
+    roundId ? fetchMatchingAdjustmentPreview(id, "manual").catch(() => null) : Promise.resolve(null),
+    roundId ? fetchMatchingAdjustmentPreview(id, "pool").catch(() => null) : Promise.resolve(null),
+    roundId ? fetchMatchingAdjustmentRecords(id).catch(() => null) : Promise.resolve([]),
     fetchMatchingInputSnapshot(id),
   ])
+  const poolMembers = poolPreview ? await fetchPoolMembers(id, poolPreview) : []
   const supabase = createAdminClient()
 
   const memberSelect = `
@@ -182,29 +186,9 @@ export default async function MatchSessionDetailPage({ params }: Props) {
       }
     }
 
-    // 排除已在活跃配对中的成员（防止手动配对时选到已匹配的人）
-    const activeMemberIds = new Set<string>()
-    for (const r of results) {
-      const row = r as any
-      if (row.status === "cancelled") continue
-      if (row.member_a_id) activeMemberIds.add(row.member_a_id)
-      if (row.member_b_id) activeMemberIds.add(row.member_b_id)
-      if (Array.isArray(row.group_members)) {
-        for (const gm of row.group_members) activeMemberIds.add(gm)
-      }
-    }
-
-    // The existing manual dialog remains a live view, including later submissions.
-    allMemberOptions = liveSubmissionRows
-      .filter((sub: any) => !activeMemberIds.has(sub.member_id))
-      .map((sub: any) => {
-        const member = getSingleRelation(sub.member as any)
-        const identity = getSingleRelation(member?.member_identity as any)
-        return {
-          id: sub.member_id,
-          name: identity?.full_name || identity?.nickname || "未知",
-        }
-      })
+    // The same server-side eligibility and session occupancy feed the dialog
+    // and its actual operation capture. Later valid submissions remain included.
+    allMemberOptions = manualPreview?.available_members ?? []
   } else {
     // 历史测试会话缺少可信的问卷快照，这里不再伪造热力图
     timeSlotData = []
@@ -286,6 +270,9 @@ export default async function MatchSessionDetailPage({ params }: Props) {
         readOnly={readOnly}
         canViewRawSubmissions={canViewRawSubmissions}
         inputSource={inputSource}
+        initialAdjustments={adjustmentRecords ?? []}
+        adjustmentsUnavailable={roundId !== null && adjustmentRecords === null}
+        poolSummary={poolPreview ? { submitted_count: poolPreview.submitted_count, eligible_count: poolPreview.eligible_count, excluded_count: poolPreview.excluded_count, exclusion_summary: poolPreview.exclusion_summary, has_existing_multi_pool: poolPreview.has_existing_multi_pool } : undefined}
       />
     </div>
   )

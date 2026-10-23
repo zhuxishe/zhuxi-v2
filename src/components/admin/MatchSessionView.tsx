@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
 import { Button, buttonVariants } from "@/components/ui/button"
@@ -11,6 +11,11 @@ import { UnmatchedDiagnostics } from "./UnmatchedDiagnostics"
 import { TimeSlotHeatmap } from "./TimeSlotHeatmap"
 import { RematchPool } from "./RematchPool"
 import { ManualPairDialog } from "./ManualPairDialog"
+import { MatchingAdjustmentRecords } from "./MatchingAdjustmentRecords"
+import { recoverMatchingAdjustment } from "@/app/admin/matching/[id]/manual-actions"
+import type { MatchingAdjustmentRecord } from "@/lib/matching/adjustment-types"
+import type { AdjustmentPoolSummary } from "./RematchPool"
+import { adjustmentRequestStorage, clearCompletedMatchingAdjustmentRequests, clearMatchingAdjustmentRequestId, matchingAdjustmentRequestId, releaseFailedMatchingAdjustmentRequest } from "./matching-adjustment-request"
 import { lockPair, unlockPair, splitPair, restorePair, confirmSession, unpublishSession } from "@/app/admin/matching/[id]/actions"
 import { buildSessionSummary } from "@/lib/matching/session-summary"
 import { findMemberConflicts } from "@/lib/matching/member-conflicts"
@@ -32,6 +37,9 @@ interface Props {
   readOnly?: boolean
   canViewRawSubmissions?: boolean
   inputSource?: MatchingSessionInputSource
+  initialAdjustments?: MatchingAdjustmentRecord[]
+  adjustmentsUnavailable?: boolean
+  poolSummary?: AdjustmentPoolSummary
 }
 
 function memberName(m: EnrichedMember | null): string {
@@ -51,7 +59,7 @@ function matchesSearch(r: EnrichedMatchResult, query: string): boolean {
   return false
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false, canViewRawSubmissions = false, inputSource }: Props) {
+export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false, canViewRawSubmissions = false, inputSource, initialAdjustments = [], adjustmentsUnavailable = false, poolSummary }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -64,6 +72,10 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
   const resultsReady = session.results_ready === true
   const canEditResults = !readOnly && session.status === "draft" && resultsReady
   const publicationVersion = session.publication_version ?? 0
+  const adjusting = useRef(false)
+  useEffect(() => {
+    clearCompletedMatchingAdjustmentRequests(session.id, initialAdjustments.filter((record) => record.status === "succeeded").map((record) => record.id), adjustmentRequestStorage())
+  }, [session.id, initialAdjustments])
 
   const relMap = useMemo(() => {
     const map = new Map<string, PairRelationship>()
@@ -84,6 +96,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
 
   // 分离活跃配对和已取消配对
   const activeResults = useMemo(() => results.filter((r) => r.status !== "cancelled"), [results])
+  const hasActiveMultiPool = activeResults.some((result) => (result.group_members?.length ?? 0) >= 3)
   const cancelledResults = useMemo(() => results.filter((r) => r.status === "cancelled"), [results])
   const summary = useMemo(
     () => buildSessionSummary(session.total_candidates, results),
@@ -128,6 +141,47 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
     })
   }
 
+  const handleAdjustment = (kind: "split" | "restore", resultId: string) => {
+    if (adjusting.current || !canEditResults || !auditReasonValid) return
+    const storage = adjustmentRequestStorage()
+    const operationId = matchingAdjustmentRequestId(session.id, kind, [resultId], storage, () => crypto.randomUUID())
+    adjusting.current = true
+    startTransition(async () => {
+      setError("")
+      try {
+        const action = kind === "split" ? splitPair : restorePair
+        const res = await action(resultId, auditReason, operationId)
+        if (res.error) setError(res.error)
+        else clearMatchingAdjustmentRequestId(session.id, kind, [resultId], storage, operationId)
+        router.refresh()
+      } catch {
+        setError("调整结果待确认，请刷新调整记录；再次操作会沿用原编号。")
+      } finally { adjusting.current = false }
+    })
+  }
+
+  const handleRecoverAdjustment = (record: MatchingAdjustmentRecord) => {
+    if (adjusting.current || !canEditResults || !auditReasonValid) return
+    adjusting.current = true
+    startTransition(async () => {
+      setError("")
+      try {
+        const res = await recoverMatchingAdjustment(session.id, record.id, auditReason)
+        if (res.error) setError(res.error)
+        else clearCompletedMatchingAdjustmentRequests(session.id, [record.id], adjustmentRequestStorage())
+        router.refresh()
+      } catch { setError("恢复结果待确认，请保留原编号并刷新调整记录。") }
+      finally { adjusting.current = false }
+    })
+  }
+
+  const handleNewAdjustment = (record: MatchingAdjustmentRecord) => {
+    if (!canEditResults || !releaseFailedMatchingAdjustmentRequest(session.id, record, adjustmentRequestStorage())) return
+    setError("")
+    setShowFreeManual(false)
+    router.refresh()
+  }
+
   const handleConfirm = () => {
     startTransition(async () => {
       setError("")
@@ -151,9 +205,9 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       pairRel={findRel(r.member_a?.id, r.member_b?.id)}
       submissionPrefs={submissionPrefs}
       canViewRawSubmissions={canViewRawSubmissions}
-      onLock={!canEditResults || !auditReasonValid ? undefined : (id) => handleAction(r.status === "locked" ? unlockPair : lockPair, id)}
-      onSplit={!canEditResults || !auditReasonValid ? undefined : (id) => handleAction(splitPair, id)}
-      onRestore={!canEditResults || !auditReasonValid ? undefined : (id) => handleAction(restorePair, id)}
+      onLock={!canEditResults || isPending || !auditReasonValid ? undefined : (id) => handleAction(r.status === "locked" ? unlockPair : lockPair, id)}
+      onSplit={!canEditResults || isPending || !auditReasonValid ? undefined : (id) => handleAdjustment("split", id)}
+      onRestore={!canEditResults || isPending || !auditReasonValid ? undefined : (id) => handleAdjustment("restore", id)}
     />
   )
 
@@ -249,7 +303,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       {inputSource && (
         <p className="rounded-lg border bg-muted/20 px-3 py-2 text-xs text-muted-foreground">
           {inputSource.kind === "snapshot"
-            ? `本批原始问卷与热力图使用运行时输入快照（${inputSource.capturedAt}）。报名 ${inputSource.submittedCount ?? session.total_candidates} 人，本批参与 ${inputSource.eligibleCount ?? session.total_candidates} 人，资格未通过 ${inputSource.excludedCount ?? 0} 人。${inputSource.exclusionSummary?.length ? `原因：${inputSource.exclusionSummary.join("；")}（同一人可有多个原因）。` : ""}人工调整仍按操作时的当前资料计算。${inputSource.manualAdjustmentCount ? `另有 ${inputSource.manualAdjustmentCount} 位初始候选之外的成员显示当前资料。` : ""}`
+            ? `本批原始问卷与热力图使用运行时输入快照（${inputSource.capturedAt}）。报名 ${inputSource.submittedCount ?? session.total_candidates} 人，本批参与 ${inputSource.eligibleCount ?? session.total_candidates} 人，资格未通过 ${inputSource.excludedCount ?? 0} 人。${inputSource.exclusionSummary?.length ? `原因：${inputSource.exclusionSummary.join("；")}（同一人可有多个原因）。` : ""}新人工调整按操作时当前资料计算并另存输入，失败恢复使用原操作输入。${inputSource.manualAdjustmentCount ? `另有 ${inputSource.manualAdjustmentCount} 位初始候选之外的成员显示当前资料。` : ""}`
             : inputSource.kind === "redacted"
               ? "本批输入快照已因隐私处理脱敏，不使用当前问卷重建原始输入。"
               : "历史批次未保存输入快照，问卷与热力图按当前资料显示。"}
@@ -276,6 +330,8 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           原始轮次问卷、问卷热力图与原始导出仅超级管理员可查看；当前页面仅显示匹配结果与去敏运营信息。
         </p>
       )}
+
+      {session.round_id != null && <MatchingAdjustmentRecords records={initialAdjustments} unavailable={adjustmentsUnavailable} loading={isPending} readOnly={!canEditResults} auditReason={auditReason} onRefresh={() => router.refresh()} onRecover={handleRecoverAdjustment} onNewOperation={handleNewAdjustment} />}
 
       {/* Time slot heatmap */}
       {candidates.length > 0 && <TimeSlotHeatmap candidates={candidates} />}
@@ -309,6 +365,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
         <RematchPool
           sessionId={session.id}
           poolMembers={poolMembers}
+          poolSummary={poolSummary}
           submissionPrefs={submissionPrefs}
           auditReason={auditReason}
           readOnly={!canEditResults}
@@ -357,6 +414,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           onOpenChange={setShowFreeManual}
           sessionId={session.id}
           poolMembers={allMemberOptions}
+          hasActiveMultiPool={hasActiveMultiPool}
           preselectedA={preselectedA}
           auditReason={auditReason}
           onPaired={() => { setShowFreeManual(false); router.refresh() }}

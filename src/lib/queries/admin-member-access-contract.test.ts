@@ -104,7 +104,6 @@ describe("legacy admin member-read compatibility contract", () => {
   it("excludes historical shells from every forward-looking member picker", () => {
     const currentOnlyReads = [
       source("src/lib/queries/members.ts"),
-      source("src/lib/queries/pool-members.ts"),
       source("src/lib/matching/round-import-context.ts"),
       source("src/app/admin/matching/blacklist/actions.ts"),
       source("src/app/admin/scripts/[id]/page.tsx"),
@@ -113,6 +112,11 @@ describe("legacy admin member-read compatibility contract", () => {
       expect(text).toContain('.eq("record_scope", "current")')
       expect(text).toContain('.eq("account_status", "active")')
     }
+    const cancellationPool = source("src/lib/queries/pool-members.ts")
+    expect(cancellationPool).toContain('fetchMatchingAdjustmentPreview(sessionId, "pool")')
+    expect(cancellationPool).toContain("preview.available_members")
+    expect(cancellationPool).toContain("preview.excluded_members")
+    expect(cancellationPool).toContain("eligible: !exclusions.has(m.id)")
     const dashboard = source("src/lib/queries/admin.ts")
     expect(dashboard).toContain('.eq("record_scope", "current")')
     expect(dashboard).toContain('.eq("account_status", "active")')

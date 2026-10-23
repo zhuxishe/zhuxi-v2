@@ -1,6 +1,7 @@
 import { requireAdmin } from "@/lib/auth/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
-import { fetchCancelledPoolIds } from "./cancelled-pool"
+import { fetchMatchingAdjustmentPreview } from "@/lib/matching/adjustment-service"
+import type { MatchingAdjustmentPreview } from "@/lib/matching/adjustment-types"
 import { getSingleRelation } from "@/lib/supabase/relations"
 import type { EnrichedMember } from "@/components/admin/match-detail-types"
 
@@ -8,15 +9,19 @@ export interface PoolMember {
   id: string
   name: string
   memberData: EnrichedMember | null
+  eligible?: boolean
+  exclusionReasons?: string[]
 }
 
 /**
  * 获取某 session 中被取消配对的成员（去重）
  * 返回 { id, name, memberData } 数组，供 RematchPool 使用
  */
-export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]> {
+export async function fetchPoolMembers(sessionId: string, capturedPreview?: MatchingAdjustmentPreview): Promise<PoolMember[]> {
   await requireAdmin()
-  const poolIds = await fetchCancelledPoolIds(sessionId)
+  const preview = capturedPreview ?? await fetchMatchingAdjustmentPreview(sessionId, "pool")
+  const poolIds = [...new Set([...preview.available_members.map((row) => row.id), ...preview.excluded_members.map((row) => row.id)])]
+  const exclusions = new Map(preview.excluded_members.map((row) => [row.id, row.reasons]))
   if (poolIds.length === 0) return []
 
   // 获取成员详情（含 popover 所需数据）
@@ -30,8 +35,6 @@ export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]>
       member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
       member_boundaries (preferred_gender_mix)
     `)
-    .eq("record_scope", "current")
-    .eq("account_status", "active")
     .in("id", poolIds)
 
   if (mErr) throw mErr
@@ -45,6 +48,8 @@ export async function fetchPoolMembers(sessionId: string): Promise<PoolMember[]>
       id: m.id,
       name,
       memberData: m as unknown as EnrichedMember,
+      eligible: !exclusions.has(m.id),
+      exclusionReasons: exclusions.get(m.id) ?? [],
     }
   })
 }

@@ -1,42 +1,7 @@
 "use server"
 
-import { revalidatePath } from "next/cache"
-import { createClient } from "@/lib/supabase/server"
-import { requireAdmin } from "@/lib/auth/admin"
-import { buildRoundCandidates } from "@/lib/matching/build-round-candidates"
-import { checkHardConstraints, checkGroupConstraints } from "@/lib/matching/constraints"
-import { findStrictCommonSlot } from "@/lib/matching/match-utils"
-import { scorePair } from "@/lib/matching/scorer"
-import { getCommonSlots } from "@/lib/matching/time-filter"
-import { DEFAULT_CONFIG } from "@/lib/matching/config"
-import { fetchPairRelations } from "@/lib/queries/pair-relations-build"
-import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
-import { validateUuids } from "@/lib/sanitize"
-import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
-import { matchingPublicationError, PUBLISHED_MATCH_EDIT_ERROR } from "@/lib/matching/publication-errors"
-import type { MatchCandidate, ScoreComponent } from "@/lib/matching/types"
-import type { Json } from "@/types/database.types"
-
-type OperationalRpcClient = {
-  rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{
-    data: T | null
-    error: { code?: string; message: string } | null
-  }>
-}
-
-/** 获取 session 对应的 round_id */
-async function getSessionRoundId(sessionId: string): Promise<string | null> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("match_sessions")
-    .select("round_id")
-    .eq("id", sessionId)
-    .single()
-  return data?.round_id ?? null
-}
-
-
-// ── 硬约束条目（供前端展示） ──
+import { inspectMatchingAdjustment, performMatchingAdjustment, recoverMatchingAdjustmentOperation, fetchMatchingAdjustmentRecords } from "@/lib/matching/adjustment-service"
+import type { ScoreComponent } from "@/lib/matching/types"
 
 export interface ConstraintItem {
   label: string
@@ -44,348 +9,43 @@ export interface ConstraintItem {
   details: string[]
 }
 
-function displayGender(g: string | null): string {
-  if (g === "male" || g === "男") return "男"
-  if (g === "female" || g === "女") return "女"
-  if (g === "other") return "其他"
-  return "未知"
-}
-
-/** 构建双人硬约束条目列表 */
-function buildPairConstraints(
-  a: MatchCandidate, b: MatchCandidate,
-  bestSlot: string | null,
-): ConstraintItem[] {
-  const items: ConstraintItem[] = []
-
-  // 性别兼容
-  const aGender = displayGender(a.gender)
-  const bGender = displayGender(b.gender)
-  const aOk = b.genderPref === "都可以" || !b.genderPref || b.genderPref === aGender
-  const bOk = a.genderPref === "都可以" || !a.genderPref || a.genderPref === bGender
-  items.push({
-    label: "性别兼容",
-    status: aOk && bOk ? "pass" : "fail",
-    details: [
-      `${a.name}(${aGender}) → ${b.name}偏好: ${b.genderPref} ${aOk ? "✓" : "✗"}`,
-      `${b.name}(${bGender}) → ${a.name}偏好: ${a.genderPref} ${bOk ? "✓" : "✗"}`,
-    ],
-  })
-
-  // 游戏类型（双人配对中双方都选"多人"→ 不兼容）
-  const bothMulti = a.gameTypePref === "多人" && b.gameTypePref === "多人"
-  const gtOk = !bothMulti && (
-    a.gameTypePref === "都可以" || b.gameTypePref === "都可以" || a.gameTypePref === b.gameTypePref
-  )
-  items.push({
-    label: "游戏类型",
-    status: gtOk ? "pass" : "fail",
-    details: [
-      `${a.name}: ${a.gameTypePref} ↔ ${b.name}: ${b.gameTypePref}`,
-      ...(bothMulti ? ["双方都选多人，请添加更多成员组建多人组"] : []),
-    ],
-  })
-
-  // 共同时段
-  items.push({
-    label: "共同时段",
-    status: bestSlot ? "pass" : "fail",
-    details: [bestSlot ? bestSlot.replace("_", " ") : "无共同可用时段"],
-  })
-
-  return items
-}
-
-/** 构建多人组硬约束条目列表 */
-function buildGroupConstraints(
-  candidates: MatchCandidate[], bestSlot: string | null,
-): ConstraintItem[] {
-  const items: ConstraintItem[] = []
-
-  // 性别兼容：有偏好的成员，组内至少一人满足即可
-  const genderDetails: string[] = []
-  let genderOk = true
-  for (const member of candidates) {
-    if (!member.genderPref || member.genderPref === "都可以") continue
-    const others = candidates.filter((o) => o !== member)
-    const hasMatch = others.some((o) => {
-      const g = displayGender(o.gender)
-      return member.genderPref === g || !o.gender
-    })
-    if (hasMatch) {
-      genderDetails.push(`${member.name}偏好${member.genderPref} → 组内有满足 ✓`)
-    } else {
-      genderOk = false
-      const otherGenders = others.map((o) => `${o.name}(${displayGender(o.gender)})`).join("、")
-      genderDetails.push(`${member.name}偏好${member.genderPref}，但组内无人满足: ${otherGenders} ✗`)
-    }
-  }
-  if (genderDetails.length === 0) {
-    genderDetails.push(candidates.map((c) => `${c.name}(${displayGender(c.gender)})`).join("、"))
-  }
-  items.push({ label: "性别兼容", status: genderOk ? "pass" : "fail", details: genderDetails })
-
-  // 游戏类型（多人组只接受"多人"或"都可以"）
-  const allOk = candidates.every((c) => c.gameTypePref === "多人" || c.gameTypePref === "都可以" || !c.gameTypePref)
-  const prefs = candidates.map((c) => `${c.name}: ${c.gameTypePref}`).join("、")
-  items.push({
-    label: "游戏类型",
-    status: allOk ? "pass" : "fail",
-    details: [prefs],
-  })
-
-  // 共同时段
-  items.push({
-    label: "共同时段",
-    status: bestSlot ? "pass" : "fail",
-    details: [bestSlot ? bestSlot.replace("_", " ") : "无共同可用时段"],
-  })
-
-  return items
-}
-
-function redactRawConstraintDetails(items: ConstraintItem[]): ConstraintItem[] {
-  return items.map((item) => ({
-    ...item,
-    details: ["已在服务端完成校验；原始问卷详情仅超级管理员可查看"],
-  }))
-}
-
-/** 检查两人兼容性（硬约束 + 评分） */
-export async function checkPairCompatibility(
-  sessionId: string,
-  memberAId: string,
-  memberBId: string,
-) {
-  validateUuids([sessionId, memberAId, memberBId])
-  const admin = await requireAdmin()
-
-  const roundId = await getSessionRoundId(sessionId)
-  if (!roundId) throw new Error("该匹配会话无关联轮次，无法获取问卷数据")
-
-  const { candidates } = await buildRoundCandidates(roundId, [memberAId, memberBId])
-  const [candidateA, candidateB] = candidates
-  const config = { ...DEFAULT_CONFIG }
-
-  const pairRelations = await fetchPairRelations([memberAId, memberBId])
-  const constraint = checkHardConstraints(candidateA, candidateB, config, pairRelations)
-
-  const score = scorePair(candidateA, candidateB, config, pairRelations)
-  const commonSlots = getCommonSlots(candidateA.availability, candidateB.availability)
-  const bestSlot = commonSlots.length > 0 ? `${commonSlots[0].date}_${commonSlots[0].slot}` : null
-
-  // 构建硬约束条目（供前端展示）
-  const constraints = buildPairConstraints(candidateA, candidateB, bestSlot)
-
+async function inspectSelection(sessionId: string, memberIds: string[]) {
+  const { inspection, revisionToken, canViewRaw } = await inspectMatchingAdjustment(sessionId, memberIds)
+  const warnings = canViewRaw ? inspection.reasons : inspection.passed ? [] : ["存在不满足的匹配约束"]
+  const constraints: ConstraintItem[] = [{
+    label: "资格、类型、成员关系及整组共同时间",
+    status: inspection.passed ? "pass" : "fail",
+    details: inspection.passed ? ["所选完整成员池已通过服务端检查；确认时会再次核验"]
+      : canViewRaw ? inspection.reasons : ["存在不满足的匹配约束，不能强制配对"],
+  }]
+  const row = inspection.rows[0]
   return {
-    compatible: constraint.passed,
-    warnings: admin.role === "super_admin"
-      ? constraint.reasons
-      : constraint.passed ? [] : ["存在不满足的匹配约束"],
-    constraints: admin.role === "super_admin"
-      ? constraints
-      : redactRawConstraintDetails(constraints),
-    score: score.totalScore,
-    breakdown: admin.role === "super_admin" ? score.breakdown as ScoreComponent[] : [],
-    bestSlot,
+    compatible: inspection.passed,
+    warnings, constraints, bestSlot: inspection.bestSlot, revisionToken,
+    score: row?.total_score ?? 0,
+    breakdown: canViewRaw && Array.isArray(row?.score_breakdown) ? row.score_breakdown as ScoreComponent[] : [],
+    scoreBreakdown: canViewRaw ? row?.score_breakdown ?? null : null,
   }
 }
 
-/** 检查多人组兼容性（硬约束，无评分） */
-export async function checkGroupCompatibility(
-  sessionId: string,
-  memberIds: string[],
-) {
-  validateUuids([sessionId, ...memberIds])
-  const admin = await requireAdmin()
-
-  const roundId = await getSessionRoundId(sessionId)
-  if (!roundId) throw new Error("该匹配会话无关联轮次，无法获取问卷数据")
-
-  const { candidates } = await buildRoundCandidates(roundId, memberIds)
-  const config = { ...DEFAULT_CONFIG }
-  const pairRelations = await fetchPairRelations(memberIds)
-
-  // Only the final selected pool determines compatibility. A member's gender
-  // preference may be satisfied by someone selected later; prefixes are not
-  // proposed results and must not leave stale warnings on a valid final pool.
-  const finalCheck = candidates.length
-    ? checkGroupConstraints(candidates[0], candidates.slice(1), config, pairRelations)
-    : { passed: true, reasons: [] }
-  const warnings = [...finalCheck.reasons]
-  const blacklistReasons = warnings.filter((reason) => reason.includes("黑名单") || reason.includes("冷却期"))
-
-  // 找严格公共时段（所有人都有的时段，不用 fallback）
-  const bestSlot = findStrictCommonSlot(candidates)
-  const hasSlot = bestSlot !== null
-
-  if (!hasSlot) warnings.push("无共同可用时段")
-
-  // 构建约束条目
-  const constraints = buildGroupConstraints(candidates, hasSlot ? bestSlot : null)
-
-  // 追加黑名单/冷却期约束条目（显示具体原因）
-  if (blacklistReasons.length > 0) {
-    constraints.push({ label: "黑名单/冷却期", status: "fail", details: blacklistReasons })
-  } else {
-    constraints.push({ label: "黑名单/冷却期", status: "pass", details: ["无冲突"] })
-  }
-
-  return {
-    compatible: warnings.length === 0,
-    warnings: admin.role === "super_admin"
-      ? warnings
-      : warnings.length === 0 ? [] : ["存在不满足的匹配约束"],
-    constraints: admin.role === "super_admin"
-      ? constraints
-      : redactRawConstraintDetails(constraints),
-    bestSlot: hasSlot ? bestSlot : null,
-  }
+export async function checkPairCompatibility(sessionId: string, memberAId: string, memberBId: string) {
+  return inspectSelection(sessionId, [memberAId, memberBId])
 }
 
-/** 手动配对：至少 2 人，多人组不限制人数 */
-export async function manualPair(
-  sessionId: string,
-  memberIds: string[],
-  rawReason: string,
-) {
-  validateUuids([sessionId, ...memberIds])
-  await requireAdmin()
-  const reasonResult = normalizeAdminAuditReason(rawReason)
-  if (!reasonResult.ok) return { error: reasonResult.error }
+export async function checkGroupCompatibility(sessionId: string, memberIds: string[]) {
+  return inspectSelection(sessionId, memberIds)
+}
 
-  if (memberIds.length < 2) return { error: "至少需要 2 人" }
+/** No force flag exists: preview and commit use the same hard constraints. */
+export async function manualPair(sessionId: string, memberIds: string[], rawReason: string, operationId?: string, expectedRevision?: string) {
+  return performMatchingAdjustment({ sessionId, kind: "manual", memberIds, rawReason, operationId, expectedRevision })
+}
 
-  const supabase = await createClient()
-  const { data: session, error: sessionError } = await supabase
-    .from("match_sessions")
-    .select("round_id, status")
-    .eq("id", sessionId)
-    .single()
-  if (sessionError) return { error: "无法读取匹配会话，请稍后重试" }
-  const roundId = session?.round_id
-  if (!roundId) {
-    return { error: "旧测试匹配记录仅支持查看，不能继续手动配对" }
-  }
-  if (session.status !== "draft") return { error: PUBLISHED_MATCH_EDIT_ERROR }
+export async function recoverMatchingAdjustment(sessionId: string, operationId: string, rawReason: string) {
+  return recoverMatchingAdjustmentOperation(sessionId, operationId, rawReason)
+}
 
-  // ── 防重复校验 ──
-  for (const mId of memberIds) {
-    const { data: existing, error: existingError } = await supabase
-      .from("match_results")
-      .select("id")
-      .eq("session_id", sessionId)
-      .neq("status", "cancelled")
-      .or(`member_a_id.eq.${mId},member_b_id.eq.${mId}`)
-      .limit(1)
-
-    if (existingError || !existing) return { error: "无法检查成员当前配对，请稍后重试" }
-    if (existing && existing.length > 0) {
-      return { error: `成员已在此次匹配中有活跃配对，请先拆分旧配对` }
-    }
-
-    const { data: existingGroup, error: existingGroupError } = await supabase
-      .from("match_results")
-      .select("id")
-      .eq("session_id", sessionId)
-      .neq("status", "cancelled")
-      .contains("group_members", [mId])
-      .limit(1)
-
-    if (existingGroupError || !existingGroup) return { error: "无法检查成员当前配对，请稍后重试" }
-    if (existingGroup && existingGroup.length > 0) {
-      return { error: `成员已在多人组中，请先拆分旧配对` }
-    }
-  }
-
-  // ── 计算评分/时段 ──
-  let candidates: MatchCandidate[]
-  try {
-    const bundle = await buildRoundCandidates(roundId, memberIds)
-    candidates = bundle.candidates
-  } catch (error) {
-    console.error("[manualPair:buildRoundCandidates]", error)
-    return {
-      error: error instanceof Error && /[\u3400-\u9fff]/.test(error.message)
-        ? error.message
-        : "无法获取本轮问卷数据",
-    }
-  }
-
-  let totalScore = 0
-  let scoreBreakdown: Json = null
-  let bestSlot: string | null = null
-  const config = { ...DEFAULT_CONFIG }
-  const pairRelations = await fetchPairRelations(memberIds)
-
-  if (memberIds.length === 2) {
-    // 双人：完整评分，但无共同时段时禁止写入
-    const [candidateA, candidateB] = candidates
-    const commonSlots = getCommonSlots(candidateA.availability, candidateB.availability)
-    if (commonSlots.length === 0) return { error: "无共同可用时段，无法配对" }
-
-    const score = scorePair(candidateA, candidateB, config, pairRelations)
-    totalScore = score.totalScore
-    scoreBreakdown = score.breakdown as unknown as Json
-    bestSlot = `${commonSlots[0].date}_${commonSlots[0].slot}`
-  } else {
-    // 多人组：只要严格公共时段，没有就禁止写入
-    bestSlot = findStrictCommonSlot(candidates)
-    if (!bestSlot) return { error: "无共同可用时段，无法组建多人组" }
-  }
-
-  // ── 插入配对 ──
-  const isDuo = memberIds.length === 2
-  const { data: insertedResult, error } = await supabase
-    .from("match_results")
-    .insert({
-      session_id: sessionId,
-      member_a_id: memberIds[0],
-      member_b_id: isDuo ? memberIds[1] : null,
-      group_members: isDuo ? null : memberIds,
-      total_score: totalScore,
-      score_breakdown: scoreBreakdown,
-      best_slot: bestSlot,
-      status: "draft",
-      rank: 999,
-      audit_reason: reasonResult.reason,
-    })
-    .select("id")
-    .single()
-
-  if (error) {
-    console.error("[manualPair]", error)
-    return { error: matchingPublicationError(error, "操作失败") }
-  }
-
-  // ── 清理未匹配诊断 ──
-  const rpc = supabase as unknown as OperationalRpcClient
-  const { error: diagnosticError } = await rpc.rpc<unknown>(
-    "admin_clear_unmatched_diagnostics",
-    {
-      p_session_id: sessionId,
-      p_member_ids: memberIds,
-      p_reason: reasonResult.reason,
-    },
-  )
-  if (diagnosticError) {
-    console.error("[manualPair:clearDiagnostics]", diagnosticError)
-    const { error: compensationError } = await rpc.rpc<unknown>(
-      "admin_delete_operational_record",
-      {
-        p_entity: "match_results",
-        p_id: insertedResult.id,
-        p_reason: `诊断清理失败，撤销手动配对：${reasonResult.reason}`.slice(0, 500),
-      },
-    )
-    if (compensationError) {
-      console.error("[manualPair:compensation]", compensationError)
-      return { error: "未匹配诊断清理失败，且配对补偿失败，请立即人工检查" }
-    }
-    return { error: "未匹配诊断清理失败，手动配对已撤销" }
-  }
-
-  await syncSessionSummary(supabase, sessionId, reasonResult.reason)
-  revalidatePath(`/admin/matching/${sessionId}`)
-  return { success: true }
+export async function fetchMatchingAdjustments(sessionId: string) {
+  try { return { adjustments: await fetchMatchingAdjustmentRecords(sessionId) } }
+  catch { return { adjustments: [], error: "暂时无法读取调整记录，请刷新后重试。" } }
 }

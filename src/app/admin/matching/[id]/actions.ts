@@ -3,10 +3,9 @@
 import { revalidatePath } from "next/cache"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
-import { syncSessionSummary } from "@/lib/matching/session-summary-sync"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
-import { getMatchMemberIds } from "@/lib/matching/member-conflicts"
 import { matchingPublicationError, PUBLISHED_MATCH_EDIT_ERROR } from "@/lib/matching/publication-errors"
+import { performMatchingAdjustment } from "@/lib/matching/adjustment-service"
 
 type WritableSession = { status: string; round_id: string | null; publication_version: number }
 type WritableResult = { status: string; session_id: string; member_a_id: string; member_b_id: string | null; group_members: string[] | null }
@@ -60,16 +59,6 @@ async function getWritableResultSession(
   if ("error" in guarded) return guarded
   if (guarded.session.status !== "draft") return { error: PUBLISHED_MATCH_EDIT_ERROR }
   return { result, session: guarded.session }
-}
-
-async function getActiveResults(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  sessionId: string,
-) {
-  return supabase.from("match_results")
-    .select("id, status, member_a_id, member_b_id, group_members")
-    .eq("session_id", sessionId)
-    .neq("status", "cancelled")
 }
 
 export async function lockPair(resultId: string, rawReason: string) {
@@ -140,76 +129,23 @@ export async function unlockPair(resultId: string, rawReason: string) {
   return { success: true }
 }
 
-export async function splitPair(resultId: string, rawReason: string) {
+async function adjustExistingResult(kind: "split" | "restore", resultId: string, rawReason: string, operationId?: string, expectedRevision?: string) {
   await requireAdmin()
-  const reasonResult = normalizeAdminAuditReason(rawReason)
-  if (!reasonResult.ok) return { error: reasonResult.error }
+  const reason = normalizeAdminAuditReason(rawReason)
+  if (!reason.ok) return { error: reason.error }
   const supabase = await createClient()
-
-  const guarded = await getWritableResultSession(supabase, resultId)
-  if ("error" in guarded) return { error: guarded.error }
-  if (guarded.result.status !== "draft" && guarded.result.status !== "locked") {
-    return { error: `当前状态为「${matchingStatusLabel(guarded.result.status)}」，只有「草稿」或「已锁定」状态才能拆分` }
-  }
-
-  const { data: updated, error } = await supabase
-    .from("match_results")
-    .update({ status: "cancelled", audit_reason: reasonResult.reason })
-    .eq("id", resultId)
-    .eq("status", guarded.result.status)
-    .select("id")
-    .maybeSingle()
-
-  if (error) {
-    console.error("[splitPair]", error)
-    return { error: matchingPublicationError(error, "操作失败") }
-  }
-  if (!updated) return { error: "配对状态已变化，请刷新后重试" }
-  await syncSessionSummary(supabase, guarded.result.session_id, reasonResult.reason)
-  revalidatePath("/admin/matching", "layout")
-  return { success: true }
+  const { data: result, error } = await supabase.from("match_results")
+    .select("session_id").eq("id", resultId).single()
+  if (error || !result?.session_id) return { error: "无法读取配对结果，请刷新后重试" }
+  return performMatchingAdjustment({ sessionId: result.session_id, kind, resultId, rawReason: reason.reason, operationId, expectedRevision })
 }
 
-export async function restorePair(resultId: string, rawReason: string) {
-  await requireAdmin()
-  const reasonResult = normalizeAdminAuditReason(rawReason)
-  if (!reasonResult.ok) return { error: reasonResult.error }
-  const supabase = await createClient()
+export async function splitPair(resultId: string, rawReason: string, operationId?: string, expectedRevision?: string) {
+  return adjustExistingResult("split", resultId, rawReason, operationId, expectedRevision)
+}
 
-  const guarded = await getWritableResultSession(supabase, resultId)
-  if ("error" in guarded) return { error: guarded.error }
-  if (guarded.result.status !== "cancelled") {
-    return { error: `当前状态为「${matchingStatusLabel(guarded.result.status)}」，只有「已取消」状态才能恢复` }
-  }
-
-  const { data: activeResults, error: occupancyError } = await getActiveResults(supabase, guarded.result.session_id)
-  if (occupancyError || !activeResults) return { error: "无法检查成员当前配对，请稍后重试" }
-  const restoringMembers = new Set(getMatchMemberIds(guarded.result))
-  if (activeResults.some((row) => getMatchMemberIds(row).some((id) => restoringMembers.has(id)))) {
-    return { error: "该配对有成员已在其他有效配对或多人组中，请先拆分冲突配对" }
-  }
-
-  const { data: restored, error } = await supabase
-    .from("match_results")
-    .update({
-      status: "draft",
-      locked_by: null,
-      locked_at: null,
-      audit_reason: reasonResult.reason,
-    })
-    .eq("id", resultId)
-    .eq("status", "cancelled")
-    .select("id")
-    .maybeSingle()
-
-  if (error) {
-    console.error("[restorePair]", error)
-    return { error: matchingPublicationError(error, "操作失败") }
-  }
-  if (!restored) return { error: "配对状态已变化，请刷新后重试" }
-  await syncSessionSummary(supabase, guarded.result.session_id, reasonResult.reason)
-  revalidatePath("/admin/matching", "layout")
-  return { success: true }
+export async function restorePair(resultId: string, rawReason: string, operationId?: string, expectedRevision?: string) {
+  return adjustExistingResult("restore", resultId, rawReason, operationId, expectedRevision)
 }
 
 type PublicationOperation = "admin_publish_match_session" | "admin_unpublish_match_session" | "admin_delete_match_session_draft"

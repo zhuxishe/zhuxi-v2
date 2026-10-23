@@ -26,7 +26,7 @@ function better(a: Objective, b: Objective): boolean {
 function tied(a: Objective, b: Objective): boolean {
   return a.covered === b.covered && a.repeats === b.repeats && Math.abs(a.quality - b.quality) <= 1e-9
 }
-function makeGraph(candidates: MatchCandidate[], config: MatchingConfig, relations?: Map<string, PairRelation>): Graph {
+function makeGraph(candidates: MatchCandidate[], config: MatchingConfig, relations?: Map<string, PairRelation>, allowMultiPool = true): Graph {
   const n = candidates.length
   const duo = Array.from({ length: n }, () => Array<FeasiblePair | null>(n).fill(null))
   const shared = Array.from({ length: n }, () => Array<boolean>(n).fill(false))
@@ -39,7 +39,7 @@ function makeGraph(candidates: MatchCandidate[], config: MatchingConfig, relatio
     repeats[i][j] = repeats[j][i] = !!relations && getPairStatus(relations, candidates[i].submissionId, candidates[j].submissionId).status === "avoid"
   }
   return { candidates, duo, shared, scores, repeats, config, relations,
-    multiIndices: candidates.flatMap((c, i) => c.gameTypePref !== "双人" ? [i] : []),
+    multiIndices: allowMultiPool ? candidates.flatMap((c, i) => c.gameTypePref !== "双人" ? [i] : []) : [],
     duoIndices: candidates.flatMap((c, i) => c.gameTypePref !== "多人" ? [i] : []),
     slots: candidates.map((c) => new Set(Object.entries(c.availability).flatMap(([date, slots]) => slots.map((slot) => `${date}_${slot}`)))),
   }
@@ -269,8 +269,10 @@ function boundedSearch(graph: Graph): CoveragePlan {
   }
   return best
 }
-export function findCoveragePlan(candidates: MatchCandidate[], config: MatchingConfig, relations?: Map<string, PairRelation>): CoveragePlan {
-  const graph = makeGraph(candidates, config, relations)
+export interface CoverageOptions { allowMultiPool?: boolean }
+
+export function findCoveragePlan(candidates: MatchCandidate[], config: MatchingConfig, relations?: Map<string, PairRelation>, options: CoverageOptions = {}): CoveragePlan {
+  const graph = makeGraph(candidates, config, relations, options.allowMultiPool !== false)
   const plan = candidates.length <= EXACT_COVERAGE_LIMIT ? exactSearch(graph) : boundedSearch(graph)
   if (!validPool(graph, plan.multi)) throw new Error("Matching produced an invalid multiplayer pool")
   return plan

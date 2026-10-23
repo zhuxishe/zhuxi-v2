@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ admin: vi.fn(), session: vi.fn(), from: vi.fn(), snapshot: vi.fn(), pairs: vi.fn(), pool: vi.fn(), metadata: vi.fn() }))
+const mocks = vi.hoisted(() => ({ admin: vi.fn(), session: vi.fn(), from: vi.fn(), snapshot: vi.fn(), pairs: vi.fn(), pool: vi.fn(), metadata: vi.fn(), preview: vi.fn(), adjustments: vi.fn() }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.admin }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: mocks.from }) }))
 vi.mock("@/lib/queries/matching", () => ({ fetchMatchSession: mocks.session, fetchPairRelationships: mocks.pairs }))
 vi.mock("@/lib/queries/pool-members", () => ({ fetchPoolMembers: mocks.pool }))
+vi.mock("@/lib/matching/adjustment-service", () => ({ fetchMatchingAdjustmentPreview: mocks.preview, fetchMatchingAdjustmentRecords: mocks.adjustments }))
 vi.mock("./import-metadata-column", () => ({ supportsImportMetadataColumn: mocks.metadata }))
 vi.mock("./input-snapshot-reader", async (original) => ({
   ...await original<typeof import("./input-snapshot-reader")>(), fetchMatchingInputSnapshot: mocks.snapshot,
@@ -38,6 +39,8 @@ beforeEach(() => {
   mocks.admin.mockResolvedValue({ id: "admin", role: "super_admin" })
   mocks.pairs.mockResolvedValue([])
   mocks.pool.mockResolvedValue([])
+  mocks.adjustments.mockResolvedValue([])
+  mocks.preview.mockImplementation(async (_session: string, kind: string) => ({ base_revision: "revision", submitted_count: 1, eligible_count: 1, excluded_count: 0, exclusion_summary: [], has_existing_multi_pool: false, excluded_members: [], available_members: kind === "manual" ? [{ id: "later", name: "后来报名者" }] : [] }))
   mocks.metadata.mockResolvedValue(true)
   mocks.snapshot.mockResolvedValue(snapshot())
   results = [{ id: "result", member_a_id: "a", member_b_id: "b", group_members: null, status: "draft",

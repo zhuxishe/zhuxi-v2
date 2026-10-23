@@ -1,7 +1,7 @@
 /** Coverage-first matching: disjoint duos and at most one shared multiplayer pool. */
 import type { MatchCandidate, MatchingConfig, MultiPoolScoreBreakdown } from "./types"
 import type { PairRelation } from "./pair-history"
-import { findCoveragePlan } from "./coverage-plan"
+import { findCoveragePlan, type CoverageOptions } from "./coverage-plan"
 import { scorePairFactors } from "./scorer"
 import { pairActivityFeedback } from "./score-v3"
 
@@ -15,7 +15,7 @@ export interface MatchResultRow {
   best_slot: string | null
   game_type: string
 }
-interface RunResult {
+export interface RunResult {
   rows: MatchResultRow[]
   totalCandidates: number
   totalMatched: number
@@ -24,7 +24,7 @@ interface RunResult {
 }
 
 /** Explanations only: pool selection keeps its existing mean-pair objective. */
-function describeMultiPool(members: MatchCandidate[], config: MatchingConfig): MultiPoolScoreBreakdown {
+export function describeMultiPool(members: MatchCandidate[], config: MatchingConfig): MultiPoolScoreBreakdown {
   const components = new Map<string, { factor: ReturnType<typeof scorePairFactors>["breakdown"][number]; raw: number; weighted: number }>()
   const memberTotals = members.map(() => 0)
   const distribution = { below40: 0, from40to60: 0, from60to80: 0, atLeast80: 0 }
@@ -60,8 +60,9 @@ export function runFullMatching(
   config: MatchingConfig,
   idMap: Map<string, string>,
   pairRelations?: Map<string, PairRelation>,
+  options: CoverageOptions = {},
 ): RunResult {
-  const plan = findCoveragePlan(candidates, config, pairRelations)
+  const plan = findCoveragePlan(candidates, config, pairRelations, options)
   const resolve = (i: number) => idMap.get(candidates[i].submissionId) ?? candidates[i].submissionId
   const matched = new Set<number>()
   const rows: MatchResultRow[] = plan.duos.map((pair, index) => {

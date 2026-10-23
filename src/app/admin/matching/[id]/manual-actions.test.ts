@@ -19,6 +19,15 @@ const memberIds = ["00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8
 const reason = "管理员核对后手动配对"
 type OccupancyResponse = { data: { id: string }[] | null; error: { message: string } | null }
 
+function candidate(id: string): MatchCandidate {
+  return {
+    submissionId: id, name: id, gameTypePref: "双人", genderPref: "都可以",
+    availability: { "2026-10-10": ["下午"] }, formInterestTags: [], formSocialStyle: null,
+    gender: "male", school: "测试大学", interestTags: [], socialTags: [], level: 1,
+    compatibilityScore: 4, matchHistory: [], gameMode: "双人本", hasProfile: true,
+  }
+}
+
 function createDb(responses: OccupancyResponse[], sessionStatus = "draft") {
   const pending = [...responses]
   const lookup = vi.fn(() => {
@@ -48,6 +57,12 @@ describe("manual matching occupancy checks", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mocks.requireAdmin.mockResolvedValue({ id: "admin-id", role: "super_admin" })
+  })
+
+  it("still requires at least two members before reading or writing matching data", async () => {
+    await expect(manualPair(sessionId, memberIds.slice(0, 1), reason)).resolves.toEqual({ error: "至少需要 2 人" })
+    expect(mocks.createClient).not.toHaveBeenCalled()
+    expect(mocks.buildRoundCandidates).not.toHaveBeenCalled()
   })
 
   it.each([0, 1, 2, 3])("does not insert when occupancy lookup %i fails", async (failedIndex) => {
@@ -88,17 +103,59 @@ describe("manual matching occupancy checks", () => {
   it("still allows two unoccupied members with a common time slot", async () => {
     const { db, insert } = createDb(Array.from({ length: 4 }, () => ({ data: [], error: null })))
     mocks.createClient.mockResolvedValue(db)
-    const candidates: MatchCandidate[] = memberIds.map((id) => ({
-      submissionId: id, name: id, gameTypePref: "双人", genderPref: "都可以",
-      availability: { "2026-10-10": ["下午"] }, formInterestTags: [], formSocialStyle: null,
-      gender: "male", school: "测试大学", interestTags: [], socialTags: [], level: 1,
-      compatibilityScore: 4, matchHistory: [], gameMode: "双人本", hasProfile: true,
-    }))
+    const candidates = memberIds.map(candidate)
     mocks.buildRoundCandidates.mockResolvedValue({ candidates })
     mocks.fetchPairRelations.mockResolvedValue(new Map())
 
     await expect(manualPair(sessionId, memberIds, reason)).resolves.toEqual({ success: true })
     expect(insert).toHaveBeenCalledWith(expect.objectContaining({ member_a_id: memberIds[0], member_b_id: memberIds[1], status: "draft" }))
     expect(mocks.syncSessionSummary).toHaveBeenCalledWith(db, sessionId, reason)
+  })
+
+  it("stores all thirteen selected members in one group and clears every member's diagnostics", async () => {
+    const groupIds = Array.from({ length: 13 }, (_, index) => `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`)
+    const { db, insert, lookup } = createDb(Array.from({ length: groupIds.length * 2 }, () => ({ data: [], error: null })))
+    mocks.createClient.mockResolvedValue(db)
+    mocks.buildRoundCandidates.mockResolvedValue({ candidates: groupIds.map((id) => ({ ...candidate(id), gameTypePref: "多人" })) })
+    mocks.fetchPairRelations.mockResolvedValue(new Map())
+
+    await expect(manualPair(sessionId, groupIds, reason)).resolves.toEqual({ success: true })
+    expect(lookup).toHaveBeenCalledTimes(26)
+    expect(mocks.buildRoundCandidates).toHaveBeenCalledWith("round-id", groupIds)
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      member_a_id: groupIds[0], member_b_id: null, group_members: groupIds,
+      best_slot: "2026-10-10_下午", status: "draft",
+    }))
+    expect(db.rpc).toHaveBeenCalledWith("admin_clear_unmatched_diagnostics", {
+      p_session_id: sessionId, p_member_ids: groupIds, p_reason: reason,
+    })
+    expect(mocks.syncSessionSummary).toHaveBeenCalledWith(db, sessionId, reason)
+  })
+
+  it("still rejects an occupied member after the sixth selected member", async () => {
+    const groupIds = Array.from({ length: 7 }, (_, index) => `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`)
+    const responses: OccupancyResponse[] = Array.from({ length: 12 }, () => ({ data: [], error: null }))
+    responses.push({ data: [{ id: "existing" }], error: null })
+    const { db, insert, lookup } = createDb(responses)
+    mocks.createClient.mockResolvedValue(db)
+
+    await expect(manualPair(sessionId, groupIds, reason)).resolves.toEqual({ error: "成员已在此次匹配中有活跃配对，请先拆分旧配对" })
+    expect(lookup).toHaveBeenCalledTimes(13)
+    expect(insert).not.toHaveBeenCalled()
+    expect(mocks.buildRoundCandidates).not.toHaveBeenCalled()
+  })
+
+  it("still requires a time slot shared with the thirteenth member", async () => {
+    const groupIds = Array.from({ length: 13 }, (_, index) => `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`)
+    const { db, insert } = createDb(Array.from({ length: groupIds.length * 2 }, () => ({ data: [], error: null })))
+    mocks.createClient.mockResolvedValue(db)
+    const candidates = groupIds.map(candidate)
+    candidates[12].availability = { "2026-10-11": ["下午"] }
+    mocks.buildRoundCandidates.mockResolvedValue({ candidates })
+    mocks.fetchPairRelations.mockResolvedValue(new Map())
+
+    await expect(manualPair(sessionId, groupIds, reason)).resolves.toEqual({ error: "无共同可用时段，无法组建多人组" })
+    expect(insert).not.toHaveBeenCalled()
+    expect(db.rpc).not.toHaveBeenCalled()
   })
 })

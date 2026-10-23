@@ -251,7 +251,7 @@ export async function checkGroupCompatibility(
   }
 }
 
-/** 手动配对：支持 2-6 人 */
+/** 手动配对：至少 2 人，多人组不限制人数 */
 export async function manualPair(
   sessionId: string,
   memberIds: string[],
@@ -263,7 +263,6 @@ export async function manualPair(
   if (!reasonResult.ok) return { error: reasonResult.error }
 
   if (memberIds.length < 2) return { error: "至少需要 2 人" }
-  if (memberIds.length > 6) return { error: "最多 6 人" }
 
   const supabase = await createClient()
   const { data: session, error: sessionError } = await supabase

@@ -45,7 +45,6 @@ export function ManualPairDialog({
 
   const handleAdd = (id: string) => {
     if (!id || selectedIds.includes(id)) return
-    if (selectedIds.length >= 6) return
     setSelectedIds([...selectedIds, id])
     setAddValue("")
     setPairCompat(null)
@@ -107,7 +106,7 @@ export function ManualPairDialog({
         <DialogHeader>
           <DialogTitle>手动配对</DialogTitle>
           <DialogDescription>
-            选择 2-6 人进行手动配对（2人=双人对，3+人=多人组）
+            选择至少 2 人进行手动配对（2人=双人对，3+人=多人组）
           </DialogDescription>
         </DialogHeader>
 
@@ -116,7 +115,7 @@ export function ManualPairDialog({
           {selectedIds.length > 0 && (
             <div>
               <label className="text-xs font-medium text-muted-foreground">
-                已选成员 ({selectedIds.length}/6)
+                已选成员 ({selectedIds.length})
               </label>
               <div className="mt-1">
                 <MemberChips ids={selectedIds} members={poolMembers} onRemove={handleRemove} />
@@ -125,15 +124,13 @@ export function ManualPairDialog({
           )}
 
           {/* 添加成员下拉 */}
-          {selectedIds.length < 6 && (
-            <MemberSelect
-              label="添加成员"
-              value={addValue}
-              onChange={handleAdd}
-              members={poolMembers}
-              exclude={selectedIds}
-            />
-          )}
+          <MemberSelect
+            label="添加成员"
+            value={addValue}
+            onChange={handleAdd}
+            members={poolMembers}
+            exclude={selectedIds}
+          />
 
           {/* 检查兼容性按钮 */}
           {canCheck && (

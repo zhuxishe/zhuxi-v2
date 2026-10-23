@@ -160,7 +160,7 @@ export function RoundDetailClient({
       )}
       {matching && <MatchingRunRecords runs={initialRuns} loading={loading} auditReason={matchingReason} onRefresh={() => router.refresh()} onRecover={handleRecover} onAbandon={handleAbandon} />}
       {matching && requiresPlayerAnswers && <p className="rounded-lg border bg-muted/20 p-3 text-sm text-muted-foreground">本期包含必填补充问题，请成员自行提交问卷；后台新增与 Excel 导入已暂停，已有问卷仍可编辑。</p>}
-      {matching && canImportMembers && !requiresPlayerAnswers ? <RoundImportPanel roundId={round.id} roundStatus={round.status} /> : null}
+      {matching && canImportMembers && !requiresPlayerAnswers ? <RoundImportPanel key={round.id} roundId={round.id} roundStatus={round.status} /> : null}
       {matching && <RoundStatsPanel stats={stats} activityStart={round.activity_start} activityEnd={round.activity_end} />}
       <RoundSubmissionRecords roundName={round.round_name} purpose={purpose} config={config} submissions={submissions} editable={editable} showRaw={canManageSubmissions} onEdit={handleEdit} onCreate={() => setCreateOpen(true)} />
       {matching && canManageSubmissions && editOpen && editSub && <SubmissionEditDialog key={editSub.id} open={editOpen} onOpenChange={setEditOpen} roundId={round.id} mode="edit" submission={editSub} activityStart={round.activity_start} activityEnd={round.activity_end} onSaved={handleSaved} />}

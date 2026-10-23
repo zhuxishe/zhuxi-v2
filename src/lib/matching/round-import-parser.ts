@@ -37,11 +37,15 @@ function findSingleColumn(headers: string[], label: string): number {
 }
 
 function findDateColumns(headers: string[], start: string, end: string) {
+  const usedColumns = new Set<number>()
   return buildDateHeaders(start, end).map(({ date, labels }) => {
-    const index = headers.findIndex((header) =>
-      labels.some((label) => header.includes(label))
-    )
-    if (index === -1) throw new Error(`未找到日期列：${date}`)
+    const patterns = labels.map((label) => new RegExp(`(?:^|\\D)${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?!\\d)`))
+    const matches = headers.flatMap((header, index) => patterns.some((pattern) => pattern.test(header)) ? [index] : [])
+    if (!matches.length) throw new Error(`未找到日期列：${date}`)
+    if (matches.length > 1) throw new Error(`日期列重复：${date}，请保留一列后重新预览`)
+    const index = matches[0]
+    if (usedColumns.has(index)) throw new Error(`日期列包含多个日期：${date}，请按日期分别设置列`)
+    usedColumns.add(index)
     return { date, index }
   })
 }
@@ -120,10 +124,10 @@ export async function parseRoundImportWorkbook(
   const messageIndex = findSingleColumn(headers, "给工作人员的话")
   const dateColumns = findDateColumns(headers, activityStart, activityEnd)
 
-  return matrix.slice(1)
-    .filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""))
-    .map((row, index) => {
-      const rowNumber = index + 2
+  const rows = matrix.slice(1)
+    .map((row, index) => ({ row, rowNumber: index + 2 }))
+    .filter(({ row }) => row.some((cell) => String(cell ?? "").trim() !== ""))
+    .map(({ row, rowNumber }): ParsedImportRow => {
       const name = String(row[nameIndex] ?? "").trim()
       if (!name) throw new Error(`第 ${rowNumber} 行：姓名不能为空`)
 
@@ -131,25 +135,30 @@ export async function parseRoundImportWorkbook(
       const rawSecondChoice = String(row[secondChoiceIndex] ?? "").trim() || null
       const firstChoice = normalizeGameTypeChoice(rawFirstChoice)
       const secondChoice = normalizeGameTypeChoice(rawSecondChoice)
-      if (!firstChoice) throw new Error(`第 ${rowNumber} 行：第一志愿不能为空`)
+      if (rawFirstChoice && !firstChoice) throw new Error(`第 ${rowNumber} 行：第一志愿无法识别`)
       if (rawSecondChoice && !secondChoice) throw new Error(`第 ${rowNumber} 行：第二志愿无法识别`)
 
-      const genderPref = normalizeGenderPref(String(row[genderIndex] ?? "").trim())
-      if (!genderPref) throw new Error(`第 ${rowNumber} 行：性别倾向无法识别`)
+      const rawGender = String(row[genderIndex] ?? "").trim()
+      const genderPref = normalizeGenderPref(rawGender)
+      if (rawGender && !genderPref) throw new Error(`第 ${rowNumber} 行：性别倾向无法识别`)
 
       const availability = buildAvailability(row, dateColumns)
-      if (Object.keys(availability).length === 0) {
-        throw new Error(`第 ${rowNumber} 行：至少需要一个可用时段`)
-      }
+      const blankFields: NonNullable<ParsedImportRow["blankFields"]> = []
+      if (!rawFirstChoice) blankFields.push("game_type_pref")
+      if (!rawGender) blankFields.push("gender_pref")
+      if (!Object.keys(availability).length) blankFields.push("availability")
+      if (!String(row[scriptIndex] ?? "").trim()) blankFields.push("script_activity_pref")
+      if (!String(row[messageIndex] ?? "").trim()) blankFields.push("message")
 
       return {
         rowNumber,
         name,
         normalizedName: normalizeImportName(name),
-        gameTypePref: !rawSecondChoice || firstChoice === secondChoice ? firstChoice : "都可以",
+        blankFields,
+        gameTypePref: !rawSecondChoice || firstChoice === secondChoice ? (firstChoice ?? "都可以") : "都可以",
         rawFirstChoice,
         rawSecondChoice,
-        genderPref,
+        genderPref: genderPref ?? "都可以",
         availability,
         scriptActivityPref: String(row[scriptIndex] ?? "").trim() || null,
         message: String(row[messageIndex] ?? "").trim() || null,
@@ -164,4 +173,6 @@ export async function parseRoundImportWorkbook(
         },
       }
     })
+  if (!rows.length) throw new Error("Excel 文件没有可导入的数据")
+  return rows
 }

@@ -195,7 +195,8 @@ describe("admin member center UI contracts", () => {
   it("keeps raw member workbook preview and import super-admin only", () => {
     const actions = source("src/app/admin/matching/rounds/[id]/import-actions.ts")
     const page = source("src/app/admin/matching/rounds/[id]/page.tsx")
-    expect(actions.match(/admin\.role !== "super_admin"/g)).toHaveLength(2)
+    // Preview, apply, receipt query, history and cancellation all repeat the guard.
+    expect(actions.match(/admin\.role !== "super_admin"/g)).toHaveLength(5)
     expect(page).toContain('canImportMembers={admin.role === "super_admin"}')
   })
 

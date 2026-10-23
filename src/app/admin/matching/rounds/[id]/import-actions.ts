@@ -1,127 +1,59 @@
 "use server"
 
-import { createHash } from "node:crypto"
 import { revalidatePath } from "next/cache"
 import { requireAdmin } from "@/lib/auth/admin"
-import { previewRoundWorkbook } from "@/lib/matching/round-import-preview"
-import { importRoundWorkbook } from "@/lib/matching/round-import-service"
-import type { RoundImportAuditRequest } from "@/lib/matching/round-import-service"
+import { previewRoundWorkbook, importRoundWorkbook, getRoundImportReceiptRecord, listRoundImportRecords, cancelRoundImportOperation } from "@/lib/matching/round-import-service"
+import { parseImportChoices } from "@/lib/matching/round-import-plan"
 import { getPostgrestErrorMessage } from "@/lib/supabase/postgrest-error"
-import { createClient as createServerClient } from "@/lib/supabase/server"
-import { isManualSelfGender } from "@/lib/matching/round-import-utils"
-import type { GenderOverrideMap, LegacyOverrideMap } from "@/lib/matching/round-import-types"
 
-interface ImportAuditRpcClient {
-  rpc: (
-    functionName: "admin_record_member_import_event",
-    args: {
-      p_member_id: string
-      p_operation: RoundImportAuditRequest["operation"]
-      p_reason: string
-      p_metadata: RoundImportAuditRequest["metadata"]
-    },
-  ) => Promise<{ error: unknown }>
+function message(error: unknown, fallback: string) {
+  const value = getPostgrestErrorMessage(error, fallback)
+  return /[\u3400-\u9fff]/.test(value) ? value : fallback
 }
-
-function importErrorMessage(error: unknown, fallback: string) {
-  const message = getPostgrestErrorMessage(error, fallback)
-  return /[\u3400-\u9fff]/.test(message) ? message : fallback
+function field(form: FormData, key: string) {
+  const value = form.get(key)
+  return typeof value === "string" ? value : ""
 }
-
-function readExcelFile(formData: FormData) {
-  const file = formData.get("file")
-  if (!(file instanceof File)) throw new Error("请选择 Excel 文件")
-  if (!file.name.toLowerCase().endsWith(".xlsx")) throw new Error("目前只支持 .xlsx 文件")
-  return file
-}
-
-function parseJsonRecord(formData: FormData, key: string, label: string) {
-  const raw = formData.get(key)
-  if (typeof raw !== "string" || !raw.trim()) return {}
-  try {
-    return JSON.parse(raw) as Record<string, string>
-  } catch {
-    throw new Error(`${label}配置无效`)
-  }
-}
-
-function parseLegacyOverrides(formData: FormData): LegacyOverrideMap {
-  return parseJsonRecord(formData, "legacyOverrides", "老成员手动匹配") as LegacyOverrideMap
-}
-
-function parseGenderOverrides(formData: FormData): GenderOverrideMap {
-  const raw = parseJsonRecord(formData, "genderOverrides", "本人性别")
-  const result: GenderOverrideMap = {}
-  for (const [rowNumber, value] of Object.entries(raw)) {
-    if (!isManualSelfGender(value)) throw new Error("本人性别配置无效")
-    result[rowNumber] = value
-  }
-  return result
-}
-
-function readImportReason(formData: FormData) {
-  const raw = formData.get("reason")
-  const reason = typeof raw === "string" ? raw.trim() : ""
-  const length = Array.from(reason).length
-  if (length < 4 || length > 500) throw new Error("导入原因需为 4-500 个字符")
-  return reason
-}
-
 export async function previewRoundExcel(roundId: string, formData: FormData) {
   const admin = await requireAdmin()
-  if (admin.role !== "super_admin") return { error: "仅超级管理员可以预览含原始会员编号的导入文件" }
-
+  if (admin.role !== "super_admin") return { error: "仅超级管理员可以预览成员导入文件" }
   try {
-    const file = readExcelFile(formData)
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const result = await previewRoundWorkbook(roundId, buffer)
-    return { success: true, rows: result.rows, legacyOptions: result.legacyOptions }
-  } catch (error) {
-    console.error("[previewRoundExcel]", error)
-    const message = importErrorMessage(error, "Excel 解析失败，请检查文件后重试")
-    return { error: message }
-  }
+    const file = formData.get("file")
+    if (!(file instanceof File) || !file.name.toLowerCase().endsWith(".xlsx")) throw new Error("请选择 .xlsx 文件")
+    if (file.size > 2 * 1024 * 1024) throw new Error("Excel 文件不能超过2MB，请拆分后分别追加导入")
+    const review = await previewRoundWorkbook(roundId, Buffer.from(await file.arrayBuffer()), admin.id, parseImportChoices(formData.get("choices")))
+    if (Buffer.byteLength(JSON.stringify(review), "utf8") > 3.5 * 1024 * 1024) throw new Error("差异预览内容过大，请拆成较小文件分别追加导入")
+    return { success: true, review }
+  } catch (error) { return { error: message(error, "Excel 解析失败，请检查文件和本轮状态后重试") } }
 }
-
 export async function importRoundExcel(roundId: string, formData: FormData) {
   const admin = await requireAdmin()
   if (admin.role !== "super_admin") return { error: "仅超级管理员可以执行成员批量导入" }
-
   try {
-    const file = readExcelFile(formData)
-    const reason = readImportReason(formData)
-    const legacyOverrides = parseLegacyOverrides(formData)
-    const genderOverrides = parseGenderOverrides(formData)
-    const buffer = Buffer.from(await file.arrayBuffer())
-    const sessionDb = await createServerClient() as unknown as ImportAuditRpcClient
-    const result = await importRoundWorkbook(
-      roundId,
-      buffer,
-      {
-        reason,
-        file: {
-          sha256: createHash("sha256").update(buffer).digest("hex"),
-          sizeBytes: buffer.byteLength,
-          extension: "xlsx",
-        },
-        recordEvent: async (request) => {
-          const { error } = await sessionDb.rpc("admin_record_member_import_event", {
-            p_member_id: request.memberId,
-            p_operation: request.operation,
-            p_reason: request.reason,
-            p_metadata: request.metadata,
-          })
-          if (error) throw error
-        },
-      },
-      legacyOverrides,
-      genderOverrides,
-    )
+    const receipt = await importRoundWorkbook(roundId, admin.id, field(formData, "requestId"), field(formData, "planToken"), field(formData, "reason").trim())
     revalidatePath(`/admin/matching/rounds/${roundId}`)
-    return { success: true, summary: result.summary }
-  } catch (error) {
-    console.error("[importRoundExcel]", error)
-    const message = importErrorMessage(error, "Excel 导入失败，请检查文件后重试")
-    return { error: message }
-  }
+    if (receipt.status === "failed") return { error: receipt.error_message ?? "本次导入未写入，请重新预览后重试", receipt }
+    return { success: true, receipt }
+  } catch (error) { return { error: message(error, "导入结果尚未确认，请查询该导入编号；请勿直接开始另一批导入") } }
+}
+export async function getRoundImportReceipt(roundId: string, requestId: string) {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "仅超级管理员可以查询导入回执" }
+  try { return { receipt: await getRoundImportReceiptRecord(roundId, admin.id, requestId) } }
+  catch (error) { return { error: message(error, "导入状态查询失败，请稍后重试") } }
+}
+export async function listRoundImports(roundId: string) {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "仅超级管理员可以查询导入记录" }
+  try { return { receipts: await listRoundImportRecords(roundId, admin.id) } }
+  catch (error) { return { error: message(error, "导入记录查询失败") } }
+}
+export async function cancelRoundImportRequest(roundId: string, requestId: string, reason: string) {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "仅超级管理员可以处理导入编号" }
+  try {
+    const receipt = await cancelRoundImportOperation(roundId, admin.id, requestId, reason)
+    revalidatePath(`/admin/matching/rounds/${roundId}`)
+    return { receipt }
+  } catch (error) { return { error: message(error, "无法终止该编号，请先查询导入状态") } }
 }

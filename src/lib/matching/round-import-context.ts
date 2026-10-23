@@ -7,6 +7,7 @@ import {
 } from "./legacy-import-normalize"
 import { parseRoundImportWorkbook } from "./round-import-parser"
 import type { CurrentImportMember, LegacyImportMember, ParsedImportRow } from "./round-import-types"
+import type { ImportDatabaseState, ImportMemberOption } from "./round-import-contract"
 
 export async function fetchCurrentImportMembers(db: SupabaseClient<any, any, any>): Promise<CurrentImportMember[]> {
   const { data, error } = await db
@@ -15,6 +16,8 @@ export async function fetchCurrentImportMembers(db: SupabaseClient<any, any, any
     .eq("record_scope", "current")
     .eq("account_status", "active")
     .eq("membership_type", "player")
+    .eq("status", "approved")
+    .is("anonymized_at", null)
   if (error) throw error
   return (data ?? [])
     .filter((row: any) => !String(row.member_number ?? "").startsWith("IMP-"))
@@ -27,6 +30,29 @@ export async function fetchCurrentImportMembers(db: SupabaseClient<any, any, any
         nickname: identity?.nickname ?? null,
       }
     })
+}
+
+export async function loadRoundImportReviewContext(roundId: string, buffer: Buffer, actorId: string) {
+  const db = createAdminClient() as SupabaseClient<any, any, any>
+  const { data, error } = await db.rpc("admin_preview_round_import_state", {
+    p_round_id: roundId, p_actor_admin_id: actorId,
+  })
+  if (error) throw error
+  const state = data as ImportDatabaseState
+  if (!state?.round || !state.round_token) throw new Error("导入预览状态无效，请重试")
+  const round = state.round
+  if (round.deleted_at) throw new Error("轮次不存在")
+  if (getRoundPurpose(round.purpose) !== "matching") throw new Error("活动报名和通知不支持导入匹配问卷")
+  if (normalizeRoundConfig(round.content_config).questions.some(question => question.required)) throw new Error("本轮含必填补充问题，请成员自行填写问卷；Excel 导入无法代填补充答案")
+  if (round.status === "matched") throw new Error("该轮次已完成匹配，禁止导入 Excel")
+  const [parsedRows, currentMembers, legacyMembers] = await Promise.all([
+    parseRoundImportWorkbook(buffer, round.activity_start, round.activity_end),
+    fetchCurrentImportMembers(db),
+    fetchLegacyImportMembers(db),
+  ])
+  const memberOptions: ImportMemberOption[] = currentMembers.filter(member => !!state.member_tokens[member.id]).map(member => ({ ...member, temporary: false }))
+  memberOptions.push(...(state.temporary_members ?? []))
+  return { db, state, parsedRows, memberOptions, legacyMembers }
 }
 
 export async function fetchLegacyImportMembers(db: SupabaseClient<any, any, any>): Promise<LegacyImportMember[]> {

@@ -1,508 +1,118 @@
-import { beforeEach, describe, expect, it, vi } from "vitest"
-import type { PreparedImportRow } from "./round-import-types"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
+import type { ImportPlan, ImportReceipt } from "./round-import-contract"
+import { importDigest, signImportPlan, verifyImportPlan } from "./round-import-plan"
 
-const mocks = vi.hoisted(() => ({
-  loadRoundImportContext: vi.fn(),
-  supportsImportMetadataColumn: vi.fn(),
-  resolveImportRows: vi.fn(),
-}))
+const mocks = vi.hoisted(() => ({ context: vi.fn(), rpc: vi.fn(), from: vi.fn(), createAdminClient: vi.fn() }))
+vi.mock("./round-import-context", () => ({ loadRoundImportReviewContext: mocks.context }))
+vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.createAdminClient }))
+import { cancelRoundImportOperation, getRoundImportReceiptRecord, importRoundWorkbook, listRoundImportRecords, previewRoundWorkbook } from "./round-import-service"
 
-vi.mock("./round-import-context", () => ({
-  loadRoundImportContext: mocks.loadRoundImportContext,
-}))
-vi.mock("./import-metadata-column", () => ({
-  supportsImportMetadataColumn: mocks.supportsImportMetadataColumn,
-}))
-vi.mock("./round-import-resolver", () => ({
-  resolveImportRows: mocks.resolveImportRows,
-}))
-
-import { importRoundWorkbook } from "./round-import-service"
-import type { RoundImportAuditOptions, RoundImportAuditRequest } from "./round-import-service"
-
-const preparedRow: PreparedImportRow = {
-  rowNumber: 2,
-  name: "Sensitive Person Name",
-  normalizedName: "sensitivepersonname",
-  gameTypePref: "双人",
-  rawFirstChoice: "双人",
-  rawSecondChoice: null,
-  genderPref: "都可以",
-  availability: { "2026-08-30": ["下午"] },
-  scriptActivityPref: null,
-  message: "Sensitive free text",
-  importMetadata: {
-    source: "temp",
-    normalized_name: "sensitivepersonname",
-    raw_first_choice: "双人",
-    raw_second_choice: null,
-    script_activity_pref: null,
-    raw_notes: "Sensitive free text",
-    warnings: [],
-  },
-  source: "temp",
-  existingMemberId: null,
-  legacyProfile: null,
-  manualGender: "other",
+const roundId = "10000000-0000-4000-8000-000000000001"
+const actorId = "10000000-0000-4000-8000-000000000002"
+const requestId = "10000000-0000-4000-8000-000000000003"
+const memberId = "20000000-0000-4000-8000-000000000001"
+const reason = "根据本轮报名表追加更新成员"
+const summary = { totalRows: 1, currentCount: 1, legacyCount: 0, tempCount: 0, warningCount: 0, insertedCount: 1, updatedCount: 0, unchangedCount: 0, affectedBatchIds: [] }
+const receipt: ImportReceipt = { id: requestId, round_id: roundId, status: "succeeded", created_at: "2026-10-23T00:00:00Z", completed_at: "2026-10-23T00:00:01Z", reason, error_code: null, error_message: null, summary }
+function plan(patch: Partial<ImportPlan> = {}): ImportPlan {
+  return { version: 1, roundId, actorId, fileHash: "a".repeat(64), roundToken: "round-token", expiresAt: Date.now() + 10_000, rows: [{ row_number: 4, source: "current", identity_key: null, existing_member_id: memberId, expected_member_token: "member-token", expected_submission: null, answers: { game_type_pref: "双人", gender_pref: "都可以", availability: { "2026-10-27": ["下午"] }, message: null, import_metadata: null }, temp_profile: null }], ...patch }
 }
 
-function createImportDb() {
-  const deleteCreated = vi.fn().mockResolvedValue({ error: null })
-  const from = vi.fn((table: string) => {
-    if (table === "members") {
-      return {
-        select: vi.fn((columns: string) => ({
-          like: vi.fn().mockResolvedValue({
-            data: columns === "*" ? [] : [],
-            error: null,
-          }),
-        })),
-        insert: vi.fn(() => ({
-          select: vi.fn(() => ({
-            single: vi.fn().mockResolvedValue({
-              data: { id: "created-member-id" },
-              error: null,
-            }),
-          })),
-        })),
-        delete: vi.fn(() => ({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-          in: deleteCreated,
-        })),
-      }
-    }
-    if (table === "member_identity") {
-      return { insert: vi.fn().mockResolvedValue({ error: null }) }
-    }
-    throw new Error(`Unexpected table in test: ${table}`)
-  })
-
-  return { db: { from }, deleteCreated }
-}
-
-function createReplacementDb(submissionInsertError: unknown = null) {
-  const previousMember = {
-    id: "previous-import-member",
-    member_number: "IMP-round-id-001",
-    record_source: "import",
-  }
-  const deletePreviousMember = vi.fn().mockResolvedValue({ error: null })
-  const restorePreviousMember = vi.fn().mockResolvedValue({ error: null })
-  const deleteSubmissions = vi.fn().mockResolvedValue({ error: null })
-  const insertSubmissions = submissionInsertError
-    ? vi.fn()
-      .mockResolvedValueOnce({ error: submissionInsertError })
-      .mockResolvedValue({ error: null })
-    : vi.fn().mockResolvedValue({ error: null })
-  const from = vi.fn((table: string) => {
-    if (table === "members") {
-      return {
-        select: vi.fn((columns: string) => ({
-          like: vi.fn().mockResolvedValue({
-            data: columns === "*" ? [previousMember] : [{ member_number: previousMember.member_number }],
-            error: null,
-          }),
-        })),
-        insert: restorePreviousMember,
-        delete: vi.fn(() => ({ in: deletePreviousMember })),
-      }
-    }
-    if (["member_identity", "member_interests", "member_dynamic_stats"].includes(table)) {
-      return {
-        select: vi.fn(() => ({
-          in: vi.fn().mockResolvedValue({ data: [], error: null }),
-        })),
-      }
-    }
-    if (table === "match_round_submissions") {
-      return {
-        delete: vi.fn(() => ({
-          eq: deleteSubmissions,
-        })),
-        insert: insertSubmissions,
-      }
-    }
-    throw new Error(`Unexpected table in test: ${table}`)
-  })
-
-  return {
-    db: { from },
-    deletePreviousMember,
-    restorePreviousMember,
-    deleteSubmissions,
-    insertSubmissions,
-  }
-}
-
-function validAudit(
-  recordEvent: (request: RoundImportAuditRequest) => Promise<void>,
-): RoundImportAuditOptions {
-  return {
-    reason: "根据本轮报名表重新导入成员",
-    file: {
-      sha256: "a".repeat(64),
-      sizeBytes: 128,
-      extension: "xlsx" as const,
-    },
-    recordEvent,
-  }
-}
-
-describe("round Excel member import audit orchestration", () => {
+describe("transactional round Excel import service", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
-    mocks.supportsImportMetadataColumn.mockResolvedValue(true)
-    mocks.resolveImportRows.mockReturnValue([preparedRow])
+    vi.resetAllMocks()
+    vi.stubEnv("SUPABASE_SERVICE_ROLE_KEY", "isolated-import-service-test-key")
+    mocks.createAdminClient.mockReturnValue({ rpc: mocks.rpc, from: mocks.from })
+    mocks.rpc.mockResolvedValue({ data: receipt, error: null })
+    mocks.from.mockImplementation(() => { throw new Error("Import orchestration must use only atomic RPCs") })
+  })
+  afterEach(() => { vi.unstubAllEnvs() })
+
+  it("validates request IDs and reasons before opening a database client", async () => {
+    await expect(importRoundWorkbook(roundId, actorId, "not-a-uuid", "token", reason)).rejects.toThrow("导入编号无效")
+    await expect(importRoundWorkbook(roundId, actorId, requestId, "token", "短因")).rejects.toThrow("导入原因需为 4-500 个字符")
+    expect(mocks.createAdminClient).not.toHaveBeenCalled()
   })
 
-  it("aborts on create-audit failure and audibly compensates the service-created member", async () => {
-    const { db, deleteCreated } = createImportDb()
-    mocks.loadRoundImportContext.mockResolvedValue({
-      db,
-      parsedRows: [preparedRow],
-      currentMembers: [],
-      legacyMembers: [],
-      existingSubs: [],
+  it("submits the exact signed review, actor, version and content fingerprint in one atomic RPC", async () => {
+    const reviewed = plan()
+    await expect(importRoundWorkbook(roundId, actorId, requestId, signImportPlan(reviewed), `  ${reason}  `)).resolves.toEqual(receipt)
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("admin_apply_round_import", {
+      p_request_id: requestId, p_round_id: roundId, p_actor_admin_id: actorId,
+      p_request_hash: importDigest({ plan: reviewed, reason }), p_file_sha256: reviewed.fileHash,
+      p_reason: reason, p_expected_round_token: reviewed.roundToken, p_rows: reviewed.rows,
     })
-    const recordEvent = vi.fn<(request: RoundImportAuditRequest) => Promise<void>>()
-      .mockRejectedValueOnce(new Error("audit unavailable"))
-      .mockResolvedValue(undefined)
-
-    await expect(importRoundWorkbook(
-      "round-sensitive-id",
-      Buffer.from("not-a-real-workbook"),
-      validAudit(recordEvent),
-      {},
-      { "2": "other" },
-    )).rejects.toThrow("audit unavailable")
-
-    expect(deleteCreated).toHaveBeenCalledWith("id", ["created-member-id"])
-    expect(recordEvent.mock.calls.map(([event]) => [
-      event.operation,
-      event.metadata.phase,
-      event.metadata.write_stage,
-      event.metadata.service_write_performed,
-    ])).toEqual([
-      ["create", "apply", "after_service_write", true],
-      ["delete", "compensation", "before_service_write", false],
-      ["delete", "compensation", "after_service_write", true],
-    ])
-
-    const serializedMetadata = JSON.stringify(recordEvent.mock.calls.map(([event]) => event.metadata))
-    expect(serializedMetadata).toContain("round-sensitive-id")
-    expect(serializedMetadata).toContain('"number":2')
-    expect(serializedMetadata).toContain('"sha256"')
-    expect(serializedMetadata).not.toContain("Sensitive Person Name")
-    expect(serializedMetadata).not.toContain("Sensitive free text")
-    expect(serializedMetadata).not.toContain(".xlsx")
+    expect(mocks.from).not.toHaveBeenCalled()
+    expect(mocks.context).not.toHaveBeenCalled()
   })
 
-  it("rejects an invalid human reason before loading or mutating import data", async () => {
-    await expect(importRoundWorkbook(
-      "round-id",
-      Buffer.alloc(0),
-      { ...validAudit(vi.fn(async (_request: RoundImportAuditRequest) => undefined)), reason: "短因" },
-    )).rejects.toThrow("导入原因需为 4-500 个字符")
-
-    expect(mocks.loadRoundImportContext).not.toHaveBeenCalled()
+  it("rejects a changed signature or actor before issuing database writes", async () => {
+    const token = signImportPlan(plan())
+    await expect(importRoundWorkbook(roundId, "other-actor", requestId, token, reason)).rejects.toThrow("不一致")
+    await expect(importRoundWorkbook(roundId, actorId, requestId, `${token}tamper`, reason)).rejects.toThrow("失效")
+    expect(mocks.rpc).not.toHaveBeenCalled()
   })
 
-  it("records destructive replacement both before and after the service write", async () => {
-    const { db, deletePreviousMember, restorePreviousMember } = createReplacementDb()
-    const currentRow: PreparedImportRow = {
-      ...preparedRow,
-      source: "current",
-      existingMemberId: "current-member-id",
-      manualGender: null,
-      importMetadata: { ...preparedRow.importMetadata, source: "current" },
-    }
-    mocks.loadRoundImportContext.mockResolvedValue({
-      db,
-      parsedRows: [currentRow],
-      currentMembers: [],
-      legacyMembers: [],
-      existingSubs: [{
-        id: "prior-submission-id",
-        round_id: "round-id",
-        member_id: "current-member-id",
-        game_type_pref: "多人",
-        gender_pref: "女",
-        availability: { "2026-08-20": ["上午", "下午"] },
-        message: "Prior sensitive free text",
-        import_metadata: { raw_notes: "Prior private note" },
-      }],
-    })
-    mocks.resolveImportRows.mockReturnValue([currentRow])
-    const recordEvent = vi.fn(async (_request: RoundImportAuditRequest) => undefined)
-
-    await expect(importRoundWorkbook(
-      "round-id",
-      Buffer.from("workbook"),
-      validAudit(recordEvent),
-    )).resolves.toMatchObject({ summary: { totalRows: 1, currentCount: 1 } })
-
-    expect(deletePreviousMember).toHaveBeenCalledWith("id", ["previous-import-member"])
-    expect(restorePreviousMember).not.toHaveBeenCalled()
-    const relatedEvents = recordEvent.mock.calls
-      .map(([event]) => event)
-      .filter((event) => event.metadata.related_record?.entity === "match_round_submissions")
-    expect(relatedEvents.map((event) => [
-      event.memberId,
-      event.operation,
-      event.metadata.row.number,
-      event.metadata.related_record?.snapshot_role,
-      event.metadata.write_stage,
-      event.metadata.service_write_performed,
-    ])).toEqual([
-      ["current-member-id", "submission_replace", 2, "before", "before_service_write", false],
-      ["current-member-id", "submission_replace", 2, "after", "after_service_write", true],
-    ])
-    expect(relatedEvents[0].metadata.related_record).not.toHaveProperty("snapshot")
-    expect(relatedEvents[1].metadata.related_record).not.toHaveProperty("snapshot")
-    expect(relatedEvents[1].metadata.related_record?.changed_fields).toEqual([
-      "game_type_pref",
-      "gender_pref",
-      "availability",
-      "interest_tags",
-      "social_style",
-      "message",
-    ])
-    const serializedMetadata = JSON.stringify(relatedEvents.map((event) => event.metadata))
-    expect(serializedMetadata).not.toContain("Prior sensitive free text")
-    expect(serializedMetadata).not.toContain("Sensitive free text")
-    expect(serializedMetadata).not.toContain("2026-08-20")
-    expect(serializedMetadata).not.toContain("2026-08-30")
-    expect(serializedMetadata).not.toContain("Prior private note")
-    expect(serializedMetadata).not.toContain("prior-submission-id")
+  it("leaves a transport failure ambiguous and never compensates by deleting answers or members", async () => {
+    const transport = { message: "response lost after commit" }
+    mocks.rpc.mockResolvedValue({ data: null, error: transport })
+    await expect(importRoundWorkbook(roundId, actorId, requestId, signImportPlan(plan()), reason)).rejects.toEqual(transport)
+    expect(mocks.rpc).toHaveBeenCalledTimes(1)
+    expect(mocks.from).not.toHaveBeenCalled()
   })
 
-  it("restores and attests the prior import member when a later submission write fails", async () => {
-    const { db, restorePreviousMember } = createReplacementDb({ message: "submission insert failed" })
-    const currentRow: PreparedImportRow = {
-      ...preparedRow,
-      source: "current",
-      existingMemberId: "current-member-id",
-      manualGender: null,
-      importMetadata: { ...preparedRow.importMetadata, source: "current" },
-    }
-    mocks.loadRoundImportContext.mockResolvedValue({
-      db,
-      parsedRows: [currentRow],
-      currentMembers: [],
-      legacyMembers: [],
-      existingSubs: [],
-    })
-    mocks.resolveImportRows.mockReturnValue([currentRow])
-    const recordEvent = vi.fn(async (_request: RoundImportAuditRequest) => undefined)
-
-    await expect(importRoundWorkbook(
-      "round-id",
-      Buffer.from("workbook"),
-      validAudit(recordEvent),
-    )).rejects.toThrow("submission insert failed")
-
-    expect(restorePreviousMember).toHaveBeenCalledWith([
-      expect.objectContaining({ id: "previous-import-member", record_source: "import" }),
-    ])
-    const memberEvents = recordEvent.mock.calls.map(([event]) => event)
-    expect(memberEvents.filter((event) => !event.metadata.related_record).map((event) => [
-      event.operation,
-      event.metadata.phase,
-      event.metadata.write_stage,
-      event.metadata.service_write_performed,
-    ])).toEqual([
-      ["delete", "apply", "before_service_write", false],
-      ["delete", "apply", "after_service_write", true],
-      ["restore", "compensation", "after_compensation", true],
-    ])
-    expect(memberEvents.filter((event) => event.metadata.related_record).map((event) => [
-      event.memberId,
-      event.metadata.related_record?.snapshot_role,
-      event.metadata.related_record?.changed_fields,
-      event.metadata.related_record?.compensation_succeeded,
-    ])).toEqual([
-      [
-        "current-member-id",
-        "before",
-        ["submission_presence", "game_type_pref", "gender_pref", "availability", "interest_tags", "social_style", "message"],
-        undefined,
-      ],
-      ["current-member-id", "after_compensation_clear", [], true],
-      ["current-member-id", "after_compensation", [], true],
-    ])
+  it("does not report success without a receipt", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: null })
+    await expect(importRoundWorkbook(roundId, actorId, requestId, signImportPlan(plan()), reason)).rejects.toThrow("未收到导入回执")
   })
 
-  it("clears newly inserted submissions before restoring the prior rows after an after-audit failure", async () => {
-    const {
-      db,
-      deleteSubmissions,
-      insertSubmissions,
-    } = createReplacementDb()
-    const currentRow: PreparedImportRow = {
-      ...preparedRow,
-      source: "current",
-      existingMemberId: "current-member-id",
-      manualGender: null,
-      importMetadata: { ...preparedRow.importMetadata, source: "current" },
-    }
-    const priorSubmission = {
-      id: "prior-submission-id",
-      round_id: "round-id",
-      member_id: "current-member-id",
-      game_type_pref: "多人",
-      gender_pref: "女",
-      availability: { "2026-08-20": ["上午"] },
-      message: "Prior sensitive free text",
-      import_metadata: { raw_notes: "Prior private note" },
-    }
-    mocks.loadRoundImportContext.mockResolvedValue({
-      db,
-      parsedRows: [currentRow],
-      currentMembers: [],
-      legacyMembers: [],
-      existingSubs: [priorSubmission],
-    })
-    mocks.resolveImportRows.mockReturnValue([currentRow])
-    let rejectedAfterAudit = false
-    const recordEvent = vi.fn(async (request: RoundImportAuditRequest) => {
-      if (
-        request.metadata.related_record?.snapshot_role === "after"
-        && !rejectedAfterAudit
-      ) {
-        rejectedAfterAudit = true
-        throw new Error("after audit unavailable")
-      }
-    })
-
-    await expect(importRoundWorkbook(
-      "round-id",
-      Buffer.from("workbook"),
-      validAudit(recordEvent),
-    )).rejects.toThrow("after audit unavailable")
-
-    expect(deleteSubmissions).toHaveBeenNthCalledWith(1, "round_id", "round-id")
-    expect(deleteSubmissions).toHaveBeenNthCalledWith(2, "round_id", "round-id")
-    expect(insertSubmissions).toHaveBeenCalledTimes(2)
-    expect(insertSubmissions.mock.calls[1][0]).toEqual([priorSubmission])
-
-    const relatedEvents = recordEvent.mock.calls
-      .map(([event]) => event)
-      .filter((event) => event.metadata.related_record)
-    expect(relatedEvents.map((event) => [
-      event.metadata.related_record?.snapshot_role,
-      event.metadata.related_record?.compensation_step,
-      event.metadata.related_record?.compensation_succeeded,
-    ])).toEqual([
-      ["before", undefined, undefined],
-      ["after", undefined, undefined],
-      ["after_compensation_clear", "clear_current", true],
-      ["after_compensation", "restore_previous", true],
-    ])
+  it("returns a durable all-or-nothing failure receipt to the action", async () => {
+    const failed: ImportReceipt = { ...receipt, status: "failed", error_code: "IMPORT_SUBMISSION_CHANGED", error_message: "线上答卷已变化，本次未写入，请重新预览并处理差异" }
+    mocks.rpc.mockResolvedValue({ data: failed, error: null })
+    await expect(importRoundWorkbook(roundId, actorId, requestId, signImportPlan(plan()), reason)).resolves.toEqual(failed)
+    expect(mocks.from).not.toHaveBeenCalled()
   })
 
-  it("surfaces a compensation clear failure and does not attempt a conflicting restore", async () => {
-    const { db, deleteSubmissions, insertSubmissions } = createReplacementDb()
-    deleteSubmissions
-      .mockReset()
-      .mockResolvedValueOnce({ error: null })
-      .mockResolvedValueOnce({ error: { message: "clear current submissions failed" } })
-    const currentRow: PreparedImportRow = {
-      ...preparedRow,
-      source: "current",
-      existingMemberId: "current-member-id",
-      manualGender: null,
-      importMetadata: { ...preparedRow.importMetadata, source: "current" },
-    }
-    mocks.loadRoundImportContext.mockResolvedValue({
-      db,
-      parsedRows: [currentRow],
-      currentMembers: [],
-      legacyMembers: [],
-      existingSubs: [{
-        round_id: "round-id",
-        member_id: "current-member-id",
-        game_type_pref: "多人",
-      }],
-    })
-    mocks.resolveImportRows.mockReturnValue([currentRow])
-    let rejectedAfterAudit = false
-    const recordEvent = vi.fn(async (request: RoundImportAuditRequest) => {
-      if (request.metadata.related_record?.snapshot_role === "after" && !rejectedAfterAudit) {
-        rejectedAfterAudit = true
-        throw new Error("after audit unavailable")
-      }
-    })
-
-    await expect(importRoundWorkbook(
-      "round-id",
-      Buffer.from("workbook"),
-      validAudit(recordEvent),
-    )).rejects.toThrow("after audit unavailable；补偿失败：clear current submissions failed")
-
-    expect(deleteSubmissions).toHaveBeenCalledTimes(2)
-    expect(insertSubmissions).toHaveBeenCalledTimes(1)
-    const compensationEvents = recordEvent.mock.calls
-      .map(([event]) => event)
-      .filter((event) => event.metadata.related_record?.compensation_step)
-    expect(compensationEvents.map((event) => [
-      event.metadata.related_record?.compensation_step,
-      event.metadata.related_record?.compensation_succeeded,
-    ])).toEqual([
-      ["clear_current", false],
-      ["restore_previous", false],
-    ])
+  it("refuses to apply an expired review when no committed operation exists", async () => {
+    mocks.rpc.mockResolvedValue({ data: null, error: null })
+    await expect(importRoundWorkbook(roundId, actorId, requestId, signImportPlan(plan({ expiresAt: Date.now() - 1 })), reason)).rejects.toThrow("导入预览已过期")
+    expect(mocks.rpc).toHaveBeenCalledExactlyOnceWith("admin_get_round_import", { p_request_id: requestId, p_round_id: roundId, p_actor_admin_id: actorId })
   })
 
-  it("surfaces a prior-submission restore failure after clearing the new rows", async () => {
-    const { db, deleteSubmissions, insertSubmissions } = createReplacementDb()
-    insertSubmissions
-      .mockReset()
-      .mockResolvedValueOnce({ error: null })
-      .mockResolvedValueOnce({ error: { message: "restore previous submissions failed" } })
-    const currentRow: PreparedImportRow = {
-      ...preparedRow,
-      source: "current",
-      existingMemberId: "current-member-id",
-      manualGender: null,
-      importMetadata: { ...preparedRow.importMetadata, source: "current" },
-    }
-    mocks.loadRoundImportContext.mockResolvedValue({
-      db,
-      parsedRows: [currentRow],
-      currentMembers: [],
-      legacyMembers: [],
-      existingSubs: [{
-        round_id: "round-id",
-        member_id: "current-member-id",
-        game_type_pref: "多人",
-      }],
-    })
-    mocks.resolveImportRows.mockReturnValue([currentRow])
-    let rejectedAfterAudit = false
-    const recordEvent = vi.fn(async (request: RoundImportAuditRequest) => {
-      if (request.metadata.related_record?.snapshot_role === "after" && !rejectedAfterAudit) {
-        rejectedAfterAudit = true
-        throw new Error("after audit unavailable")
-      }
-    })
+  it("checks the original request fingerprint even when recovering an expired signed review", async () => {
+    const reviewed = plan({ expiresAt: Date.now() - 1 })
+    mocks.rpc.mockResolvedValueOnce({ data: receipt, error: null }).mockResolvedValueOnce({ data: null, error: { message: "IMPORT_REQUEST_REUSED" } })
+    await expect(importRoundWorkbook(roundId, actorId, requestId, signImportPlan(reviewed), reason)).rejects.toMatchObject({ message: "IMPORT_REQUEST_REUSED" })
+    expect(mocks.rpc.mock.calls.map(([name]) => name)).toEqual(["admin_get_round_import", "admin_apply_round_import"])
+    expect(mocks.rpc.mock.calls[1][1].p_request_hash).toBe(importDigest({ plan: reviewed, reason }))
+  })
 
-    await expect(importRoundWorkbook(
-      "round-id",
-      Buffer.from("workbook"),
-      validAudit(recordEvent),
-    )).rejects.toThrow("after audit unavailable；补偿失败：restore previous submissions failed")
+  it("queries or safely reserves an uncertain operation ID without changing it", async () => {
+    await expect(getRoundImportReceiptRecord(roundId, actorId, requestId)).resolves.toEqual(receipt)
+    await expect(cancelRoundImportOperation(roundId, actorId, requestId, ` ${reason} `)).resolves.toEqual(receipt)
+    expect(mocks.rpc).toHaveBeenNthCalledWith(1, "admin_get_round_import", { p_request_id: requestId, p_round_id: roundId, p_actor_admin_id: actorId })
+    expect(mocks.rpc).toHaveBeenNthCalledWith(2, "admin_cancel_round_import_request", { p_request_id: requestId, p_round_id: roundId, p_actor_admin_id: actorId, p_reason: reason })
+    expect(mocks.from).not.toHaveBeenCalled()
+  })
 
-    expect(deleteSubmissions).toHaveBeenCalledTimes(2)
-    expect(insertSubmissions).toHaveBeenCalledTimes(2)
-    const compensationEvents = recordEvent.mock.calls
-      .map(([event]) => event)
-      .filter((event) => event.metadata.related_record?.compensation_step)
-    expect(compensationEvents.map((event) => [
-      event.metadata.related_record?.compensation_step,
-      event.metadata.related_record?.compensation_succeeded,
-    ])).toEqual([
-      ["clear_current", true],
-      ["restore_previous", false],
-    ])
+  it("lists safe durable history and propagates lookup errors", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: [receipt], error: null }).mockResolvedValueOnce({ data: null, error: { message: "lookup failure" } })
+    await expect(listRoundImportRecords(roundId, actorId)).resolves.toEqual([receipt])
+    await expect(getRoundImportReceiptRecord(roundId, actorId, requestId)).rejects.toMatchObject({ message: "lookup failure" })
+  })
+
+  it("signs a fully confirmed preview but keeps an unconfirmed name suggestion uncommittable", async () => {
+    const parsedRow = { rowNumber: 4, name: "张三", normalizedName: "张三", gameTypePref: "双人", rawFirstChoice: "双人本", rawSecondChoice: null, genderPref: "都可以", availability: { "2026-10-27": ["下午"] }, scriptActivityPref: null, message: null, importMetadata: { source: "temp", normalized_name: "张三", raw_first_choice: "双人本", raw_second_choice: null, script_activity_pref: null, raw_notes: null, warnings: [] } }
+    mocks.context.mockResolvedValue({ state: { round_token: "round-token", member_tokens: { [memberId]: "member-token" }, identities: [], submissions: [], affected_batch_ids: ["old-batch"] }, parsedRows: [parsedRow], memberOptions: [{ id: memberId, member_number: "ZXS_1", full_name: "张三", nickname: null, temporary: false }], legacyMembers: [] })
+    const buffer = Buffer.from("isolated workbook")
+    const suggested = await previewRoundWorkbook(roundId, buffer, actorId)
+    expect(suggested.planToken).toBeNull()
+    expect(suggested.rows[0].suggestedMemberId).toBe(memberId)
+    const confirmed = await previewRoundWorkbook(roundId, buffer, actorId, { 4: { target: `member:${memberId}` } })
+    expect(confirmed.planToken).toBeTypeOf("string")
+    const verified = verifyImportPlan(confirmed.planToken!, roundId, actorId)
+    expect(verified.rows[0].existing_member_id).toBe(memberId)
+    expect(confirmed.affectedBatchIds).toEqual(["old-batch"])
+    expect(mocks.rpc).not.toHaveBeenCalled()
   })
 })

@@ -2,6 +2,7 @@ import type { Availability } from "./types"
 import type { ImportSource, LegacyImportProfile, SubmissionImportMetadata } from "./import-metadata"
 
 export interface ParsedImportRow {
+  blankFields?: import("./round-import-contract").ImportField[]
   rowNumber: number
   name: string
   normalizedName: string

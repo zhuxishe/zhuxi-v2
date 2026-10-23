@@ -4,6 +4,8 @@ import createNextIntlPlugin from "next-intl/plugin"
 const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts")
 
 const nextConfig: NextConfig = {
+  // Excel upload and its signed confirmation plan are separate bounded requests.
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   // Auth Server Actions receive passwords; never print their arguments in dev logs.
   logging: { serverFunctions: false },
   images: {

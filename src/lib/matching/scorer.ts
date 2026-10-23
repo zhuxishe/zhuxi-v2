@@ -58,6 +58,17 @@ export function scorePair(
     }
   }
 
+  return scorePairFactors(a, b, config)
+}
+
+/** Original eight factors; the caller validates its duo or whole-pool context. */
+export function scorePairFactors(
+  a: MatchCandidate,
+  b: MatchCandidate,
+  config: MatchingConfig,
+): PairScore {
+  const base = { userA: a.submissionId, userB: b.submissionId }
+
   // 8因子评分
   const breakdown: ScoreComponent[] = [
     scoreInterestOverlap(a, b, config.weights.interest_overlap),

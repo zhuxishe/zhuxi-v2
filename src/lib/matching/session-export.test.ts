@@ -13,6 +13,13 @@ import type { MatchingInputSnapshot } from "./input-snapshot-reader"
 let tables: Record<string, any[]>
 let queries: Array<{ table: string; memberIds?: string[] }>
 const capturedAt = "2026-10-23T01:00:00Z"
+const originalResultColumns = [
+  "rank", "session_status", "result_status", "group_type", "group_size", "best_slot", "total_score", "round_name",
+  ...Array.from({ length: 6 }, (_, index) => `member_${index + 1}_name`),
+  ...Array.from({ length: 6 }, (_, index) => `member_${index + 1}_id`),
+  ...Array.from({ length: 6 }, (_, index) => `member_${index + 1}_source`),
+  "input_source", "captured_at",
+]
 function inputSnapshot(): MatchingInputSnapshot {
   return { snapshot_id: "input", captured_at: capturedAt, status: "sealed", source: { submissions: [
     { member_id: "a", member: { member_identity: { full_name: "不应复原的旧姓名" } } },
@@ -71,6 +78,61 @@ beforeEach(() => {
 })
 
 describe("session export batch input provenance", () => {
+  it.each([2, 6])("preserves the original column positions for %i members", async (size) => {
+    const ids = Array.from({ length: size }, (_, index) => `member-${index + 1}`)
+    tables.match_results = [{ rank: 1, status: "draft", member_a_id: ids[0], member_b_id: size === 2 ? ids[1] : null,
+      group_members: size === 2 ? null : ids, total_score: 55 }]
+    tables.members = ids.map((id) => ({ id, member_identity: { full_name: `姓名-${id}` } }))
+    mocks.snapshot.mockResolvedValue({ ...inputSnapshot(), source: { submissions: ids.map((member_id) => ({ member_id })) },
+      engine_input: { candidates: ids.map((submissionId) => ({ submissionId })) } })
+
+    const book = await workbook()
+    const sheet = book.getWorksheet("配对结果")!
+    expect((sheet.getRow(1).values as string[]).slice(1)).toEqual(originalResultColumns)
+    expect(rowsOf(sheet)[0]).toMatchObject({ group_size: size, [`member_${size}_id`]: ids[size - 1] })
+    expect(book.worksheets.map((worksheet) => worksheet.name)).toEqual(["配对结果", "未匹配名单"])
+  })
+
+  it.each([8, 13])("exports every one of %i pool members after the original columns", async (size) => {
+    const ids = Array.from({ length: size }, (_, index) => `pool-${index + 1}`)
+    tables.unmatched_diagnostics = []
+    tables.match_results = [{ rank: 1, status: "draft", member_a_id: ids[0], member_b_id: null,
+      group_members: ids, total_score: 55 }]
+    tables.members = ids.map((id) => ({ id, member_identity: { full_name: `当前姓名-${id}` } }))
+    mocks.snapshot.mockResolvedValue({ ...inputSnapshot(), source: { submissions: ids.map((member_id, index) => ({ member_id,
+      import_metadata: { source: index === size - 1 ? "temp" : "current", normalized_name: member_id },
+    })) }, engine_input: { candidates: ids.map((submissionId) => ({ submissionId })) } })
+
+    const book = await workbook()
+    const sheet = book.getWorksheet("配对结果")!
+    const headers = (sheet.getRow(1).values as string[]).slice(1)
+    expect(headers.slice(0, originalResultColumns.length)).toEqual(originalResultColumns)
+    expect(headers.slice(originalResultColumns.length)).toEqual(ids.slice(6).flatMap((_, index) => [
+      `member_${index + 7}_name`, `member_${index + 7}_id`, `member_${index + 7}_source`,
+    ]))
+    const row = rowsOf(sheet)[0]
+    expect(row).toMatchObject({ group_type: "多人", group_size: size,
+      member_7_name: "当前姓名-pool-7", member_7_id: "pool-7", member_7_source: "current",
+      [`member_${size}_name`]: `当前姓名-pool-${size}`, [`member_${size}_id`]: `pool-${size}`,
+      [`member_${size}_source`]: "temp", input_source: "初始批次输入快照", captured_at: capturedAt,
+    })
+    expect(ids.map((_, index) => row[`member_${index + 1}_id`])).toEqual(ids)
+    expect(book.worksheets.map((worksheet) => worksheet.name)).toEqual(["配对结果", "未匹配名单"])
+    expect(queries.some((query) => query.table === "match_round_submissions")).toBe(false)
+  })
+
+  it("preserves both sheets and original headers for an empty result set", async () => {
+    tables.match_results = []
+    tables.unmatched_diagnostics = []
+    const book = await workbook()
+    expect(book.worksheets.map((sheet) => sheet.name)).toEqual(["配对结果", "未匹配名单"])
+    const sheet = book.getWorksheet("配对结果")!
+    expect(sheet.rowCount).toBe(1)
+    expect((sheet.getRow(1).values as string[]).slice(1)).toEqual(originalResultColumns)
+    expect(rowsOf(book.getWorksheet("未匹配名单")!)).toEqual([])
+    expect(queries.some((query) => query.table === "members")).toBe(false)
+  })
+
   it("exports captured question values and current names after later answers change", async () => {
     const book = await workbook()
     expect(book.worksheets.map((sheet) => sheet.name)).toEqual(["配对结果", "未匹配名单"])

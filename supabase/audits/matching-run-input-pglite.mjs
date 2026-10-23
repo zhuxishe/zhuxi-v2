@@ -212,5 +212,135 @@ check(await scalar("SELECT has_function_privilege('anon','public.admin_get_match
 const postflight=await scalar(read('supabase/audits/matching-run-input-postflight.sql'));
 check(postflight.finalizer_has_input_guard,true,'read-only postflight confirms the completion guard');
 check(postflight.source_reads_effective_assignments,false,'source SQL does not filter active assignments');
+
+// Forward-only phase 2: retain the v1 seal contract and widen only its explicit
+// engine-version allowlist. The same real publication functions handle a pool
+// larger than the old six-person grouping limit, without schema duplication.
+const v1Round=await scalar("INSERT INTO public.match_rounds(round_name) VALUES('旧引擎版本兼容隔离') RETURNING id")
+for(const member of [members[0],members[15]])await db.query('INSERT INTO public.match_round_submissions(round_id,member_id) VALUES($1,$2)',[v1Round,member])
+await role('service_role')
+const oldVersionCapture=await capture(v1Round)
+const oldVersionSession=await createSession(oldVersionCapture)
+check((await seal(oldVersionCapture,oldVersionSession)).algorithm_version,'max_coverage_split:1','v1 engine input is sealed before the forward migration')
+const oldVersionRead=await scalar('SELECT public.admin_read_matching_input($1,$2)',[oldVersionSession,admin])
+await role()
+const functionBefore=await scalar("SELECT jsonb_build_object('definition',pg_get_functiondef(p.oid),'owner',p.proowner,'acl',p.proacl,'security_definer',p.prosecdef,'config',p.proconfig,'volatility',p.provolatile,'args',p.proargnames,'return_type',p.prorettype) FROM pg_proc p WHERE p.oid='matching_run.seal(uuid,uuid,uuid,jsonb)'::regprocedure")
+const unchangedFunctionsSql="SELECT COALESCE(jsonb_object_agg(p.oid::regprocedure::text,pg_get_functiondef(p.oid)),'{}'::jsonb) FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('matching_run','matching_publication','public') AND p.oid<>'matching_run.seal(uuid,uuid,uuid,jsonb)'::regprocedure"
+const unchangedFunctions=await scalar(unchangedFunctionsSql)
+const businessTables=['members','match_rounds','match_round_submissions','match_sessions','match_results','unmatched_diagnostics','community_notifications','questionnaire_versions','questionnaire_responses']
+const businessRows=async()=>Object.fromEntries(await Promise.all(businessTables.map(async name=>[name,await scalar(`SELECT COALESCE(jsonb_agg(to_jsonb(t) ORDER BY to_jsonb(t)::text),'[]'::jsonb) FROM public.${name} t`)])))
+const migrationBusinessBefore=await businessRows()
+const migrationPath='supabase/migrations/20261023081549_matching_single_pool_algorithm_v2.sql'
+await db.exec(read(migrationPath))
+check(await businessRows(),migrationBusinessBefore,'v2 allowlist migration does not rewrite any existing business or questionnaire rows')
+const functionAfter=await scalar("SELECT jsonb_build_object('definition',pg_get_functiondef(p.oid),'owner',p.proowner,'acl',p.proacl,'security_definer',p.prosecdef,'config',p.proconfig,'volatility',p.provolatile,'args',p.proargnames,'return_type',p.prorettype) FROM pg_proc p WHERE p.oid='matching_run.seal(uuid,uuid,uuid,jsonb)'::regprocedure")
+const oldVersionCheck="p_engine_input->>'algorithm_version' IS DISTINCT FROM 'max_coverage_split:1'"
+const newVersionCheck="(p_engine_input->>'algorithm_version' IS DISTINCT FROM 'max_coverage_split:1' AND p_engine_input->>'algorithm_version' IS DISTINCT FROM 'max_coverage_split:2')"
+check(functionAfter,{...functionBefore,definition:functionBefore.definition.replace(oldVersionCheck,newVersionCheck)},'only the seal version condition changes; owner, ACL, config, signature and every other validation remain identical')
+check(await scalar(unchangedFunctionsSql),unchangedFunctions,'all other source, privacy, publication and wrapper functions are byte-for-byte unchanged')
+await assert.rejects(()=>db.exec(read(migrationPath)),/MATCH_RUN_SEAL_BASELINE_CHANGED/);checks++
+await db.exec('ROLLBACK')
+await role('service_role')
+check(await scalar('SELECT public.admin_read_matching_input($1,$2)',[oldVersionSession,admin]),oldVersionRead,'already sealed v1 source and exact engine input remain readable and immutable')
+const freshV1Capture=await capture(v1Round)
+const freshV1Session=await createSession(freshV1Capture)
+check((await seal(freshV1Capture,freshV1Session)).algorithm_version,'max_coverage_split:1','a fresh v1 input still seals after the v2 forward migration')
+const invalidVersionCapture=await capture(v1Round)
+const invalidVersionSession=await createSession(invalidVersionCapture)
+await role('service_role')
+for(const version of ['max_coverage_split:0','max_coverage_split:3','unknown',null,2]){
+ await rejects('SELECT public.admin_seal_matching_input($1,$2,$3,$4)',/ENGINE_INPUT_INVALID/,[invalidVersionCapture.snapshot_id,invalidVersionSession,admin,{...engine(invalidVersionCapture),algorithm_version:version}])
+}
+const missingVersionInput=engine(invalidVersionCapture)
+delete missingVersionInput.algorithm_version
+await rejects('SELECT public.admin_seal_matching_input($1,$2,$3,$4)',/ENGINE_INPUT_INVALID/,[invalidVersionCapture.snapshot_id,invalidVersionSession,admin,missingVersionInput])
+check((await seal(invalidVersionCapture,invalidVersionSession,{...engine(invalidVersionCapture),algorithm_version:'max_coverage_split:2'})).algorithm_version,'max_coverage_split:2','v2 input seals after failed missing/null/unknown versions without weakening validation')
+
+await role()
+const poolMembers=Array.from({length:13},(_,i)=>`40000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`)
+const poolUsers=poolMembers.map((_,i)=>`50000000-0000-4000-8000-${String(i+1).padStart(12,'0')}`)
+const poolRound=await scalar("INSERT INTO public.match_rounds(round_name) VALUES('十三人单池发布隔离') RETURNING id")
+for(let i=0;i<poolMembers.length;i++){
+ await db.query('INSERT INTO public.members(id,user_id,member_number) VALUES($1,$2,$3)',[poolMembers[i],poolUsers[i],`POOL_${i+1}`])
+ await db.query("INSERT INTO public.member_identity(member_id,full_name,gender,hobby_tags) VALUES($1,$2,'女',ARRAY['桌游'])",[poolMembers[i],`隔离池成员${i+1}`])
+ await db.query("INSERT INTO public.match_round_submissions(round_id,member_id,game_type_pref,created_at) VALUES($1,$2,'多人',now()+($3::integer*interval '1 second'))",[poolRound,poolMembers[i],i])
+}
+const poolWindow=await scalar('SELECT jsonb_build_array(status,survey_start,survey_end) FROM public.match_rounds WHERE id=$1',[poolRound])
+const createPoolSession=async()=>{
+ await role('service_role')
+ const cap=await capture(poolRound)
+ const session=await createSession(cap)
+ const input={...engine(cap),algorithm_version:'max_coverage_split:2'}
+ await seal(cap,session,input)
+ await role('authenticated');await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[adminUser])
+ await db.query("UPDATE public.match_sessions SET total_matched=13,total_unmatched=0,audit_reason='十三人单池汇总' WHERE id=$1",[session])
+ const result=await scalar("INSERT INTO public.match_results(session_id,member_a_id,member_b_id,group_members,best_slot,audit_reason) VALUES($1,$2,NULL,$3,'2026-10-27_下午','十三人单池结果') RETURNING id",[session,poolMembers[0],poolMembers])
+ const finalized=await scalar("SELECT public.admin_finalize_matching_session($1,$2,'open',r.survey_start,r.survey_end,'十三人单池完成') FROM public.match_rounds r WHERE id=$2",[session,poolRound])
+ return {cap,session,result,finalized}
+}
+const pool=await createPoolSession()
+check(pool.finalized.results_ready,true,'real finalize accepts one thirteen-member result with a sealed v2 input')
+check(await scalar('SELECT count(*)::int FROM public.match_results WHERE session_id=$1',[pool.session]),1,'thirteen participants are persisted as exactly one multiplayer pool')
+check(await scalar('SELECT cardinality(group_members) FROM public.match_results WHERE id=$1',[pool.result]),13,'stored result does not truncate the pool at six members')
+check(await scalar('SELECT jsonb_build_array(member_b_id,best_slot) FROM public.match_results WHERE id=$1',[pool.result]),[null,'2026-10-27_下午'],'single-pool result preserves the actual engine member/slot storage shape')
+check(await scalar('SELECT jsonb_build_array(total_candidates,total_matched,total_unmatched) FROM public.match_sessions WHERE id=$1',[pool.session]),[13,13,0],'finalized summary counts all thirteen participants')
+check(await scalar('SELECT jsonb_build_array(status,survey_start,survey_end) FROM public.match_rounds WHERE id=$1',[poolRound]),poolWindow,'thirteen-person finalize preserves collection status and original window')
+const poolPublication=await scalar("SELECT public.admin_publish_match_session($1,0,'十三人单池发布')",[pool.session])
+check(poolPublication.publication_version,1,'thirteen-person pool publishes through the existing guarded API')
+check((await scalar("SELECT public.admin_publish_match_session($1,0,'十三人单池发布重试')",[pool.session])).already_applied,true,'thirteen-person pool publication retry is idempotent')
+await role()
+check(await scalar('SELECT count(*)::int FROM matching_publication.active_assignments WHERE round_id=$1',[poolRound]),13,'all thirteen pool members receive unique effective assignments')
+check(await scalar('SELECT count(DISTINCT member_id)::int FROM matching_publication.roster WHERE publication_id=$1',[poolPublication.publication_id]),13,'publication roster includes all thirteen members once')
+check(await scalar("SELECT count(*)::int FROM public.community_notifications WHERE match_session_id=$1 AND notification_type='matching_published'",[pool.session]),13,'all thirteen members receive one publication notice despite the retry')
+check(await scalar("SELECT count(DISTINCT recipient_member_id)::int FROM public.community_notifications WHERE match_session_id=$1 AND notification_type='matching_published'",[pool.session]),13,'publication notices include members beyond the sixth position')
+await role('authenticated')
+for(let i=0;i<poolMembers.length;i++){
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[poolUsers[i]])
+ const outcomes=await scalar('SELECT public.get_my_matching_publications()')
+ check(outcomes.find(outcome=>outcome.round_id===poolRound)?.result_id,pool.result,`pool member ${i+1} sees the station publication outcome`)
+ check(await scalar('SELECT cardinality(group_members) FROM public.match_results WHERE id=$1',[pool.result]),13,`pool member ${i+1} can read the complete thirteen-member result under participant RLS`)
+}
+const competingPool=await createPoolSession()
+check(eligible(competingPool.cap).length,13,'already assigned members remain in the next complete candidate pool')
+await rejects("SELECT public.admin_publish_match_session($1,0,'冲突单池不得覆盖')",/CONFLICT/,[competingPool.session])
+check(await scalar('SELECT count(*)::int FROM public.community_notifications WHERE match_session_id=$1',[competingPool.session]),0,'competing full-pool publication rolls back every notice')
+check(await scalar('SELECT status FROM public.match_sessions WHERE id=$1',[competingPool.session]),'draft','unique-assignment publication conflict leaves the competing pool as a draft')
+const poolWithdrawal=await scalar("SELECT public.admin_unpublish_match_session($1,1,'十三人单池撤回')",[pool.session])
+check(poolWithdrawal.published,false,'existing withdrawal API withdraws the complete single pool')
+check((await scalar("SELECT public.admin_unpublish_match_session($1,1,'十三人单池撤回重试')",[pool.session])).already_applied,true,'whole-pool withdrawal retry is idempotent')
+await role()
+check(await scalar('SELECT count(*)::int FROM matching_publication.active_assignments WHERE round_id=$1',[poolRound]),0,'whole-pool withdrawal releases every one of thirteen effective assignments')
+check(await scalar("SELECT count(*)::int FROM public.community_notifications WHERE match_session_id=$1 AND notification_type='matching_withdrawn'",[pool.session]),13,'whole-pool withdrawal notifies all thirteen members exactly once')
+check(await scalar('SELECT cardinality(group_members) FROM public.match_results WHERE id=$1',[pool.result]),13,'withdrawal retains the full thirteen-member draft result')
+await role('authenticated')
+for(let i=0;i<poolMembers.length;i++){
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[poolUsers[i]])
+ check((await scalar('SELECT public.get_my_matching_publications()')).find(outcome=>outcome.round_id===poolRound)?.status,'withdrawn',`pool member ${i+1} sees the withdrawn outcome`)
+ check(await scalar('SELECT count(*)::int FROM public.match_results WHERE id=$1',[pool.result]),0,`pool member ${i+1} no longer directly reads the withdrawn result`)
+}
+await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[adminUser])
+check((await scalar("SELECT public.admin_publish_match_session($1,0,'释放后发布新单池')",[competingPool.session])).published,true,'the waiting full-pool draft can publish after all old assignments are released')
+await role()
+check(await scalar('SELECT count(*)::int FROM matching_publication.active_assignments WHERE round_id=$1',[poolRound]),13,'replacement publication through the existing explicit workflow covers all thirteen again')
+await role('authenticated');await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[poolUsers[12]])
+check((await scalar("SELECT public.request_my_match_cancellation($1,'第十三位成员申请整池取消',1)",[competingPool.result])).cancellation_status,'pending','a pool member beyond the sixth position can request cancellation through the real participant API')
+const poolCancelToken=await scalar('SELECT cancellation_requested_at::text FROM public.match_results WHERE id=$1',[competingPool.result])
+await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[adminUser])
+check((await scalar("SELECT public.admin_approve_matching_cancellation($1,1,$2,'批准十三人整池取消')",[competingPool.result,poolCancelToken])).already_applied,false,'the existing admin cancellation API approves the whole thirteen-person result')
+check((await scalar("SELECT public.admin_approve_matching_cancellation($1,1,$2,'批准十三人整池取消重试')",[competingPool.result,poolCancelToken])).already_applied,true,'whole-pool cancellation approval retry is idempotent')
+check(await scalar('SELECT jsonb_build_array(status,cancellation_status,cardinality(group_members)) FROM public.match_results WHERE id=$1',[competingPool.result]),['cancelled','approved',13],'cancellation preserves all thirteen members as one cancelled result')
+check(await scalar('SELECT jsonb_build_array(total_candidates,total_matched,total_unmatched) FROM public.match_sessions WHERE id=$1',[competingPool.session]),[13,0,13],'whole-pool cancellation updates the summary for all thirteen members')
+await role()
+check(await scalar('SELECT count(*)::int FROM matching_publication.active_assignments WHERE round_id=$1',[poolRound]),0,'whole-pool cancellation releases all thirteen effective assignments')
+check(await scalar("SELECT count(*)::int FROM public.community_notifications WHERE match_session_id=$1 AND notification_type='matching_cancelled'",[competingPool.session]),13,'whole-pool cancellation and approval retry notify all thirteen exactly once')
+check(await scalar("SELECT count(DISTINCT recipient_member_id)::int FROM public.community_notifications WHERE match_session_id=$1 AND notification_type='matching_cancelled'",[competingPool.session]),13,'cancellation notices are delivered to every pool participant including positions beyond six')
+await role('authenticated')
+for(let i=0;i<poolMembers.length;i++){
+ await db.query("SELECT set_config('request.jwt.claim.sub',$1,false)",[poolUsers[i]])
+ check((await scalar('SELECT public.get_my_matching_publications()')).find(outcome=>outcome.round_id===poolRound)?.status,'cancelled',`pool member ${i+1} sees the whole-pool cancelled outcome`)
+ check(await scalar('SELECT cardinality(group_members) FROM public.match_results WHERE id=$1',[competingPool.result]),13,`pool member ${i+1} retains access to the complete cancelled publication history`)
+}
+await role()
+check(await scalar('SELECT count(*)::int FROM matching_publication.write_context'),0,'all thirteen-person publication and withdrawal operations clear trusted contexts')
 console.log(`Matching input snapshot audit: ${checks} checks passed; isolated PGlite only.`)
 await db.close()

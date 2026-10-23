@@ -1,6 +1,6 @@
 # 匹配批次输入快照与候选资格
 
-范围：运行前复核候选资格、在当时完整报名大池中运行、保存不可变输入。已获本轮有效匹配的人仍可进入新草稿。评分权重、组合算法、收集窗口、重开与 Excel 导入规则均保持原行为；第 5 步的同轮唯一有效匹配发布保护继续生效，不会自动替换旧发布。
+范围：运行前复核候选资格、在当时完整报名大池中运行、保存不可变输入。已获本轮有效匹配的人仍可进入新草稿。评分权重、收集窗口、重开与 Excel 导入规则均保持原行为；新运行使用第 2 批覆盖优先的单一多人池算法，详见 `matching-single-pool-algorithm.md`。第 5 步的同轮唯一有效匹配发布保护继续生效，不会自动替换旧发布。
 
 ## 数据与资格
 
@@ -26,7 +26,7 @@
 - `admin_discard_matching_input(p_snapshot_id,p_actor_admin_id)` 只删除失败运行未封存的捕获。
 - `admin_read_matching_input(p_session_id,p_actor_admin_id)` 供可信服务端读取快照；不提供浏览器原始资料入口。
 
-`engine_input` 保存算法真正收到的 `candidates`（顺序保留）、`pairRelations` Map entries、`idMap` entries、原 `DEFAULT_CONFIG`、`algorithm_version='max_coverage_split:1'` 及 `adapter_version=1`。转换和运行不再回读实时资料、历史或答卷。封存后实时资料修改不会改写旧批次。
+`engine_input` 保存算法真正收到的 `candidates`（顺序保留）、`pairRelations` Map entries、`idMap` entries、原 `DEFAULT_CONFIG`、算法版本（历史 `max_coverage_split:1`、新运行 `max_coverage_split:2`）及 `adapter_version=1`。转换和运行不再回读实时资料、历史或答卷。封存后实时资料修改不会改写旧批次。
 
 `admin_get_matching_input_metadata(p_session_id)` 仅当前管理员可调用，返回捕获时间、人数、摘要、封存/脱敏状态，不含原始答卷或算法输入。新轮次运行的 `input_snapshot_required=true`，原子 finalize 必须先有封存输入；原收集中保持 open、已截止转 matched 及日期 CAS 完全保留。旧会话不回填、标记 legacy；manual 等无关运行路径不被强制引入新流程。
 

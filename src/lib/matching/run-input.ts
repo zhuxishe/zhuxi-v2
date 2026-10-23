@@ -7,7 +7,7 @@ import { parseMatchingReadiness, type MatchingReadiness } from "./profile-readin
 import { mergeMatchHistory } from "./round-import-utils"
 import type { MatchCandidate, MatchingConfig } from "./types"
 
-export const MATCHING_ENGINE_ALGORITHM_VERSION = "max_coverage_split:1" as const
+export const MATCHING_ENGINE_ALGORITHM_VERSION = "max_coverage_split:2" as const
 export const MATCHING_RUN_ADAPTER_VERSION = 1 as const
 
 type Row = Record<string, unknown>

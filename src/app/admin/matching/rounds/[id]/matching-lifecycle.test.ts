@@ -27,7 +27,7 @@ function prepared() {
   return {
     snapshotId: "snapshot", capturedAt: "2026-09-29T10:00:00Z", candidates, config, idMap, pairRelations,
     submissions: candidates.map((c) => ({ member_id: c.submissionId })), exclusions: [],
-    engineInput: { candidates: structuredClone(candidates), config, idMap: [...idMap], pairRelations: [], algorithm_version: "max_coverage_split:1", adapter_version: 1 },
+    engineInput: { candidates: structuredClone(candidates), config, idMap: [...idMap], pairRelations: [], algorithm_version: "max_coverage_split:2", adapter_version: 1 },
   }
 }
 function setupRun(current = openRound) {

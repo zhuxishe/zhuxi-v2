@@ -86,6 +86,7 @@ export async function buildSessionExportWorkbook(sessionId: string): Promise<{ b
     }
   }
 
+  const memberSlotCount = (results ?? []).reduce((count: number, row: any) => Math.max(count, memberSlots(row).length), 6)
   const resultRows = (results ?? []).map((row: any) => {
     const slots = memberSlots(row)
     const exportRow: Record<string, string | number | null> = {
@@ -101,7 +102,7 @@ export async function buildSessionExportWorkbook(sessionId: string): Promise<{ b
         ? "含后续人工调整当前资料" : sessionSubmissionInputLabel(inputSnapshot, slots[0] ?? ""),
       captured_at: inputSnapshot?.captured_at ?? "",
     }
-    for (let index = 0; index < 6; index++) {
+    for (let index = 0; index < memberSlotCount; index++) {
       const memberId = slots[index] ?? ""
       exportRow[`member_${index + 1}_name`] = memberNames.get(memberId) ?? ""
       exportRow[`member_${index + 1}_id`] = memberId
@@ -135,6 +136,10 @@ export async function buildSessionExportWorkbook(sessionId: string): Promise<{ b
     ...Array.from({ length: 6 }, (_, index) => `member_${index + 1}_id`),
     ...Array.from({ length: 6 }, (_, index) => `member_${index + 1}_source`),
     "input_source", "captured_at",
+    ...Array.from({ length: memberSlotCount - 6 }, (_, index) => {
+      const memberNumber = index + 7
+      return [`member_${memberNumber}_name`, `member_${memberNumber}_id`, `member_${memberNumber}_source`]
+    }).flat(),
   ]
   const unmatchedColumns = [
     "name", "member_id", "source", "normalized_game_type_pref", "raw_first_choice", "raw_second_choice",

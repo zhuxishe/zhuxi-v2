@@ -202,7 +202,7 @@ describe("captured matching run inputs", () => {
     expect(prepared.engineInput.candidates[0].name).toBe("甲")
     expect(prepared.engineInput.candidates[0].availability["2026-11-01"]).toEqual(["下午", "晚上"])
     expect(DEFAULT_CONFIG.weights.interest_overlap).toBe(15)
-    expect(prepared.engineInput).toMatchObject({ algorithm_version: "max_coverage_split:1", adapter_version: 1 })
+    expect(prepared.engineInput).toMatchObject({ algorithm_version: "max_coverage_split:2", adapter_version: 1 })
   })
 
   it("accepts nullable version references and an ineligible missing member without restoring it", () => {

@@ -40,7 +40,23 @@ export function checkHardConstraints(
     reasons.push(`游戏类型不兼容: ${a.name}选${a.gameTypePref}, ${b.name}选${b.gameTypePref}`)
   }
 
-  // 硬约束2: 禁忌标签互斥
+  reasons.push(...checkSharedMemberConstraints(a, b, pairRelations).reasons)
+
+  return {
+    passed: reasons.length === 0,
+    reasons,
+  }
+}
+
+/** 双人与多人池共用的成员关系约束；不包含类型、性别、时间或新手限制。 */
+export function checkSharedMemberConstraints(
+  a: MatchCandidate,
+  b: MatchCandidate,
+  pairRelations?: Map<string, PairRelation>,
+): ConstraintResult {
+  const reasons: string[] = []
+
+  // 禁忌标签互斥
   if (a.tabooTags?.length || b.tabooTags?.length) {
     const aTaboos = new Set(a.tabooTags ?? [])
     const bTaboos = new Set(b.tabooTags ?? [])
@@ -55,15 +71,7 @@ export function checkHardConstraints(
     }
   }
 
-  // 硬约束3: 新手接受度
-  if (a.acceptBeginners === false && b.level === 0) {
-    reasons.push(`${a.name}不接受新手, ${b.name}是新手`)
-  }
-  if (b.acceptBeginners === false && a.level === 0) {
-    reasons.push(`${b.name}不接受新手, ${a.name}是新手`)
-  }
-
-  // 硬约束4+5: 黑名单 + 冷却期（需要配对关系数据）
+  // 黑名单 + 冷却期（需要配对关系数据）
   if (pairRelations) {
     const rel = getPairStatus(pairRelations, a.submissionId, b.submissionId)
 
@@ -142,7 +150,7 @@ function isOneWayGenderOk(pref: string, targetGender: string | null): boolean {
 
 /**
  * 检查一个候选人能否加入一个多人组
- * 检查：游戏类型 + 性别 + 黑名单 + 冷却期
+ * 检查：游戏类型 + 整池性别 + 所有成员关系的禁忌、黑名单、冷却期
  * 返回详细约束结果（passed + reasons）
  */
 export function checkGroupConstraints(
@@ -152,6 +160,7 @@ export function checkGroupConstraints(
   pairRelations?: Map<string, PairRelation>,
 ): ConstraintResult {
   const reasons: string[] = []
+  const allMembers = [...groupMembers, candidate]
 
   // 游戏类型检查
   const candPref = candidate.gameTypePref || "都可以"
@@ -167,7 +176,6 @@ export function checkGroupConstraints(
 
   // 性别检查：多人组中，有偏好的成员只需组内至少一人满足即可
   if (config.hardConstraints.enforceGender) {
-    const allMembers = [...groupMembers, candidate]
     for (const member of allMembers) {
       if (!member.genderPref || member.genderPref === "都可以") continue
       const others = allMembers.filter((o) => o !== member)
@@ -179,16 +187,13 @@ export function checkGroupConstraints(
     }
   }
 
-  // 黑名单 + 冷却期检查
-  if (pairRelations) {
-    for (const member of groupMembers) {
-      const rel = getPairStatus(pairRelations, candidate.submissionId, member.submissionId)
-      if (rel.status === "blacklist") {
-        reasons.push(`${candidate.name}与${member.name}: 黑名单 — ${rel.reason}`)
-      }
-      if (rel.status === "cooldown") {
-        reasons.push(`${candidate.name}与${member.name}: 冷却期 — ${rel.reason}`)
-      }
+  // 检查完整池，避免已有成员间的冲突被遗漏。
+  for (let i = 0; i < allMembers.length; i++) {
+    for (let j = i + 1; j < allMembers.length; j++) {
+      const a = allMembers[i]
+      const b = allMembers[j]
+      const shared = checkSharedMemberConstraints(a, b, pairRelations)
+      reasons.push(...shared.reasons.map((reason) => `${a.name}与${b.name}: ${reason}`))
     }
   }
 

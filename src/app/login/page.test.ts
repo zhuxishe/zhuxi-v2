@@ -38,7 +38,7 @@ function findSubmit(node: ReactNode): ((event: FormEvent) => Promise<void>) | un
   }
 }
 
-function submitForm(mode: "login" | "register") {
+function renderForm(mode: "login" | "register", nextPath = "/app", sessionExpired = false) {
   mocks.useState
     .mockReturnValueOnce([mode, vi.fn()])
     .mockReturnValueOnce(["player@example.com", vi.fn()])
@@ -46,14 +46,32 @@ function submitForm(mode: "login" | "register") {
     .mockReturnValueOnce([false, mocks.setLoading])
     .mockReturnValueOnce([null, mocks.setError])
     .mockReturnValueOnce([false, mocks.setRegistered])
-    .mockReturnValueOnce(["/app", vi.fn()])
-  const submit = findSubmit(LoginPage())
+    .mockReturnValueOnce([nextPath, vi.fn()])
+    .mockReturnValueOnce([sessionExpired, vi.fn()])
+  return LoginPage()
+}
+
+function submitForm(mode: "login" | "register", nextPath = "/app") {
+  const submit = findSubmit(renderForm(mode, nextPath))
   if (!submit) throw new Error("Expected login form")
   return submit({ preventDefault: vi.fn() } as unknown as FormEvent)
 }
 
 describe("login form completion and recovery", () => {
   beforeEach(() => { vi.clearAllMocks() })
+
+  it("shows a concise expiry notice in the existing subtitle location without changing the form", () => {
+    function status(node: ReactNode): ReactNode {
+      if (Array.isArray(node)) return node.map(status).find(Boolean)
+      if (!isValidElement<{ children?: ReactNode; role?: string }>(node)) return null
+      return node.props.role === "status" ? node.props.children : status(node.props.children)
+    }
+    const tree = renderForm("login", "/app/matching/survey?round=kept", true)
+    expect(status(tree)).toBe("sessionExpired")
+    expect(findSubmit(tree)).toBeTypeOf("function")
+    expect(mocks.signIn).not.toHaveBeenCalled()
+    expect(mocks.replace).not.toHaveBeenCalled()
+  })
 
   it("routes an immediately authenticated registration into the app", async () => {
     mocks.signUp.mockResolvedValue({ success: true, requiresEmailConfirmation: false })
@@ -71,6 +89,26 @@ describe("login form completion and recovery", () => {
     expect(mocks.replace).not.toHaveBeenCalled()
     expect(mocks.setLoading).toHaveBeenLastCalledWith(false)
   })
+
+  it.each([
+    "/app/matching/survey?round=round-id&from=participation",
+    "/app/matches/rounds/round-id?from=notification",
+    "/app/matches/result-id",
+  ])("returns password login to the original page without submitting its form: %s", async (next) => {
+    mocks.signIn.mockResolvedValue({ success: true })
+    await submitForm("login", next)
+    expect(mocks.replace).toHaveBeenCalledWith(next)
+    expect(mocks.refresh).toHaveBeenCalledOnce()
+    expect(mocks.signUp).not.toHaveBeenCalled()
+  })
+
+  it.each(["//example.com", "/application", "/app/%2e%2e/admin", "/app/\\../admin"])(
+    "revalidates the password return destination: %s", async (next) => {
+      mocks.signIn.mockResolvedValue({ success: true })
+      await submitForm("login", next)
+      expect(mocks.replace).toHaveBeenCalledWith("/app")
+    },
+  )
 
   it.each(["login", "register"] as const)("restores the %s form after a transport failure", async (mode) => {
     mocks.signUp.mockRejectedValue(new Error("Failed to fetch"))

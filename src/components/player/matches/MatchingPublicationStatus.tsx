@@ -9,7 +9,6 @@ export function MatchingPublicationStatus({ publications, labels }: Props) {
   return publications.filter((item) => item.status !== "matched").map((item) => (
     <div key={item.round_id} className="rounded-xl bg-card p-4 shadow-soft" role="status">
       <p className="text-sm font-semibold">{item.round_name}</p>
-      {item.session_name && <p className="mt-0.5 text-xs text-muted-foreground">{item.session_name}</p>}
       <p className="mt-2 text-sm text-muted-foreground">{labels[item.status as keyof Pick<Props["labels"], "unmatched" | "waiting" | "withdrawn" | "cancelled">]}</p>
     </div>
   ))

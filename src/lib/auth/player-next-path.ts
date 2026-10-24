@@ -1,6 +1,10 @@
 const DEFAULT_PLAYER_PATH = "/app"
 const PARSE_ORIGIN = "https://player.invalid"
 
+// Proxy overwrites these values; callers must never use an incoming header as an auth decision.
+export const PLAYER_RETURN_PATH_HEADER = "x-player-return-path"
+export const PLAYER_HAD_SESSION_HEADER = "x-player-had-session"
+
 function hasUnsafeCharacters(value: string) {
   return [...value].some((character) => {
     const code = character.charCodeAt(0)
@@ -43,4 +47,14 @@ export function getSafePlayerNextPath(next: string | null | undefined) {
   } catch {
     return DEFAULT_PLAYER_PATH
   }
+}
+
+export function buildPlayerLoginPath(
+  next: string | null | undefined,
+  options: { sessionExpired?: boolean; oauthFailed?: boolean } = {},
+) {
+  const params = new URLSearchParams({ next: getSafePlayerNextPath(next) })
+  if (options.sessionExpired) params.set("reason", "session_expired")
+  if (options.oauthFailed) params.set("error", "oauth_failed")
+  return `/login?${params.toString()}`
 }

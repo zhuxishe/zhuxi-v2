@@ -29,5 +29,5 @@ export function formatPublishedMatchSlot(value: unknown, locale: string): string
 export function publishedMatchTitle(session: Record<string, unknown> | undefined): string {
   const round = (Array.isArray(session?.round) ? session.round[0] : session?.round) as { round_name?: string } | undefined
   const sessionName = typeof session?.session_name === "string" ? session.session_name : ""
-  return round?.round_name && round.round_name !== sessionName ? `${round.round_name} · ${sessionName}` : sessionName
+  return round?.round_name || sessionName
 }

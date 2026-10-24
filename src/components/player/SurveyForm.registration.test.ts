@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ submit: vi.fn(), push: vi.fn(), window: vi.fn(), useState: vi.fn(), useRef: vi.fn() }))
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: mocks.useState, useRef: mocks.useRef, useEffect: vi.fn() }))
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }))
+vi.mock("next/navigation", async (original) => ({ ...await original<typeof import("next/navigation")>(), useRouter: () => ({ push: mocks.push }) }))
 vi.mock("next-intl", () => ({ useLocale: () => "zh", useTranslations: () => Object.assign((key: string) => key, { has: () => true }) }))
 vi.mock("@/lib/i18n/use-tag-labels", () => ({ useTagLabels: () => ({}) }))
 vi.mock("@/lib/matching/use-survey-window", () => ({ useSurveyWindow: mocks.window }))

@@ -2,11 +2,12 @@ import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
 import { ShieldAlert } from "lucide-react"
 import { getPlayerInfo } from "@/lib/auth/player"
+import { getPlayerLoginPath } from "@/lib/auth/player-login-path"
 import { HomeLink } from "@/components/auth/HomeLink"
 
 export default async function InactivePlayerPage() {
   const player = await getPlayerInfo()
-  if (!player) redirect("/login")
+  if (!player) redirect(await getPlayerLoginPath())
 
   const blocked =
     player.status === "inactive" ||

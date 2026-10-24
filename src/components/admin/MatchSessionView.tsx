@@ -369,6 +369,7 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
           submissionPrefs={submissionPrefs}
           auditReason={auditReason}
           readOnly={!canEditResults}
+          status={session.status === "confirmed" ? "published" : session.status === "draft" && resultsReady ? "ready" : "generating"}
           onRefresh={() => router.refresh()}
         />
       )}

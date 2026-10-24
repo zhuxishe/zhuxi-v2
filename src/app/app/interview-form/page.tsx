@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation"
 import { getPlayerInfo } from "@/lib/auth/player"
+import { getPlayerLoginPath } from "@/lib/auth/player-login-path"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
 import { createClient } from "@/lib/supabase/server"
 import {
@@ -12,7 +13,7 @@ import { PreInterviewForm } from "@/components/player/PreInterviewForm"
 
 export default async function AppInterviewFormPage() {
   const player = await getPlayerInfo()
-  if (!player) redirect("/login")
+  if (!player) redirect(await getPlayerLoginPath())
 
   const route = resolvePlayerRoute({
     status: player.status,

@@ -15,9 +15,14 @@ describe("published matching controls", () => {
   it("keeps the pool visible but disables both modification paths after publication", () => {
     const props = { sessionId: "session", poolMembers, poolSummary: { submitted_count: 2, eligible_count: 2, excluded_count: 0, exclusion_summary: [], has_existing_multi_pool: false }, auditReason: "核对取消池后执行操作", onRefresh: vi.fn() }
     const draft = renderToStaticMarkup(createElement(RematchPool, props))
-    const published = renderToStaticMarkup(createElement(RematchPool, { ...props, readOnly: true }))
+    const published = renderToStaticMarkup(createElement(RematchPool, { ...props, readOnly: true, status: "published" }))
     expect(draft).toContain("再匹配池（2 人）")
-    expect(published).toContain("再匹配池（2 人）")
+    expect(published).toContain("再匹配池")
+    expect(published).not.toContain("再匹配池（2 人）")
+    expect(published).not.toContain("符合资格")
+    expect(published).not.toContain("资格待确认")
+    expect(published).not.toContain("暂不可读取")
+    expect(published).toContain("结果已发布。如需重新配对，请先撤回发布")
     expect(draft).not.toMatch(/<button[^>]*\sdisabled=""/)
     expect(published.match(/<button[^>]*\sdisabled=""/g)).toHaveLength(2)
     expect(published).toContain("运行再匹配")
@@ -35,6 +40,24 @@ describe("published matching controls", () => {
     expect(html).not.toContain("确认发布")
     expect(html).not.toContain(">重新匹配</button>")
     expect(html).toMatch(/<button[^>]*\sdisabled=""[^>]*>[^<]*<svg[\s\S]*?手动配对/)
+    expect(html).toContain("结果已发布。如需重新配对，请先撤回发布")
+    expect(html).not.toContain("资格待确认")
+    expect(html).not.toContain("暂不可读取")
+  })
+
+  it("shows fresh pool counts again when withdrawal returns the session to a ready draft", () => {
+    const props = {
+      session: { id: "session", session_name: "测试匹配", status: "confirmed", round_id: "round", publication_version: 1, results_ready: true, total_candidates: 2, total_matched: 0, total_unmatched: 2 },
+      results: [], diagnostics: [], candidates: [], poolMembers,
+      poolSummary: { submitted_count: 2, eligible_count: 2, excluded_count: 0, exclusion_summary: [], has_existing_multi_pool: false },
+    }
+    const published = renderToStaticMarkup(createElement(MatchSessionView, props))
+    const withdrawn = renderToStaticMarkup(createElement(MatchSessionView, { ...props, session: { ...props.session, status: "draft" } }))
+    expect(published).not.toContain("符合资格 2 人")
+    expect(published).not.toContain("再匹配池（2 人）")
+    expect(withdrawn).toContain("符合资格 2 人")
+    expect(withdrawn).toContain("再匹配池（2 人）")
+    expect(withdrawn).not.toContain("结果已发布。如需重新配对")
   })
 
   it("tells the administrator to wait while results are still being generated", () => {
@@ -47,5 +70,8 @@ describe("published matching controls", () => {
     expect(html).toContain("保留方案，返回运行")
     expect(html).toContain("当前方案仍保留")
     expect(html).not.toContain("删除当前结果")
+    expect(html).toContain("匹配结果生成后，可处理待重新匹配的成员")
+    expect(html).not.toContain("资格待确认")
+    expect(html).not.toContain("暂不可读取")
   })
 })

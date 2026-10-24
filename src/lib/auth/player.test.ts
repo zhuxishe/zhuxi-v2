@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   createClient: vi.fn(), getUser: vi.fn(), getSession: vi.fn(),
   ensure: vi.fn(), snapshot: vi.fn(), redirect: vi.fn(),
+  headers: vi.fn(),
 }))
 vi.mock("react", () => ({ cache: (callback: unknown) => callback }))
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect }))
+vi.mock("next/headers", () => ({ headers: mocks.headers }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }))
 vi.mock("@/lib/member-master/rpc", () => ({
   ensureMyMemberRecord: mocks.ensure,
@@ -37,6 +39,7 @@ const signedOutErrors = [
 beforeEach(() => {
   vi.resetAllMocks()
   mocks.redirect.mockImplementation((path: string) => { throw new Error(`redirect:${path}`) })
+  mocks.headers.mockResolvedValue(new Headers())
   mocks.createClient.mockResolvedValue({ auth: { getUser: mocks.getUser, getSession: mocks.getSession } })
   mocks.getUser.mockResolvedValue({ data: { user: verifiedUser }, error: null })
   mocks.ensure.mockResolvedValue({ memberId: "canonical-member" })
@@ -77,6 +80,30 @@ describe.each([
 })
 
 describe("confirmed signed-out behavior", () => {
+  it("returns an expired player to the original questionnaire including round context", async () => {
+    const next = "/app/matching/survey?round=test-round&from=participation"
+    mocks.headers.mockResolvedValue(new Headers({ "x-player-return-path": next, "x-player-had-session": "1" }))
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: signedOutErrors[3] })
+    await expect(requirePlayer()).rejects.toThrow(`redirect:/login?next=${encodeURIComponent(next)}&reason=session_expired`)
+    expect(mocks.ensure).not.toHaveBeenCalled()
+  })
+
+  it("preserves a result link without incorrectly calling a first-time visitor expired", async () => {
+    const next = "/app/matches/rounds/test-round?from=notification"
+    mocks.headers.mockResolvedValue(new Headers({ "x-player-return-path": next, "x-player-had-session": "0" }))
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error: null })
+    await expect(requireAuth()).rejects.toThrow(`redirect:/login?next=${encodeURIComponent(next)}`)
+    expect(mocks.redirect.mock.calls[0][0]).not.toContain("session_expired")
+  })
+
+  it.each(transientErrors)("does not show session expiry despite old cookies on a temporary error: %o", async (error) => {
+    mocks.headers.mockResolvedValue(new Headers({ "x-player-return-path": "/app/matching/survey?round=kept", "x-player-had-session": "1" }))
+    mocks.getUser.mockResolvedValue({ data: { user: null }, error })
+    await expect(requirePlayer()).rejects.toBeInstanceOf(AuthTemporarilyUnavailableError)
+    expect(mocks.redirect).not.toHaveBeenCalled()
+    expect(mocks.headers).not.toHaveBeenCalled()
+  })
+
   it.each(signedOutErrors)("continues login routing on a confirmed invalid session: %o", async (error) => {
     mocks.getUser.mockResolvedValue({ data: { user: null }, error })
     await expect(requireAuth()).rejects.toThrow("redirect:/login")

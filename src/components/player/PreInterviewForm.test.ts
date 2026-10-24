@@ -19,7 +19,8 @@ vi.mock("react", async (importOriginal) => ({
   useMemo: (factory: () => unknown) => factory(),
   useRef: (value: unknown) => ({ current: value }),
 }))
-vi.mock("next/navigation", () => ({
+vi.mock("next/navigation", async (original) => ({
+  ...await original<typeof import("next/navigation")>(),
   useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }),
 }))
 vi.mock("next-intl", () => ({

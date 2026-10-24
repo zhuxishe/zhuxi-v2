@@ -1,6 +1,6 @@
 import { createServerClient } from "@supabase/ssr"
 import { NextResponse, type NextRequest } from "next/server"
-import { getSafePlayerNextPath } from "@/lib/auth/player-next-path"
+import { getSafePlayerNextPath, PLAYER_HAD_SESSION_HEADER, PLAYER_RETURN_PATH_HEADER } from "@/lib/auth/player-next-path"
 import type { Database } from "@/types/database.types"
 import { createObservedSupabaseFetch } from "./observed-fetch"
 
@@ -14,9 +14,19 @@ function getSupabasePublicKey() {
 }
 
 export async function updateSession(request: NextRequest) {
+  // Capture before the SDK clears an invalid token. This affects the login notice only.
+  const projectRef = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split(".")[0]
+  const authCookieName = `sb-${projectRef}-auth-token`
+  const hadSessionCookie = request.cookies.getAll().some(({ name, value }) =>
+    Boolean(value) && (name === authCookieName || new RegExp(`^${authCookieName}\\.\\d+$`).test(name))
+  )
+  const returnUrl = request.nextUrl.clone()
+  returnUrl.searchParams.delete("_rsc")
   const createResponse = () => {
     const requestHeaders = new Headers(request.headers)
     requestHeaders.set("x-next-pathname", request.nextUrl.pathname)
+    requestHeaders.set(PLAYER_RETURN_PATH_HEADER, getSafePlayerNextPath(`${returnUrl.pathname}${returnUrl.search}`))
+    requestHeaders.set(PLAYER_HAD_SESSION_HEADER, hadSessionCookie ? "1" : "0")
 
     return NextResponse.next({
       request: { headers: requestHeaders },

@@ -47,7 +47,7 @@ beforeEach(() => {
     score_breakdown: { sensitive: "PRIVATE-SCORE" }, audit_reason: "PRIVATE-AUDIT",
     member_a: { id: "a", member_identity: { full_name: "当前-a" } }, member_b: { id: "b", member_identity: { full_name: "当前-b" } },
     group_member_details: null }]
-  mocks.session.mockImplementation(async () => ({ session: { id: "session", round_id: "round", status: "draft", total_candidates: 1 }, results }))
+  mocks.session.mockImplementation(async () => ({ session: { id: "session", round_id: "round", status: "draft", results_ready: true, total_candidates: 1 }, results }))
   mocks.from.mockImplementation((table: string) => {
     const query: any = { select: () => query, eq: () => query, in: () => query,
       then: (resolve: (response: unknown) => unknown, reject: (error: unknown) => unknown) => Promise.resolve({

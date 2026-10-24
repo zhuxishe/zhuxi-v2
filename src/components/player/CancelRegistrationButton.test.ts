@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({ cancel: vi.fn(), replace: vi.fn(), refresh: vi.fn(),
   useState: vi.fn(), useRef: vi.fn(), hasError: vi.fn() }))
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: mocks.useState, useRef: mocks.useRef }))
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }))
+vi.mock("next/navigation", async (original) => ({ ...await original<typeof import("next/navigation")>(), useRouter: () => ({ replace: mocks.replace, refresh: mocks.refresh }) }))
 vi.mock("next-intl", () => ({ useTranslations: () => Object.assign((key: string) => key, { has: mocks.hasError }) }))
 vi.mock("@/app/app/matching/survey/cancellation-actions", () => ({ cancelRegistration: mocks.cancel }))
 import { CancelRegistrationButton } from "./CancelRegistrationButton"
@@ -92,6 +92,16 @@ describe("registration cancellation confirmation", () => {
     expect(button("confirmCancel").disabled).toBe(false)
     await button("confirmCancel").onClick()
     expect(mocks.cancel).toHaveBeenCalledTimes(2); expect(mocks.refresh).toHaveBeenCalledOnce()
+  })
+
+  it("preserves the login redirect when cancellation requires re-authentication", async () => {
+    const redirect = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login?next=%2Fapp%2Fmatches%2Frounds%2Fround;307;" })
+    mocks.cancel.mockRejectedValueOnce(redirect)
+    await button("cancelRegistration").onClick()
+    await expect(button("confirmCancel").onClick()).rejects.toBe(redirect)
+    expect(mocks.cancel).toHaveBeenCalledOnce()
+    expect(mocks.refresh).not.toHaveBeenCalled()
+    expect(mocks.replace).not.toHaveBeenCalled()
   })
 
   it("ignores repeated clicks and prevents dismissing the dialog while a request is pending", async () => {

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import { buildMatchingCompletionHref, type MatchingCompletionContext } from "@/lib/matching/completion-flow"
 import { useQuestionnaireUnsavedChanges } from "./use-questionnaire-unsaved-changes"
-import { useRouter } from "next/navigation"
+import { unstable_rethrow, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { PersonalityQuiz } from "./PersonalityQuiz"
 import { QuizResult } from "./QuizResult"
@@ -71,7 +71,8 @@ export function QuizPageClient({ existing, quizConfig, questionnaire, completion
       setPendingAnswers(null)
       if (completionContext) router.replace(buildMatchingCompletionHref(completionContext))
       router.refresh()
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
       setError("networkError")
     } finally {
       operationPending.current = false
@@ -90,7 +91,7 @@ export function QuizPageClient({ existing, quizConfig, questionnaire, completion
         if (next.error) { setError(next.error); return }
         setRuntime(next.questionnaire)
         if (next.questionnaire) setConfig(quizTemplateToConfig(next.questionnaire.template))
-      } catch { setError("networkError"); return }
+      } catch (error) { unstable_rethrow(error); setError("networkError"); return }
       finally { operationPending.current = false; setSubmitting(false) }
     }
     setResult(null)

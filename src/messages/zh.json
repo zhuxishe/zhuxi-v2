@@ -254,6 +254,7 @@
     "profile": "我的"
   },
   "login": {
+    "sessionExpired": "登录已失效，请重新登录后继续。",
     "title": "竹溪社",
     "subtitle": "登录或注册开始",
     "loginTab": "登录",
@@ -679,6 +680,27 @@
     "submitting": "保存中...",
     "cancel": "取消"
   },
+  "matchingNotifications": {
+    "submittedTitle": "匹配问卷已提交",
+    "submittedBody": "你的匹配问卷已保存，可在参与记录中查看。",
+    "submittedNamedBody": "「{name}」的匹配问卷已保存，可在参与记录中查看。",
+    "publishedTitle": "匹配结果已发布",
+    "publishedBody": "匹配结果已发布，可查看搭档与推荐时间。",
+    "publishedNamedBody": "「{name}」的匹配结果已发布，可查看搭档与推荐时间。",
+    "unmatchedTitle": "暂未匹配",
+    "unmatchedBody": "暂未匹配，后续安排请留意站内通知。",
+    "unmatchedNamedBody": "「{name}」暂未匹配，后续安排请留意站内通知。",
+    "withdrawnTitle": "匹配安排已撤回",
+    "withdrawnBody": "匹配安排已撤回，后续消息请留意站内通知。",
+    "withdrawnNamedBody": "「{name}」的匹配安排已撤回，后续消息请留意站内通知。",
+    "cancelledTitle": "匹配已取消",
+    "cancelledBody": "匹配已取消，可在参与记录中查看。",
+    "cancelledNamedBody": "「{name}」的匹配已取消，可在参与记录中查看。",
+    "staleBody": "匹配信息已撤回或更新，请查看最新状态。",
+    "staleHint": "请查看最新匹配状态",
+    "cancelledHintBody": "匹配已取消，请查看最新状态。",
+    "cancelledHint": "已取消"
+  },
   "playerMatches": {
     "title": "我的匹配",
     "detailTitle": "匹配详情",
@@ -715,10 +737,10 @@
     "matchingEmpty": "暂时没有已发布的匹配安排，后续结果会显示在这里。",
     "recommendedTime": "推荐共同时间",
     "timePending": "待工作人员确认",
-    "publicationUnmatched": "本批暂未匹配，后续安排请留意站内通知。",
-    "publicationWaiting": "问卷已提交，等待后续批次的匹配结果。",
-    "publicationWithdrawn": "本批匹配信息已撤回，后续安排请留意站内通知。",
-    "publicationCancelled": "本批匹配已取消，可查看保留的历史记录。",
+    "publicationUnmatched": "暂未匹配，后续安排请留意站内通知。",
+    "publicationWaiting": "问卷已提交，匹配安排请留意站内通知。",
+    "publicationWithdrawn": "匹配安排已撤回，后续消息请留意站内通知。",
+    "publicationCancelled": "匹配已取消，可在历史记录中查看。",
     "publicationChanged": "匹配信息已撤回或更新，请刷新页面后确认。你填写的原因仍保留在此处。",
     "saveFailed": "提交失败，请稍后重试。"
   },
@@ -765,7 +787,7 @@
     "readOnlyShort": "记录已保存，可随时查看",
     "readOnlyHint": "本期已停止收集，已提交的记录仍可查看，无法继续修改。",
     "notOpenHint": "当前尚未开放修改，已提交的记录仍可查看。",
-    "matchingHint": "问卷提交仅表示参与本期匹配，匹配结果请在「匹配」中查看，不计为已参加活动。",
+    "matchingHint": "匹配安排请留意站内通知，也可在「匹配」中查看。",
     "answersTitle": "我的提交内容",
     "notAnswered": "未填写",
     "earlierQuestion": "历史问题 {number}",
@@ -785,7 +807,7 @@
       "submitted": "已提交",
       "collectionComplete": "收集已结束",
       "notOpen": "暂未开放修改",
-      "closed": "已截止",
+      "closed": "收集已结束",
       "cancelled": "已取消"
     },
     "cancelRegistration": "取消报名",
@@ -1042,7 +1064,7 @@
     "roundClosedHint": "本期问卷已结束，请等待下一期",
     "success": {
       "title": "问卷已提交！",
-      "description": "我们会在问卷截止后为你安排最佳搭档",
+      "description": "你的时间和偏好已保存。匹配安排请留意站内通知，也可在「匹配」中查看。",
       "backToHome": "返回首页",
       "editSurvey": "修改问卷"
     },
@@ -1422,7 +1444,7 @@
     "registeredEdit": "已报名 · 查看或修改",
     "submitted": "已提交",
     "open": "开放中",
-    "closed": "已截止",
+    "closed": "收集已结束",
     "edit": "查看或修改",
     "closedHint": "本期已停止收集，无法继续提交。",
     "deadline": "截止时间（日本时间）：{time}",

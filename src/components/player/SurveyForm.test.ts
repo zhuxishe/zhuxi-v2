@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ submit: vi.fn(), push: vi.fn(), window: vi.fn(), useState: vi.fn(), useRef: vi.fn() }))
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: mocks.useState, useRef: mocks.useRef, useEffect: vi.fn() }))
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }))
+vi.mock("next/navigation", async (original) => ({ ...await original<typeof import("next/navigation")>(), useRouter: () => ({ push: mocks.push }) }))
 vi.mock("next-intl", () => ({ useLocale: () => "zh", useTranslations: () => Object.assign((key: string) => key, { has: () => true }) }))
 vi.mock("@/lib/i18n/use-tag-labels", () => ({ useTagLabels: () => ({}) }))
 vi.mock("@/lib/matching/use-survey-window", () => ({ useSurveyWindow: mocks.window }))
@@ -81,6 +81,17 @@ describe("survey form expiry and recovery", () => {
     await submitButton().onClick()
     expect(mocks.submit).toHaveBeenLastCalledWith(expect.objectContaining({ message: "my answer" }))
     expect(mocks.push).toHaveBeenCalledWith("/app/matching/survey/success?roundId=round")
+  })
+
+  it("allows a login-expiry redirect to reach Next.js instead of showing a network error or success", async () => {
+    const redirect = Object.assign(new Error("NEXT_REDIRECT"), {
+      digest: "NEXT_REDIRECT;replace;/login?next=%2Fapp%2Fmatching%2Fsurvey%3Fround%3Dround&reason=session_expired;307;",
+    })
+    mocks.submit.mockRejectedValueOnce(redirect)
+    await expect(submitButton().onClick()).rejects.toBe(redirect)
+    expect(mocks.submit).toHaveBeenCalledOnce()
+    expect(mocks.push).not.toHaveBeenCalled()
+    expect(find(render(), (_type, props) => props.role === "alert")?.children).not.toBe("networkError")
   })
 
   it("sends the exact loaded answer id and version and keeps local input after a conflict", async () => {

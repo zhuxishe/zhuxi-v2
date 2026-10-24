@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { getSafePlayerNextPath } from "./player-next-path"
+import { buildPlayerLoginPath, getSafePlayerNextPath } from "./player-next-path"
 
 describe("getSafePlayerNextPath", () => {
   it.each([
@@ -50,4 +50,30 @@ describe("getSafePlayerNextPath", () => {
   ])("falls back for an unsafe or non-Player destination: %s", (next) => {
     expect(getSafePlayerNextPath(next)).toBe("/app")
   })
+})
+
+describe("buildPlayerLoginPath", () => {
+  it("nests the original query instead of allowing it to inject login parameters", () => {
+    const next = "/app/matching/survey?round=one&round=two&from=participation&next=https://example.com&reason=other#answers"
+    const login = new URL(buildPlayerLoginPath(next, { sessionExpired: true }), "https://www.zhuxishe.jp")
+    expect(login.pathname).toBe("/login")
+    expect(login.searchParams.getAll("next")).toEqual([next])
+    expect(login.searchParams.getAll("reason")).toEqual(["session_expired"])
+    expect(login.hash).toBe("")
+  })
+
+  it("keeps safe return navigation when OAuth has to be retried", () => {
+    const next = "/app/matches/rounds/round-id?from=notification"
+    const login = new URL(buildPlayerLoginPath(next, { oauthFailed: true }), "https://www.zhuxishe.jp")
+    expect(login.searchParams.get("next")).toBe(next)
+    expect(login.searchParams.get("error")).toBe("oauth_failed")
+    expect(login.searchParams.has("reason")).toBe(false)
+  })
+
+  it.each(["//example.com/app", "/app/../admin", "/app/%2f../admin", "/application", "javascript:alert(1)"])(
+    "never carries an unsafe destination into login: %s", (next) => {
+      const login = new URL(buildPlayerLoginPath(next), "https://www.zhuxishe.jp")
+      expect(login.searchParams.get("next")).toBe("/app")
+    },
+  )
 })

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest"
 import { isValidElement, type MouseEvent, type ReactNode } from "react"
 const mocks = vi.hoisted(() => ({ check: vi.fn(), push: vi.fn(), state: vi.fn(), ref: vi.fn() }))
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: mocks.state, useRef: mocks.ref }))
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: mocks.push }) }))
+vi.mock("next/navigation", async (original) => ({ ...await original<typeof import("next/navigation")>(), useRouter: () => ({ push: mocks.push }) }))
 vi.mock("@/app/app/matching/survey/profile-actions", () => ({ checkMatchingEntry: mocks.check }))
 import { MatchingSurveyLink } from "./MatchingSurveyLink"
 import { MatchingProfileDialog } from "./MatchingProfileDialog"
@@ -56,6 +56,13 @@ describe("matching entry interaction", () => {
     expect(mocks.push).not.toHaveBeenCalled()
     dialog().onRetry(); await Promise.resolve()
     expect(dialog().missing).toEqual(["supplementary", "quiz"])
+  })
+  it("preserves a login redirect instead of presenting a failed qualification check", async () => {
+    const redirect = Object.assign(new Error("NEXT_REDIRECT"), { digest: "NEXT_REDIRECT;replace;/login?next=%2Fapp&reason=session_expired;307;" })
+    mocks.check.mockRejectedValueOnce(redirect)
+    await expect(dialog().onRetry()).rejects.toBe(redirect)
+    expect(dialog()).toMatchObject({ open: false, failed: false })
+    expect(mocks.push).not.toHaveBeenCalled()
   })
   it("does not intercept unrelated links or modified clicks", () => {
     expect(click("/app/profile").preventDefault).not.toHaveBeenCalled()

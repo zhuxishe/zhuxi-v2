@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { unstable_rethrow, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import type { PreInterviewFormData } from "@/types"
 import { EMPTY_FORM } from "@/types"
@@ -125,7 +125,8 @@ export function PreInterviewForm({
         return true
       }
       setError(translateError(result.error))
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
       setError(t("saveError"))
     }
     return false
@@ -162,7 +163,8 @@ export function PreInterviewForm({
 
       router.replace("/app")
       router.refresh()
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
       setError(t("submitError"))
     } finally {
       operationPending.current = false

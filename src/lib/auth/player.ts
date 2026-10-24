@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server"
 import { getVerifiedUser } from "./verified-user"
+import { getPlayerLoginPath } from "./player-login-path"
 import {
   ensureMyMemberRecord,
   getMemberMasterDiagnostic,
@@ -26,7 +27,7 @@ export interface PlayerInfo {
 export async function requireAuth() {
   const supabase = await createClient()
   const user = await getVerifiedUser(supabase)
-  if (!user) redirect("/login")
+  if (!user) redirect(await getPlayerLoginPath())
   return user
 }
 
@@ -69,7 +70,7 @@ export const getPlayerInfo = cache(async (): Promise<PlayerInfo | null> => {
 /** Require auth plus an ensured canonical member row. */
 export async function requireMemberRecord(): Promise<PlayerInfo> {
   const player = await getPlayerInfo()
-  if (!player) redirect("/login")
+  if (!player) redirect(await getPlayerLoginPath())
   return player
 }
 

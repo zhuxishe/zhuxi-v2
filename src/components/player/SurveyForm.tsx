@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { unstable_rethrow, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { submitSurvey } from "@/app/app/matching/survey/actions"
 import { localizeRoundText, normalizeRoundConfig } from "@/lib/matching/round-config"
@@ -92,7 +92,8 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
         return
       }
       router.push(`/app/matching/survey/success?roundId=${encodeURIComponent(roundId)}${fromParticipation ? "&from=participation" : ""}`)
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
       setError(tErr("networkError"))
     } finally {
       inFlight.current = false

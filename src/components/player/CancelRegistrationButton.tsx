@@ -1,7 +1,7 @@
 "use client"
 
 import { useRef, useState } from "react"
-import { useRouter } from "next/navigation"
+import { unstable_rethrow, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { cancelRegistration } from "@/app/app/matching/survey/cancellation-actions"
 import { participationRecordHref } from "@/lib/matching/participation-display"
@@ -41,7 +41,8 @@ export function CancelRegistrationButton({ roundId, roundName, expectedUpdatedAt
       setOpen(false)
       if (returnToRecord) router.replace(participationRecordHref(roundId))
       else router.refresh()
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
       setError(errors("networkError"))
     } finally {
       inFlight.current = false

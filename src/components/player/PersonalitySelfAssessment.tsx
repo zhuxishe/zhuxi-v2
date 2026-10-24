@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import { buildMatchingCompletionHref, type MatchingCompletionContext } from "@/lib/matching/completion-flow"
 import { useQuestionnaireUnsavedChanges } from "./use-questionnaire-unsaved-changes"
-import { useRouter } from "next/navigation"
+import { unstable_rethrow, useRouter } from "next/navigation"
 import { useTranslations, useLocale } from "next-intl"
 import { buildPersonalityDraft, parsePersonality, type PersonalityDraft as PersonalitySelfData } from "@/lib/forms/player-enrichment"
 import { PERSONALITY_DIMENSIONS } from "@/lib/constants/personality"
@@ -67,7 +67,8 @@ export function PersonalitySelfAssessment({ existing, questionnaire, completionC
         else router.push("/app/profile")
         router.refresh()
       }
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
       setError(tErr("networkError"))
     } finally {
       setSubmitting(false)

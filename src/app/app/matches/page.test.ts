@@ -128,6 +128,8 @@ describe("participation page composition", () => {
     expect(html).toContain("publicationWaiting")
     expect(html).toContain("publicationWithdrawn")
     expect(html).toContain("轮次0")
+    expect(html).not.toContain("批次0")
+    expect(html).not.toContain("批次2")
     expect(html).not.toContain("matchingEmpty")
     expect(html).not.toContain('href="/app/matches/batch-')
   })
@@ -135,7 +137,8 @@ describe("participation page composition", () => {
   it("shows the saved recommended time rather than the result creation date", async () => {
     mocks.matches = [{ ...pair, best_slot: "2026-11-03_晚上", created_at: "2026-10-23T00:00:00Z", session: { session_name: "第一批", round: { round_name: "秋季轮次" } } }]
     const html = await renderPage()
-    expect(html).toContain("秋季轮次 · 第一批")
+    expect(html).toContain("秋季轮次")
+    expect(html).not.toContain("第一批")
     expect(html).toContain("recommendedTime")
     expect(html).toContain("2026/11/3")
     expect(html).toContain("晚上")

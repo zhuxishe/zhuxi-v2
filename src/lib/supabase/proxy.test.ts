@@ -41,6 +41,32 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllEnvs())
 
 describe("updateSession login navigation", () => {
+  it("overwrites caller-supplied return and session hints with trusted request context", async () => {
+    const incoming = new NextRequest("https://www.zhuxishe.jp/app/matching/survey?round=kept&from=participation&_rsc=internal", {
+      headers: {
+        "x-player-return-path": "//example.com/app", "x-player-had-session": "1",
+        cookie: "sb-example-auth-token-code-verifier=not-a-session; unrelated=retained",
+      },
+    })
+    const response = await updateSession(incoming)
+    expect(response.headers.get("x-middleware-request-x-player-return-path")).toBe("/app/matching/survey?round=kept&from=participation")
+    expect(response.headers.get("x-middleware-request-x-player-had-session")).toBe("0")
+    expect(mocks.getUser).not.toHaveBeenCalled()
+  })
+
+  it.each(["sb-example-auth-token", "sb-example-auth-token.0"])("remembers a session hint before SDK invalid-cookie cleanup: %s", async (name) => {
+    const incoming = new NextRequest("https://www.zhuxishe.jp/app/matches/rounds/round-id", { headers: { cookie: `${name}=invalid` } })
+    mocks.getClaims.mockImplementation(async () => {
+      await serverCookies.setAll?.([{ name, value: "", options: { path: "/", maxAge: 0 } }], refreshHeaders)
+      return { data: null, error: { code: "refresh_token_not_found", status: 400 } }
+    })
+    const response = await updateSession(incoming)
+    expect(response.headers.get("x-middleware-request-x-player-had-session")).toBe("1")
+    expect(response.headers.get("x-middleware-request-x-player-return-path")).toBe("/app/matches/rounds/round-id")
+    expect(response.cookies.get(name)).toMatchObject({ value: "", maxAge: 0 })
+    expect(response.headers.get("Cache-Control")).toBe(refreshHeaders["Cache-Control"])
+  })
+
   it.each(["GET", "HEAD"])("redirects an existing user on %s /login without another sign-in", async (method) => {
     mocks.getUser.mockResolvedValue({ data: { user: { id: "test-user" } }, error: null })
 

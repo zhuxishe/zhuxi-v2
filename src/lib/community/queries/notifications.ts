@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import type { CommunityLocale, CommunityNotification, CommunityProfile } from "@/lib/community/types"
 import { participationRecordHref } from "@/lib/matching/participation-display"
+import { matchingNotificationCopy, matchingNotificationUnavailableCopy } from "@/lib/community/matching-notification-display"
 
 interface NotificationRow {
   id: string
@@ -116,9 +117,10 @@ export async function fetchCommunityNotifications(
   const announcementIds = [...new Set(rows.flatMap((row) => row.announcement_id ? [row.announcement_id] : []))]
   const roundIds = [...new Set(rows.flatMap((row) => row.round_id ? [row.round_id] : []))]
   const matchingRows = rows.filter((row) => isMatchingPublicationNotification(row.notification_type))
+  const matchingRoundIds = [...new Set(rows.flatMap((row) => row.round_id && (isMatchingPublicationNotification(row.notification_type) || row.notification_type === "matching_submitted") ? [row.round_id] : []))]
   const matchingSessionIds = [...new Set(matchingRows.flatMap((row) => row.match_session_id ? [row.match_session_id] : []))]
   const matchingResultIds = [...new Set(matchingRows.flatMap((row) => row.match_result_id ? [row.match_result_id] : []))]
-  const [profilesResult, postsResult, commentsResult, announcementsResult, submissionsResult, matchingSessionsResult, matchingResultsResult] = await Promise.all([
+  const [profilesResult, postsResult, commentsResult, announcementsResult, submissionsResult, matchingSessionsResult, matchingResultsResult, matchingRoundsResult] = await Promise.all([
     profileIds.length
       ? db.from("community_profiles").select("id, nickname, avatar_kind, avatar_path, preset_avatar, joined_at").in("id", profileIds)
       : Promise.resolve({ data: [], error: null }),
@@ -140,8 +142,11 @@ export async function fetchCommunityNotifications(
     matchingResultIds.length
       ? db.from("match_results").select("id, session_id, status, publication_version, member_a_id, member_b_id, group_members").in("id", matchingResultIds)
       : Promise.resolve({ data: [], error: null }),
+    matchingRoundIds.length
+      ? db.from("match_rounds").select("id, round_name, title_ja:content_config->>titleJa").in("id", matchingRoundIds)
+      : Promise.resolve({ data: [], error: null }),
   ])
-  const relatedError = [profilesResult, postsResult, commentsResult, announcementsResult, submissionsResult, matchingSessionsResult, matchingResultsResult]
+  const relatedError = [profilesResult, postsResult, commentsResult, announcementsResult, submissionsResult, matchingSessionsResult, matchingResultsResult, matchingRoundsResult]
     .find((result) => result.error)?.error
   if (relatedError) {
     throw new Error(`Failed to verify community notification targets: ${relatedError.message}`)
@@ -160,6 +165,7 @@ export async function fetchCommunityNotifications(
   const submittedRoundIds = new Set((submissionsResult.data ?? []).map((row: { round_id: string }) => row.round_id))
   const matchingSessions = new Map((matchingSessionsResult.data ?? []).map((row: MatchingNotificationSession) => [row.id, row]))
   const matchingResults = new Map((matchingResultsResult.data ?? []).map((row: MatchingNotificationResult) => [row.id, row]))
+  const matchingRounds = new Map((matchingRoundsResult.data ?? []).map((row: { id: string; round_name: string; title_ja: string | null }) => [row.id, row]))
 
   const cancelledRoundIds = new Set((submissionsResult.data ?? [])
     .filter((row: { cancelled_at?: string | null }) => row.cancelled_at)
@@ -184,23 +190,20 @@ export async function fetchCommunityNotifications(
         : resolvedTarget
       const cancelled = row.notification_type === "registration_submitted" && row.round_id && cancelledRoundIds.has(row.round_id)
       const isCommentLike = row.notification_type === "comment_like"
-      const matchingHint = matchingTarget?.state === "stale"
-        ? (locale === "ja" ? "この公開版は撤回または更新されました。最新のマッチング状況を確認してください。" : "该发布版本已撤回或更新，请查看最新匹配状态。")
-        : matchingTarget?.state === "cancelled"
-          ? (locale === "ja" ? "このマッチングはキャンセルされました。最新の状況を確認してください。" : "这份匹配已取消，请查看最新状态。")
-          : undefined
+      const matchingCopy = matchingNotificationCopy(row.notification_type, locale, row.round_id ? matchingRounds.get(row.round_id) : undefined)
+      const matchingHint = matchingTarget?.state
+        ? matchingNotificationUnavailableCopy(locale, matchingTarget.state)
+        : undefined
       return {
         id: row.id,
         type: row.notification_type,
         title: isCommentLike
           ? (locale === "ja" ? `${row.group_count}人があなたのコメントにいいねしました` : `有 ${row.group_count} 人赞了你的评论`)
-          : (locale === "ja" ? row.title_ja : row.title_zh) || row.title_zh || row.title_ja || "",
-        body: matchingHint ?? (isCommentLike ? "" : cancelled ? (locale === "ja" ? "この申込は取り消されました。記録を開くと詳細を確認できます。" : "这次报名已取消，点击查看保留的报名记录。") : (locale === "ja" ? row.body_ja : row.body_zh) || row.body_zh || row.body_ja || ""),
+          : matchingCopy?.title ?? ((locale === "ja" ? row.title_ja : row.title_zh) || row.title_zh || row.title_ja || ""),
+        body: matchingHint?.body ?? matchingCopy?.body ?? (isCommentLike ? "" : cancelled ? (locale === "ja" ? "この申込は取り消されました。記録を開くと詳細を確認できます。" : "这次报名已取消，点击查看保留的报名记录。") : (locale === "ja" ? row.body_ja : row.body_zh) || row.body_zh || row.body_ja || ""),
         href: target.href,
         unavailable: target.unavailable,
-        ...(matchingHint ? { unavailableHint: matchingTarget?.state === "cancelled"
-          ? (locale === "ja" ? "キャンセル済み" : "已取消")
-          : (locale === "ja" ? "この公開版は無効です" : "该发布版本已失效") } : {}),
+        ...(matchingHint ? { unavailableHint: matchingHint.hint } : {}),
         actor: !isCommentLike && row.actor_profile_id ? profiles.get(row.actor_profile_id) ?? null : null,
         groupCount: row.group_count,
         readAt: row.read_at,

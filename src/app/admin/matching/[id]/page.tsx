@@ -32,6 +32,7 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   const { session, results } = data
   const roundId = (session as any).round_id as string | null
   const readOnly = !roundId
+  const canPreviewAdjustments = !!roundId && session.status === "draft" && session.results_ready === true
   const canViewRawSubmissions = admin.role === "super_admin"
 
   // Collect member IDs for pair relationship lookup
@@ -46,8 +47,8 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   // Fetch pair relationships, pool members, diagnostics in parallel
   const [pairRelationships, manualPreview, poolPreview, adjustmentRecords, inputSnapshot] = await Promise.all([
     fetchPairRelationships([...new Set(memberIds)]),
-    roundId ? fetchMatchingAdjustmentPreview(id, "manual").catch(() => null) : Promise.resolve(null),
-    roundId ? fetchMatchingAdjustmentPreview(id, "pool").catch(() => null) : Promise.resolve(null),
+    canPreviewAdjustments ? fetchMatchingAdjustmentPreview(id, "manual").catch(() => null) : Promise.resolve(null),
+    canPreviewAdjustments ? fetchMatchingAdjustmentPreview(id, "pool").catch(() => null) : Promise.resolve(null),
     roundId ? fetchMatchingAdjustmentRecords(id).catch(() => null) : Promise.resolve([]),
     fetchMatchingInputSnapshot(id),
   ])

@@ -254,6 +254,7 @@
     "profile": "マイページ"
   },
   "login": {
+    "sessionExpired": "ログインの有効期限が切れました。再度ログインして続けてください。",
     "title": "竹渓社",
     "subtitle": "ログインまたは新規登録",
     "loginTab": "ログイン",
@@ -679,6 +680,27 @@
     "submitting": "保存中...",
     "cancel": "キャンセル"
   },
+  "matchingNotifications": {
+    "submittedTitle": "マッチングアンケートを受け付けました",
+    "submittedBody": "アンケートを保存しました。参加履歴から確認できます。",
+    "submittedNamedBody": "「{name}」のアンケートを保存しました。参加履歴から確認できます。",
+    "publishedTitle": "マッチング結果が届きました",
+    "publishedBody": "相手とおすすめの日時を確認できます。",
+    "publishedNamedBody": "「{name}」の相手とおすすめの日時を確認できます。",
+    "unmatchedTitle": "まだマッチングしていません",
+    "unmatchedBody": "現時点ではマッチングしていません。今後の案内はサイト内通知をご確認ください。",
+    "unmatchedNamedBody": "「{name}」は現時点ではマッチングしていません。今後の案内はサイト内通知をご確認ください。",
+    "withdrawnTitle": "マッチングの案内が取り下げられました",
+    "withdrawnBody": "マッチングの案内は取り下げられました。今後の案内はサイト内通知をご確認ください。",
+    "withdrawnNamedBody": "「{name}」のマッチングの案内は取り下げられました。今後の案内はサイト内通知をご確認ください。",
+    "cancelledTitle": "マッチングがキャンセルされました",
+    "cancelledBody": "マッチングはキャンセルされました。参加履歴から確認できます。",
+    "cancelledNamedBody": "「{name}」のマッチングはキャンセルされました。参加履歴から確認できます。",
+    "staleBody": "マッチング情報が取り下げまたは更新されました。最新の状況をご確認ください。",
+    "staleHint": "最新のマッチング状況をご確認ください",
+    "cancelledHintBody": "マッチングはキャンセルされました。最新の状況をご確認ください。",
+    "cancelledHint": "キャンセル済み"
+  },
   "playerMatches": {
     "title": "マッチング結果",
     "detailTitle": "マッチング詳細",
@@ -715,10 +737,10 @@
     "matchingEmpty": "公開済みのマッチングはまだありません。今後の結果はこちらに表示されます。",
     "recommendedTime": "おすすめの共通日時",
     "timePending": "スタッフが確認中です",
-    "publicationUnmatched": "今回はマッチングしませんでした。今後の案内はサイト内通知をご確認ください。",
-    "publicationWaiting": "アンケートを受け付けました。次回以降のマッチング結果をお待ちください。",
-    "publicationWithdrawn": "今回のマッチング情報は撤回されました。今後の案内はサイト内通知をご確認ください。",
-    "publicationCancelled": "今回のマッチングはキャンセルされました。保存された履歴を確認できます。",
+    "publicationUnmatched": "現時点ではマッチングしていません。今後の案内はサイト内通知をご確認ください。",
+    "publicationWaiting": "アンケートを受け付けました。マッチングの案内はサイト内通知をご確認ください。",
+    "publicationWithdrawn": "マッチングの案内は取り下げられました。今後の案内はサイト内通知をご確認ください。",
+    "publicationCancelled": "マッチングはキャンセルされました。履歴から確認できます。",
     "publicationChanged": "マッチング情報が撤回または更新されました。ページを更新してご確認ください。入力した理由はここに保持されています。",
     "saveFailed": "送信できませんでした。しばらくしてから再度お試しください。"
   },
@@ -765,7 +787,7 @@
     "readOnlyShort": "保存済みの内容をいつでも確認できます",
     "readOnlyHint": "受付は終了しました。送信済みの内容は確認できますが、変更はできません。",
     "notOpenHint": "現在は変更受付期間外です。送信済みの内容は確認できます。",
-    "matchingHint": "アンケートの送信は今回のマッチングへの申込です。結果は「マッチング」から確認してください。イベント参加回数には加算されません。",
+    "matchingHint": "マッチングの案内はサイト内通知や「マッチング」で確認できます。",
     "answersTitle": "送信した内容",
     "notAnswered": "未回答",
     "earlierQuestion": "以前の質問 {number}",
@@ -785,7 +807,7 @@
       "submitted": "回答済み",
       "collectionComplete": "受付終了",
       "notOpen": "変更受付前",
-      "closed": "締切済み",
+      "closed": "受付終了",
       "cancelled": "取消済み"
     },
     "cancelRegistration": "申込を取り消す",
@@ -1042,7 +1064,7 @@
     "roundClosedHint": "今期のアンケートは終了しました。次回をお待ちください",
     "success": {
       "title": "アンケート送信完了！",
-      "description": "締め切り後に最適なパートナーをお探しします",
+      "description": "参加できる日時と希望を保存しました。マッチングの案内はサイト内通知や「マッチング」で確認できます。",
       "backToHome": "ホームに戻る",
       "editSurvey": "アンケートを修正"
     },
@@ -1422,7 +1444,7 @@
     "registeredEdit": "申込済み・確認／変更",
     "submitted": "回答済み",
     "open": "受付中",
-    "closed": "締切済み",
+    "closed": "受付終了",
     "edit": "確認・変更",
     "closedHint": "受付は終了しました。これ以降は送信できません。",
     "deadline": "締切（日本時間）：{time}",

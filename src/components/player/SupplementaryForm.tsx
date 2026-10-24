@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import { buildMatchingCompletionHref, type MatchingCompletionContext } from "@/lib/matching/completion-flow"
 import { useQuestionnaireUnsavedChanges } from "./use-questionnaire-unsaved-changes"
-import { useRouter } from "next/navigation"
+import { unstable_rethrow, useRouter } from "next/navigation"
 import { useLocale, useTranslations } from "next-intl"
 import { buildSupplementaryDraft, parseSupplementary, type SupplementaryDraft as SupplementaryFormData } from "@/lib/forms/player-enrichment"
 import { submitSupplementary } from "@/app/app/profile/supplementary/actions"
@@ -75,7 +75,8 @@ export function SupplementaryForm({ memberId: _memberId, existingInterests, exis
         else router.push("/app/profile")
         router.refresh()
       }
-    } catch {
+    } catch (error) {
+      unstable_rethrow(error)
       setError(tErr("networkError"))
     } finally {
       setSubmitting(false)

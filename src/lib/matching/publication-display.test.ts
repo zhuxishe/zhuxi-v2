@@ -13,8 +13,10 @@ describe("saved matching recommendations", () => {
   it.each([null, "", "2026-02-30_晚上", "2026-11-03_unknown", "2026-11-03", { date: "2026-11-03" }])("does not invent a recommendation for %s", (value) => {
     expect(formatPublishedMatchSlot(value, "zh")).toBeNull()
   })
-  it("shows the round context without duplicating an identical session name", () => {
-    expect(publishedMatchTitle({ session_name: "第一批", round: { round_name: "秋季" } })).toBe("秋季 · 第一批")
-    expect(publishedMatchTitle({ session_name: "秋季", round: [{ round_name: "秋季" }] })).toBe("秋季")
+  it("shows the public round title without the internal session name", () => {
+    expect(publishedMatchTitle({ session_name: "第一批", round: { round_name: "秋季" } })).toBe("秋季")
+    expect(publishedMatchTitle({ session_name: "内部第二批", round: [{ round_name: "秋季" }] })).toBe("秋季")
+    expect(publishedMatchTitle({ session_name: "历史独立活动", round: null })).toBe("历史独立活动")
+    expect(publishedMatchTitle(undefined)).toBe("")
   })
 })

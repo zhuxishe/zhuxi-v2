@@ -10,6 +10,7 @@ import { buildPublicUrl } from "@/lib/site-url"
 import { APP_SPLASH_SKIP_COOKIE } from "@/lib/app-launch-splash"
 import type { Database } from "@/types/database.types"
 import { createObservedSupabaseFetch } from "@/lib/supabase/observed-fetch"
+import { buildPlayerLoginPath, getSafePlayerNextPath } from "@/lib/auth/player-next-path"
 
 /**
  * GET /login/callback
@@ -28,9 +29,7 @@ function buildRedirectUrl(req: NextRequest, path: string) {
 }
 
 function getSafeNextPath(req: NextRequest) {
-  const next = new URL(req.url).searchParams.get("next")
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/app"
-  return next.startsWith("/app") ? next : "/app"
+  return getSafePlayerNextPath(new URL(req.url).searchParams.get("next"))
 }
 
 function copyCookies(from: NextResponse, to: NextResponse) {
@@ -58,17 +57,18 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const code = searchParams.get("code")
   const nextPath = getSafeNextPath(req)
+  const loginFailurePath = buildPlayerLoginPath(nextPath, { oauthFailed: true })
   const supabaseKey =
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
   if (!code) {
-    return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
+    return NextResponse.redirect(buildRedirectUrl(req, loginFailurePath))
   }
 
   if (!supabaseKey) {
     console.error("[login/callback] missing Supabase public key")
-    return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
+    return NextResponse.redirect(buildRedirectUrl(req, loginFailurePath))
   }
 
   let authResponse = NextResponse.next({ request: req })
@@ -97,14 +97,14 @@ export async function GET(req: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code)
   if (error) {
     console.error("[login/callback] exchangeCodeForSession failed:", error.message)
-    return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
+    return copyCookies(authResponse, NextResponse.redirect(buildRedirectUrl(req, loginFailurePath)))
   }
 
   // Verify the session is usable
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) {
     console.error("[login/callback] getUser failed after exchange:", userError?.message)
-    return NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
+    return copyCookies(authResponse, NextResponse.redirect(buildRedirectUrl(req, loginFailurePath)))
   }
 
   let member: Awaited<ReturnType<typeof resolveMemberRouteSnapshot>>
@@ -121,7 +121,7 @@ export async function GET(req: NextRequest) {
     )
     return copyCookies(
       authResponse,
-      NextResponse.redirect(buildRedirectUrl(req, "/login?error=oauth_failed"))
+      NextResponse.redirect(buildRedirectUrl(req, loginFailurePath))
     )
   }
 

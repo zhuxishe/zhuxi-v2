@@ -8,6 +8,7 @@ import { LoginSocialSection } from "@/components/auth/LoginSocialSection"
 import { Button } from "@/components/ui/button"
 import { HomeLink } from "@/components/auth/HomeLink"
 import { skipAppLaunchSplashOnce } from "@/lib/app-launch-splash"
+import { getSafePlayerNextPath } from "@/lib/auth/player-next-path"
 
 const ERROR_KEYS: Record<string, string> = {
   already_registered: "alreadyRegistered",
@@ -21,9 +22,7 @@ const ERROR_KEYS: Record<string, string> = {
 
 function getSafeNextPath() {
   if (typeof window === "undefined") return "/app"
-  const next = new URLSearchParams(window.location.search).get("next")
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/app"
-  return next.startsWith("/app") ? next : "/app"
+  return getSafePlayerNextPath(new URLSearchParams(window.location.search).get("next"))
 }
 
 export default function LoginPage() {
@@ -36,10 +35,12 @@ export default function LoginPage() {
   const [error, setError] = useState<string | null>(null)
   const [registered, setRegistered] = useState(false)
   const [nextPath, setNextPath] = useState("/app")
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   useEffect(() => {
     setNextPath(getSafeNextPath())
     const params = new URLSearchParams(window.location.search)
+    setSessionExpired(params.get("reason") === "session_expired")
     if (params.get("error") === "oauth_failed") {
       setError(t("loginError"))
     }
@@ -76,7 +77,7 @@ export default function LoginPage() {
       }
 
       skipAppLaunchSplashOnce()
-      router.replace(nextPath)
+      router.replace(getSafePlayerNextPath(nextPath))
       router.refresh()
     } catch {
       setError(t(mode === "register" ? "signupFailed" : "loginError"))
@@ -104,7 +105,7 @@ export default function LoginPage() {
         <HomeLink className="justify-center" />
         <div className="text-center space-y-2">
           <h1 className="text-2xl font-bold">{t("title")}</h1>
-          <p className="text-sm text-muted-foreground">{t("subtitle")}</p>
+          <p role={sessionExpired ? "status" : undefined} className="text-sm text-muted-foreground">{t(sessionExpired ? "sessionExpired" : "subtitle")}</p>
         </div>
 
         {/* Social Login */}

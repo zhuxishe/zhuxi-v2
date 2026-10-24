@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation"
 import { getLocale, getTranslations } from "next-intl/server"
 import { getPlayerInfo } from "@/lib/auth/player"
+import { getPlayerLoginPath } from "@/lib/auth/player-login-path"
 import { resolvePlayerRoute } from "@/lib/auth/routing"
 import { fetchPlayerRounds, fetchSubmittedRoundIds } from "@/lib/queries/player-rounds"
 import { getRoundPurpose, localizeRoundText, normalizeRoundConfig } from "@/lib/matching/round-config"
@@ -22,6 +23,7 @@ import { activityReviewCopy } from "@/lib/activity-reviews/copy"
 
 export default async function PlayerHomePage() {
   const player = await getPlayerInfo()
+  if (!player) redirect(await getPlayerLoginPath())
   const route = resolvePlayerRoute(player ? {
     status: player.status,
     accountStatus: player.accountStatus,

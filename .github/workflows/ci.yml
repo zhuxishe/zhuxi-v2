@@ -55,6 +55,7 @@ jobs:
           node supabase/audits/matching-eligibility-diagnostics-pglite.mjs
           node supabase/audits/matching-phase5-flow-pglite.mjs
           node supabase/audits/matching-adjustment-pglite.mjs
+          node supabase/audits/matching-publication-preflight-pglite.mjs
 
       - name: Production build
         run: pnpm run build

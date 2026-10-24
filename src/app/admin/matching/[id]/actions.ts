@@ -6,6 +6,7 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { matchingPublicationError, PUBLISHED_MATCH_EDIT_ERROR } from "@/lib/matching/publication-errors"
 import { performMatchingAdjustment } from "@/lib/matching/adjustment-service"
+import { publishMatchingSession } from "@/lib/matching/publication-service"
 
 type WritableSession = { status: string; round_id: string | null; publication_version: number }
 type WritableResult = { status: string; session_id: string; member_a_id: string; member_b_id: string | null; group_members: string[] | null }
@@ -156,25 +157,31 @@ async function changePublication(
   rawReason: string,
   expectedPublicationVersion: number,
 ) {
-  await requireAdmin()
+  const admin = await requireAdmin()
   const reasonResult = normalizeAdminAuditReason(rawReason)
   if (!reasonResult.ok) return { error: reasonResult.error }
   if (!Number.isSafeInteger(expectedPublicationVersion) || expectedPublicationVersion < 0) {
     return { error: "发布版本无效，请刷新后重试" }
   }
-  const supabase = await createClient()
-
-  // The database checks the browser's publication version under a round lock.
-  // Session/results, allocations and notifications succeed or roll back together.
-  const rpc = supabase as unknown as OperationalRpcClient
-  const { data, error } = await rpc.rpc<{ round_id?: string | null }>(operation, {
-    p_session_id: sessionId,
-    p_reason: reasonResult.reason,
-    p_expected_publication_version: expectedPublicationVersion,
-  })
-  if (error) {
-    console.error(`[${operation}]`, error)
-    return { error: matchingPublicationError(error, "操作失败，请刷新后重试") }
+  let data: { round_id?: string | null } | null
+  if (operation === "admin_publish_match_session") {
+    const checked = await publishMatchingSession({ sessionId, actorAdminId: admin.id, reason: reasonResult.reason, expectedPublicationVersion })
+    if (checked.error) return { error: checked.error }
+    data = checked.data ?? null
+  } else {
+    const supabase = await createClient()
+    // Withdrawal and draft deletion keep their existing audited transaction.
+    const rpc = supabase as unknown as OperationalRpcClient
+    const response = await rpc.rpc<{ round_id?: string | null }>(operation, {
+      p_session_id: sessionId,
+      p_reason: reasonResult.reason,
+      p_expected_publication_version: expectedPublicationVersion,
+    })
+    if (response.error) {
+      console.error(`[${operation}]`, response.error)
+      return { error: matchingPublicationError(response.error, "操作失败，请刷新后重试") }
+    }
+    data = response.data
   }
 
   revalidatePath("/admin/matching", "layout")

@@ -1,11 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), createClient: vi.fn(), revalidatePath: vi.fn(), syncSessionSummary: vi.fn(), performAdjustment: vi.fn() }))
+const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), createClient: vi.fn(), revalidatePath: vi.fn(), syncSessionSummary: vi.fn(), performAdjustment: vi.fn(), publishSession: vi.fn() }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.requireAdmin }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }))
 vi.mock("@/lib/matching/session-summary-sync", () => ({ syncSessionSummary: mocks.syncSessionSummary }))
 vi.mock("@/lib/matching/adjustment-service", () => ({ performMatchingAdjustment: mocks.performAdjustment }))
+vi.mock("@/lib/matching/publication-service", () => ({ publishMatchingSession: mocks.publishSession }))
 
 import { confirmSession, deleteSession, lockPair, restorePair, splitPair, unlockPair, unpublishSession } from "./actions"
 import type { MatchMemberResult } from "@/lib/matching/member-conflicts"
@@ -48,11 +49,11 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.requireAdmin.mockResolvedValue({ id: "admin-id", role: "super_admin" })
   mocks.performAdjustment.mockResolvedValue({ success: true })
+  mocks.publishSession.mockResolvedValue({ data: { round_id: "round-id", published: true } })
 })
 
 describe("atomic matching publication actions", () => {
   it.each([
-    [confirmSession, "admin_publish_match_session"],
     [unpublishSession, "admin_unpublish_match_session"],
     [deleteSession, "admin_delete_match_session_draft"],
   ] as const)("uses one audited/versioned RPC for %s", async (action, name) => {
@@ -61,6 +62,14 @@ describe("atomic matching publication actions", () => {
     await expect(action("session-id", reason, 3)).resolves.toEqual({ success: true })
     expect(rpc).toHaveBeenCalledExactlyOnceWith(name, { p_session_id: "session-id", p_reason: reason, p_expected_publication_version: 3 })
     expect(resultUpdate).not.toHaveBeenCalled()
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/app/matches", "layout")
+    expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/matching/rounds/round-id")
+  })
+
+  it("routes publication through current qualification and hard-constraint checks with the browser version", async () => {
+    await expect(confirmSession("session-id", reason, 3)).resolves.toEqual({ success: true })
+    expect(mocks.publishSession).toHaveBeenCalledExactlyOnceWith({ sessionId: "session-id", actorAdminId: "admin-id", reason, expectedPublicationVersion: 3 })
+    expect(mocks.createClient).not.toHaveBeenCalled()
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/app/matches", "layout")
     expect(mocks.revalidatePath).toHaveBeenCalledWith("/admin/matching/rounds/round-id")
   })
@@ -74,24 +83,21 @@ describe("atomic matching publication actions", () => {
   })
 
   it("explains a duplicate member across published sessions without doing compensation writes", async () => {
-    const { db, rpc, resultUpdate } = createDb({ rpcError: { code: "PT409", message: "MATCH_PUBLICATION_CONFLICT" } })
-    mocks.createClient.mockResolvedValue(db)
+    mocks.publishSession.mockResolvedValue({ error: "本轮有成员已在其他已发布结果中，请先撤回或调整冲突结果后再发布" })
     await expect(confirmSession("session-id", reason, 3)).resolves.toEqual({ error: "本轮有成员已在其他已发布结果中，请先撤回或调整冲突结果后再发布" })
-    expect(rpc).toHaveBeenCalledTimes(1)
-    expect(resultUpdate).not.toHaveBeenCalled()
+    expect(mocks.createClient).not.toHaveBeenCalled()
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
   })
 
   it("accepts an idempotent retry without sending another table write", async () => {
-    const { db, rpc } = createDb({ sessionStatus: "confirmed", rpcData: { already_applied: true } })
-    mocks.createClient.mockResolvedValue(db)
+    mocks.publishSession.mockResolvedValue({ data: { round_id: "round-id", published: true, already_applied: true } })
     await expect(confirmSession("session-id", reason, 3)).resolves.toEqual({ success: true })
-    expect(rpc).toHaveBeenCalledTimes(1)
+    expect(mocks.publishSession).toHaveBeenCalledTimes(1)
+    expect(mocks.createClient).not.toHaveBeenCalled()
   })
 
   it("explains why a partially generated session cannot be published", async () => {
-    const { db } = createDb({ rpcError: { code: "PT409", message: "MATCH_PUBLICATION_INCOMPLETE" } })
-    mocks.createClient.mockResolvedValue(db)
+    mocks.publishSession.mockResolvedValue({ error: "本次匹配尚未完整生成，请刷新并核对后再发布" })
     await expect(confirmSession("session-id", reason, 0)).resolves.toEqual({ error: "本次匹配尚未完整生成，请刷新并核对后再发布" })
     expect(mocks.revalidatePath).not.toHaveBeenCalled()
   })
@@ -99,6 +105,7 @@ describe("atomic matching publication actions", () => {
   it.each([Number.NaN, -1, 0.5])("rejects an unusable publication version %s before database work", async (version) => {
     await expect(confirmSession("session-id", reason, version)).resolves.toEqual({ error: "发布版本无效，请刷新后重试" })
     expect(mocks.createClient).not.toHaveBeenCalled()
+    expect(mocks.publishSession).not.toHaveBeenCalled()
   })
 
   it("keeps old test sessions read only through the atomic operation", async () => {

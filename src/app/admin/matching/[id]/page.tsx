@@ -1,3 +1,4 @@
+import { loadMatchingBoard } from "./board-actions"
 import { notFound } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMatchSession, fetchPairRelationships } from "@/lib/queries/matching"
@@ -45,12 +46,13 @@ export default async function MatchSessionDetailPage({ params }: Props) {
   })
 
   // Fetch pair relationships, pool members, diagnostics in parallel
-  const [pairRelationships, manualPreview, poolPreview, adjustmentRecords, inputSnapshot] = await Promise.all([
+  const [pairRelationships, manualPreview, poolPreview, adjustmentRecords, inputSnapshot, boardSnapshot] = await Promise.all([
     fetchPairRelationships([...new Set(memberIds)]),
     canPreviewAdjustments ? fetchMatchingAdjustmentPreview(id, "manual").catch(() => null) : Promise.resolve(null),
     canPreviewAdjustments ? fetchMatchingAdjustmentPreview(id, "pool").catch(() => null) : Promise.resolve(null),
     roundId ? fetchMatchingAdjustmentRecords(id).catch(() => null) : Promise.resolve([]),
     fetchMatchingInputSnapshot(id),
+    roundId && session.results_ready ? loadMatchingBoard(id).catch(() => null) : Promise.resolve(null),
   ])
   const poolMembers = poolPreview ? await fetchPoolMembers(id, poolPreview) : []
   const supabase = createAdminClient()
@@ -62,6 +64,11 @@ export default async function MatchSessionDetailPage({ params }: Props) {
     member_personality (expression_style_tags, group_role_tags, extroversion, warmup_speed),
     member_boundaries (preferred_gender_mix)
   `
+
+  const boardMemberIds = boardSnapshot?.cohortMemberIds ?? []
+  const { data: boardMemberRows } = boardMemberIds.length
+    ? await supabase.from("members").select(memberSelect).in("id", boardMemberIds)
+    : { data: [] }
 
   const { data: diagnosticsRaw } = await supabase
     .from("unmatched_diagnostics")
@@ -261,6 +268,9 @@ export default async function MatchSessionDetailPage({ params }: Props) {
       </div>
       <MatchSessionView
         session={clientSession}
+        boardSnapshot={boardSnapshot}
+        boardMembers={(boardMemberRows ?? []).map((row) => attachImportInfo(row as unknown as EnrichedMember) as EnrichedMember)}
+        boardUnavailable={!!roundId && session.results_ready && !boardSnapshot}
         results={clientResults}
         diagnostics={diagnostics}
         candidates={timeSlotData}

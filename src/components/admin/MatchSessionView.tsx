@@ -1,5 +1,6 @@
 "use client"
 
+import { MatchingBoardView } from "./MatchingBoardView"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useTransition } from "react"
@@ -25,7 +26,10 @@ import type { DiagnosticItem } from "./UnmatchedDiagnostics"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import type { MatchingSessionInputSource } from "@/lib/matching/input-snapshot-reader"
 
-interface Props {
+export interface MatchSessionViewProps {
+  boardSnapshot?: import("@/lib/matching/board-types").BoardSnapshot | null
+  boardMembers?: EnrichedMember[]
+  boardUnavailable?: boolean
   session: { id: string; session_name: string | null; status: string; total_candidates: number; total_matched: number; total_unmatched: number; round_id?: string | null; publication_version?: number; results_ready?: boolean }
   results: EnrichedMatchResult[]
   diagnostics: DiagnosticItem[]
@@ -59,7 +63,7 @@ function matchesSearch(r: EnrichedMatchResult, query: string): boolean {
   return false
 }
 
-export function MatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false, canViewRawSubmissions = false, inputSource, initialAdjustments = [], adjustmentsUnavailable = false, poolSummary }: Props) {
+function LegacyMatchSessionView({ session, results, diagnostics, candidates, pairRelationships = [], poolMembers = [], allMemberOptions = [], submissionPrefs = {}, readOnly = false, canViewRawSubmissions = false, inputSource, initialAdjustments = [], adjustmentsUnavailable = false, poolSummary }: MatchSessionViewProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [error, setError] = useState("")
@@ -423,4 +427,9 @@ export function MatchSessionView({ session, results, diagnostics, candidates, pa
       )}
     </div>
   )
+}
+
+export function MatchSessionView(props: MatchSessionViewProps) {
+  if (props.boardSnapshot !== undefined) return <MatchingBoardView key={`${props.session.id}:${props.boardSnapshot?.revisionToken ?? props.session.status}`} {...props} />
+  return <LegacyMatchSessionView {...props} />
 }

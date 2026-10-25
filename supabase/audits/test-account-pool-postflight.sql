@@ -35,6 +35,10 @@ WITH checks AS (
   'community_test_write_guard',position('AND NOT m.is_test' IN pg_get_functiondef('private.community_can_interact()'::regprocedure))>0,
   'formal_stats_exclude_tests',position('NOT member.is_test' IN pg_get_functiondef('public.admin_member_dashboard_metrics()'::regprocedure))>0
     AND position('NOT member.is_test' IN pg_get_functiondef('public.admin_list_member_directory_filtered(integer,integer,text,text,text,text,text,text[],text,text)'::regprocedure))>0,
+  'access_impl_non_api',EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='test_pool_access' AND p.proname='get_my_test_round_ids' AND p.prosecdef)
+    AND EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='test_pool_access' AND p.proname='test_round_visible_to_current_user' AND p.prosecdef),
+  'exposed_access_invoker_only',NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname IN('public','private') AND p.proname IN('get_my_test_round_ids','test_round_visible_to_current_user') AND p.prosecdef),
+  'access_schema_no_client_create',NOT has_schema_privilege('anon','test_pool_access','CREATE') AND NOT has_schema_privilege('authenticated','test_pool_access','CREATE') AND NOT has_schema_privilege('service_role','test_pool_access','CREATE'),
   'protected_context_empty',NOT EXISTS(SELECT 1 FROM private.test_pool_write_context)
  ) AS value
 )

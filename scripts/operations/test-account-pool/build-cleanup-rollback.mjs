@@ -15,7 +15,7 @@ const out = resolve(flags.out)
 if (out.startsWith(`${root}/`)) throw new Error('Raw rehearsal payload must stay outside the repository')
 const manifest = JSON.parse(await readFile(flags.manifest, 'utf8'))
 if (manifest.expected_old_members.length !== 27) throw new Error('Expected exact27 manifest')
-const files = ['20261025041723_replace_legacy_test_import_pool.sql', '20261025041806_test_account_pool_isolation.sql']
+const files = ['20261025041723_replace_legacy_test_import_pool.sql', '20261025041806_test_account_pool_isolation.sql', '20261025061614_isolate_test_pool_access_helpers.sql']
 const migrations = []
 for (const name of files) {
   let sql = await readFile(resolve(root, 'supabase/migrations', name), 'utf8')

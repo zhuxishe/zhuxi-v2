@@ -25,7 +25,7 @@ export function MemberNumberEditor({ memberId, memberNumber, updatedAt, canEdit 
     event.preventDefault()
     const normalized = normalizeMemberNumber(value)
     if (!normalized) {
-      setError("会员编号格式应为 ZXS_001，数字至少 3 位")
+      setError("会员编号应为 ZXS_001（数字至少 3 位）；已登记测试账号使用 TST_001～TST_027")
       return
     }
     if (normalized === savedValue) return

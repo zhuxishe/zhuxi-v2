@@ -22,7 +22,7 @@ export async function updateMemberNumber(
   if (!UUID_PATTERN.test(memberId)) return { success: false, error: "成员 ID 无效，请刷新后重试" }
 
   const memberNumber = normalizeMemberNumber(rawMemberNumber)
-  if (!memberNumber) return { success: false, error: "会员编号格式应为 ZXS_001，数字至少 3 位" }
+  if (!memberNumber) return { success: false, error: "会员编号应为 ZXS_001（数字至少 3 位）；已登记测试账号使用 TST_001～TST_027" }
   if (!expectedUpdatedAt || !Number.isFinite(Date.parse(expectedUpdatedAt))) {
     return { success: false, error: "成员资料已变化，请刷新后重试" }
   }

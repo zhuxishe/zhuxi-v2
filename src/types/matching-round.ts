@@ -47,6 +47,7 @@ export interface RoundRecord {
   id: string
   round_name: string
   status: string
+  is_test?: boolean
   survey_start: string
   survey_end: string
   activity_start: string

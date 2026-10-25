@@ -9,8 +9,9 @@ import { parseRoundImportWorkbook } from "./round-import-parser"
 import type { CurrentImportMember, LegacyImportMember, ParsedImportRow } from "./round-import-types"
 import type { ImportDatabaseState, ImportMemberOption } from "./round-import-contract"
 
-export async function fetchCurrentImportMembers(db: SupabaseClient<any, any, any>): Promise<CurrentImportMember[]> {
-  const { data, error } = await db
+export async function fetchCurrentImportMembers(db: SupabaseClient<any, any, any>, testRoundMemberIds?: string[]): Promise<CurrentImportMember[]> {
+  if (testRoundMemberIds?.length === 0) return []
+  let query = db
     .from("members")
     .select("id, member_number, member_identity(full_name, nickname)")
     .eq("record_scope", "current")
@@ -18,6 +19,8 @@ export async function fetchCurrentImportMembers(db: SupabaseClient<any, any, any
     .eq("membership_type", "player")
     .eq("status", "approved")
     .is("anonymized_at", null)
+  query = testRoundMemberIds ? query.in("id", testRoundMemberIds) : query.eq("is_test", false)
+  const { data, error } = await query
   if (error) throw error
   return (data ?? [])
     .filter((row: any) => !String(row.member_number ?? "").startsWith("IMP-"))
@@ -47,8 +50,8 @@ export async function loadRoundImportReviewContext(roundId: string, buffer: Buff
   if (round.status === "matched") throw new Error("该轮次已完成匹配，禁止导入 Excel")
   const [parsedRows, currentMembers, legacyMembers] = await Promise.all([
     parseRoundImportWorkbook(buffer, round.activity_start, round.activity_end),
-    fetchCurrentImportMembers(db),
-    fetchLegacyImportMembers(db),
+    fetchCurrentImportMembers(db, round.is_test ? Object.keys(state.member_tokens) : undefined),
+    round.is_test ? Promise.resolve([]) : fetchLegacyImportMembers(db),
   ])
   const memberOptions: ImportMemberOption[] = currentMembers.filter(member => !!state.member_tokens[member.id]).map(member => ({ ...member, temporary: false }))
   memberOptions.push(...(state.temporary_members ?? []))
@@ -90,6 +93,9 @@ export async function loadRoundImportContext(roundId: string, buffer: Buffer): P
   if (getRoundPurpose(round.purpose) !== "matching") throw new Error("活动报名和通知不支持导入匹配问卷")
   if (normalizeRoundConfig(round.content_config).questions.some((question) => question.required)) throw new Error("本轮含必填补充问题，请成员自行填写问卷；Excel 导入无法代填补充答案")
   if (round.status === "matched") throw new Error("该轮次已完成匹配，禁止导入 Excel")
+
+  // Only the versioned preview RPC provides the protected test-round allowlist.
+  if (round.is_test) throw new Error("测试轮次请使用当前的导入预览流程")
 
   const parsedRows = await parseRoundImportWorkbook(buffer, round.activity_start, round.activity_end)
   const [currentMembers, legacyMembers, existingSubs] = await Promise.all([

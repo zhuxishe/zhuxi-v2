@@ -1,8 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
 import { validateUuids } from "@/lib/sanitize"
+import { isMatchingHistoryInScope, type MatchingHistoryScope } from "@/lib/matching/history-scope"
 
 /** Fetch past match history for given candidates (for repeat penalty) */
-export async function fetchMatchHistory(memberIds: string[]) {
+export async function fetchMatchHistory(memberIds: string[], scope: MatchingHistoryScope = {}) {
   if (memberIds.length === 0) return new Map<string, { name: string; count: number }[]>()
 
   validateUuids(memberIds)
@@ -23,14 +24,14 @@ export async function fetchMatchHistory(memberIds: string[]) {
     const groupFilters = batch.map((id) => `group_members.cs.{${id}}`).join(",")
     const { data, error } = await supabase
       .from("match_results")
-      .select("id, member_a_id, member_b_id, group_members, session:match_sessions!inner(status)")
+      .select("id, member_a_id, member_b_id, group_members, session:match_sessions!inner(status, round_id, round:match_rounds(is_test))")
       .eq("status", "confirmed")
       .eq("session.status", "confirmed")
       .or(`member_a_id.in.(${idList}),member_b_id.in.(${idList}),${groupFilters}`)
 
     if (error) throw error
     if (data) {
-      allData = allData.concat(data.map((row) => ({
+      allData = allData.concat(data.filter((row) => isMatchingHistoryInScope(row.session, scope)).map((row) => ({
         id: row.id,
         member_a_id: row.member_a_id,
         member_b_id: row.member_b_id,

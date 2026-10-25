@@ -31,6 +31,7 @@ export default async function AdminScriptDetailPage({ params }: Props) {
     .from("members")
     .select("id, member_identity(full_name)")
     .eq("record_scope", "current")
+    .eq("is_test", false)
     .eq("account_status", "active")
     .eq("status", "approved")
     .eq("membership_type", "player")

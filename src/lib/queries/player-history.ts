@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin"
 import { validateUuids } from "@/lib/sanitize"
+import { filterAccessibleMatchingResults } from "@/lib/matching/test-round-access"
 
 /**
  * 获取玩家已取消的匹配历史（limit 20）
@@ -14,7 +15,7 @@ export async function fetchPlayerMatchHistory(memberId: string) {
     .select(`
       id, best_slot, rank, created_at, status, group_members, publication_version,
       cancellation_status,
-      session:match_sessions!inner (session_name, status, round:match_rounds(round_name)),
+      session:match_sessions!inner (session_name, status, round:match_rounds(id, round_name, is_test)),
       member_a:members!match_results_member_a_id_fkey (
         id, member_identity (full_name, nickname, hobby_tags),
         member_interests (game_type_pref, scenario_theme_tags),
@@ -38,5 +39,5 @@ export async function fetchPlayerMatchHistory(memberId: string) {
     return []
   }
 
-  return data ?? []
+  return filterAccessibleMatchingResults(data ?? [])
 }

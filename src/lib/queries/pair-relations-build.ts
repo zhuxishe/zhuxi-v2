@@ -12,6 +12,8 @@ import { buildPairRelations } from "@/lib/matching/pair-history"
 import type { PairRelation, FeedbackRecord, BlacklistRecord } from "@/lib/matching/pair-history"
 import { validateUuids } from "@/lib/sanitize"
 import { fetchMatchHistory } from "./match-history"
+import { isMatchingHistoryInScope, type MatchingHistoryScope } from "@/lib/matching/history-scope"
+import { getSingleRelation } from "@/lib/supabase/relations"
 
 /**
  * 为一组候选成员构建配对关系 Map
@@ -20,6 +22,7 @@ import { fetchMatchHistory } from "./match-history"
  */
 export async function fetchPairRelations(
   memberIds: string[],
+  scope: MatchingHistoryScope = {},
 ): Promise<Map<string, PairRelation>> {
   if (memberIds.length === 0) return new Map()
 
@@ -27,8 +30,8 @@ export async function fetchPairRelations(
 
   const [blacklist, feedbacks, matchHistories] = await Promise.all([
     fetchBlacklist(memberIds),
-    fetchFeedbacks(memberIds),
-    fetchMatchHistory(memberIds),
+    fetchFeedbacks(memberIds, scope),
+    fetchMatchHistory(memberIds, scope),
   ])
 
   return buildPairRelations(feedbacks, blacklist, matchHistories)
@@ -65,7 +68,7 @@ async function fetchBlacklist(memberIds: string[]): Promise<BlacklistRecord[]> {
 }
 
 /** 从 mutual_reviews 表查互评 → 转为 FeedbackRecord（用 member UUID） */
-async function fetchFeedbacks(memberIds: string[]): Promise<FeedbackRecord[]> {
+async function fetchFeedbacks(memberIds: string[], scope: MatchingHistoryScope): Promise<FeedbackRecord[]> {
   const supabase = await createClient()
   const batchSize = 50
   const results: FeedbackRecord[] = []
@@ -75,12 +78,15 @@ async function fetchFeedbacks(memberIds: string[]): Promise<FeedbackRecord[]> {
     const idList = memberIds.slice(i, i + batchSize).join(",")
     const { data, error } = await supabase
       .from("mutual_reviews")
-      .select("reviewer_id, reviewee_id, overall_score")
+      .select("reviewer_id, reviewee_id, overall_score, match_result_id, match:match_results(session:match_sessions(round_id, round:match_rounds(is_test)))")
       .or(`reviewer_id.in.(${idList}),reviewee_id.in.(${idList})`)
 
     if (error) throw error
     if (data) {
       for (const row of data) {
+        const match = getSingleRelation(row.match)
+        if (row.match_result_id && !match) continue
+        if (!isMatchingHistoryInScope(match?.session, scope)) continue
         const key = `${row.reviewer_id}-${row.reviewee_id}`
         if (seen.has(key)) continue
         seen.add(key)

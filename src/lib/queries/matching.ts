@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { validateUuids } from "@/lib/sanitize"
+import { filterAccessibleMatchingResults } from "@/lib/matching/test-round-access"
 
 export async function fetchMatchSessions() {
   await requireAdmin()
@@ -109,6 +110,7 @@ export async function fetchMatchCandidates() {
       member_dynamic_stats (activity_count, late_count, no_show_count, replay_willing_rate, reliability_score)
     `)
     .eq("record_scope", "current")
+    .eq("is_test", false)
     .eq("account_status", "active")
     .eq("status", "approved")
     .eq("membership_type", "player")
@@ -132,7 +134,7 @@ export async function fetchPlayerMatches(memberId: string) {
     .select(`
       id, best_slot, rank, created_at, status, cancellation_status, publication_version,
       group_members,
-      session:match_sessions!inner (id, session_name, created_at, status, publication_version, published_at, round:match_rounds(round_name)),
+      session:match_sessions!inner (id, session_name, created_at, status, publication_version, published_at, round:match_rounds(id, round_name, is_test)),
       member_a:members!match_results_member_a_id_fkey (
         id,
         member_identity (full_name, nickname, hobby_tags),
@@ -153,7 +155,7 @@ export async function fetchPlayerMatches(memberId: string) {
     .order("created_at", { ascending: false })
 
   if (error) throw error
-  return (data ?? []).filter(isCurrentPublishedMatch)
+  return filterAccessibleMatchingResults((data ?? []).filter(isCurrentPublishedMatch))
 }
 
 export async function fetchMatchDetail(matchId: string, memberId: string) {
@@ -170,7 +172,7 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
       created_at, publication_version,
       cancellation_status, cancellation_reason, cancellation_requested_by,
       cancellation_requested_at,
-      session:match_sessions!inner (id, session_name, created_at, status, publication_version, published_at, round:match_rounds(round_name)),
+      session:match_sessions!inner (id, session_name, created_at, status, publication_version, published_at, round:match_rounds(id, round_name, is_test)),
       member_a:members!match_results_member_a_id_fkey (
         id,
         member_identity (full_name, nickname, hobby_tags),
@@ -200,6 +202,7 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
     data.member_b_id === memberId ||
     (Array.isArray(data.group_members) && data.group_members.includes(memberId))
   if (!isParticipant) return null
+  if (!(await filterAccessibleMatchingResults([data])).length) return null
   return data
 }
 

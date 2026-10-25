@@ -14,4 +14,12 @@ describe("membership number input", () => {
     }
     expect(normalizeMemberNumber("ZXS_999999999999999999")).toBe("ZXS_999999999999999999")
   })
+
+  it("accepts only the allocated test pool without changing formal number normalization", () => {
+    expect(normalizeMemberNumber(" tst_001 ")).toBe("TST_001")
+    expect(normalizeMemberNumber("TST_027")).toBe("TST_027")
+    for (const value of ["TST_000", "TST_028", "TST_050", "TST_1", "TST_0001", "TST_-001"]) {
+      expect(normalizeMemberNumber(value)).toBeNull()
+    }
+  })
 })

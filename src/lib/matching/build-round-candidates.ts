@@ -5,6 +5,7 @@ import { getImportedHistory } from "./import-metadata"
 import { mergeMatchHistory } from "./round-import-utils"
 import { submissionToCandidate } from "./adapter-submission"
 import type { MatchCandidate } from "./types"
+import type { MatchingHistoryScope } from "./history-scope"
 
 const ROUND_MEMBER_SELECT = `
   *,
@@ -30,7 +31,7 @@ function sortSubmissions(submissions: RoundSubmission[], memberIds?: string[]) {
   )
 }
 
-export async function buildRoundCandidates(roundId: string, memberIds?: string[]) {
+export async function buildRoundCandidates(roundId: string, memberIds?: string[], scope: MatchingHistoryScope = {}) {
   await requireAdmin()
   const supabase = createAdminClient()
   let query = supabase
@@ -50,7 +51,7 @@ export async function buildRoundCandidates(roundId: string, memberIds?: string[]
     throw new Error(`成员 ${missing[0]} 未提交本轮问卷，无法参与匹配`)
   }
 
-  const historyMap = await fetchMatchHistory(foundIds)
+  const historyMap = await fetchMatchHistory(foundIds, scope)
   const candidates = submissions.map((sub) => {
     const member = Array.isArray(sub.member) ? sub.member[0] : sub.member
     const history = mergeMatchHistory(

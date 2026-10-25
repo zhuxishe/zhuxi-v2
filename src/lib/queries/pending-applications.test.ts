@@ -9,7 +9,7 @@ import { fetchDashboardStats } from "./admin"
 
 const id = "11111111-1111-4111-8111-111111111111"
 const base = {
-  id, record_scope: "current", account_status: "active", status: "pending", record_source: "app",
+  id, is_test: false, record_scope: "current", account_status: "active", status: "pending", record_source: "app",
   profile_stage: "submitted", onboarding_step: 4, submitted_at: "2026-10-01T00:00:00Z",
   created_at: "2026-09-01T00:00:00Z", updated_at: "2026-10-01T00:00:00Z",
   member_identity: {
@@ -38,7 +38,7 @@ describe("pending applications with the real Supabase request builder", () => {
         if (denied) return new Response(JSON.stringify({ code: "42501", message: "Denied" }), { status: 403 })
         const p = url.searchParams
         let filtered = rows.filter((row) => {
-          for (const key of ["id", "record_scope", "account_status", "status", "onboarding_step"] as const) {
+          for (const key of ["id", "record_scope", "account_status", "status", "onboarding_step", "is_test"] as const) {
             const filter = p.get(key)
             if (filter?.startsWith("eq.") && filter !== `eq.${row[key]}`) return false
             if (filter?.startsWith("neq.") && filter === `neq.${row[key]}`) return false
@@ -63,7 +63,7 @@ describe("pending applications with the real Supabase request builder", () => {
       { ...base, id: "historical", record_scope: "historical" }, { ...base, id: "inactive", account_status: "suspended" },
       { ...base, id: "done", status: "approved" }, { ...base, id: "draft", profile_stage: "in_progress" },
       { ...base, id: "step", onboarding_step: 3 }, { ...base, id: "identity", member_identity: null },
-      { ...base, id: "ignored", application_ignore: ignoreRecord }]
+      { ...base, id: "ignored", application_ignore: ignoreRecord }, { ...base, id: "test", is_test: true }]
     expect(await fetchPendingApplicationCount()).toBe(2)
     expect((await fetchDashboardStats()).pending).toBe(2)
     expect((await fetchPendingApplications()).items.map((item) => item.id)).toEqual([id, "complete"])
@@ -74,6 +74,7 @@ describe("pending applications with the real Supabase request builder", () => {
     expect(scope.length).toBeGreaterThan(4)
     for (const request of scope) {
       expect(request.searchParams.get("record_scope")).toBe("eq.current")
+      expect(request.searchParams.get("is_test")).toBe("eq.false")
       expect(request.searchParams.get("account_status")).toBe("eq.active")
       expect(request.searchParams.get("status")).toBe("eq.pending")
       expect(request.searchParams.get("profile_stage")).toBe("in.(submitted,complete)")
@@ -98,12 +99,14 @@ describe("pending applications with the real Supabase request builder", () => {
       { ...base, id: "closed", account_status: "closed", status: "approved" },
       { ...base, id: "anonymized", account_status: "closed", status: "inactive", member_identity: null },
       { ...base, id: "unbound", account_status: "unbound", status: "approved" },
+      { ...base, id: "test-player", is_test: true, status: "approved" },
     ]
 
     expect(await fetchDashboardStats()).toEqual({ total: 6, pending: 1, approved: 1, rejected: 1 })
     for (const request of requests) {
       expect(request.searchParams.get("record_scope")).toBe("eq.current")
       expect(request.searchParams.get("account_status")).toBe("eq.active")
+      expect(request.searchParams.get("is_test")).toBe("eq.false")
     }
   })
 

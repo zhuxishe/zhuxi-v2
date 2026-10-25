@@ -35,6 +35,7 @@ function applicationQuery(client: Client, columns: string, head = false, search 
     : "application_ignore:member_application_ignores(member_id)"
   let query = client.from("members").select(`${columns},${ignoreColumns}`, { count: "exact", head })
     .eq("record_scope", "current").eq("account_status", "active").eq("status", "pending")
+    .eq("is_test", false)
     .in("profile_stage", ["submitted", "complete"]).eq("onboarding_step", 4)
   // An embedded null filter is a database-side anti-join, including for HEAD counts.
   if (!ignored) query = query.is("application_ignore", null)

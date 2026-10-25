@@ -1547,6 +1547,7 @@ export type Database = {
       }
       match_rounds: {
         Row: {
+          is_test: boolean
           activity_end: string
           activity_start: string
           created_at: string | null
@@ -1563,6 +1564,7 @@ export type Database = {
           survey_start: string
         }
         Insert: {
+          is_test?: boolean
           activity_end: string
           activity_start: string
           created_at?: string | null
@@ -1579,6 +1581,7 @@ export type Database = {
           survey_start: string
         }
         Update: {
+          is_test?: boolean
           activity_end?: string
           activity_start?: string
           created_at?: string | null
@@ -2182,6 +2185,7 @@ export type Database = {
       }
       members: {
         Row: {
+          is_test: boolean
           account_linked_at: string | null
           account_status: string
           anonymized_at: string | null
@@ -2206,6 +2210,7 @@ export type Database = {
           wechat_openid: string | null
         }
         Insert: {
+          is_test?: boolean
           account_linked_at?: string | null
           account_status?: string
           anonymized_at?: string | null
@@ -2230,6 +2235,7 @@ export type Database = {
           wechat_openid?: string | null
         }
         Update: {
+          is_test?: boolean
           account_linked_at?: string | null
           account_status?: string
           anonymized_at?: string | null
@@ -3174,6 +3180,10 @@ export type Database = {
       }
     }
     Functions: {
+      get_my_test_round_ids: {
+        Args: Record<PropertyKey, never>
+        Returns: string[]
+      }
       admin_capture_matching_input: {
         Args: { p_round_id: string; p_actor_admin_id: string; p_reason: string }
         Returns: Json

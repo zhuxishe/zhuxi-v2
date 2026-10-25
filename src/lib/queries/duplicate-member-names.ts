@@ -19,6 +19,7 @@ export async function fetchDuplicateMemberNames(): Promise<DuplicateNameGroup[] 
       let query = client.from("members")
         .select("id,member_identity!inner(full_name,nickname,school_name)")
         .eq("record_scope", "current")
+        .eq("is_test", false)
         .neq("account_status", "unbound")
         .is("anonymized_at", null)
         .order("id", { ascending: true })

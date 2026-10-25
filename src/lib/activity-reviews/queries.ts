@@ -62,6 +62,7 @@ export async function fetchAdminActivityReviews(params: { roundId?: string; memb
     for (let start = 0; ; start += 500) {
       const { data, error } = await db.from("members").select("id,member_identity(full_name,nickname)")
         .eq("record_scope", "current").eq("account_status", "active").eq("status", "approved")
+        .eq("is_test", false)
         .eq("membership_type", "player").is("anonymized_at", null).order("id").range(start, start + 499)
       if (error) throw new ActivityReviewError("PEER_MEMBER_LOOKUP_FAILED")
       for (const member of data ?? []) {

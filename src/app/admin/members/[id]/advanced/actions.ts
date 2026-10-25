@@ -52,9 +52,9 @@ export async function updateAdvancedMemberSectionAction(input: {
   }
 
   if (input.section === "account" && "member_number" in input.payload && input.payload.member_number !== null) {
-    if (typeof input.payload.member_number !== "string") return { success: false, error: "会员编号格式应为 ZXS_001，数字至少 3 位" }
+    if (typeof input.payload.member_number !== "string") return { success: false, error: "会员编号应为 ZXS_001（数字至少 3 位）；已登记测试账号使用 TST_001～TST_027" }
     const memberNumber = normalizeMemberNumber(input.payload.member_number)
-    if (!memberNumber) return { success: false, error: "会员编号格式应为 ZXS_001，数字至少 3 位" }
+    if (!memberNumber) return { success: false, error: "会员编号应为 ZXS_001（数字至少 3 位）；已登记测试账号使用 TST_001～TST_027" }
     input = { ...input, payload: { ...input.payload, member_number: memberNumber } }
   }
 

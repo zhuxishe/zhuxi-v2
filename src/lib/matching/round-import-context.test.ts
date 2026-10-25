@@ -1,9 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
+import { createClient } from "@supabase/supabase-js"
 
 const mocks = vi.hoisted(() => ({ from: vi.fn(), parse: vi.fn(), rpc: vi.fn() }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: mocks.from, rpc: mocks.rpc }) }))
 vi.mock("./round-import-parser", () => ({ parseRoundImportWorkbook: mocks.parse }))
-import { loadRoundImportContext, loadRoundImportReviewContext } from "./round-import-context"
+import { fetchCurrentImportMembers, loadRoundImportContext, loadRoundImportReviewContext } from "./round-import-context"
 
 describe("round import deletion guard", () => {
   beforeEach(() => { vi.resetAllMocks() })
@@ -28,5 +29,41 @@ describe("round import deletion guard", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("admin_preview_round_import_state", { p_round_id: "round", p_actor_admin_id: "actor" })
     expect(mocks.parse).not.toHaveBeenCalled()
     expect(mocks.from).not.toHaveBeenCalled()
+  })
+})
+
+describe("round import identity domains", () => {
+  const members = [
+    { id: "test", member_number: "TST_001", is_test: true, member_identity: { full_name: "测试一", nickname: null } },
+    { id: "controlled-real", member_number: "ZXS_000", is_test: false, member_identity: { full_name: "官方", nickname: null } },
+    { id: "other-real", member_number: "ZXS_099", is_test: false, member_identity: { full_name: "其他会员", nickname: null } },
+  ]
+
+  it("excludes test identities from formal import choices but includes only allowlisted identities in a test round", async () => {
+    const requests: URL[] = []
+    const db = createClient("https://import-identity-scope.invalid", "test-key", {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+      global: { fetch: async input => {
+        const url = new URL(String(input)); requests.push(url)
+        const p = url.searchParams
+        return Response.json(members.filter(member => (p.get("is_test") !== "eq.false" || !member.is_test)
+          && (!p.get("id") || p.get("id")!.slice(4, -1).split(",").includes(member.id))))
+      } },
+    })
+    expect((await fetchCurrentImportMembers(db)).map(member => member.id)).toEqual(["controlled-real", "other-real"])
+    expect((await fetchCurrentImportMembers(db, ["test", "controlled-real"])).map(member => member.id)).toEqual(["test", "controlled-real"])
+    expect(requests[0].searchParams.get("is_test")).toBe("eq.false")
+    expect(requests[1].searchParams.get("id")).toBe("in.(test,controlled-real)")
+    expect(await fetchCurrentImportMembers(db, [])).toEqual([])
+    expect(requests).toHaveLength(2)
+  })
+
+  it("refuses the old import path for test rounds before reading unscoped member lists", async () => {
+    const query = { select: vi.fn(), eq: vi.fn(), single: vi.fn() }
+    query.select.mockReturnValue(query); query.eq.mockReturnValue(query)
+    query.single.mockResolvedValue({ data: { id: "round", purpose: "matching", status: "open", is_test: true }, error: null })
+    mocks.from.mockReturnValue(query); mocks.parse.mockReset()
+    await expect(loadRoundImportContext("round", Buffer.from("test"))).rejects.toThrow("当前的导入预览流程")
+    expect(mocks.parse).not.toHaveBeenCalled()
   })
 })

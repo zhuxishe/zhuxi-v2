@@ -136,3 +136,69 @@ describe("unmatched-only automatic retries", () => {
     expect({ ctx, input }).toEqual(before)
   })
 })
+
+
+describe("server-captured individual duo pool pins", () => {
+  it.each(["1", "2"])("allows a singly pinned member %s to split and re-pair inside the duo pool", (memberId) => {
+    const ctx = context(4); original(ctx, ["1", "2"], "duo"); ctx.lockedMemberIds = [memberId]
+    const input = draft(ctx), separated = structuredClone(input)
+    separated.duos = []; separated.waitingDuoIds = ["1", "2"]
+    expect(evaluateBoard(ctx, separated, true).draft.waitingDuoIds).toEqual(["1", "2"])
+    const paired = previewBoardPair(ctx, separated, [memberId, "3"])
+    expect(paired.passed).toBe(true)
+    expect(paired.draft.duos[0].memberIds).toEqual([memberId, "3"])
+    expect(() => previewBoardMultiMove(ctx, separated, memberId)).toThrow("必须留在双人池")
+    const otherId = memberId === "1" ? "2" : "1"
+    const movedOther = previewBoardMultiMove(ctx, separated, otherId)
+    expect(movedOther.draft.waitingDuoIds).toEqual([memberId])
+  })
+  it("fixes a saved pair only when both members are pinned", () => {
+    const ctx = context(4); original(ctx, ["1", "2"], "duo"); ctx.lockedMemberIds = ["1", "2"]
+    const input = draft(ctx)
+    expect(evaluateBoard(ctx, input, true).keepResultIds).toEqual(["duo"])
+    const separated = structuredClone(input); separated.duos = []; separated.waitingDuoIds = ["1", "2"]
+    expect(() => evaluateBoard(ctx, separated)).toThrow("双方均已锁定")
+    expect(() => previewBoardPair(ctx, separated, ["1", "3"])).toThrow("双方均已锁定")
+    expect(() => rematchBoardDraft(ctx, separated)).toThrow("双方均已锁定")
+    expect(() => evaluateBoard(ctx, { ...input, duos: [{ ...input.duos[0], resultId: undefined }] }, true)).toThrow("双方均已锁定")
+    expect(() => evaluateBoard(ctx, { ...input, duos: [{ ...input.duos[0], bestSlot: "2026-10-31_晚上" }] }, true)).toThrow("双方均已锁定")
+    ctx.lockedMemberIds = ["1"]
+    expect(evaluateBoard(ctx, separated, true).draft.waitingDuoIds).toEqual(["1", "2"])
+  })
+  it("allows a pinned waiting member to pair while rejecting any move outside the duo pool", () => {
+    const ctx = context(5)
+    ctx.lockedMemberIds = ["1"]
+    ctx.originalLayout = { waitingDuoIds: ["1", "2"], brokenPairs: [{ key: "grey", memberIds: ["1", "2"] }] }
+    const input = createBoardDraft(ctx.originalRows, ctx.cohortMemberIds, ctx.originalLayout)
+    const paired = previewBoardPair(ctx, input, ["1", "2"])
+    expect(paired.passed).toBe(true)
+    expect(paired.draft.duos[0].memberIds).toEqual(["1", "2"])
+    expect(() => previewBoardMultiMove(ctx, input, "1")).toThrow("必须留在双人池")
+    const forged = { ...input, waitingDuoIds: ["2"], brokenPairs: [], unmatchedIds: [...input.unmatchedIds, "1"] }
+    expect(() => evaluateBoard(ctx, forged, true)).toThrow("必须留在双人池")
+    expect(() => rematchBoardDraft(ctx, forged)).toThrow("必须留在双人池")
+    const rematched = rematchBoardDraft(ctx, input)
+    expect(rematched.draft.waitingDuoIds).toEqual(["1", "2"])
+    expect(rematched.draft.duos.every((duo) => !duo.memberIds.includes("1"))).toBe(true)
+  })
+  it("lets an unlocked former partner move while the pinned waiting member stays", () => {
+    const ctx = context(5)
+    ctx.lockedMemberIds = ["1"]
+    ctx.originalLayout = { waitingDuoIds: ["1", "2"], brokenPairs: [{ key: "grey", memberIds: ["1", "2"] }] }
+    const input = createBoardDraft(ctx.originalRows, ctx.cohortMemberIds, ctx.originalLayout)
+    const paired = previewBoardPair(ctx, input, ["2", "3"])
+    expect(paired.passed).toBe(true)
+    expect(paired.draft.waitingDuoIds).toEqual(["1"])
+    expect(paired.draft.brokenPairs).toEqual([])
+    expect(evaluateBoard(ctx, paired.draft, true).draft.waitingDuoIds).toEqual(["1"])
+  })
+  it("rejects captured pins outside either duo or waiting placements", () => {
+    const ctx = context(4); ctx.lockedMemberIds = ["1"]
+    expect(() => evaluateBoard(ctx, draft(ctx), true)).toThrow("必须留在双人池")
+  })
+  it("does not remove historical whole-result locks when individual pins are empty", () => {
+    const ctx = context(4); original(ctx, ["1", "2"], "old-lock", true); ctx.lockedMemberIds = []
+    const input = draft(ctx); input.duos = []; input.waitingDuoIds = ["1", "2"]
+    expect(() => evaluateBoard(ctx, input, true)).toThrow("已锁定的匹配")
+  })
+})

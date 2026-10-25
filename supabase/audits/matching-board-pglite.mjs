@@ -95,6 +95,7 @@ await db.exec(`CREATE TRIGGER test_pool_result_scope BEFORE INSERT OR UPDATE OF 
 const sourceScopeStart=testScopeSql.indexOf('DO $migration$',testScopeSql.indexOf('-- Guarded surgical changes'))
 await db.exec(testScopeSql.slice(sourceScopeStart,testScopeSql.indexOf('$migration$;',sourceScopeStart)+'$migration$;'.length))
 await db.exec(read('supabase/migrations/20261025161221_matching_three_pool_board.sql'))
+await db.exec(read('supabase/migrations/20261025170225_matching_board_member_locks.sql'))
 const ids=Array.from({length:12},()=>randomUUID()),users=ids.map(()=>randomUUID())
 for(let i=0;i<ids.length;i++){
  await db.query('INSERT INTO public.members(id,user_id,member_number) VALUES($1,$2,$3)',[ids[i],users[i],`BOARD_${i}`])
@@ -125,6 +126,8 @@ const rejects=async(work,pattern,message)=>{await assert.rejects(work,pattern,me
 const emptyLayout={waitingDuoIds:[],brokenPairs:[]}
 const params=(board,{keep=board.results.map(r=>r.id),rows=[],unmatched=ids.slice(8,10),layout=emptyLayout,operation=randomUUID(),engine=prepareMatchingRunInput(board.capture).engineInput,requestHash='a'.repeat(64),revision=board.base_revision}={})=>[session,admin,operation,'隔离三池统一保存验证',revision,engine,keep,rows,layout,unmatched,requestHash]
 const persist=async args=>{await server();return scalar('SELECT public.admin_save_matching_board($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)',args)}
+export const boardAuditContext={db,scalar,role,read,admin,adminUser,server,adminRole,player,round,session,ids,users,get,params,persist,answers,submit,prepareMatchingRunInput,buildManualAdjustment,preparePublicationPreflightInput,inspectPublicationPreflight,temporary}
+if(process.env.MATCHING_BOARD_MEMBER_LOCK_SUITE!=='1'){
 let board=await get()
 check(board.cohort_member_ids.slice().sort(),ids.slice(0,10).sort(),'later registrations never enter original cohort')
 check(board.capture.source.submissions.length,10,'source excludes later registrations too')
@@ -269,3 +272,4 @@ check(await scalar('SELECT count(*)::integer FROM matching_board.state WHERE ses
 check(await scalar('SELECT count(*)::integer FROM matching_board.operations WHERE session_id=$1',[session]),0,'draft deletion cascades board receipts')
 console.log(`Matching three-pool board SQL/actual engine audit: ${checks} checks passed; isolated PGlite only.`)
 await db.close();rmSync(temporary,{recursive:true,force:true})
+}

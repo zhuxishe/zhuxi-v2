@@ -17,7 +17,7 @@ let props: MatchSessionViewProps
 const key = "matching-board-save:board-lifecycle"
 function fixture(): MatchSessionViewProps {
   const draft: BoardDraft = { duos: [], multi: null, waitingDuoIds: [], brokenPairs: [], unmatchedIds: ["U", "V"] }
-  const snapshot: BoardSnapshot = { draft, rows: [], revisionToken: "current-revision", lockedResultIds: [], cohortMemberIds: ["U", "V"], canViewRaw: true }
+  const snapshot: BoardSnapshot = { draft, rows: [], revisionToken: "current-revision", lockedResultIds: [], lockedMemberIds: [], cohortMemberIds: ["U", "V"], canViewRaw: true }
   return { session: { id: "board-lifecycle", session_name: "生命周期测试", round_id: "round", status: "draft", results_ready: true, publication_version: 1, total_candidates: 2, total_matched: 0, total_unmatched: 2 }, results: [], diagnostics: [], candidates: [], boardSnapshot: snapshot,
     boardMembers: ["U", "V"].map((id) => ({ id, record_source: null, member_identity: { full_name: id, nickname: null, school_name: null, gender: "male", hobby_tags: [], nationality: "", degree_level: null, department: null }, member_interests: null, member_personality: null, member_boundaries: null })) }
 }

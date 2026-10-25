@@ -12,7 +12,7 @@ WITH wrappers AS (
    AND has_schema_privilege('service_role','matching_board','USAGE') AND NOT has_schema_privilege('service_role','matching_board','CREATE') schema_ok,
   (SELECT count(*)=2 AND bool_and(c.relrowsecurity AND NOT has_table_privilege('anon',c.oid,'SELECT,INSERT,UPDATE,DELETE')
    AND NOT has_table_privilege('authenticated',c.oid,'SELECT,INSERT,UPDATE,DELETE') AND NOT has_table_privilege('service_role',c.oid,'SELECT,INSERT,UPDATE,DELETE'))
-   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='matching_board' AND c.relkind='r') tables_ok,
+   FROM pg_class c JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='matching_board' AND c.relkind='r' AND c.relname IN('state','operations')) tables_ok,
   EXISTS(SELECT 1 FROM pg_trigger WHERE tgname='matching_board_member_erasure' AND NOT tgisinternal AND tgenabled='O') erasure_ok,
   NOT EXISTS(SELECT 1 FROM pg_proc p JOIN pg_namespace n ON n.oid=p.pronamespace WHERE n.nspname='matching_board'
    AND (has_function_privilege('anon',p.oid,'EXECUTE') OR has_function_privilege('authenticated',p.oid,'EXECUTE'))) internal_acl_ok,

@@ -56,6 +56,7 @@ jobs:
           node supabase/audits/matching-phase5-flow-pglite.mjs
           node supabase/audits/matching-adjustment-pglite.mjs
           node supabase/audits/matching-board-pglite.mjs
+          node supabase/audits/matching-board-member-lock-pglite.mjs
           node supabase/audits/matching-publication-preflight-pglite.mjs
           node supabase/audits/test-account-pool-pglite.mjs
 

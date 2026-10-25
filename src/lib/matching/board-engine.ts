@@ -10,6 +10,9 @@ export interface BoardContext {
   engine: MatchingEngineInput
   originalRows: BoardSourceRow[]
   cohortMemberIds: string[]
+  /** Authoritative server capture; never accept lock state from the draft. */
+  lockedMemberIds?: string[]
+  originalLayout?: Pick<BoardDraft, "waitingDuoIds" | "brokenPairs"> | null
 }
 export interface BoardEvaluation {
   draft: BoardDraft
@@ -96,6 +99,18 @@ export function validateBoardStructure(context: BoardContext, draft: BoardDraft)
     if (!row || row.status === "cancelled" || Boolean(row.group_members?.length) !== (entry === draft.multi)) fail("原配对编号不属于当前有效结果")
     if (entry !== draft.multi && !sameIds(entry.memberIds, rowIds(row!))) fail("新配对不能沿用其他配对编号")
   }
+  const lockedMembers = new Set(context.lockedMemberIds ?? [])
+  for (const memberId of lockedMembers) {
+    if (!draft.waitingDuoIds.includes(memberId) && !draft.duos.some((duo) => duo.memberIds.includes(memberId))) {
+      fail("已锁定的成员必须留在双人池，请先解锁再移出")
+    }
+  }
+  for (const original of context.originalRows.filter((row) => row.status !== "cancelled" && !row.group_members?.length && rowIds(row).every((id) => lockedMembers.has(id)))) {
+    const entry = draft.duos.find((duo) => duo.resultId === original.id)
+    if (!entry || !sameIds(entry.memberIds, rowIds(original)) || slotKey(entry.bestSlot) !== slotKey(original.best_slot)) {
+      fail("配对双方均已锁定，请先解锁其中一人再取消或调整配对")
+    }
+  }
   for (const row of context.originalRows.filter((row) => row.status === "locked")) {
     const entry = row.group_members?.length ? draft.multi : draft.duos.find((duo) => duo.resultId === row.id)
     if (!entry || entry.resultId !== row.id || !sameIds(entry.memberIds, rowIds(row)) || slotKey(entry.bestSlot) !== slotKey(row.best_slot)) fail("已锁定的匹配不能调整，请先解锁并刷新")
@@ -181,6 +196,7 @@ export function previewBoardPair(context: BoardContext, input: BoardDraft, membe
 
 export function previewBoardMultiMove(context: BoardContext, input: BoardDraft, memberId: string) {
   validateBoardStructure(context, input)
+  if (context.lockedMemberIds?.includes(memberId)) fail("已锁定的成员必须留在双人池，请先解锁再移出")
   if (input.multi?.memberIds.includes(memberId)) return { ...evaluateBoard(context, input), passed: true, reasons: [] }
   const draft = structuredClone(input)
   removeAvailableMember(draft, memberId)

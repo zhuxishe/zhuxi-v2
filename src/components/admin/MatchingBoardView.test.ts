@@ -27,7 +27,7 @@ function row(key: string, a: string, b: string | null, group: string[] | null = 
 function fixture(): MatchSessionViewProps {
   const rows = [row("duo-ab", "A", "B"), row("duo-cd", "C", "D"), row("multi", "M1", null, ["M1", "M2", "M3"])]
   const draft: BoardDraft = { duos: [{ key: "duo-ab", resultId: "duo-ab", memberIds: ["A", "B"], bestSlot: SLOT }, { key: "duo-cd", resultId: "duo-cd", memberIds: ["C", "D"], bestSlot: SLOT }], multi: { key: "multi", resultId: "multi", memberIds: ["M1", "M2", "M3"], bestSlot: SLOT }, waitingDuoIds: ["W"], brokenPairs: [], unmatchedIds: ["U", "V"] }
-  const boardSnapshot: BoardSnapshot = { draft, rows, revisionToken: "revision-current", lockedResultIds: [], cohortMemberIds: ids, canViewRaw: true }
+  const boardSnapshot: BoardSnapshot = { draft, rows, revisionToken: "revision-current", lockedResultIds: [], lockedMemberIds: [], cohortMemberIds: ids, canViewRaw: true }
   const results: EnrichedMatchResult[] = rows.map((item) => ({ id: item.key, total_score: item.total_score, rank: item.rank, status: "draft", best_slot: item.best_slot, score_breakdown: item.score_breakdown, member_a: person(item.member_a_id), member_b: item.member_b_id ? person(item.member_b_id) : null, group_members: item.group_members, group_member_details: item.group_members?.map(person) ?? null }))
   return { session: { id: "board-session", session_name: "三池交互", status: "draft", results_ready: true, total_candidates: 10, total_matched: 7, total_unmatched: 3, round_id: "round", publication_version: 2 }, results, diagnostics: [], candidates: [], boardSnapshot, boardMembers: members, canViewRawSubmissions: true }
 }

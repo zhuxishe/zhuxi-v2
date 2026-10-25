@@ -30,11 +30,15 @@ export interface BoardSubmissionPreference {
   social_style?: string | null
 }
 export interface BoardOperationSummary { id: string; created_at: string; member_count: number; result_count: number }
+export interface BoardMemberLockOperationSummary { id: string; created_at: string; locked: boolean }
+export interface BoardMemberLockRequest { sessionId: string; memberId: string; locked: boolean; expectedRevision: string; operationId: string }
 export interface BoardSnapshot {
   draft: BoardDraft
   revisionToken: string
   rows: BoardDisplayRow[]
   lockedResultIds: string[]
+  lockedMemberIds: string[]
+  memberLockOperations?: BoardMemberLockOperationSummary[]
   cohortMemberIds: string[]
   canViewRaw: boolean
   operations?: BoardOperationSummary[]

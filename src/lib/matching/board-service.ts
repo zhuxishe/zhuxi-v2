@@ -6,7 +6,7 @@ import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { validateUuids } from "@/lib/sanitize"
 import { prepareMatchingRunInput } from "./run-input"
 import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardMultiMove, previewBoardPair, rematchBoardDraft, type BoardContext } from "./board-engine"
-import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference } from "./board-types"
+import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference, BoardMemberLockRequest, BoardMemberLockOperationSummary } from "./board-types"
 
 type RpcError = { code?: string; message: string }
 type RpcClient = { rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{ data: T | null; error: RpcError | null }> }
@@ -20,7 +20,10 @@ interface Capture {
   session_status?: string
   results_ready?: boolean
   operations?: BoardOperationSummary[]
+  locked_member_ids?: string[]
+  member_lock_operations?: BoardMemberLockOperationSummary[]
 }
+interface MemberLockReceipt { session_id: string; operation_id: string; member_id: string; locked: boolean; expected_revision: string; base_revision: string; already_applied: boolean }
 interface Receipt { session_id: string; operation_id: string; request_hash: string; base_revision: string; result_ids: string[]; already_applied: boolean }
 
 function errorMessage(error: unknown) {
@@ -54,7 +57,8 @@ function requireEditable(data: Capture) {
   if (data.session_status !== "draft" || data.results_ready === false) throw new BoardValidationError("当前方案不能编辑，请先撤回已发布方案或等待匹配完成。")
 }
 function contextFor(data: Capture): BoardContext {
-  return { engine: prepareMatchingRunInput(data.capture).engineInput, originalRows: data.results, cohortMemberIds: data.cohort_member_ids }
+  return { engine: prepareMatchingRunInput(data.capture).engineInput, originalRows: data.results, cohortMemberIds: data.cohort_member_ids,
+    lockedMemberIds: data.locked_member_ids ?? [], originalLayout: data.layout }
 }
 /** Explicit whitelist prevents SQL source columns, engine relations, peer reviews and reasons leaking to clients. */
 export function redactBoardRows(rows: BoardDisplayRow[], canViewRaw: boolean): BoardDisplayRow[] {
@@ -98,6 +102,8 @@ export async function fetchMatchingBoard(sessionId: string): Promise<BoardSnapsh
   const rows = data.results.filter((row) => row.status !== "cancelled").map((row) => ({ ...row, key: row.id, resultId: row.id }))
   return { draft, revisionToken: data.base_revision, rows: redactBoardRows(rows, admin.role === "super_admin"),
     lockedResultIds: data.results.filter((row) => row.status === "locked").map((row) => row.id),
+    lockedMemberIds: (data.locked_member_ids ?? []).filter((id) => data.cohort_member_ids.includes(id)),
+    memberLockOperations: (data.member_lock_operations ?? []).map((operation) => ({ id: operation.id, created_at: operation.created_at, locked: operation.locked })),
     cohortMemberIds: data.cohort_member_ids, canViewRaw: admin.role === "super_admin",
     ...(admin.role === "super_admin" ? { currentSubmissionPrefs: currentSubmissionPreferences(data.capture, data.cohort_member_ids) } : {}),
     operations: (data.operations ?? []).map((operation) => ({ id: operation.id, created_at: operation.created_at, member_count: operation.member_count, result_count: operation.result_count })) }
@@ -195,5 +201,63 @@ export async function saveMatchingBoard(input: BoardRequest & { operationId: str
     } catch { /* Missing response never establishes a failed transaction. */ }
     if (definiteRejection(error)) return { error: errorMessage(error), operationId: input.operationId }
     return { error: "保存结果暂时无法确认。请保留当前调整并使用原操作编号重试，避免重复保存。", operationId: input.operationId, unknown: true }
+  }
+}
+
+
+async function memberLockReceipt(db: RpcClient, operationId: string, actorId: string): Promise<MemberLockReceipt | null> {
+  const result = await db.rpc<MemberLockReceipt>("admin_get_matching_board_member_lock_operation", { p_operation_id: operationId, p_actor_admin_id: actorId })
+  if (result.error) throw result.error
+  return result.data
+}
+function confirmedMemberLock(result: MemberLockReceipt, input: BoardMemberLockRequest): BoardActionResult {
+  if (result.session_id !== input.sessionId || result.operation_id !== input.operationId || result.member_id !== input.memberId
+      || result.locked !== input.locked || result.expected_revision !== input.expectedRevision) {
+    return { error: "此操作编号已用于其他调整，请保留原请求并核对锁定结果。", operationId: input.operationId }
+  }
+  revalidatePath(`/admin/matching/${input.sessionId}`)
+  revalidatePath("/admin/matching", "layout")
+  return { success: true, operationId: input.operationId, revisionToken: result.base_revision }
+}
+
+/** Set a target state, not a toggle: identical retries must never reverse a successful lock. */
+export async function setMatchingBoardMemberLock(input: BoardMemberLockRequest): Promise<BoardActionResult> {
+  const admin = await requireAdmin()
+  try {
+    validateUuids([input.sessionId, input.memberId, input.operationId])
+    if (typeof input.locked !== "boolean" || typeof input.expectedRevision !== "string" || !input.expectedRevision.length || input.expectedRevision.length > 1000) throw new Error("INVALID_MEMBER_LOCK_REQUEST")
+  } catch { return { error: "锁定内容或操作编号无效，请刷新后重试。" } }
+  const db = rpcClient()
+  // A committed response may be lost; resolve the original operation before checking its now-stale revision.
+  try {
+    const previous = await memberLockReceipt(db, input.operationId, admin.id)
+    if (previous) return confirmedMemberLock(previous, input)
+  } catch (error) {
+    if (definiteRejection(error)) return { error: errorMessage(error), operationId: input.operationId }
+    return { error: "暂时无法确认原锁定结果，请保留原操作编号重试。", operationId: input.operationId, unknown: true }
+  }
+  try {
+    const data = await captureBoard(db, input.sessionId, admin.id, input.expectedRevision)
+    requireEditable(data)
+    const saved = createBoardDraft(data.results, data.cohort_member_ids, data.layout)
+    if (!saved.duos.some((duo) => duo.memberIds.includes(input.memberId)) && !saved.waitingDuoIds.includes(input.memberId)) {
+      throw new BoardValidationError("只有双人池中的成员可以设置个人锁定，请先保存当前调整并刷新。")
+    }
+  } catch (error) { return { error: errorMessage(error), operationId: input.operationId } }
+  try {
+    const result = await db.rpc<MemberLockReceipt>("admin_set_matching_board_member_lock", {
+      p_session_id: input.sessionId, p_actor_admin_id: admin.id, p_member_id: input.memberId,
+      p_locked: input.locked, p_operation_id: input.operationId, p_expected_revision: input.expectedRevision,
+    })
+    if (result.error) throw result.error
+    if (!result.data) throw new Error("MEMBER_LOCK_OUTCOME_UNKNOWN")
+    return confirmedMemberLock(result.data, input)
+  } catch (error) {
+    try {
+      const applied = await memberLockReceipt(db, input.operationId, admin.id)
+      if (applied) return confirmedMemberLock(applied, input)
+    } catch { /* A lost response must keep the original operation available for retry. */ }
+    if (definiteRejection(error)) return { error: errorMessage(error), operationId: input.operationId }
+    return { error: "锁定结果暂时无法确认。请保留原操作编号重试，避免重复操作。", operationId: input.operationId, unknown: true }
   }
 }

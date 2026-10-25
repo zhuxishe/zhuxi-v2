@@ -10,7 +10,7 @@ vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.admin }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.db }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.invalidate }))
 vi.mock("./run-input", async (original) => ({ ...await original<typeof import("./run-input")>(), prepareMatchingRunInput: mocks.prepare }))
-import { boardRequestHash, fetchMatchingBoard, inspectMatchingBoardPair, rematchMatchingBoard, saveMatchingBoard } from "./board-service"
+import { boardRequestHash, fetchMatchingBoard, inspectMatchingBoardPair, inspectMatchingBoardMultiMove, rematchMatchingBoard, saveMatchingBoard, setMatchingBoardMemberLock } from "./board-service"
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`
 const sessionId = id(100), operationId = id(101), actorId = id(102), reason = "根据已确认的可用时间调整匹配"
@@ -26,14 +26,18 @@ function setup(input = engine(), rows: BoardSourceRow[] = []) {
   const read = vi.fn().mockResolvedValue({ data: { base_revision: "current", capture: { secret: "private raw feedback" }, results: rows, layout: null, cohort_member_ids: input.idMap.map(([, memberId]) => memberId), round_id: id(110), session_status: "draft" }, error: null })
   const get = vi.fn().mockResolvedValue({ data: null, error: null })
   const save = vi.fn().mockImplementation(async (args: { p_request_hash: string }) => ({ data: { session_id: sessionId, operation_id: operationId, request_hash: args.p_request_hash, base_revision: "saved", result_ids: [], already_applied: false }, error: null }))
+  const lockGet = vi.fn().mockResolvedValue({ data: null, error: null })
+  const lockSet = vi.fn().mockImplementation(async (args: Record<string, unknown>) => ({ data: { session_id: args.p_session_id, operation_id: args.p_operation_id, member_id: args.p_member_id, locked: args.p_locked, expected_revision: args.p_expected_revision, base_revision: "locked-revision", already_applied: false }, error: null }))
   const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
     if (name === "admin_get_matching_board") return read(args)
     if (name === "admin_get_matching_board_operation") return get(args)
     if (name === "admin_save_matching_board") return save(args)
+    if (name === "admin_get_matching_board_member_lock_operation") return lockGet(args)
+    if (name === "admin_set_matching_board_member_lock") return lockSet(args)
     throw new Error(name)
   })
   mocks.db.mockReturnValue({ rpc }); mocks.prepare.mockReturnValue({ engineInput: input })
-  return { input, request, read, get, save, rpc }
+  return { input, request, read, get, save, rpc, lockGet, lockSet }
 }
 beforeEach(() => { vi.resetAllMocks(); mocks.admin.mockResolvedValue({ id: actorId, role: "super_admin" }) })
 
@@ -133,5 +137,98 @@ describe("board service authorization, capture and save boundary", () => {
     const f = setup(); f.input.candidates.pop(); f.request.draft.duos.push({ key: "new", memberIds: [id(3), id(4)], bestSlot: null }); f.request.draft.unmatchedIds = [id(1), id(2)]
     expect(await saveMatchingBoard(f.request)).toMatchObject({ error: expect.stringContaining("有效候选") })
     expect(f.save).not.toHaveBeenCalled()
+  })
+})
+
+
+describe("individual member lock service", () => {
+  const lockRequest = { sessionId, memberId: id(1), locked: true, expectedRevision: "current", operationId }
+  function paired() {
+    const input = engine(), row = { ...inspectManualAdjustment(input, [id(1), id(2)]).rows[0], id: id(120), status: "draft" }
+    return setup(input, [row])
+  }
+  const lockReceipt = () => ({ session_id: sessionId, operation_id: operationId, member_id: id(1), locked: true, expected_revision: "current", base_revision: "locked-revision", already_applied: true })
+  it("provides compatible empty defaults until the new capture fields are deployed", async () => {
+    setup()
+    expect(await fetchMatchingBoard(sessionId)).toMatchObject({ lockedMemberIds: [], memberLockOperations: [] })
+  })
+  it("projects only safe lock history fields for ordinary admins", async () => {
+    const f = paired(), value = await f.read()
+    f.read.mockResolvedValue({ ...value, data: { ...value.data, locked_member_ids: [id(1), id(999)], member_lock_operations: [{ id: operationId, created_at: "2026-10-26T01:00:00Z", locked: true, member_id: id(1), actor_admin_id: "PRIVATE-ACTOR", reason: "PRIVATE-REASON", payload: "PRIVATE-CAPTURE" }] } })
+    mocks.admin.mockResolvedValue({ id: actorId, role: "admin" })
+    const result = await fetchMatchingBoard(sessionId)
+    expect(result.lockedMemberIds).toEqual([id(1)])
+    expect(result.memberLockOperations).toEqual([{ id: operationId, created_at: "2026-10-26T01:00:00Z", locked: true }])
+    expect(JSON.stringify(result)).not.toContain("PRIVATE-")
+  })
+  it("never accepts client lock removal to bypass preview, rematch or save guards", async () => {
+    const f = paired(), value = await f.read()
+    f.read.mockResolvedValue({ ...value, data: { ...value.data, locked_member_ids: [id(1)] } })
+    f.request.draft.duos = []; f.request.draft.unmatchedIds.push(id(1), id(2))
+    Object.assign(f.request.draft, { lockedMemberIds: [] })
+    expect(await inspectMatchingBoardPair({ ...f.request, memberIds: [id(1), id(3)] })).toMatchObject({ error: expect.stringContaining("已锁定") })
+    expect(await inspectMatchingBoardMultiMove({ ...f.request, memberId: id(2) })).toMatchObject({ error: expect.stringContaining("已锁定") })
+    expect(await rematchMatchingBoard(f.request)).toMatchObject({ error: expect.stringContaining("已锁定") })
+    expect(await saveMatchingBoard(f.request)).toMatchObject({ error: expect.stringContaining("已锁定") })
+    expect(f.save).not.toHaveBeenCalled()
+  })
+  it("uses authoritative original waiting layout when enforcing personal locks", async () => {
+    const f = setup(), value = await f.read()
+    f.read.mockResolvedValue({ ...value, data: { ...value.data, locked_member_ids: [id(1)], layout: { waitingDuoIds: [id(1)], brokenPairs: [] } } })
+    expect(await rematchMatchingBoard(f.request)).toMatchObject({ error: expect.stringContaining("已锁定") })
+    f.request.draft.waitingDuoIds = [id(1)]; f.request.draft.unmatchedIds = [id(2), id(3), id(4)]
+    expect(await rematchMatchingBoard(f.request)).toMatchObject({ success: true })
+  })
+  it("sets the requested target without requiring a user-written reason", async () => {
+    const f = paired()
+    expect(await setMatchingBoardMemberLock(lockRequest)).toEqual({ success: true, operationId, revisionToken: "locked-revision" })
+    expect(f.lockSet).toHaveBeenCalledWith({ p_session_id: sessionId, p_actor_admin_id: actorId, p_member_id: id(1), p_locked: true, p_operation_id: operationId, p_expected_revision: "current" })
+    expect(mocks.prepare).not.toHaveBeenCalled()
+  })
+  it("can lock a saved waiting member without pairing them", async () => {
+    const f = setup(), value = await f.read()
+    f.read.mockResolvedValue({ ...value, data: { ...value.data, layout: { waitingDuoIds: [id(1)], brokenPairs: [] } } })
+    expect(await setMatchingBoardMemberLock(lockRequest)).toMatchObject({ success: true })
+  })
+  it("does not lock unsaved placements or unmatched members", async () => {
+    const f = setup()
+    expect(await setMatchingBoardMemberLock(lockRequest)).toMatchObject({ error: expect.stringContaining("双人池") })
+    expect(f.lockSet).not.toHaveBeenCalled()
+  })
+  it("rejects stale and non-editable sessions before mutation", async () => {
+    const f = paired()
+    expect(await setMatchingBoardMemberLock({ ...lockRequest, expectedRevision: "old" })).toMatchObject({ error: expect.stringContaining("已变化") })
+    const value = await f.read(); f.read.mockResolvedValue({ ...value, data: { ...value.data, session_status: "confirmed" } })
+    expect(await setMatchingBoardMemberLock(lockRequest)).toMatchObject({ error: expect.stringContaining("不能编辑") })
+    expect(f.lockSet).not.toHaveBeenCalled()
+  })
+  it("resolves a lost committed response by operation receipt", async () => {
+    const f = paired()
+    f.lockSet.mockRejectedValue(new Error("connection lost"))
+    f.lockGet.mockResolvedValueOnce({ data: null, error: null }).mockResolvedValueOnce({ data: lockReceipt(), error: null })
+    expect(await setMatchingBoardMemberLock(lockRequest)).toMatchObject({ success: true, operationId, revisionToken: "locked-revision" })
+    expect(f.lockSet).toHaveBeenCalledOnce()
+  })
+  it("resolves successful retries before checking the now-stale revision", async () => {
+    const f = paired(); f.lockGet.mockResolvedValue({ data: lockReceipt(), error: null })
+    expect(await setMatchingBoardMemberLock(lockRequest)).toMatchObject({ success: true, operationId })
+    expect(f.read).not.toHaveBeenCalled(); expect(f.lockSet).not.toHaveBeenCalled()
+  })
+  it.each(["memberId", "locked", "expectedRevision"] as const)("rejects a retry with different %s", async (field) => {
+    const f = paired(); f.lockGet.mockResolvedValue({ data: lockReceipt(), error: null })
+    const changed = { ...lockRequest, [field]: field === "locked" ? false : field === "memberId" ? id(2) : "other" }
+    expect(await setMatchingBoardMemberLock(changed)).toMatchObject({ error: expect.stringContaining("其他调整"), operationId })
+    expect(f.lockSet).not.toHaveBeenCalled()
+  })
+  it("keeps the original operation ID on an unknown result and does not infer an unlocked state", async () => {
+    const f = paired(); f.lockSet.mockRejectedValue(new Error("connection lost"))
+    expect(await setMatchingBoardMemberLock(lockRequest)).toMatchObject({ unknown: true, operationId, error: expect.stringContaining("原操作编号") })
+    expect(f.lockSet).toHaveBeenCalledOnce()
+  })
+  it("reports definite database rejection without exposing raw error detail", async () => {
+    const f = paired(); f.lockSet.mockResolvedValue({ data: null, error: { message: "MATCH_BOARD_MEMBER_LOCK_REVISION PRIVATE-DETAIL", code: "PT409" } })
+    const result = await setMatchingBoardMemberLock(lockRequest)
+    expect(result).toMatchObject({ error: expect.stringContaining("已变化"), operationId })
+    expect(result.unknown).toBeUndefined(); expect(JSON.stringify(result)).not.toContain("PRIVATE-DETAIL")
   })
 })

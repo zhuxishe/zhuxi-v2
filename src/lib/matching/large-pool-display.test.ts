@@ -2,7 +2,8 @@ import { createElement } from "react"
 import { renderToReadableStream } from "react-dom/server"
 import { describe, expect, it, vi } from "vitest"
 
-vi.mock("next-intl", () => ({ useLocale: () => "zh" }))
+vi.mock("next-intl", () => ({ useLocale: () => "zh", useTranslations: () => (key: string) => key }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 import { MatchDetailCard } from "@/components/player/MatchDetailCard"
 import { GroupReviewSelector } from "@/components/player/GroupReviewSelector"
@@ -24,7 +25,8 @@ describe("existing player surfaces with a thirteen-member pool", () => {
     for (const member of others) expect(detailHtml).toContain(member.name)
     expect(detailHtml).toContain("13人组")
     expect(detailHtml).toContain("组员姓名13")
-    expect(detailHtml).toContain('href="/app/reviews/new/pool-result"')
+    expect(detailHtml).toContain('<button type="button"')
+    expect(detailHtml).not.toContain('href="/app/reviews/new/pool-result"')
 
     const reviews = createElement(GroupReviewSelector, { matchResultId: "pool-result", members: others, reviewedIds: [] })
     const reviewHtml = await new Response(await renderToReadableStream(reviews)).text()

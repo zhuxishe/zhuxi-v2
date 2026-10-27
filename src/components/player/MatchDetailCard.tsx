@@ -1,10 +1,12 @@
 "use client"
 
-import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { MessageSquare, CheckCircle } from "lucide-react"
-import { useLocale } from "next-intl"
+import { useLocale, useTranslations } from "next-intl"
 import { TagBadge } from "@/components/shared/TagBadge"
 import { localizeTag } from "@/lib/constants/tags-i18n"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogClose, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 interface PartnerProfile {
   name: string
@@ -42,6 +44,8 @@ interface Props {
 
 export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGroup, groupMemberNames, recommendedTime, ended, labels }: Props) {
   const locale = useLocale()
+  const t = useTranslations("playerMatches")
+  const router = useRouter()
   const tagGroups = buildTagList(partner, labels, locale)
 
   return (
@@ -66,12 +70,22 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGro
             <CheckCircle className="size-3.5" /> {labels.reviewed}
           </span>
         ) : (
-          <Link
-            href={`/app/reviews/new/${matchId}`}
-            className="inline-flex items-center gap-1 rounded-full bg-sakura/10 px-3 py-1 text-xs font-medium text-sakura hover:bg-sakura/20 transition-colors"
-          >
-            <MessageSquare className="size-3.5" /> {labels.review}
-          </Link>
+          <Dialog>
+            <DialogTrigger className="inline-flex items-center gap-1 rounded-full bg-sakura/10 px-3 py-1 text-xs font-medium text-sakura hover:bg-sakura/20 transition-colors">
+              <MessageSquare className="size-3.5" /> {labels.review}
+            </DialogTrigger>
+            <DialogContent showCloseButton={false}>
+              <DialogTitle>{t("reviewAfterActivityPrompt")}</DialogTitle>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <DialogClose render={<Button variant="outline" />}>
+                  {t("reviewAfterActivityCancel")}
+                </DialogClose>
+                <DialogClose render={<Button onClick={() => router.push(`/app/reviews/new/${matchId}`)} />}>
+                  {t("reviewAfterActivityConfirm")}
+                </DialogClose>
+              </div>
+            </DialogContent>
+          </Dialog>
         )}
       </div>
 

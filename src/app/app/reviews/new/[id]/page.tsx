@@ -1,4 +1,6 @@
 import { notFound, redirect } from "next/navigation"
+import Link from "next/link"
+import { ArrowLeft } from "lucide-react"
 import { requirePlayer } from "@/lib/auth/player"
 import { getTranslations } from "next-intl/server"
 import { checkReviewExists } from "@/lib/queries/reviews"
@@ -36,6 +38,7 @@ async function fetchMemberNames(memberIds: string[]) {
 export default async function NewReviewPage({ params, searchParams }: Props) {
   const player = await requirePlayer()
   const t = await getTranslations("reviews")
+  const common = await getTranslations("common")
   const { id: matchResultId } = await params
   const { reviewee: revieweeParam } = await searchParams
 
@@ -68,6 +71,7 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
 
       return (
         <div className="p-6">
+          <ReviewBackLink href={`/app/matches/${matchResultId}`} label={common("back")} />
           <h1 className="text-xl font-bold mb-1">{t("title")}</h1>
           <p className="text-sm text-muted-foreground mb-6">{t("selectReviewee")}</p>
           <GroupReviewSelector
@@ -85,6 +89,7 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
     const [revieweeName] = await fetchMemberNames([revieweeParam])
     return (
       <div className="p-6">
+        <ReviewBackLink href={`/app/reviews/new/${matchResultId}`} label={common("back")} />
         <h1 className="text-xl font-bold mb-1">{t("title")}</h1>
         <p className="text-sm text-muted-foreground mb-6">
           {t("subtitle")} — {revieweeName?.name ?? ""}
@@ -108,6 +113,7 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
 
   return (
     <div className="p-6">
+      <ReviewBackLink href={`/app/matches/${matchResultId}`} label={common("back")} />
       <h1 className="text-xl font-bold mb-1">{t("title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">{t("subtitle")}</p>
       <MutualReviewForm
@@ -117,6 +123,18 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
         publicationVersion={mr.publication_version}
       />
     </div>
+  )
+}
+
+function ReviewBackLink({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="-ml-2 mb-3 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+    >
+      <ArrowLeft className="size-4" aria-hidden="true" />
+      {label}
+    </Link>
   )
 }
 

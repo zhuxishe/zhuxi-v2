@@ -10,7 +10,7 @@ vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.admin }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.db }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.invalidate }))
 vi.mock("./run-input", async (original) => ({ ...await original<typeof import("./run-input")>(), prepareMatchingRunInput: mocks.prepare }))
-import { boardRequestHash, fetchMatchingBoard, inspectMatchingBoardPair, inspectMatchingBoardMultiMove, rematchMatchingBoard, saveMatchingBoard, setMatchingBoardMemberLock } from "./board-service"
+import { boardRequestHash, fetchMatchingBoard, inspectMatchingBoardGroup, inspectMatchingBoardGroupMove, inspectMatchingBoardPair, inspectMatchingBoardMultiMove, rematchMatchingBoard, saveMatchingBoard, setMatchingBoardMemberLock } from "./board-service"
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`
 const sessionId = id(100), operationId = id(101), actorId = id(102), reason = "根据已确认的可用时间调整匹配"
@@ -129,6 +129,13 @@ describe("board service authorization, capture and save boundary", () => {
     expect(await saveMatchingBoard(f.request)).toMatchObject({ error: expect.stringContaining("其他调整") })
     expect(f.read).not.toHaveBeenCalled(); expect(f.save).not.toHaveBeenCalled()
   })
+  it("explains an obsolete pre-grouping client save without exposing raw database details", async () => {
+    const f = setup(); f.save.mockResolvedValue({ data: null, error: { code: "PT409", message: "MATCH_BOARD_GROUPED_REQUIRED:PRIVATE-DETAIL" } })
+    const result = await saveMatchingBoard(f.request)
+    expect(result).toMatchObject({ operationId, error: expect.stringContaining("页面版本已过期") })
+    expect(result.unknown).toBeUndefined()
+    expect(JSON.stringify(result)).not.toContain("PRIVATE-DETAIL")
+  })
   it("retains the original operation ID when the save outcome is unknown", async () => {
     const f = setup(); f.save.mockRejectedValue(new Error("connection lost"))
     expect(await saveMatchingBoard(f.request)).toMatchObject({ unknown: true, operationId, error: expect.stringContaining("原操作编号") })
@@ -230,5 +237,61 @@ describe("individual member lock service", () => {
     const result = await setMatchingBoardMemberLock(lockRequest)
     expect(result).toMatchObject({ error: expect.stringContaining("已变化"), operationId })
     expect(result.unknown).toBeUndefined(); expect(JSON.stringify(result)).not.toContain("PRIVATE-DETAIL")
+  })
+})
+
+
+describe("formal multiplayer group service boundary", () => {
+  function pool(n = 7) {
+    const input = engine(n)
+    input.candidates.forEach((member) => { member.availability["2026-10-31"] = ["下午", "晚上"] })
+    const row = { ...inspectManualAdjustment(input, input.candidates.map((member) => member.submissionId)).rows[0], id: id(130), status: "draft" }
+    const f = setup(input, [row])
+    f.request.draft.multi = { key: row.id, resultId: row.id, memberIds: [...row.group_members!], bestSlot: row.best_slot }
+    return f
+  }
+  it("previews an explicit group without writing and rejects stale or published requests", async () => {
+    const f = pool()
+    const input = { ...f.request, memberIds: [id(1), id(2), id(3)], slot: "2026-10-31_晚上" }
+    const result = await inspectMatchingBoardGroup(input)
+    expect(result).toMatchObject({ success: true, passed: true, draft: { multiMode: "grouped", multiGroups: [{ memberIds: input.memberIds, bestSlot: input.slot }] } })
+    expect(f.save).not.toHaveBeenCalled()
+    expect(await inspectMatchingBoardGroup({ ...input, expectedRevision: "old" })).toMatchObject({ error: expect.stringContaining("已变化") })
+    const value = await f.read(); f.read.mockResolvedValue({ ...value, data: { ...value.data, session_status: "confirmed" } })
+    expect(await inspectMatchingBoardGroup(input)).toMatchObject({ error: expect.stringContaining("不能编辑") })
+    expect(f.save).not.toHaveBeenCalled()
+  })
+  it("sends only validated groups as result rows and persists the one-person waiting pool in layout", async () => {
+    const f = pool()
+    const first = await inspectMatchingBoardGroup({ ...f.request, memberIds: [id(1), id(2), id(3)], slot: "2026-10-31_晚上" })
+    const second = await inspectMatchingBoardGroup({ ...f.request, draft: first.draft!, memberIds: [id(4), id(5), id(6)], slot: "2026-10-31_下午" })
+    expect(await saveMatchingBoard({ ...f.request, draft: second.draft! })).toMatchObject({ success: true })
+    const saved = f.save.mock.calls[0][0]
+    expect(saved.p_keep_result_ids).toEqual([])
+    expect(saved.p_rows.map((row: BoardSourceRow) => row.group_members)).toEqual([[id(1), id(2), id(3)], [id(4), id(5), id(6)]])
+    expect(saved.p_layout).toEqual({ waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", waitingMultiIds: [id(7)], multiPoolSlot: "2026-10-31_下午" })
+    expect(saved.p_unmatched_ids).toEqual([id(7)])
+    expect(saved.p_request_hash).not.toBe(boardRequestHash(f.request, reason))
+  })
+  it("validates group moves and blocks incomplete groups before a database save", async () => {
+    const f = pool(6)
+    const first = await inspectMatchingBoardGroup({ ...f.request, memberIds: [id(1), id(2), id(3)], slot: "2026-10-31_下午" })
+    const second = await inspectMatchingBoardGroup({ ...f.request, draft: first.draft!, memberIds: [id(4), id(5), id(6)], slot: "2026-10-31_下午" })
+    const moved = await inspectMatchingBoardGroupMove({ ...f.request, draft: second.draft!, memberId: id(3), groupKey: second.draft!.multiGroups![1].key })
+    expect(moved).toMatchObject({ passed: true })
+    expect(await saveMatchingBoard({ ...f.request, draft: moved.draft! })).toMatchObject({ error: expect.stringContaining("至少需要3人") })
+    expect(f.save).not.toHaveBeenCalled()
+  })
+  it("redacts raw group constraints for ordinary admins and rejects malformed request fields", async () => {
+    const f = pool()
+    f.input.pairRelations.push([pairKey(id(2), id(3)), { playerA: id(2), playerB: id(3), status: "blacklist", totalPairCount: 1, hasMutualFive: false, reason: "PRIVATE-RELATION" }])
+    mocks.admin.mockResolvedValue({ id: actorId, role: "admin" })
+    const result = await inspectMatchingBoardGroup({ ...f.request, memberIds: [id(1), id(2), id(3)], slot: "2026-10-31_下午" })
+    expect(result.passed).toBe(false)
+    expect(JSON.stringify(result)).not.toContain("黑名单")
+    expect(JSON.stringify(result)).not.toContain("PRIVATE-")
+    expect(await inspectMatchingBoardGroup({ ...f.request, memberIds: [id(1)], slot: "" })).toMatchObject({ error: expect.any(String) })
+    expect(await inspectMatchingBoardGroupMove({ ...f.request, memberId: id(1), groupKey: "" })).toMatchObject({ error: expect.any(String) })
+    expect(f.save).not.toHaveBeenCalled()
   })
 })

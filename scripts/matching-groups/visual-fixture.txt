@@ -1,0 +1,75 @@
+// Real board and pure matching engine with fictitious data and isolated actions.
+// No database, notification, or real publication can be reached from this fixture.
+import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { MatchingBoardView } from '@/components/admin/MatchingBoardView'
+import * as boardEngine from '@/lib/matching/board-engine'
+import { inspectManualAdjustment } from '@/lib/matching/adjustment-engine'
+import { createScoringV3Config } from '@/lib/matching/scoring-policy'
+const params = new URLSearchParams(location.search)
+const names = ['示例星一','示例星二','示例月一','示例月二','示例月三','示例月四','示例月五','示例月六','示例月七','示例月八','示例月九','示例月十','示例月十一','示例月十二','示例云一','示例云二']
+const ids = names.map((_, i) => `00000000-0000-4000-8000-${String(i + 1).padStart(12, '0')}`)
+const poolIds = ids.slice(2,14)
+const baseSlot = '2026-11-01_下午'
+const candidates = ids.map((id, i) => {
+  const availability = {'2026-11-01':['下午']}
+  if (i < 11) availability['2026-11-02'] = ['上午','下午']
+  if (i < 9) availability['2026-11-03'] = ['晚上']
+  if (i < 8) availability['2026-11-04'] = ['上午']
+  if (i < 7) availability['2026-11-05'] = ['下午']
+  if (i < 6) availability['2026-11-06'] = ['晚上']
+  return { submissionId:id,name:names[i],gameTypePref:i>=2&&i<14?'多人':'都可以',genderPref:'都可以',availability,formInterestTags:['推理','音乐'],formSocialStyle:null,gender:i%2?'女':'男',school:'示例大学',interestTags:['推理','音乐'],socialTags:[],level:1,compatibilityScore:4,matchHistory:[],gameMode:null,hasProfile:true }
+})
+const context = {cohortMemberIds:ids,originalRows:[],lockedMemberIds:[],originalLayout:{waitingDuoIds:[],brokenPairs:[]},engine:{candidates,idMap:ids.map(id=>[id,id]),pairRelations:[],algorithm_version:'max_coverage_split:3',adapter_version:2,config:createScoringV3Config({version:'weighted_feedback:1',quizVersionId:'quiz',dimensionWeights:{E:.3,A:.3,O:.15,C:.1,N:.15},activityFeedback:[]})}}
+const makeRow = (members, id, slot=baseSlot) => ({...inspectManualAdjustment(context.engine,members).rows[0],id,status:'draft',best_slot:slot})
+context.originalRows = [makeRow(ids.slice(0,2),'fixture-duo'),makeRow(poolIds,'fixture-pool')]
+let currentDraft = boardEngine.createBoardDraft(context.originalRows,ids,context.originalLayout)
+if (params.get('mode') === 'empty') {
+  context.originalRows = context.originalRows.slice(0,1)
+  currentDraft = boardEngine.createBoardDraft(context.originalRows,ids,context.originalLayout)
+}
+if (params.get('mode') === 'grouped') {
+  const grouped = [poolIds.slice(0,3),poolIds.slice(3,6)]
+  context.originalRows = [context.originalRows[0],...grouped.map((members,i)=>makeRow(members,`fixture-group-${i+1}`,i===0?'2026-11-02_上午':baseSlot))]
+  currentDraft = { ...currentDraft, multiMode:'grouped', multi:{key:'fixture-waiting',memberIds:poolIds.slice(6),bestSlot:baseSlot}, multiGroups:grouped.map((members,i)=>({key:`fixture-group-${i+1}`,resultId:`fixture-group-${i+1}`,memberIds:members,bestSlot:i===0?'2026-11-02_上午':baseSlot})) }
+}
+if (currentDraft.multiMode === 'grouped') context.originalLayout = {waitingDuoIds:currentDraft.waitingDuoIds,brokenPairs:currentDraft.brokenPairs,multiMode:'grouped',waitingMultiIds:currentDraft.multi?.memberIds??[],multiPoolSlot:currentDraft.multi?.bestSlot??null}
+if (params.get('locked') === '1') context.originalRows = context.originalRows.map((row,i)=>i===1?{...row,status:'locked'}:row)
+const boardMembers = ids.map((id,i)=>({id,record_source:null,member_identity:{full_name:names[i],nickname:null,school_name:'示例大学',gender:i===13?'':i%2?'female':'male',hobby_tags:['推理','音乐'],nationality:'中国',degree_level:'硕士',department:'社会学'},member_interests:{game_type_pref:candidates[i].gameTypePref,scenario_theme_tags:['推理'],preferred_time_slots:[],social_goal_primary:'结交朋友'},member_personality:{expression_style_tags:[],group_role_tags:[],extroversion:3,warmup_speed:'适中'},member_boundaries:{preferred_gender_mix:'都可以'}}))
+const submissionPrefs = Object.fromEntries(ids.map((id,i)=>[id,{game_type_pref:candidates[i].gameTypePref,gender_pref:'都可以',availability:candidates[i].availability,interest_tags:['推理','音乐']}]))
+const raw = params.get('permission') !== 'admin'
+let revision=1
+function snapshot() { return {draft:structuredClone(currentDraft),revisionToken:String(revision),rows:context.originalRows.map(r=>({...r,key:r.id,resultId:r.id})),lockedResultIds:context.originalRows.filter(r=>r.status==='locked').map(r=>r.id),lockedMemberIds:context.lockedMemberIds,cohortMemberIds:ids,canViewRaw:raw,operations:[],...(raw?{currentSubmissionPrefs:submissionPrefs}:{})} }
+const wrap = task => async request => { try { return {success:true,...task(request)} } catch (error) { return {error:error.message} } }
+const checked = out => ({draft:out.draft,rows:out.rows,passed:out.passed??true,reasons:out.reasons??[]})
+window.__boardActions = {
+ loadMatchingBoard:async()=>snapshot(),
+ setBoardMemberLock:async({memberId,locked,operationId})=>{context.lockedMemberIds=locked?[...new Set([...context.lockedMemberIds,memberId])]:context.lockedMemberIds.filter(id=>id!==memberId);revision++;return {success:true,operationId}},
+ inspectBoardPair:wrap(({draft,memberIds})=>checked(boardEngine.previewBoardPair(context,draft,memberIds))),
+ inspectBoardMultiMove:wrap(({draft,memberId})=>checked(boardEngine.previewBoardMultiMove(context,draft,memberId))),
+ inspectBoardGroup:wrap(({draft,memberIds,slot})=>checked(boardEngine.previewBoardGroup(context,draft,memberIds,slot))),
+ inspectBoardGroupMove:wrap(({draft,memberId,groupKey})=>checked(boardEngine.previewBoardGroupMove(context,draft,memberId,groupKey))),
+ rematchBoard:wrap(({draft})=>checked(boardEngine.rematchBoardDraft(context,draft))),
+ saveBoard:wrap(({draft,operationId})=>{
+   const out=boardEngine.evaluateBoard(context,draft,true)
+   const groups=out.draft.multiGroups??[]
+   const entries=[...out.draft.duos,...(out.draft.multiMode==='grouped'?groups:out.draft.multi?[out.draft.multi]:[])]
+   const idsByKey=new Map(entries.map((entry,i)=>[entry.key,entry.resultId??`saved-${revision}-${i}`]))
+   context.originalRows=out.rows.map(row=>({...row,id:row.resultId??idsByKey.get(row.key),status:row.status??'draft'}))
+   const canonical=entry=>({...entry,key:idsByKey.get(entry.key),resultId:idsByKey.get(entry.key)})
+   currentDraft={...out.draft,duos:out.draft.duos.map(canonical),...(out.draft.multiMode==='grouped'?{multiGroups:groups.map(canonical)}:{multi:out.draft.multi?canonical(out.draft.multi):null})}
+   context.originalLayout={waitingDuoIds:currentDraft.waitingDuoIds,brokenPairs:currentDraft.brokenPairs,...(currentDraft.multiMode==='grouped'?{multiMode:'grouped',waitingMultiIds:currentDraft.multi?.memberIds??[],multiPoolSlot:currentDraft.multi?.bestSlot??null}:{})}
+   revision++; return {operationId}
+ }),
+ confirmSession:async()=>({error:'此页面仅作本地验收，不发布真实结果'}),
+ unpublishSession:async()=>({error:'此页面仅作本地验收，不撤回真实结果'}),
+ lockPair:async id=>{context.originalRows=context.originalRows.map(row=>row.id===id?{...row,status:'locked'}:row);revision++;return {success:true}},
+ unlockPair:async id=>{context.originalRows=context.originalRows.map(row=>row.id===id?{...row,status:'draft'}:row);revision++;return {success:true}},
+ recoverMatchingAdjustment:async()=>({error:'验收数据没有历史操作'}),
+}
+function App() {
+ const [current,setCurrent]=useState(snapshot)
+ window.__boardRefresh=()=>setCurrent(snapshot())
+ return <div style={{maxWidth:1800,margin:'0 auto'}}><header className="flex items-center justify-between gap-4 border-b px-6 py-5"><strong>竹溪社 · 多人分组</strong><span className="text-xs text-muted-foreground">虚构人员 · 本地交互验收 · 不连接线上数据</span></header><MatchingBoardView key={current.revisionToken} session={{id:'00000000-0000-4000-8000-000000000100',session_name:'多人时间分组验收',status:params.get('status')==='confirmed'?'confirmed':'draft',results_ready:true,total_candidates:ids.length,total_matched:14,total_unmatched:2,round_id:'round',publication_version:2}} results={[]} diagnostics={[]} candidates={[]} boardSnapshot={current} boardMembers={boardMembers} submissionPrefs={raw?submissionPrefs:{}} canViewRawSubmissions={raw}/></div>
+}
+createRoot(document.getElementById('root')).render(<App />)

@@ -5,8 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { validateUuids } from "@/lib/sanitize"
 import { prepareMatchingRunInput } from "./run-input"
-import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardMultiMove, previewBoardPair, rematchBoardDraft, type BoardContext } from "./board-engine"
-import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference, BoardMemberLockRequest, BoardMemberLockOperationSummary } from "./board-types"
+import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, rematchBoardDraft, type BoardContext } from "./board-engine"
+import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference, BoardMemberLockRequest, BoardMemberLockOperationSummary, BoardLayout } from "./board-types"
 
 type RpcError = { code?: string; message: string }
 type RpcClient = { rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{ data: T | null; error: RpcError | null }> }
@@ -14,7 +14,7 @@ interface Capture {
   base_revision: string
   capture: unknown
   results: BoardSourceRow[]
-  layout: Pick<BoardDraft, "waitingDuoIds" | "brokenPairs"> | null
+  layout: BoardLayout | null
   cohort_member_ids: string[]
   round_id?: string
   session_status?: string
@@ -29,6 +29,7 @@ interface Receipt { session_id: string; operation_id: string; request_hash: stri
 function errorMessage(error: unknown) {
   if (error instanceof BoardValidationError) return error.message
   const message = typeof error === "object" && error && "message" in error ? String(error.message) : ""
+  if (/^MATCH_BOARD_GROUPED_REQUIRED(?::|$)/.test(message)) return "此方案已启用多人分组，当前页面版本已过期，请刷新后在分组区域继续调整。"
   if (/STALE|CHANGED|REVISION/.test(message)) return "方案或人员资料已变化，本次未保存。请刷新后重新调整。"
   if (/LOCKED/.test(message)) return "已锁定的匹配不能调整，请先解锁并刷新。"
   if (/DRAFT|PUBLISHED|SESSION_STATUS/.test(message)) return "当前方案不能编辑，请先撤回已发布方案或等待匹配完成。"
@@ -44,7 +45,7 @@ function validateRequest(input: BoardRequest) {
   validateUuids([input.sessionId])
   if (typeof input.expectedRevision !== "string" || !input.expectedRevision.length || input.expectedRevision.length > 1000) throw new BoardValidationError("缺少方案版本，请刷新后重试")
   assertBoardDraft(input.draft)
-  validateUuids([...input.draft.duos.flatMap((duo) => duo.memberIds), ...(input.draft.multi?.memberIds ?? []), ...input.draft.waitingDuoIds, ...input.draft.unmatchedIds])
+  validateUuids([...input.draft.duos.flatMap((duo) => duo.memberIds), ...(input.draft.multi?.memberIds ?? []), ...(input.draft.multiGroups ?? []).flatMap((group) => group.memberIds), ...input.draft.waitingDuoIds, ...input.draft.unmatchedIds])
 }
 async function captureBoard(db: RpcClient, sessionId: string, actorId: string, expectedRevision?: string) {
   const { data, error } = await db.rpc<Capture>("admin_get_matching_board", { p_session_id: sessionId, p_actor_admin_id: actorId })
@@ -70,7 +71,7 @@ export function redactBoardRows(rows: BoardDisplayRow[], canViewRaw: boolean): B
 function safeResult(result: { draft: BoardDraft; rows: BoardDisplayRow[]; passed?: boolean; reasons?: string[] }, revision: string, canViewRaw: boolean): BoardActionResult {
   return { success: true, draft: result.draft, rows: redactBoardRows(result.rows, canViewRaw), revisionToken: revision,
     ...(result.passed !== undefined ? { passed: result.passed } : {}),
-    ...(result.reasons ? { reasons: canViewRaw || !result.reasons.length ? result.reasons : ["不满足共同时间或匹配约束，已保留在未匹配池。"] } : {}) }
+    ...(result.reasons ? { reasons: canViewRaw || !result.reasons.length ? result.reasons : ["不满足共同时间或匹配约束，请核对后重试。"] } : {}) }
 }
 
 function currentSubmissionPreferences(capture: unknown, cohortMemberIds: string[]): Record<string, BoardSubmissionPreference> {
@@ -135,6 +136,20 @@ export async function inspectMatchingBoardMultiMove(input: BoardRequest & { memb
     return previewBoardMultiMove(context, input.draft, input.memberId)
   })
 }
+export async function inspectMatchingBoardGroup(input: BoardRequest & { memberIds: string[]; slot: string }): Promise<BoardActionResult> {
+  return preview(input, (context) => {
+    if (!Array.isArray(input.memberIds) || input.memberIds.length < 3 || input.memberIds.length > 10000 || typeof input.slot !== "string" || input.slot.length > 100) throw new BoardValidationError("请选择至少3人和有效共同时间")
+    validateUuids(input.memberIds)
+    return previewBoardGroup(context, input.draft, input.memberIds, input.slot)
+  })
+}
+export async function inspectMatchingBoardGroupMove(input: BoardRequest & { memberId: string; groupKey: string }): Promise<BoardActionResult> {
+  return preview(input, (context) => {
+    validateUuids([input.memberId])
+    if (typeof input.groupKey !== "string" || !input.groupKey.length || input.groupKey.length > 1000) throw new BoardValidationError("目标多人组无效")
+    return previewBoardGroupMove(context, input.draft, input.memberId, input.groupKey)
+  })
+}
 export async function rematchMatchingBoard(input: BoardRequest): Promise<BoardActionResult> {
   return preview(input, (context) => rematchBoardDraft(context, input.draft))
 }
@@ -187,7 +202,9 @@ export async function saveMatchingBoard(input: BoardRequest & { operationId: str
     const result = await db.rpc<Receipt>("admin_save_matching_board", {
       p_session_id: input.sessionId, p_actor_admin_id: admin.id, p_operation_id: input.operationId, p_reason: reason.reason,
       p_expected_revision: input.expectedRevision, p_engine: context.engine, p_keep_result_ids: evaluation.keepResultIds,
-      p_rows: evaluation.changedRows, p_layout: { waitingDuoIds: evaluation.draft.waitingDuoIds, brokenPairs: evaluation.draft.brokenPairs },
+      p_rows: evaluation.changedRows, p_layout: { waitingDuoIds: evaluation.draft.waitingDuoIds, brokenPairs: evaluation.draft.brokenPairs,
+        ...(evaluation.draft.multiMode === "grouped" ? { multiMode: "grouped", waitingMultiIds: evaluation.draft.multi?.memberIds ?? [], multiPoolSlot: evaluation.draft.multi?.bestSlot ?? null } : {}),
+      },
       p_unmatched_ids: evaluation.unmatchedIds, p_request_hash: hash,
     })
     if (result.error) throw result.error

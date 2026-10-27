@@ -6,6 +6,7 @@ const MESSAGES: Record<string, string> = {
   MATCH_PUBLICATION_SESSION_CHANGED: "发布状态已变化，请刷新后重试；当前操作未生效",
   MATCH_PUBLICATION_STALE: "发布版本或审批状态已变化，请刷新并核对后重试；当前操作未生效",
   MATCH_PUBLICATION_INVALID_RESULT: "匹配结果不完整或存在重复成员，请核对后再发布",
+  MATCH_PUBLICATION_GROUPS_PENDING: "多人池还有待分组人员，请先分入正式小组或移至未匹配池，再确认发布。",
   MATCH_PUBLICATION_INCOMPLETE: "本次匹配尚未完整生成，请刷新并核对后再发布",
   MATCH_PUBLICATION_INVALID_MEMBER: "匹配成员当前不可参与，请核对成员状态后再发布",
   MATCH_PUBLICATION_PREFLIGHT_REQUIRED: "发布前须重新完成资格与硬约束复核，请刷新后重试；本次未发布",

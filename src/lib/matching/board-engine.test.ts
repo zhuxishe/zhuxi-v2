@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createBoardDraft, evaluateBoard, previewBoardMultiMove, previewBoardPair, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
+import { createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
 import { inspectManualAdjustment } from "./adjustment-engine"
 import { pairKey } from "./pair-history"
 import type { BoardDraft, BoardSourceRow } from "./board-types"
@@ -200,5 +200,147 @@ describe("server-captured individual duo pool pins", () => {
     const ctx = context(4); original(ctx, ["1", "2"], "old-lock", true); ctx.lockedMemberIds = []
     const input = draft(ctx); input.duos = []; input.waitingDuoIds = ["1", "2"]
     expect(() => evaluateBoard(ctx, input, true)).toThrow("已锁定的匹配")
+  })
+})
+
+
+describe("independent formal multiplayer groups", () => {
+  it("converts a legacy pool only after explicit group confirmation and keeps the remaining waiting time", () => {
+    const ctx = context(8); original(ctx, ["1", "2", "3", "4", "5", "6", "7"], "pool")
+    const input = draft(ctx), before = structuredClone(input)
+    const result = previewBoardGroup(ctx, input, ["1", "2", "3"], "2026-10-31_晚上")
+    expect(input).toEqual(before)
+    expect(result.draft).toMatchObject({ multiMode: "grouped", multi: { key: "waiting-multi", memberIds: ["4", "5", "6", "7"], bestSlot: "2026-10-31_下午" },
+      multiGroups: [{ memberIds: ["1", "2", "3"], bestSlot: "2026-10-31_晚上" }], unmatchedIds: ["8"] })
+    expect(result.draft.multi?.resultId).toBeUndefined()
+    const saved = evaluateBoard(ctx, result.draft, true)
+    expect(saved.keepResultIds).toEqual([])
+    expect(saved.changedRows).toHaveLength(1)
+    expect(saved.unmatchedIds).toEqual(["8", "4", "5", "6", "7"])
+  })
+  it("saves multiple disjoint groups at separate shared times without a six-person cap", () => {
+    const ctx = context(11); original(ctx, ctx.cohortMemberIds, "pool")
+    const first = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3", "4", "5", "6", "7"], "2026-10-31_晚上")
+    const second = previewBoardGroup(ctx, first.draft, ["8", "9", "10", "11"], "2026-10-31_下午")
+    const saved = evaluateBoard(ctx, second.draft, true)
+    expect(saved.draft.multi).toBeNull()
+    expect(saved.changedRows.map((row) => [row.group_members?.length, row.best_slot])).toEqual([[7, "2026-10-31_晚上"], [4, "2026-10-31_下午"]])
+    expect(saved.unmatchedIds).toEqual([])
+  })
+  it("allows one or two waiting people to remain in a saved draft without turning them into a result", () => {
+    const ctx = context(5); original(ctx, ctx.cohortMemberIds, "pool")
+    const grouped = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午").draft
+    const saved = evaluateBoard(ctx, grouped, true)
+    expect(saved.rows).toHaveLength(1); expect(saved.unmatchedIds).toEqual(["4", "5"])
+    expect(saved.draft.multi?.memberIds).toEqual(["4", "5"])
+  })
+  it("does not require the remaining waiting people to already satisfy a final group gender preference", () => {
+    const ctx = context(7)
+    ctx.engine.candidates.forEach((member, index) => { member.gender = index < 4 ? "男" : "女"; member.genderPref = index < 4 ? "女" : "男" })
+    original(ctx, ctx.cohortMemberIds, "pool")
+    const grouped = previewBoardGroup(ctx, draft(ctx), ["1", "5", "6", "7"], "2026-10-31_下午").draft
+    expect(evaluateBoard(ctx, grouped, true).unmatchedIds).toEqual(["2", "3", "4"])
+    expect(previewBoardGroup(ctx, grouped, ["2", "3", "4"], "2026-10-31_下午").passed).toBe(false)
+  })
+  it("preserves the waiting pool anchor while permitting another valid time for a formal group", () => {
+    const ctx = context(6); original(ctx, ctx.cohortMemberIds, "pool")
+    const grouped = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_晚上").draft
+    grouped.multi!.bestSlot = "2026-10-31_晚上"
+    expect(() => evaluateBoard(ctx, grouped, true)).toThrow("不能改变共同时间")
+  })
+  it("reloads saved group membership and separates waiting people from unmatched diagnostics", () => {
+    const ctx = context(9); original(ctx, ["1", "2", "3"], "first"); original(ctx, ["4", "5", "6"], "second")
+    const layout = { waitingDuoIds: ["9"], brokenPairs: [], multiMode: "grouped" as const, waitingMultiIds: ["7", "7", "1", "outside"], multiPoolSlot: "2026-10-31_下午" }
+    ctx.originalLayout = layout
+    const restored = createBoardDraft(ctx.originalRows, ctx.cohortMemberIds, layout)
+    expect(restored.multiGroups?.map((group) => group.resultId)).toEqual(["first", "second"])
+    expect(restored.multi?.memberIds).toEqual(["7"]); expect(restored.waitingDuoIds).toEqual(["9"]); expect(restored.unmatchedIds).toEqual(["8"])
+    expect(evaluateBoard(ctx, restored, true).keepResultIds).toEqual(["first", "second"])
+    expect(() => evaluateBoard(ctx, { ...restored, multiMode: undefined, multiGroups: [] })).toThrow("不能恢复")
+  })
+  it("allocates a distinct group key when a former first member creates another group at the same time", () => {
+    const ctx = context(7); original(ctx, ctx.cohortMemberIds, "pool")
+    const first = previewBoardGroup(ctx, draft(ctx), ctx.cohortMemberIds, "2026-10-31_下午").draft
+    const originalKey = first.multiGroups![0].key
+    let returned = first
+    for (const memberId of ["1", "5", "6"]) returned = previewBoardMultiMove(ctx, returned, memberId).draft
+    expect(returned.multiGroups![0]).toMatchObject({ key: originalKey, memberIds: ["2", "3", "4", "7"] })
+    const next = previewBoardGroup(ctx, returned, ["1", "5", "6"], "2026-10-31_下午").draft
+    expect(next.multiGroups?.map((group) => group.key)).toEqual([originalKey, `${originalKey}:2`])
+    expect(evaluateBoard(ctx, next, true).changedRows.map((row) => row.group_members)).toEqual([["2", "3", "4", "7"], ["1", "5", "6"]])
+  })
+  it("never lets the same person be confirmed from another candidate row after joining a group", () => {
+    const ctx = context(6); original(ctx, ctx.cohortMemberIds, "pool")
+    const first = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午")
+    expect(() => previewBoardGroup(ctx, first.draft, ["1", "4", "5"], "2026-10-31_晚上")).toThrow("待分组池")
+    const duplicate = structuredClone(first.draft)
+    duplicate.multiGroups!.push({ key: "duplicate", memberIds: ["1", "4", "5"], bestSlot: "2026-10-31_晚上" })
+    expect(() => evaluateBoard(ctx, duplicate)).toThrow("同一人员")
+  })
+  it("rejects unshared selected times without relocating any waiting member", () => {
+    const ctx = context(4); original(ctx, ctx.cohortMemberIds, "pool")
+    const input = draft(ctx)
+    const result = previewBoardGroup(ctx, input, ["1", "2", "3"], "2026-11-01_下午")
+    expect(result.passed).toBe(false); expect(result.draft).toEqual(input)
+    expect(() => previewBoardGroup(ctx, input, ["1", "1", "2"], "2026-10-31_下午")).toThrow("不同成员")
+  })
+  it("keeps whole-pool and existing-group locks authoritative during conversion and moves", () => {
+    const ctx = context(7); original(ctx, ["1", "2", "3", "4", "5", "6"], "pool", true)
+    expect(() => previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午")).toThrow("已锁定")
+    ctx.originalLayout = { waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", waitingMultiIds: [], multiPoolSlot: null }
+    const restored = createBoardDraft(ctx.originalRows, ctx.cohortMemberIds, ctx.originalLayout)
+    expect(() => previewBoardGroupMove(ctx, restored, "7", "pool")).toThrow("已锁定")
+    expect(() => previewBoardMultiMove(ctx, restored, "1")).toThrow("已锁定")
+  })
+  it("protects personally pinned duo members and refuses partnered people entering a group", () => {
+    const ctx = context(6); original(ctx, ["1", "2", "3"], "pool"); original(ctx, ["4", "5"], "duo")
+    const first = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午").draft
+    const key = first.multiGroups![0].key
+    expect(() => previewBoardGroupMove(ctx, first, "4", key)).toThrow("先取消")
+    const separated = structuredClone(first); separated.duos = []; separated.waitingDuoIds = ["4", "5"]
+    ctx.lockedMemberIds = ["4"]
+    expect(() => previewBoardGroupMove(ctx, separated, "4", key)).toThrow("必须留在双人池")
+  })
+  it("lets groups temporarily fall below three during movement but refuses to save until repaired", () => {
+    const ctx = context(7); original(ctx, ["1", "2", "3", "4", "5", "6"], "pool")
+    const first = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午")
+    const second = previewBoardGroup(ctx, first.draft, ["4", "5", "6"], "2026-10-31_晚上")
+    const moved = previewBoardGroupMove(ctx, second.draft, "3", second.draft.multiGroups![1].key)
+    expect(moved.draft.multiGroups?.map((group) => group.memberIds.length)).toEqual([2, 4])
+    expect(() => evaluateBoard(ctx, moved.draft, true)).toThrow("至少需要3人")
+    const repaired = previewBoardGroupMove(ctx, moved.draft, "7", moved.draft.multiGroups![0].key)
+    expect(evaluateBoard(ctx, repaired.draft, true).changedRows).toHaveLength(2)
+  })
+  it("rejects a group move at the wrong time and keeps all source placements unchanged", () => {
+    const ctx = context(4); original(ctx, ["1", "2", "3"], "pool")
+    ctx.engine.candidates[3].availability = { "2026-10-31": ["晚上"] }
+    const grouped = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午").draft
+    const result = previewBoardGroupMove(ctx, grouped, "4", grouped.multiGroups![0].key)
+    expect(result.passed).toBe(false); expect(result.draft).toEqual(grouped)
+    expect(() => previewBoardGroupMove(ctx, grouped, "4", "missing")).toThrow("不存在")
+  })
+  it("retains shared relationship vetoes for every member in a newly confirmed group", () => {
+    const ctx = context(4); original(ctx, ctx.cohortMemberIds, "pool")
+    ctx.engine.pairRelations.push([pairKey("2", "3"), { playerA: "2", playerB: "3", status: "blacklist", totalPairCount: 1, hasMutualFive: false, reason: "private" }])
+    expect(previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午").passed).toBe(false)
+  })
+  it("preserves formal groups and excludes waiting people when re-matching only unmatched people", () => {
+    const ctx = context(9); ctx.engine.candidates.forEach((member) => { member.gameTypePref = "多人" })
+    original(ctx, ["1", "2", "3", "4"], "pool")
+    const grouped = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_晚上").draft
+    const result = rematchBoardDraft(ctx, grouped)
+    expect(result.draft.multiGroups).toEqual(grouped.multiGroups)
+    expect(result.draft.multiMode).toBe("grouped")
+    expect(result.draft.multi?.memberIds).toEqual(["4", "5", "6", "7", "8", "9"])
+    expect(result.draft.unmatchedIds).toEqual([])
+  })
+  it("keeps new automatic multiplayer results waiting instead of inventing formal groups", () => {
+    const ctx = context(6); ctx.engine.candidates.forEach((member) => { member.gameTypePref = "多人" })
+    original(ctx, ["1", "2", "3"], "pool")
+    const grouped = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_晚上").draft
+    const result = rematchBoardDraft(ctx, grouped)
+    expect(result.draft.multiGroups).toEqual(grouped.multiGroups)
+    expect(result.draft.multi?.memberIds).toEqual(["4", "5", "6"])
+    expect(evaluateBoard(ctx, result.draft, true).changedRows).toHaveLength(1)
   })
 })

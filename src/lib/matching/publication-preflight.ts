@@ -98,7 +98,6 @@ export function inspectPublicationPreflight(
   const add = (row: PublicationResultInput, code: PublicationPreflightIssueCode) => {
     issues.push({ resultId: row.id, code, message: messages[code] })
   }
-  let poolCount = 0
   for (const row of rows) {
     // Historical cancellations and unmatched people are not being published as
     // an active match and must not acquire new matching-qualification gates.
@@ -111,7 +110,6 @@ export function inspectPublicationPreflight(
       || (isPool && (!memberIds.includes(row.member_a_id) || row.member_b_id !== null))
       || new Set(memberIds).size !== memberIds.length
       || memberIds.some((id) => seen.has(id))
-      || (isPool && ++poolCount > 1)
     memberIds.forEach((id) => seen.add(id))
     if (invalidShape) { add(row, "invalid_result"); continue }
     if (memberIds.some((id) => !byMember.has(id) || ambiguous.has(id))) {

@@ -15,10 +15,20 @@ export interface BoardMulti {
 export interface BoardDraft {
   duos: BoardDuo[]
   multi: BoardMulti | null
+  /** Absent on legacy boards; grouped pools contain only people awaiting a formal group. */
+  multiMode?: "grouped"
+  multiGroups?: BoardMulti[]
   waitingDuoIds: string[]
   /** Visual references only; both people must also be in waitingDuoIds. */
   brokenPairs: { key: string; memberIds: [string, string] }[]
   unmatchedIds: string[]
+}
+export interface BoardLayout {
+  waitingDuoIds: string[]
+  brokenPairs: BoardDraft["brokenPairs"]
+  multiMode?: "grouped"
+  waitingMultiIds?: string[]
+  multiPoolSlot?: string | null
 }
 export type BoardDisplayRow = MatchResultRow & { key: string; resultId?: string; status?: string }
 export type BoardSourceRow = MatchResultRow & { id: string; status: string }

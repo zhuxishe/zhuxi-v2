@@ -28,8 +28,11 @@ function invalidate(sessionId: string, roundId?: string) {
   if (roundId) revalidatePath(`/admin/matching/rounds/${roundId}`)
 }
 
+const GROUPED_BOARD_ERROR = "此方案已启用多人分组，请返回三池子页面调整并统一保存。"
+
 function message(error: RpcError | null, fallback: string) {
   const value = error?.message ?? ""
+  if (/^MATCH_ADJUSTMENT_BOARD_GROUPED(?::|$)/.test(value)) return GROUPED_BOARD_ERROR
   if (/CANDIDATES_INSUFFICIENT/.test(value)) return MATCHING_ADJUSTMENT_ERRORS.CANDIDATES_INSUFFICIENT
   if (/REQUIRES_DRAFT/.test(value)) return "当前方案尚未完整生成或已经发布，请刷新；已发布方案须先撤回后调整。"
   if (/NOT_RECOVERABLE/.test(value)) return "本编号不能继续恢复，请核对调整记录，重新检查后再明确新增操作。"
@@ -182,6 +185,7 @@ async function execute(input: ExecuteInput, actorId: string): Promise<MatchingAd
   if (saved) { invalidate(input.sessionId, receipt.operation.round_id); return saved }
   if (!receipt.acquired || !receipt.lease_token) return { error: receipt.operation.status === "failed" ? MATCHING_ADJUSTMENT_ERRORS[receipt.operation.error_code ?? "UNKNOWN"] ?? MATCHING_ADJUSTMENT_ERRORS.UNKNOWN : "本次调整正在处理，请保留原编号并刷新操作记录。", operationId: input.operationId, status: receipt.operation.status, busy: receipt.operation.status === "running" }
   let code = "INPUT_INVALID"
+  let groupedBoardRefusal = false
   try {
     let rows: ReturnType<typeof buildManualAdjustment> = [], unmatchedIds: string[] = [], diagnostics: ReturnType<typeof buildUnmatchedDiagnostics> = []
     if (input.kind !== "split") {
@@ -217,6 +221,7 @@ async function execute(input: ExecuteInput, actorId: string): Promise<MatchingAd
     })
     if (error || !data?.operation || !terminal(data)) {
       const detail = error?.message ?? ""
+      if (/^MATCH_ADJUSTMENT_BOARD_GROUPED(?::|$)/.test(detail)) { code = "ADJUSTMENT_CHANGED"; groupedBoardRefusal = true }
       if (/STALE|CHANGED/.test(detail) && !/LEASE/.test(detail)) code = "ADJUSTMENT_CHANGED"
       if (/MEMBER_INELIGIBLE/.test(detail)) code = "MEMBER_INELIGIBLE"
       if (/MEMBER_OCCUPIED/.test(detail)) code = "MEMBER_OCCUPIED"
@@ -233,7 +238,7 @@ async function execute(input: ExecuteInput, actorId: string): Promise<MatchingAd
     if (error instanceof Error && "code" in error && error.code === "MATCHING_ADJUSTMENT_CONSTRAINT") code = "CONSTRAINTS_FAILED"
     const result = await fail(db, receipt, actorId, code)
     invalidate(input.sessionId, receipt.operation.round_id)
-    return result
+    return groupedBoardRefusal && result.status === "failed" && !result.success ? { ...result, error: GROUPED_BOARD_ERROR } : result
   }
 }
 

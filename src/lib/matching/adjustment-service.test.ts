@@ -113,6 +113,13 @@ describe("controlled matching adjustment lifecycle", () => {
     expect(await perform()).toMatchObject({ status: "failed", error: expect.stringContaining(expected) })
     expect(f.fail).toHaveBeenCalledWith(expect.objectContaining({ p_error_code: code }))
   })
+  it("turns a grouped-board refusal at commit into a terminal changed-operation record and directs edits to the board", async () => {
+    const f = fixture(); f.complete.mockResolvedValue({ data: null, error: { code: "PT409", message: "MATCH_ADJUSTMENT_BOARD_GROUPED:PRIVATE-DETAIL" } })
+    const result = await perform()
+    expect(result).toMatchObject({ status: "failed", error: expect.stringContaining("三池子页面") })
+    expect(JSON.stringify(result)).not.toContain("PRIVATE-DETAIL")
+    expect(f.fail).toHaveBeenCalledWith(expect.objectContaining({ p_error_code: "ADJUSTMENT_CHANGED" }))
+  })
   it("never rebuilds current forms when both frozen capture and staged input are unavailable", async () => {
     const f = fixture(); f.receipt.capture = null; f.receipt.engine_input = null
     expect(await perform()).toMatchObject({ status: "failed", error: expect.stringContaining("原输入不可用") })
@@ -155,6 +162,7 @@ describe("controlled matching adjustment lifecycle", () => {
     ["MATCH_ADJUSTMENT_CANDIDATES_INSUFFICIENT", "不足2人"],
     ["MATCH_ADJUSTMENT_REQUIRES_DRAFT", "先撤回"],
     ["MATCH_ADJUSTMENT_NOT_RECOVERABLE", "不能继续恢复"],
+    ["MATCH_ADJUSTMENT_BOARD_GROUPED", "三池子页面"],
   ])("distinguishes known pre-creation refusal %s from an unknown network result", async (message, expected) => {
     const f = fixture(); f.begin.mockResolvedValue({ data: null, error: { code: "PT409", message } }); f.get.mockResolvedValue({ data: null, error: null })
     expect(await perform()).toMatchObject({ busy: false, operationId, error: expect.stringContaining(expected) })

@@ -121,6 +121,7 @@ describe("final publication current-input preflight", () => {
     ["MATCH_PUBLICATION_PREFLIGHT_INVALID", "复核记录无效"],
     ["MATCH_PUBLICATION_INELIGIBLE", "已撤销报名"],
     ["MATCH_PUBLICATION_ADJUSTMENT_BUSY", "正在处理的调整"],
+    ["MATCH_PUBLICATION_GROUPS_PENDING", "分入正式小组或移至未匹配池"],
     ["MATCH_PUBLICATION_ORIGINAL_TIME_UNAVAILABLE", "原推荐时间"],
     ["MATCH_PUBLICATION_HARD_CONSTRAINT", "匹配硬约束"],
   ])("explains final database refusal %s without disclosing raw answers or retrying", async (message, expected) => {

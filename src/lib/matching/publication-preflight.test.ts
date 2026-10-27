@@ -131,14 +131,14 @@ describe("publication final hard-constraint review", () => {
     expect(inspectPublicationPreflight(input, [row({ member_b_id: null, group_members: [id(1), id(2), id(3)] })]).issues[0].code).toBe("original_time_unavailable")
   })
 
-  it("refuses duplicate saved occupancy, repeated pool members, malformed pools, and a second pool", () => {
+  it("refuses duplicate saved occupancy, repeated pool members, malformed pools, but accepts separate valid groups", () => {
     const input = engine(Array.from({ length: 6 }, (_, index) => candidate(index + 1)))
     expect(inspectPublicationPreflight(input, [row(), row({ id: id(91) })]).issues[0].code).toBe("invalid_result")
     for (const group_members of [[id(1), id(2)], [id(1), id(2), id(2)], [id(2), id(3), id(4)]]) {
       expect(inspectPublicationPreflight(input, [row({ member_b_id: null, group_members })]).issues[0].code).toBe("invalid_result")
     }
     expect(inspectPublicationPreflight(input, [row({ member_b_id: null, group_members: [id(1), id(2), id(3)] }),
-      row({ id: id(91), member_a_id: id(4), member_b_id: null, group_members: [id(4), id(5), id(6)] })]).issues[0].code).toBe("invalid_result")
+      row({ id: id(91), member_a_id: id(4), member_b_id: null, group_members: [id(4), id(5), id(6)], best_slot: `${DATE}_下午` })])).toEqual({ passed: true, issues: [] })
   })
 
   it("rejects ambiguous candidate mappings and unsupported active statuses", () => {

@@ -1,11 +1,16 @@
 "use client"
 
-import { useState } from "react"
+import { useRef, useState } from "react"
+import { CircleHelp, X } from "lucide-react"
 import { requestCancellation } from "@/app/app/matches/[id]/actions"
 import { useRouter } from "next/navigation"
+import { Button } from "@/components/ui/button"
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 
 interface Labels {
   requestCancel: string
+  cancelHelpLabel: string
+  cancelHelpDescription: string
   cancelFormTitle: string
   cancelReasonPlaceholder: string
   cancelBack: string
@@ -26,21 +31,13 @@ export function CancelRequestForm({ matchId, publicationVersion, labels }: Props
   const [reason, setReason] = useState("")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
+  const submitting = useRef(false)
   const router = useRouter()
-
-  if (!open) {
-    return (
-      <button
-        onClick={() => setOpen(true)}
-        className="w-full rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 hover:bg-red-100 transition-colors"
-      >
-        {labels.requestCancel}
-      </button>
-    )
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (submitting.current) return
+    submitting.current = true
     setLoading(true)
     setError("")
 
@@ -49,44 +46,61 @@ export function CancelRequestForm({ matchId, publicationVersion, labels }: Props
     fd.set("reason", reason)
     fd.set("publicationVersion", String(publicationVersion))
 
-    const result = await requestCancellation(fd)
-    setLoading(false)
-
-    if (result.error) {
-      setError(result.error === "publicationChanged" ? labels.publicationChanged : result.error === "saveFailed" ? labels.saveFailed : result.error)
-    } else {
-      router.refresh()
+    try {
+      const result = await requestCancellation(fd)
+      if (result.error) {
+        setError(result.error === "publicationChanged" ? labels.publicationChanged : result.error === "saveFailed" ? labels.saveFailed : result.error)
+      } else {
+        setOpen(false)
+        router.refresh()
+      }
+    } catch {
+      setError(labels.saveFailed)
+    } finally {
+      submitting.current = false
+      setLoading(false)
     }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-3">
-      <p className="text-sm font-medium text-red-700">{labels.cancelFormTitle}</p>
-      <textarea
-        value={reason}
-        onChange={(e) => setReason(e.target.value)}
-        placeholder={labels.cancelReasonPlaceholder}
-        maxLength={500}
-        className="w-full rounded-lg border border-red-200 bg-white px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
-        rows={3}
-      />
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setOpen(false)}
-          className="flex-1 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted transition-colors"
-        >
-          {labels.cancelBack}
-        </button>
-        <button
-          type="submit"
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!submitting.current) setOpen(nextOpen) }}>
+      <DialogTrigger
+        aria-label={labels.cancelHelpLabel}
+        title={labels.cancelHelpLabel}
+        render={<button type="button" className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60 focus-visible:ring-offset-2" />}
+      >
+        <CircleHelp className="size-[18px]" strokeWidth={1.5} aria-hidden="true" />
+      </DialogTrigger>
+      <DialogContent className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md" showCloseButton={false}>
+        <div className="space-y-2 pr-10">
+          <DialogTitle>{labels.cancelFormTitle}</DialogTitle>
+          <DialogDescription className="text-sm leading-relaxed text-muted-foreground">{labels.cancelHelpDescription}</DialogDescription>
+        </div>
+        <DialogClose
+          aria-label={labels.cancelBack}
           disabled={loading}
-          className="flex-1 rounded-lg bg-red-500 px-3 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50 transition-colors"
+          render={<button type="button" className="absolute right-1.5 top-1.5 inline-flex size-10 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-wait disabled:opacity-50" />}
         >
-          {loading ? labels.submitting : labels.confirmCancel}
-        </button>
-      </div>
-    </form>
+          <X className="size-4" aria-hidden="true" />
+        </DialogClose>
+        <form onSubmit={handleSubmit} className="space-y-4" aria-busy={loading}>
+          <textarea
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            aria-label={labels.cancelReasonPlaceholder}
+            placeholder={labels.cancelReasonPlaceholder}
+            maxLength={500}
+            disabled={loading}
+            className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2.5 text-sm leading-relaxed outline-none transition-colors focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 disabled:opacity-60"
+            rows={4}
+          />
+          {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <Button type="button" variant="outline" disabled={loading} onClick={() => setOpen(false)} className="min-h-11 px-5">{labels.cancelBack}</Button>
+            <Button type="submit" disabled={loading} className="min-h-11 px-5">{loading ? labels.submitting : labels.confirmCancel}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }

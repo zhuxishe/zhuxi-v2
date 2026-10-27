@@ -1,0 +1,33 @@
+// This invokes the real async page; its server data functions are explicitly isolated by visual-review.mjs.
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import MatchDetailPage from '@/app/app/matches/[id]/page'
+const params = new URLSearchParams(location.search)
+const isJapanese = params.get('locale') === 'ja'
+document.documentElement.lang = isJapanese ? 'ja' : 'zh-CN'
+let status = params.get('status') || null
+const baseMatch = {
+  id: 'fixture-match', status: 'confirmed', group_members: null, best_slot: '2026-11-01_下午',
+  session: { session_name: isJapanese ? '秋の週末マッチング' : '秋季周末匹配', publication_version: 2 },
+  member_a: { id: 'fixture-viewer' },
+  member_b: { id: 'fixture-partner', member_identity: { full_name: isJapanese ? '林 晓' : '林晓', nickname: null, hobby_tags: ['读书', '电影', '旅行'] },
+    member_interests: { game_type_pref: '双人', scenario_theme_tags: ['推理', '沉浸'] },
+    member_personality: { expression_style_tags: ['温和'], group_role_tags: ['倾听者'] } },
+}
+window.__cancelFixtureMatch = () => ({ ...baseMatch, status: status === 'approved' ? 'cancelled' : 'confirmed', cancellation_status: status })
+window.__cancelFixtureSubmissions = []
+window.__cancelFixtureSubmit = async (data) => {
+  window.__cancelFixtureSubmissions.push(Object.fromEntries(data))
+  await new Promise(resolve => setTimeout(resolve, 200))
+  if (params.get('result') === 'network') throw Error('Simulated network interruption')
+  if (params.get('result') === 'publicationChanged') return { error: 'publicationChanged' }
+  status = 'pending'
+  return { success: true }
+}
+const root = createRoot(document.getElementById('root'))
+async function renderPage() {
+  const page = await MatchDetailPage({ params: Promise.resolve({ id: baseMatch.id }) })
+  root.render(<div className="player-app-theme fixture-shell bg-background"><header className="border-b px-6 py-4 text-sm font-medium text-primary">竹溪社</header><main>{page}</main><p className="fixture-note">{__FIXTURE_MODE__ === 'before' ? '修改前' : '修改后'} · 虚构资料 · 仅本地交互验收，不提交真实申请</p></div>)
+}
+window.__cancelFixtureRefresh = renderPage
+await renderPage()

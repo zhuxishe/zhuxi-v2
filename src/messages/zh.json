@@ -717,6 +717,8 @@
     "reviewAfterActivityCancel": "取消并返回",
     "reviewed": "已评价",
     "requestCancel": "申请取消匹配",
+    "cancelHelpLabel": "匹配帮助与取消申请",
+    "cancelHelpDescription": "无法参加本次匹配时，可在这里提交取消申请，由工作人员审核。",
     "cancelFormTitle": "提交取消申请",
     "cancelReasonPlaceholder": "请填写取消原因（可选）",
     "cancelBack": "返回",

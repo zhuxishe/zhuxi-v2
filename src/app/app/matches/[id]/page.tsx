@@ -50,6 +50,8 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
     reviewed: t("reviewed"),
     groupMembers: t("groupMembers"),
     requestCancel: t("requestCancel"),
+    cancelHelpLabel: t("cancelHelpLabel"),
+    cancelHelpDescription: t("cancelHelpDescription"),
     cancelFormTitle: t("cancelFormTitle"),
     cancelReasonPlaceholder: t("cancelReasonPlaceholder"),
     cancelBack: t("cancelBack"),
@@ -63,14 +65,19 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
 
   return (
     <div className="p-6 space-y-4">
-      <div className="flex items-center gap-3">
-        <Link
-          href="/app/matches#matching"
-          className="rounded-full p-1.5 hover:bg-muted transition-colors"
-        >
-          <ArrowLeft className="size-5" />
-        </Link>
-        <h1 className="heading-display text-xl">{t("detailTitle")}</h1>
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 items-center gap-3">
+          <Link
+            href="/app/matches#matching"
+            className="rounded-full p-1.5 hover:bg-muted transition-colors"
+          >
+            <ArrowLeft className="size-5" />
+          </Link>
+          <h1 className="heading-display text-xl">{t("detailTitle")}</h1>
+        </div>
+        {canCancel && (
+          <CancelRequestForm matchId={match.id} publicationVersion={Number(session?.publication_version)} labels={labels} />
+        )}
       </div>
 
       <MatchDetailCard
@@ -94,10 +101,6 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
           cancelRejected={t("cancelRejected")}
           cancelRejectedHint={t("cancelRejectedHint")}
         />
-      )}
-
-      {canCancel && (
-        <CancelRequestForm matchId={match.id} publicationVersion={Number(session?.publication_version)} labels={labels} />
       )}
     </div>
   )

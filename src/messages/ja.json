@@ -717,6 +717,8 @@
     "reviewAfterActivityCancel": "キャンセルして戻る",
     "reviewed": "評価済み",
     "requestCancel": "マッチングのキャンセルを申請",
+    "cancelHelpLabel": "マッチングのヘルプ・キャンセル申請",
+    "cancelHelpDescription": "参加できない場合は、ここからキャンセルを申請できます。スタッフが確認します。",
     "cancelFormTitle": "キャンセル申請を提出",
     "cancelReasonPlaceholder": "キャンセル理由を入力（任意）",
     "cancelBack": "戻る",

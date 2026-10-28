@@ -1,0 +1,46 @@
+// Real async page and components with isolated local data/actions only.
+import React from 'react'
+import { createRoot } from 'react-dom/client'
+import MatchDetailPage from '@/app/app/matches/[id]/page'
+const params = new URLSearchParams(location.search)
+const isJapanese = params.get('locale') === 'ja'
+const scenario = params.get('scenario') || 'many'
+document.documentElement.lang = isJapanese ? 'ja' : 'zh-CN'
+let cancellationStatus = params.get('status') || null
+const slots = [
+  '2026-11-01_下午', '2026-11-01_晚上',
+  '2026-11-03_上午', '2026-11-03_下午',
+  '2026-11-06_下午', '2026-11-06_晚上',
+  '2026-11-07_上午', '2026-11-07_下午', '2026-11-07_晚上',
+  '2026-11-10_晚上', '2026-11-14_上午',
+]
+const mixedSlots = ['2026-10-21_下午', '2026-10-23_上午', '2026-10-25_晚上', '2026-10-28_下午', '2026-10-30_上午', '2026-10-30_下午', '2026-10-31_晚上', '2026-11-01_上午', '2026-11-01_下午']
+const sharedAvailability = scenario === 'missing' ? { status: 'unavailable', slots: [] }
+  : scenario === 'empty' ? { status: 'ready', slots: [] }
+    : scenario === 'group' || scenario === 'ended' ? null
+      : { status: 'ready', slots: scenario === 'mixed' ? mixedSlots : scenario === 'past' ? mixedSlots.slice(0, 3) : scenario === 'mismatch' ? slots.filter(slot => slot !== '2026-11-01_下午') : scenario === 'few' ? slots.slice(0, 4) : slots }
+const baseMatch = {
+  id: 'fixture-match', status: scenario === 'ended' ? 'cancelled' : 'confirmed',
+  member_a_id: 'fixture-viewer', member_b_id: scenario === 'group' ? null : 'fixture-partner',
+  group_members: scenario === 'group' ? ['fixture-viewer', 'fixture-partner', 'fixture-third'] : null,
+  best_slot: scenario === 'mixed' ? '2026-10-30_下午' : scenario === 'past' ? '2026-10-21_下午' : '2026-11-01_下午', sharedAvailability,
+  session: { session_name: isJapanese ? '秋の週末マッチング' : '秋季周末匹配', publication_version: 2 },
+  member_a: { id: 'fixture-viewer' },
+  member_b: { id: 'fixture-partner', member_identity: { full_name: isJapanese ? '林 晓' : '林晓', nickname: null, hobby_tags: ['读书', '电影', '旅行'] },
+    member_interests: { game_type_pref: '双人', scenario_theme_tags: ['推理', '沉浸'] },
+    member_personality: { expression_style_tags: ['温和'], group_role_tags: ['倾听者'] } },
+}
+window.__timesFixtureMatch = () => ({ ...baseMatch, status: cancellationStatus === 'approved' ? 'cancelled' : baseMatch.status, cancellation_status: cancellationStatus })
+window.__timesFixtureSubmissions = []
+window.__timesFixtureSubmit = async data => {
+  window.__timesFixtureSubmissions.push(Object.fromEntries(data))
+  cancellationStatus = 'pending'
+  return { success: true }
+}
+const root = createRoot(document.getElementById('root'))
+async function renderPage() {
+  const page = await MatchDetailPage({ params: Promise.resolve({ id: baseMatch.id }) })
+  root.render(<div className="player-app-theme fixture-shell bg-background"><header className="border-b px-6 py-4 text-sm font-medium text-primary">竹溪社</header><main>{page}</main><p className="fixture-note">{__FIXTURE_MODE__ === 'before' ? '修改前' : '修改后'} · 虚构资料 · 仅本地交互验收，不修改线上结果</p></div>)
+}
+window.__timesFixtureRefresh = renderPage
+await renderPage()

@@ -1,5 +1,7 @@
 "use client"
 
+import { MatchTimeSummary } from "./MatchTimeSummary"
+import type { PlayerSharedAvailability } from "@/lib/matching/player-shared-availability"
 import { useRouter } from "next/navigation"
 import { MessageSquare, CheckCircle } from "lucide-react"
 import { useLocale, useTranslations } from "next-intl"
@@ -38,11 +40,14 @@ interface Props {
   isGroup?: boolean
   groupMemberNames?: string[]
   recommendedTime?: string
+  today?: string
+  recommendedSlot?: string | null
+  sharedAvailability?: PlayerSharedAvailability | null
   ended?: boolean
   labels: Labels
 }
 
-export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGroup, groupMemberNames, recommendedTime, ended, labels }: Props) {
+export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGroup, groupMemberNames, recommendedTime, recommendedSlot, sharedAvailability, today, ended, labels }: Props) {
   const locale = useLocale()
   const t = useTranslations("playerMatches")
   const router = useRouter()
@@ -50,15 +55,15 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGro
 
   return (
     <div className="rounded-xl bg-card p-5 shadow-soft space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
           <p className="text-base font-semibold">
             {isGroup ? `🎲 ${partner.name}` : `${labels.partner}: ${partner.name || labels.unknown}`}
           </p>
           {sessionName && (
             <p className="text-xs text-muted-foreground mt-0.5">{sessionName}</p>
           )}
-          {recommendedTime && <p className="text-xs text-muted-foreground mt-1">{labels.recommendedTime}：{recommendedTime}</p>}
+          {recommendedTime && (isGroup || ended) && <p className="text-xs text-muted-foreground mt-1">{labels.recommendedTime}：{recommendedTime}</p>}
           {isGroup && groupMemberNames && groupMemberNames.length > 0 && (
             <p className="text-xs text-muted-foreground mt-1">
               {labels.groupMembers ?? "组员"}：{groupMemberNames.join("、")}
@@ -71,7 +76,7 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGro
           </span>
         ) : (
           <Dialog>
-            <DialogTrigger className="inline-flex items-center gap-1 rounded-full bg-sakura/10 px-3 py-1 text-xs font-medium text-sakura hover:bg-sakura/20 transition-colors">
+            <DialogTrigger className="inline-flex min-h-9 shrink-0 items-center gap-1 whitespace-nowrap rounded-full bg-sakura/10 px-3 py-1 text-xs font-medium text-sakura hover:bg-sakura/20 transition-colors">
               <MessageSquare className="size-3.5" /> {labels.review}
             </DialogTrigger>
             <DialogContent showCloseButton={false}>
@@ -88,6 +93,8 @@ export function MatchDetailCard({ partner, sessionName, reviewed, matchId, isGro
           </Dialog>
         )}
       </div>
+
+      {!isGroup && !ended && <MatchTimeSummary today={today} recommendedTime={recommendedTime} recommendedSlot={recommendedSlot} sharedAvailability={sharedAvailability} />}
 
       {tagGroups.length > 0 && (
         <div className="space-y-2">

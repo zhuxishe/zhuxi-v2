@@ -1,3 +1,4 @@
+import { getTodayInTokyo } from "@/lib/member-master/birth-date"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchMatchDetail } from "@/lib/queries/matching"
 import { fetchReviewedMatchIds } from "@/lib/queries/reviews"
@@ -84,6 +85,9 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
         partner={partner}
         sessionName={publishedMatchTitle(session)}
         recommendedTime={formatPublishedMatchSlot(match.best_slot, locale) ?? t("timePending")}
+        today={getTodayInTokyo()}
+        recommendedSlot={match.best_slot}
+        sharedAvailability={match.sharedAvailability}
         ended={match.status === "cancelled"}
         reviewed={reviewedIds.has(match.id)}
         matchId={match.id}

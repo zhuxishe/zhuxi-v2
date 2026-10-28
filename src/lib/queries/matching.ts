@@ -3,6 +3,7 @@ import { requireAdmin } from "@/lib/auth/admin"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { validateUuids } from "@/lib/sanitize"
 import { filterAccessibleMatchingResults } from "@/lib/matching/test-round-access"
+import { getPlayerSharedAvailability, type PlayerSharedAvailability } from "@/lib/matching/player-shared-availability"
 
 export async function fetchMatchSessions() {
   await requireAdmin()
@@ -203,7 +204,76 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
     (Array.isArray(data.group_members) && data.group_members.includes(memberId))
   if (!isParticipant) return null
   if (!(await filterAccessibleMatchingResults([data])).length) return null
-  return data
+  const shared = await fetchVisibleDuoSharedAvailability(supabase, data, memberId)
+  if (!shared.stillVisible) return null
+  return { ...data, sharedAvailability: shared.availability }
+}
+
+function relationObject(value: unknown): Record<string, unknown> | null {
+  const item = Array.isArray(value) ? value.length === 1 ? value[0] : null : value
+  return item && typeof item === "object" && !Array.isArray(item) ? item as Record<string, unknown> : null
+}
+
+/**
+ * Read both answers in one statement anchored to the already authorized result.
+ * A concurrent withdrawal, cancellation or replacement cannot expose a former
+ * partner's current schedule. Only the intersection leaves this server query.
+ */
+async function fetchVisibleDuoSharedAvailability(
+  supabase: ReturnType<typeof createAdminClient>,
+  match: { id: string; member_a_id: string; member_b_id: string | null; group_members: string[] | null; status: string; publication_version: number; session: unknown },
+  memberId: string,
+): Promise<{ stillVisible: boolean; availability: PlayerSharedAvailability | null }> {
+  const unavailable = { stillVisible: true, availability: { status: "unavailable", slots: [] } as PlayerSharedAvailability }
+  if (match.status !== "confirmed" || (Array.isArray(match.group_members) && match.group_members.length > 0)) return { stillVisible: true, availability: null }
+  if (!match.member_a_id || !match.member_b_id || match.member_a_id === match.member_b_id) return unavailable
+  const session = relationObject(match.session), round = relationObject(session?.round)
+  if (typeof session?.id !== "string" || typeof round?.id !== "string") return unavailable
+  const roundId = round.id, sessionId = session.id
+  try { validateUuids([sessionId, roundId, match.member_a_id, match.member_b_id]) } catch { return unavailable }
+  const participants: [string, string] = [match.member_a_id, match.member_b_id]
+  const sourceQuery = supabase.from("match_results")
+    .select(`
+      id, member_a_id, member_b_id, group_members, status, publication_version,
+      session:match_sessions!inner (
+        id, status, publication_version,
+        round:match_rounds!inner (
+          id, is_test,
+          submissions:match_round_submissions (member_id, availability)
+        )
+      )
+    `)
+    .eq("id", match.id)
+    .eq("status", "confirmed")
+    .eq("publication_version", match.publication_version)
+    .eq("member_a_id", participants[0])
+    .eq("member_b_id", participants[1])
+    .eq("session.id", sessionId)
+    .eq("session.status", "confirmed")
+    .eq("session.publication_version", match.publication_version)
+    .eq("session.round.id", roundId)
+    .in("session.round.submissions.member_id", participants)
+    .is("session.round.submissions.cancelled_at", null)
+    .or(`member_a_id.eq.${memberId},member_b_id.eq.${memberId}`)
+    // This optional enrichment must not repeatedly delay the core result page.
+    .abortSignal(AbortSignal.timeout(4_000))
+    .retry(false)
+    .maybeSingle()
+  let source: Awaited<typeof sourceQuery>["data"]
+  try {
+    const response = await sourceQuery
+    if (response.error) return unavailable
+    source = response.data
+  } catch { return unavailable }
+  if (!source) return { stillVisible: false, availability: null }
+  const freshSession = relationObject(source.session), freshRound = relationObject(freshSession?.round)
+  // Repeat boundaries on the returned shape as well as in the database filters.
+  if (source.id !== match.id || source.status !== "confirmed" || !isCurrentPublishedMatch(source)
+    || source.publication_version !== match.publication_version || source.member_a_id !== participants[0] || source.member_b_id !== participants[1]
+    || (Array.isArray(source.group_members) && source.group_members.length > 0)
+    || freshSession?.id !== sessionId || freshRound?.id !== roundId) return { stillVisible: false, availability: null }
+  if (!(await filterAccessibleMatchingResults([source])).length) return { stillVisible: false, availability: null }
+  return { stillVisible: true, availability: getPlayerSharedAvailability(participants, freshRound.submissions) }
 }
 
 function isCurrentPublishedMatch(result: { status: string; publication_version: number; session: unknown }) {

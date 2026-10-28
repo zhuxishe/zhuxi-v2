@@ -17,6 +17,16 @@ function click(href: string, overrides: Record<string, unknown> = {}) {
   handlers["document:click"](event)
   return event
 }
+function navigate(overrides: Record<string, unknown> = {}) {
+  const event = {
+    cancelable: true, canIntercept: true, hashChange: false,
+    navigationType: "replace", userInitiated: false,
+    destination: { url: window.location.href, sameDocument: true },
+    preventDefault: vi.fn(), ...overrides,
+  }
+  handlers["navigation:navigate"](event)
+  return event
+}
 beforeEach(() => {
   vi.clearAllMocks(); handlers = {}; cleanup = undefined; confirm = vi.fn(() => false); remove = vi.fn()
   const surface = (prefix: string) => ({ addEventListener: (name: string, callback: Handler) => { handlers[`${prefix}:${name}`] = callback }, removeEventListener: remove })
@@ -68,12 +78,75 @@ describe("questionnaire unsaved-answer guard", () => {
     const guard = useQuestionnaireUnsavedChanges("zh"); guard.markDirty()
     expect(click("https://other.test/app/profile/personality?matchingRound=round").preventDefault).toHaveBeenCalledOnce()
   })
-  it("blocks same-document history navigation in browsers supporting the Navigation API", () => {
+  it("does not warn for untouched questionnaires during refresh or navigation", () => {
+    useQuestionnaireUnsavedChanges("zh")
+    navigate()
+    navigate({ destination: { url: "https://www.zhuxishe.jp/app", sameDocument: true } })
+    expect(confirm).not.toHaveBeenCalled()
+  })
+  it("allows repeated background refreshes while retaining the unsaved-answer guard", () => {
     const guard = useQuestionnaireUnsavedChanges("zh"); guard.markDirty()
-    const event = { cancelable: true, canIntercept: true, preventDefault: vi.fn() }
-    handlers["navigation:navigate"](event)
+    for (let index = 0; index < 3; index++) expect(navigate().preventDefault).not.toHaveBeenCalled()
+    expect(confirm).not.toHaveBeenCalled()
+
+    const unload = { preventDefault: vi.fn(), returnValue: undefined }
+    handlers["window:beforeunload"](unload)
+    expect(unload.preventDefault).toHaveBeenCalledOnce()
+    expect(unload.returnValue).toBe("")
+    expect(click("https://www.zhuxishe.jp/app").preventDefault).toHaveBeenCalledOnce()
+    expect(confirm).toHaveBeenCalledOnce()
+    guard.markSaved()
+    expect(navigate({ destination: { url: "https://www.zhuxishe.jp/app", sameDocument: true } }).preventDefault).not.toHaveBeenCalled()
+    expect(confirm).toHaveBeenCalledOnce()
+  })
+  it.each(["push", "replace", "traverse"])("keeps same-page %s history updates silent without treating them as saved", (navigationType) => {
+    const guard = useQuestionnaireUnsavedChanges("zh"); guard.markDirty()
+    const event = navigate({ navigationType, destination: { url: `${window.location.href}#question`, sameDocument: true } })
+    expect(event.preventDefault).not.toHaveBeenCalled()
+    expect(confirm).not.toHaveBeenCalled()
+    expect(guard.confirmLeave()).toBe(false)
+    expect(confirm).toHaveBeenCalledOnce()
+  })
+  it.each([
+    ["different path", "https://www.zhuxishe.jp/app"],
+    ["different query", "https://www.zhuxishe.jp/app/profile/personality?matchingRound=another"],
+    ["different origin", "https://other.test/app/profile/personality?matchingRound=round"],
+  ])("still guards programmatic replace to a %s", (_description, url) => {
+    const guard = useQuestionnaireUnsavedChanges("zh"); guard.markDirty()
+    const event = navigate({ destination: { url, sameDocument: true } })
     expect(event.preventDefault).toHaveBeenCalledOnce()
     expect(confirm).toHaveBeenCalledOnce()
+  })
+  it("blocks same-document history navigation to another page", () => {
+    const guard = useQuestionnaireUnsavedChanges("zh"); guard.markDirty()
+    const event = navigate({ navigationType: "traverse", destination: { url: "https://www.zhuxishe.jp/app/profile", sameDocument: true } })
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(confirm).toHaveBeenCalledOnce()
+  })
+  it.each([
+    { navigationType: "reload" },
+    { destination: { url: "https://www.zhuxishe.jp/app/profile/personality?matchingRound=round", sameDocument: false } },
+    { destination: undefined },
+    { destination: { url: "https://[invalid", sameDocument: true } },
+  ])("does not mistake a reload or unknown document destination for an internal refresh: %j", (overrides) => {
+    const guard = useQuestionnaireUnsavedChanges("zh"); guard.markDirty()
+    expect(navigate(overrides).preventDefault).toHaveBeenCalledOnce()
+    expect(confirm).toHaveBeenCalledOnce()
+  })
+  it("leaves non-interceptable reloads to the browser's beforeunload warning", () => {
+    const guard = useQuestionnaireUnsavedChanges("zh"); guard.markDirty()
+    expect(navigate({ navigationType: "reload", canIntercept: false }).preventDefault).not.toHaveBeenCalled()
+    expect(confirm).not.toHaveBeenCalled()
+    const event = { preventDefault: vi.fn(), returnValue: undefined }
+    handlers["window:beforeunload"](event)
+    expect(event.preventDefault).toHaveBeenCalledOnce()
+    expect(event.returnValue).toBe("")
+  })
+  it("preserves hash navigation without clearing dirty state", () => {
+    const guard = useQuestionnaireUnsavedChanges("zh"); guard.markDirty()
+    expect(navigate({ hashChange: true }).preventDefault).not.toHaveBeenCalled()
+    expect(confirm).not.toHaveBeenCalled()
+    expect(guard.confirmLeave()).toBe(false)
   })
   it("cleans up every listener when the questionnaire unmounts", () => {
     useQuestionnaireUnsavedChanges("zh"); cleanup?.()

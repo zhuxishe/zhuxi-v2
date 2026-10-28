@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
-import { getSurveyWindowState } from "@/lib/matching/survey-window"
+import { fetchPlayerRounds } from "./player-rounds"
 import { isRoundSetupError } from "@/lib/matching/round-config"
 
 /** 获取所有匹配轮次 */
@@ -119,19 +119,8 @@ export async function fetchRoundStats(roundId: string) {
 
 /** 获取当前 open 的轮次（玩家端用） */
 export async function fetchOpenRound(now = new Date()) {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from("match_rounds")
-    .select("*")
-    .eq("status", "open")
-    .is("deleted_at", null)
-    .lte("survey_start", now.toISOString())
-    .gt("survey_end", now.toISOString())
-    .order("survey_end", { ascending: true })
-    .limit(1)
-    .maybeSingle()
-
-  return data && getSurveyWindowState(data, now) === "open" ? data : null
+  const rounds = await fetchPlayerRounds(now)
+  return rounds[0] ?? null
 }
 
 /** 获取最新轮次（不限状态，用于非 open 时展示状态提示） */

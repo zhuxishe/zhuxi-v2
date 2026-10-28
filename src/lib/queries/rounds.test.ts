@@ -1,7 +1,9 @@
 import { createClient } from "@supabase/supabase-js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ client: vi.fn() }))
+const mocks = vi.hoisted(() => ({ client: vi.fn(), filter: vi.fn() }))
+vi.mock("@/lib/auth/player", () => ({ requirePlayer: async () => ({ memberId: "own-member" }) }))
+vi.mock("@/lib/matching/round-submission-access", () => ({ filterSubmittableRounds: mocks.filter }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: vi.fn() }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: vi.fn() }))
@@ -14,6 +16,7 @@ let requests: URL[]
 
 describe("open round query against the collection window", () => {
   beforeEach(() => {
+    mocks.filter.mockImplementation(async (rounds) => ({ rounds, error: null }))
     rows = []; requests = []
     // Exercise the real Supabase query builder; emulate only the HTTP data source.
     const client = createClient("https://survey-test.invalid", "test-key", {
@@ -53,6 +56,20 @@ describe("open round query against the collection window", () => {
       eligible,
     ]
     expect(await fetchOpenRound(now)).toEqual(eligible)
+  })
+
+  it("skips a visible but ineligible first round for the legacy entry", async () => {
+    const denied = { ...eligible, id: "denied", survey_end: "2026-09-29T02:00:00Z" }
+    rows = [denied, eligible]
+    mocks.filter.mockResolvedValue({ rounds: [eligible], error: null })
+    expect(await fetchOpenRound(now)).toEqual(eligible)
+    expect(mocks.filter).toHaveBeenCalledWith([denied, eligible], "own-member")
+  })
+
+  it("propagates eligibility lookup failure instead of choosing an unverified round", async () => {
+    rows = [eligible]
+    mocks.filter.mockResolvedValue({ rounds: [], error: "roundParticipationCheckFailed" })
+    await expect(fetchOpenRound(now)).rejects.toThrow("roundParticipationCheckFailed")
   })
 
   it("has no available round at the exact deadline", async () => {

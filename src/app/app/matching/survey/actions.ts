@@ -10,6 +10,7 @@ import type { SurveyAnswers } from "@/types/matching-round"
 import { registrationOperationError } from "@/lib/matching/registration-operation"
 import { fetchMyMatchingReadiness } from "@/lib/matching/readiness-server"
 import type { MatchingProfileKind } from "@/lib/matching/profile-readiness"
+import { getRoundSubmissionAccess } from "@/lib/matching/round-submission-access"
 
 interface SurveySubmissionResult {
   success?: true
@@ -40,10 +41,10 @@ interface SubmitSurveyInput extends Omit<SurveyAnswers, "customAnswers"> {
 }
 
 export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubmissionResult> {
-  await requirePlayer()
+  const player = await requirePlayer()
   if (!input || typeof input.roundId !== "string") return { error: "invalidSurveyInput" }
   const supabase = await createClient()
-  // Selecting the full row also permits unchanged legacy matching while a schema upgrade is pending.
+  // Read the current window, configuration and participation scope before writing.
   const { data: round, error: roundErr } = await supabase.from("match_rounds").select("*").eq("id", input.roundId).single()
   if (roundErr || !round || round.deleted_at) {
     if (roundErr) console.error("[submitSurvey] round query", roundErr)
@@ -52,6 +53,9 @@ export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubm
   const windowError = surveySubmissionError(round)
   if (windowError) return { error: windowError }
   if ((input.configRevision ?? 0) !== (round.config_revision ?? 0)) return { error: "surveyUpdated" }
+  if (getRoundPurpose(round.purpose) === "announcement") return { error: "surveyReadOnly" }
+  const access = await getRoundSubmissionAccess(round, player.memberId)
+  if (!access.allowed) return { error: access.error }
   if (getRoundPurpose(round.purpose) === "matching") {
     const profileError = await matchingProfileError()
     if (profileError) return profileError
@@ -86,6 +90,9 @@ export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubm
 
   if (error) {
     console.error("[submitSurvey] save", error)
+    if (error.message === "TEST_ROUND_MEMBER_NOT_ALLOWED") {
+      return { error: "roundParticipationNotAllowed" }
+    }
     if (round.purpose !== "registration" && (error.message?.includes("MATCHING_SUBMISSION_CHANGED") || error.code === "23505")) {
       return { error: "surveyResponseChanged" }
     }

@@ -1,7 +1,7 @@
 import { isValidElement, type ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ player: vi.fn(), round: vi.fn(), submission: vi.fn(), redirect: vi.fn(), readiness: vi.fn() }))
+const mocks = vi.hoisted(() => ({ player: vi.fn(), round: vi.fn(), submission: vi.fn(), redirect: vi.fn(), readiness: vi.fn(), access: vi.fn() }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("@/lib/queries/player-rounds", () => ({ fetchPlayerRound: mocks.round }))
 vi.mock("@/lib/queries/rounds", () => ({ fetchMySubmission: mocks.submission, fetchOpenRound: mocks.round, fetchLatestRound: mocks.round }))
@@ -10,10 +10,11 @@ vi.mock("next-intl/server", () => ({ getTranslations: async () => (key: string) 
 vi.mock("@/components/player/SurveyForm", () => ({ SurveyForm: "survey-form" }))
 vi.mock("@/lib/matching/readiness-server", () => ({ fetchMyMatchingReadiness: mocks.readiness }))
 vi.mock("@/components/player/MatchingProfileGate", () => ({ MatchingProfileGate: "profile-gate" }))
+vi.mock("@/lib/matching/round-submission-access", () => ({ getRoundSubmissionAccess: mocks.access }))
 import SurveyPage from "./page"
 import SurveySuccessPage from "./success/page"
 
-type NodeProps = { href?: string; children?: ReactNode; fromParticipation?: boolean; missing?: string[]; failed?: boolean; existing?: { cancelled_at?: string | null; updated_at?: string | null; custom_answers?: unknown } | null }
+type NodeProps = { text?: string; href?: string; children?: ReactNode; fromParticipation?: boolean; missing?: string[]; failed?: boolean; existing?: { cancelled_at?: string | null; updated_at?: string | null; custom_answers?: unknown } | null }
 function nodes(node: ReactNode): NodeProps[] {
   if (Array.isArray(node)) return node.flatMap(nodes)
   if (!isValidElement<NodeProps>(node)) return []
@@ -30,6 +31,7 @@ describe("survey participation navigation", () => {
     vi.resetAllMocks()
     vi.useFakeTimers()
     vi.setSystemTime("2026-09-30T00:00:00Z")
+    mocks.access.mockResolvedValue({ allowed: true })
     mocks.player.mockResolvedValue({ memberId: "own-member" })
     mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, missing: [] })
     mocks.round.mockResolvedValue(round)
@@ -37,6 +39,43 @@ describe("survey participation navigation", () => {
     mocks.redirect.mockImplementation((href: string) => { throw new Error(`redirect:${href}`) })
   })
   afterEach(() => vi.useRealTimers())
+
+  it.each(["roundParticipationNotAllowed", "roundParticipationCheckFailed"])("shows %s before loading answers or asking for profile work", async (error) => {
+    mocks.access.mockResolvedValue({ allowed: false, error })
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
+    expect(nodes(page).some((props) => props.children === error)).toBe(true)
+    expect(nodes(page).some((props) => props.existing !== undefined)).toBe(false)
+    expect(mocks.submission).not.toHaveBeenCalled()
+    expect(mocks.readiness).not.toHaveBeenCalled()
+    expect(mocks.access).toHaveBeenCalledWith(round, "own-member")
+    expect(hrefs(page)).toEqual(["/app"])
+  })
+
+  it("keeps closure and announcement views independent of submission eligibility", async () => {
+    mocks.access.mockResolvedValue({ allowed: false, error: "roundParticipationNotAllowed" })
+    mocks.round.mockResolvedValue({ ...round, status: "closed" })
+    const closed = await SurveyPage({ searchParams: Promise.resolve({ round: roundId, from: "participation" }) })
+    expect(hrefs(closed)).toEqual([recordHref])
+    expect(mocks.access).not.toHaveBeenCalled()
+    mocks.round.mockResolvedValue({ ...round, purpose: "announcement" })
+    await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
+    expect(mocks.access).not.toHaveBeenCalled()
+  })
+
+  it("does not turn a failed legacy-entry eligibility lookup into no available round", async () => {
+    mocks.round.mockRejectedValue(new Error("roundParticipationCheckFailed"))
+    const page = await SurveyPage({ searchParams: Promise.resolve({}) })
+    expect(nodes(page).some((props) => props.children === "roundParticipationCheckFailed")).toBe(true)
+    expect(mocks.submission).not.toHaveBeenCalled()
+  })
+
+  it("does not call an open but ineligible legacy fallback round closed", async () => {
+    mocks.round.mockResolvedValueOnce(null).mockResolvedValueOnce(round)
+    const page = await SurveyPage({ searchParams: Promise.resolve({}) })
+    expect(nodes(page).some((props) => props.text === "noRound")).toBe(true)
+    expect(nodes(page).some((props) => props.text === "roundClosed")).toBe(false)
+    expect(mocks.submission).not.toHaveBeenCalled()
+  })
 
   it("never renders editable matching answers for an incomplete direct-link visitor", async () => {
     mocks.round.mockResolvedValue({ ...round, purpose: "matching" })

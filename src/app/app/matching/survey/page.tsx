@@ -10,6 +10,8 @@ import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-conf
 import { participationRecordHref } from "@/lib/matching/participation-display"
 import type { RoundRecord } from "@/types/matching-round"
 import { fetchMyMatchingReadiness } from "@/lib/matching/readiness-server"
+import { getRoundSubmissionAccess } from "@/lib/matching/round-submission-access"
+import { MatchingCompletionRetry } from "@/components/player/MatchingCompletionRetry"
 import { MatchingProfileGate } from "@/components/player/MatchingProfileGate"
 
 function BackLink({ label, href }: { label: string; href: string }) {
@@ -32,9 +34,27 @@ function StatusMessage({ text, hint }: { text: string; hint?: string }) {
 export default async function SurveyPage({ searchParams }: { searchParams: Promise<{ round?: string; from?: string | string[] }> }) {
   const player = await requirePlayer()
   const params = await searchParams
-  const round: RoundRecord | null = params.round ? await fetchPlayerRound(params.round) : await fetchOpenRound()
   const t = await getTranslations("survey")
+  const tErr = await getTranslations("errors")
+  const tCommon = await getTranslations("error")
+  function accessNotice(error: "roundParticipationNotAllowed" | "roundParticipationCheckFailed") {
+    return <div className="px-4 py-6">
+      <BackLink label={t("backToHome")} href="/app" />
+      <p role="alert" className="rounded-2xl bg-card p-6 text-sm text-muted-foreground">{tErr(error)}</p>
+      {error === "roundParticipationCheckFailed" && <div className="mt-4"><MatchingCompletionRetry label={tCommon("retry")} /></div>}
+    </div>
+  }
+  let round: RoundRecord | null
+  try { round = params.round ? await fetchPlayerRound(params.round) : await fetchOpenRound() }
+  catch (error) {
+    if (error instanceof Error && error.message === "roundParticipationCheckFailed") return accessNotice("roundParticipationCheckFailed")
+    throw error
+  }
   const state = round ? getSurveyWindowState(round) : null
+  if (round && state === "open" && getRoundPurpose(round.purpose) !== "announcement") {
+    const access = await getRoundSubmissionAccess(round, player.memberId)
+    if (!access.allowed) return accessNotice(access.error)
+  }
   const existing = round && (state === "open" || params.from === "participation")
     ? await fetchMySubmission(round.id, player.memberId) : null
   const fromParticipation = params.from === "participation" && Boolean(existing)
@@ -51,7 +71,7 @@ export default async function SurveyPage({ searchParams }: { searchParams: Promi
       if (state === "draft" || state === "scheduled") {
         statusText = t("roundDraft")
         statusHint = t("roundDraftHint")
-      } else {
+      } else if (state !== "open") {
         statusText = t("roundClosed")
         statusHint = t("roundClosedHint")
       }

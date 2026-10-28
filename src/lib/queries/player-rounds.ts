@@ -1,3 +1,6 @@
+import { requirePlayer } from "@/lib/auth/player"
+import { filterSubmittableRounds } from "@/lib/matching/round-submission-access"
+import { getRoundPurpose } from "@/lib/matching/round-config"
 import { createClient } from "@/lib/supabase/server"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
 import type { RoundRecord } from "@/types/matching-round"
@@ -10,7 +13,14 @@ export async function fetchPlayerRounds(now = new Date()): Promise<RoundRecord[]
     .eq("status", "open").lte("survey_start", now.toISOString()).gt("survey_end", now.toISOString())
     .order("survey_end", { ascending: true }).limit(100)
   if (error) throw new Error("Unable to load current matching activities")
-  return (data ?? []).filter((round) => getSurveyWindowState(round, now) === "open")
+  const rounds = (data ?? []).filter((round) => getSurveyWindowState(round, now) === "open")
+  const actionable = rounds.filter((round) => getRoundPurpose(round.purpose) !== "announcement")
+  if (!actionable.length) return rounds
+  const player = await requirePlayer()
+  const access = await filterSubmittableRounds(actionable, player.memberId)
+  if (access.error) throw new Error(access.error)
+  const allowed = new Set(access.rounds.map((round) => round.id))
+  return rounds.filter((round) => getRoundPurpose(round.purpose) === "announcement" || allowed.has(round.id))
 }
 
 export async function fetchPlayerRound(id: string): Promise<RoundRecord | null> {

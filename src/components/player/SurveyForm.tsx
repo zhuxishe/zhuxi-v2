@@ -60,11 +60,12 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
   const [error, setError] = useState<string | null>(null)
   const [serverClosed, setServerClosed] = useState(false)
   const [missingProfiles, setMissingProfiles] = useState<MatchingProfileKind[] | null>(null)
+  const [participationDenied, setParticipationDenied] = useState(false)
   const inFlight = useRef(false)
   const window = { status: "open", survey_start: surveyStart, survey_end: surveyEnd }
   const windowState = useSurveyWindow(window, initialNow)
   const unavailable = windowState !== "open" || serverClosed
-  const blocked = unavailable || missingProfiles !== null
+  const blocked = unavailable || missingProfiles !== null || participationDenied
   const needsTime = purpose === "matching" && !Object.values(value.availability).some((slots) => slots.length > 0)
   const registered = purpose === "registration" && Boolean(existing) && !existing?.cancelled_at
   const unchanged = registered && !registrationAnswersChanged(config.questions, existing?.custom_answers ?? {}, value.customAnswers)
@@ -86,6 +87,7 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
         }),
       })
       if (res.error) {
+        if (res.error === "roundParticipationNotAllowed") setParticipationDenied(true)
         if (res.error === "matchingProfileIncomplete" && "missingProfiles" in res) setMissingProfiles(res.missingProfiles ?? [])
         if (["surveyExpired", "surveyClosed", "surveyNotStarted", "roundNotFound", "surveyUpdated", "surveyReadOnly", "registrationChanged"].includes(res.error)) setServerClosed(true)
         setError(tErr.has(res.error) ? tErr(res.error) : res.error)

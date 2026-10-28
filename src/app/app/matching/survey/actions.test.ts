@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), rpc: vi.fn(), readiness: vi.fn() }))
+const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), rpc: vi.fn(), readiness: vi.fn(), access: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from, rpc: mocks.rpc }) }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }))
 vi.mock("@/lib/matching/readiness-server", () => ({ fetchMyMatchingReadiness: mocks.readiness }))
+vi.mock("@/lib/matching/round-submission-access", () => ({ getRoundSubmissionAccess: mocks.access }))
 import { submitSurvey } from "./actions"
 
-const round = { id: "round", status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-29T09:00:00Z", activity_start: "2026-10-01", activity_end: "2026-10-14" }
+const round = { id: "round", is_test: false, status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-29T09:00:00Z", activity_start: "2026-10-01", activity_end: "2026-10-14" }
 const input = {
   roundId: "round", gameTypePref: "都可以", genderPref: "都可以",
   availability: { "2026-10-01": ["下午"] }, interestTags: [], socialStyle: null, message: "existing answer",
@@ -29,6 +30,7 @@ describe("survey submission availability", () => {
     mocks.player.mockResolvedValue({ memberId: "canonical-member" })
     mocks.rpc.mockResolvedValue({ error: null })
     mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, missing: [] })
+    mocks.access.mockResolvedValue({ allowed: true })
     vi.spyOn(console, "error").mockImplementation(() => {})
   })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
@@ -45,6 +47,7 @@ describe("survey submission availability", () => {
     expect(await submitSurvey(input)).toEqual({ error })
     expect(mocks.from).toHaveBeenCalledTimes(1)
     expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
+    expect(mocks.access).not.toHaveBeenCalled()
   })
 
   it("creates with an explicit absent answer token and refreshes the notification layout and form", async () => {
@@ -55,6 +58,7 @@ describe("survey submission availability", () => {
       p_answers: expect.objectContaining({ message: input.message, availability: input.availability }),
     })
     expect(mocks.rpc.mock.calls[0][1]).not.toHaveProperty("p_member_id")
+    expect(mocks.access).toHaveBeenCalledWith(round, "canonical-member")
     expect(mocks.revalidate).toHaveBeenCalledWith("/app", "layout")
     expect(mocks.revalidate).toHaveBeenCalledWith("/app/matching/survey")
   })
@@ -71,6 +75,42 @@ describe("survey submission availability", () => {
     mocks.player.mockRejectedValue(new Error("redirect"))
     await expect(submitSurvey(input)).rejects.toThrow("redirect")
     expect(mocks.from).not.toHaveBeenCalled()
+    expect(mocks.access).not.toHaveBeenCalled()
+  })
+
+  it.each(["roundParticipationNotAllowed", "roundParticipationCheckFailed"])("stops before profile reads and writes when participation returns %s", async (error) => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    mocks.access.mockResolvedValue({ allowed: false, error })
+    expect(await submitSurvey({ ...input, memberId: "untrusted-member" } as typeof input)).toEqual({ error })
+    expect(mocks.access).toHaveBeenCalledExactlyOnceWith(round, "canonical-member")
+    expect(mocks.readiness).not.toHaveBeenCalled()
+    expect(mocks.rpc).not.toHaveBeenCalled()
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("also checks participation before a fixed activity registration", async () => {
+    const registration = { ...round, purpose: "registration" }
+    mocks.from.mockReturnValueOnce(readRound(registration))
+    mocks.access.mockResolvedValue({ allowed: false, error: "roundParticipationNotAllowed" })
+    expect(await submitSurvey({ ...input, availability: {} })).toEqual({ error: "roundParticipationNotAllowed" })
+    expect(mocks.access).toHaveBeenCalledWith(registration, "canonical-member")
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  it("explains the database participation guard racing after a successful precheck", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    mocks.rpc.mockResolvedValue({ error: { code: "42501", message: "TEST_ROUND_MEMBER_NOT_ALLOWED" } })
+    expect(await submitSurvey(input)).toEqual({ error: "roundParticipationNotAllowed" })
+    expect(mocks.rpc).toHaveBeenCalledTimes(1)
+    expect(mocks.from).toHaveBeenCalledTimes(1)
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("does not mislabel unrelated permission errors as a participation denial", async () => {
+    mocks.from.mockReturnValue(readRound(round))
+    mocks.rpc.mockResolvedValue({ error: { code: "42501", message: "OTHER_PERMISSION_ERROR" } })
+    expect(await submitSurvey(input)).toEqual({ error: "saveFailed" })
+    expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 
   it("refuses a deleted activity without writing the registration or questionnaire", async () => {
@@ -141,12 +181,14 @@ describe("survey submission availability", () => {
     expect(await submitSurvey(input)).toEqual({ error: "surveyReadOnly" })
     expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
     expect(mocks.readiness).not.toHaveBeenCalled()
+    expect(mocks.access).not.toHaveBeenCalled()
   })
 
   it("requires the current configuration revision", async () => {
     mocks.from.mockReturnValueOnce(readRound({ ...round, config_revision: 2 }))
     expect(await submitSurvey({ ...input, configRevision: 1 })).toEqual({ error: "surveyUpdated" })
     expect(mocks.from).not.toHaveBeenCalledWith("match_round_submissions")
+    expect(mocks.access).not.toHaveBeenCalled()
   })
 
   it("explains a configuration edit which raced with submission", async () => {

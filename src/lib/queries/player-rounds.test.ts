@@ -2,7 +2,9 @@ import { createClient } from "@supabase/supabase-js"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import type { RoundRecord } from "@/types/matching-round"
 
-const mocks = vi.hoisted(() => ({ client: vi.fn() }))
+const mocks = vi.hoisted(() => ({ client: vi.fn(), filter: vi.fn() }))
+vi.mock("@/lib/auth/player", () => ({ requirePlayer: async () => ({ memberId: "own-member" }) }))
+vi.mock("@/lib/matching/round-submission-access", () => ({ filterSubmittableRounds: mocks.filter }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.client }))
 import { fetchPlayerRound, fetchPlayerRounds, fetchSubmittedRoundIds } from "./player-rounds"
 
@@ -20,6 +22,7 @@ let unavailable: boolean
 describe("player round queries with the real Supabase request builder", () => {
   beforeEach(() => {
     vi.resetAllMocks()
+    mocks.filter.mockImplementation(async (rounds) => ({ rounds, error: null }))
     rounds = []; submissions = []; requests = []; unavailable = false
     mocks.client.mockResolvedValue(createClient("https://rounds-test.invalid", "test-key", {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
@@ -53,6 +56,29 @@ describe("player round queries with the real Supabase request builder", () => {
     expect(requests[0].searchParams.get("survey_start")).toBe(`lte.${now.toISOString()}`)
     expect(requests[0].searchParams.get("survey_end")).toBe(`gt.${now.toISOString()}`)
     expect(requests[0].searchParams.get("limit")).toBe("100")
+  })
+
+  it("filters non-submittable rounds without hiding read-only announcements", async () => {
+    const allowed = { ...base, id: "allowed", is_test: false }
+    const denied = { ...base, id: "denied", is_test: true }
+    const announcement = { ...base, id: "notice", purpose: "announcement" }
+    rounds = [denied, allowed, announcement]
+    mocks.filter.mockResolvedValue({ rounds: [allowed], error: null })
+    expect((await fetchPlayerRounds(now)).map((round) => round.id)).toEqual(["allowed", "notice"])
+    expect(mocks.filter).toHaveBeenCalledWith([denied, allowed], "own-member")
+  })
+
+  it("never converts an eligibility read failure into an empty list", async () => {
+    rounds = [base]
+    mocks.filter.mockResolvedValue({ rounds: [], error: "roundParticipationCheckFailed" })
+    await expect(fetchPlayerRounds(now)).rejects.toThrow("roundParticipationCheckFailed")
+  })
+
+  it("does not check submission eligibility for an empty or announcement-only list", async () => {
+    expect(await fetchPlayerRounds(now)).toEqual([])
+    rounds = [{ ...base, purpose: "announcement" }]
+    expect(await fetchPlayerRounds(now)).toEqual(rounds)
+    expect(mocks.filter).not.toHaveBeenCalled()
   })
 
   it("accepts the exact opening instant and rejects the exact deadline", async () => {

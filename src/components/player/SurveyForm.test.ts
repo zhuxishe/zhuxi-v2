@@ -125,6 +125,29 @@ describe("survey form expiry and recovery", () => {
     expect(mocks.push).not.toHaveBeenCalled()
   })
 
+  it("keeps the filled answers and stops retrying a denied participation", async () => {
+    mocks.submit.mockResolvedValue({ error: "roundParticipationNotAllowed" })
+    await submitButton().onClick()
+    const tree = render()
+    expect(find(tree, (_type, props) => props.role === "alert")?.children).toBe("roundParticipationNotAllowed")
+    expect(find(tree, (_type, props) => Boolean(props.value))?.value).toEqual(expect.objectContaining({ message: "my answer" }))
+    expect(submitButton(tree).disabled).toBe(true)
+    await submitButton(tree).onClick()
+    expect(mocks.submit).toHaveBeenCalledOnce()
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+
+  it("allows retry after a qualification lookup failure while retaining answers", async () => {
+    mocks.submit.mockResolvedValueOnce({ error: "roundParticipationCheckFailed" })
+    await submitButton().onClick()
+    expect(submitButton().disabled).toBe(false)
+    expect(find(render(), (_type, props) => props.role === "alert")?.children).toBe("roundParticipationCheckFailed")
+    await submitButton().onClick()
+    expect(mocks.submit).toHaveBeenCalledTimes(2)
+    expect(mocks.submit).toHaveBeenLastCalledWith(expect.objectContaining({ message: "my answer" }))
+    expect(mocks.push).toHaveBeenCalledOnce()
+  })
+
   it("ignores duplicate clicks while submitting", async () => {
     let finish!: (value: { success: true }) => void
     mocks.submit.mockReturnValue(new Promise((resolve) => { finish = resolve }))

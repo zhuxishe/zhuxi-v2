@@ -1,19 +1,27 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
-const mocks = vi.hoisted(() => ({ auth: vi.fn(), round: vi.fn(), open: vi.fn(), readiness: vi.fn() }))
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), round: vi.fn(), open: vi.fn(), readiness: vi.fn(), access: vi.fn() }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.auth }))
 vi.mock("@/lib/queries/player-rounds", () => ({ fetchPlayerRound: mocks.round }))
 vi.mock("@/lib/queries/rounds", () => ({ fetchOpenRound: mocks.open }))
 vi.mock("@/lib/matching/readiness-server", () => ({ fetchMyMatchingReadiness: mocks.readiness }))
+vi.mock("@/lib/matching/round-submission-access", () => ({ getRoundSubmissionAccess: mocks.access }))
 import { checkMatchingEntry } from "./profile-actions"
 const id = "429eea31-9986-42a8-b2b9-67f792e07173"
 const round = { id, purpose: "matching", status: "open", survey_start: "2026-10-01", survey_end: "2026-11-01" }
 describe("preflight before leaving a matching entry", () => {
   beforeEach(() => {
     vi.resetAllMocks(); vi.useFakeTimers(); vi.setSystemTime("2026-10-23")
+    mocks.auth.mockResolvedValue({ memberId: "own-member" }); mocks.access.mockResolvedValue({ allowed: true })
     mocks.round.mockResolvedValue(round); mocks.open.mockResolvedValue(round)
     mocks.readiness.mockResolvedValue({ supplementary: false, personality: true, quiz: false, missing: ["supplementary", "quiz"] })
   })
   afterEach(() => vi.useRealTimers())
+  it.each(["roundParticipationNotAllowed", "roundParticipationCheckFailed"])("leaves %s to the destination instead of asking for unrelated profile work", async (error) => {
+    mocks.access.mockResolvedValue({ allowed: false, error })
+    expect(await checkMatchingEntry(id)).toEqual({ state: "continue" })
+    expect(mocks.access).toHaveBeenCalledWith(round, "own-member")
+    expect(mocks.readiness).not.toHaveBeenCalled()
+  })
   it("returns every missing profile and resolves a legacy entry to the actual round", async () => {
     expect(await checkMatchingEntry()).toEqual({ state: "incomplete", roundId: id, missing: ["supplementary", "quiz"] })
     expect(mocks.auth).toHaveBeenCalledOnce(); expect(mocks.open).toHaveBeenCalledOnce()

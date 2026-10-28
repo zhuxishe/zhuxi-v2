@@ -37,8 +37,24 @@ export function useQuestionnaireUnsavedChanges(locale: string) {
     // The Navigation API can also cancel same-document back/forward navigation where supported.
     const navigation = (window as Window & { navigation?: EventTarget }).navigation
     const guardNavigation = (event: Event) => {
-      const navigate = event as Event & { canIntercept?: boolean; hashChange?: boolean }
-      if (!dirty.current || !event.cancelable || !navigate.canIntercept || navigate.hashChange || confirmLeave()) return
+      const navigate = event as Event & {
+        canIntercept?: boolean
+        hashChange?: boolean
+        navigationType?: string
+        destination?: { url: string; sameDocument: boolean }
+      }
+      if (!dirty.current || !event.cancelable || !navigate.canIntercept || navigate.hashChange) return
+      // Next's router.refresh() replaces history at the current URL. It keeps
+      // the questionnaire mounted, so neither warn nor clear its dirty state.
+      // A document reload still needs the unsaved-answer warning.
+      if (navigate.destination?.sameDocument && navigate.navigationType !== "reload") {
+        try {
+          const destination = new URL(navigate.destination.url, window.location.href)
+          const current = window.location
+          if (destination.origin === current.origin && destination.pathname === current.pathname && destination.search === current.search) return
+        } catch { /* An unknown destination must not bypass the leave guard. */ }
+      }
+      if (confirmLeave()) return
       event.preventDefault()
     }
     window.addEventListener("beforeunload", guardUnload)

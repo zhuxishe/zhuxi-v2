@@ -6,6 +6,7 @@ import { fetchOpenRound } from "@/lib/queries/rounds"
 import { getRoundPurpose } from "@/lib/matching/round-config"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
 import { fetchMyMatchingReadiness } from "@/lib/matching/readiness-server"
+import { getRoundSubmissionAccess } from "@/lib/matching/round-submission-access"
 import type { MatchingProfileKind } from "@/lib/matching/profile-readiness"
 
 export type MatchingEntryCheck =
@@ -15,12 +16,16 @@ export type MatchingEntryCheck =
 
 /** A preflight keeps the user on the originating card if they cancel the dialog. */
 export async function checkMatchingEntry(roundId?: string): Promise<MatchingEntryCheck> {
-  await requirePlayer()
+  const player = await requirePlayer()
   if (roundId !== undefined && !/^[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/i.test(roundId)) return { state: "failed" }
   try {
     const round = roundId ? await fetchPlayerRound(roundId) : await fetchOpenRound()
     // The destination page owns not-found/closed notices and non-matching registration.
     if (!round || getRoundPurpose(round.purpose) !== "matching" || getSurveyWindowState(round) !== "open") return { state: "continue" }
+    // The destination displays access errors; never ask an ineligible member
+    // to complete more questionnaires before explaining why they cannot join.
+    const access = await getRoundSubmissionAccess(round, player.memberId)
+    if (!access.allowed) return { state: "continue" }
     const readiness = await fetchMyMatchingReadiness()
     return readiness.missing.length ? { state: "incomplete", roundId: round.id, missing: readiness.missing } : { state: "continue" }
   } catch {

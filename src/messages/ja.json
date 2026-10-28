@@ -1347,6 +1347,8 @@
     "retry": "再試行"
   },
   "errors": {
+    "roundParticipationNotAllowed": "現在のアカウントは、この回の参加対象に含まれていないため送信できません。活動一覧から参加可能な活動を選ぶか、スタッフに参加資格をご確認ください。",
+    "roundParticipationCheckFailed": "参加資格を確認できませんでした。しばらくしてから再度お試しください。",
     "matchPublicationChanged": "マッチング情報が撤回または更新されました。更新後にご確認ください。入力内容は保持されています。",
     "matchingProfileIncomplete": "プロフィールのアンケートを完了してから、マッチングにお申し込みください。",
     "matchingProfileCheckFailed": "プロフィールの完了状況を確認できませんでした。もう一度お試しください。",

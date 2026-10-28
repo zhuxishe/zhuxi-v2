@@ -1,0 +1,64 @@
+import React from 'react'
+import {createRoot} from 'react-dom/client'
+import {RoundAudiencePanel} from '@/components/admin/round-content/RoundAudiencePanel'
+import type {RoundAudienceSnapshot, RoundAudienceSaveInput} from '@/lib/matching/round-audience-types'
+
+const query = new URLSearchParams(location.search)
+const id = (n:number) => `00000000-0000-4000-8000-${String(n).padStart(12,'0')}`
+const roundId = id(100)
+const formal = query.get('mode') === 'formal'
+const readOnly = query.get('role') === 'admin'
+const people = [
+  {id:id(1),name:'林晓',memberNumber:'ZXS_301',isTest:false,listed:true,participated:true,eligible:true},
+  {id:id(2),name:'陈语',memberNumber:'ZXS_302',isTest:false,listed:true,participated:false,eligible:true},
+  {id:id(3),name:'测试月一',memberNumber:'TST_001',isTest:true,listed:true,participated:true,eligible:true},
+  {id:id(4),name:'周宁',memberNumber:'ZXS_303',isTest:false,listed:false,participated:true,eligible:true},
+  {id:id(5),name:'顾遥',memberNumber:'ZXS_304',isTest:false,listed:false,participated:false,eligible:true},
+  {id:id(6),name:'许悠',memberNumber:'ZXS_305',isTest:false,listed:false,participated:false,eligible:true},
+  {id:id(7),name:'测试月二',memberNumber:'TST_002',isTest:true,listed:false,participated:false,eligible:true},
+  {id:id(8),name:'已停用示例',memberNumber:'ZXS_306',isTest:false,listed:true,participated:false,eligible:false},
+]
+if(query.get('mode')==='allowlist') people[3].participated=false
+let current: RoundAudienceSnapshot = {
+  roundId,roundName:'秋季周末匹配（示例测试）',isTest:!formal,purpose:'matching',status:'open',canManage:!formal&&!readOnly,
+  enabled:formal||query.get('mode')!=='allowlist',revision:'fixture-revision-1',
+  members:formal?[]:people.filter(person=>!readOnly||person.listed||person.participated),
+  counts:{listed:formal?0:4,effective:formal?5:6,formal:5,test:formal?0:1},operations:[],
+}
+function recalculate(){
+ const listed=current.members.filter(person=>person.listed)
+ const selected=new Set(listed.map(person=>person.id))
+ const allowed=people.filter(person=>person.eligible&&(selected.has(person.id)||(current.enabled&&!person.isTest)))
+ current.counts={listed:listed.length,effective:allowed.length,formal:allowed.filter(p=>!p.isTest).length,test:allowed.filter(p=>p.isTest).length}
+}
+if(!formal) recalculate()
+const receipts = new Map<string,{payload:string}>()
+let saveCount=0
+let conflictUsed=false
+function canonical(input:RoundAudienceSaveInput){return JSON.stringify({...input,memberIds:[...input.memberIds].sort()})}
+window.__roundAudienceActions = {
+ async load(){return structuredClone(current)},
+ async save(input:RoundAudienceSaveInput){
+  saveCount++
+  const previous=receipts.get(input.operationId)
+  if(previous) return previous.payload===canonical(input)?{success:true,operationId:input.operationId}:{error:'此操作编号已用于其他修改，请核对后重试。'}
+  if(!current.canManage) return {error:'仅超级管理员可以修改参与范围。'}
+  if(query.get('result')==='conflict'&&!conflictUsed){conflictUsed=true;current.revision='fixture-concurrent-change';return {error:'参与范围或活动状态已变化，请重新读取后再保存。'}}
+  if(input.expectedRevision!==current.revision)return {error:'参与范围或活动状态已变化，请重新读取后再保存。'}
+  if(input.reason.trim().length<4)return {error:'请填写修改原因（4–500 个字符）。'}
+  const selected=new Set(input.memberIds)
+  if(current.members.some(person=>person.listed&&person.participated&&!selected.has(person.id)))return {error:'已有参与记录的名单成员不能移除。'}
+  if(!input.enabled&&current.members.some(person=>person.participated&&!selected.has(person.id)))return {error:'请先将已有参与记录的人员加入指定名单。'}
+  current={...current,enabled:input.enabled,revision:`fixture-saved-${saveCount}`,members:current.members.map(person=>({...person,listed:selected.has(person.id)})),operations:[{operationId:input.operationId,createdAt:new Date().toISOString(),actorName:'示例超级管理员',enabled:input.enabled,listedCount:selected.size},...current.operations]}
+  recalculate();receipts.set(input.operationId,{payload:canonical(input)})
+  if(query.get('result')==='unknown'&&saveCount===1)return {error:'保存结果待确认，请核对上次保存。',unknown:true,operationId:input.operationId}
+  return {success:true,operationId:input.operationId}
+ }
+}
+createRoot(document.getElementById('root')!).render(<div className="fixture-shell">
+  <header className="flex flex-wrap items-center justify-between gap-2 border-b px-5 py-4"><strong className="heading-display">竹溪社 · 内容与问卷编辑</strong><span className="fixture-note">虚构人员 · 本地交互验收 · 不连接线上数据</span></header>
+  <main className="space-y-5 p-4 sm:p-6"><p className="text-sm text-muted-foreground">← 返回轮次详情</p>
+    <RoundAudiencePanel roundId={roundId} initial={query.get('unavailable')==='1'?null:structuredClone(current)} />
+    <div className="grid gap-6 xl:grid-cols-2"><section className="space-y-4 rounded-xl border bg-card p-5"><h2 className="font-semibold">用途与时间</h2><p className="text-sm text-muted-foreground">此处为原内容编辑区的上下文示例；本次验收仅操作上方参与范围卡片。</p><div className="space-y-1 text-sm"><p>轮次／活动名称</p><p className="rounded-lg border bg-background px-3 py-2">秋季周末匹配（示例测试）</p></div><div className="space-y-1 text-sm"><p>用途</p><p className="rounded-lg border bg-background px-3 py-2">收集时间后匹配</p></div></section><section className="rounded-xl border bg-card p-5"><h2 className="font-semibold">玩家页面预览</h2><p className="mt-3 text-sm text-muted-foreground">报名范围独立保存，活动文案与问卷内容保持原编辑流程。</p></section></div>
+  </main>
+</div>)

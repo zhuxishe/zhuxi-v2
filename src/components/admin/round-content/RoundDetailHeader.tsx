@@ -2,8 +2,8 @@
 
 import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
-import { Eye, EyeOff, Pencil, Play } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Eye, EyeOff, Pencil, Play, UsersRound } from "lucide-react"
+import { Button, buttonVariants } from "@/components/ui/button"
 import type { RoundRecord } from "@/types"
 import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-config"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
@@ -28,6 +28,7 @@ export function RoundDetailHeader({ round, windowState, loading, count, matching
     </div>
     <div className="flex flex-wrap gap-2">
       <Link href={`/admin/matching/rounds/${round.id}/edit`}><Button size="sm" variant="outline"><Pencil className="mr-1 size-4" />内容、问卷与预览</Button></Link>
+      {purpose !== "announcement" && <Link href={`/admin/matching/rounds/${round.id}/edit#participation-scope`} className={buttonVariants({ size: "sm", variant: "outline" })}><UsersRound className="mr-1 size-4" />参与范围</Link>}
       {(round.status === "draft" || round.status === "closed" || windowState === "expired") && <Button size="sm" onClick={onOpen} disabled={loading}><Eye className="mr-1 size-4" />{round.status === "draft" ? "开放" : "重新开放"}{noun}</Button>}
       {round.status === "open" && <Button size="sm" variant="outline" onClick={onClose} disabled={loading}><EyeOff className="mr-1 size-4" />{purpose === "announcement" ? "下架通知" : `截止${noun}`}</Button>}
       {purpose === "matching" && canRunRoundMatching(round.status, windowState) && <Button size="sm" onClick={onMatch} disabled={loading || !matchingEligibilityKnown || (matchingEligibleCount ?? count) < 2 || !adminAuditReasonIsValid(matchingReason)}><Play className="mr-1 size-4" />运行匹配</Button>}

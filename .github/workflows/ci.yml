@@ -61,6 +61,7 @@ jobs:
           node supabase/audits/matching-publication-preflight-pglite.mjs
           node supabase/audits/test-account-pool-pglite.mjs
           node supabase/audits/test-round-formal-access-pglite.mjs
+          node supabase/audits/round-audience-admin-pglite.mjs
 
       - name: Production build
         run: pnpm run build

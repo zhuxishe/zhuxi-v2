@@ -116,4 +116,5 @@ for(const kind of ['answer','cancelled_answer','published_unmatched','diagnostic
 const postflight=(await db.exec(read('supabase/audits/test-round-formal-access-postflight.sql'))).flatMap(r=>r.rows??[]).find(r=>r.verification)?.verification
 check(postflight.status,'PASS','read-only structural postflight passes')
 console.log(`Test round formal player audience audit: ${checks} checks passed; isolated PGlite only.`)
-await db.close()
+export const formalAccessAuditContext={...ctx,otherRound,fresh,freshUser,invoke};
+if(!process.env.ROUND_AUDIENCE_ADMIN_SUITE)await db.close()

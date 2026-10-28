@@ -7,6 +7,8 @@ import { fetchRound, fetchRoundSubmissions, fetchRoundHasSession } from "@/lib/q
 import { getRoundPurpose, normalizeRoundConfig, ROUND_SETUP_ERROR } from "@/lib/matching/round-config"
 import { formatTokyoDateTimeLocal } from "@/lib/player-activity/tokyo-datetime"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
+import { fetchRoundAudience } from "@/lib/matching/round-audience-service"
+import { RoundAudiencePanel } from "@/components/admin/round-content/RoundAudiencePanel"
 import { RoundContentEditor } from "@/components/admin/round-content/RoundContentEditor"
 
 export default async function RoundEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -16,7 +18,7 @@ export default async function RoundEditPage({ params }: { params: Promise<{ id: 
   const round = await fetchRound(id).catch(() => null)
   if (!round) notFound()
   const supported = "purpose" in round && "content_config" in round && "config_revision" in round
-  const [submissions, hasSession] = supported ? await Promise.all([fetchRoundSubmissions(id), fetchRoundHasSession(id)]) : [[], false]
+  const [submissions, hasSession, audience] = supported ? await Promise.all([fetchRoundSubmissions(id), fetchRoundHasSession(id), fetchRoundAudience(id).catch(() => null)]) : [[], false, null]
   const initial = {
     roundName: round.round_name, purpose: getRoundPurpose(round.purpose),
     surveyStart: formatTokyoDateTimeLocal(round.survey_start), surveyEnd: formatTokyoDateTimeLocal(round.survey_end),
@@ -27,6 +29,7 @@ export default async function RoundEditPage({ params }: { params: Promise<{ id: 
     <AdminTopBar admin={admin} title="内容与问卷编辑" />
     <div className="space-y-5 p-4 sm:p-6">
       <Link href={`/admin/matching/rounds/${id}`} className="inline-flex items-center gap-1 text-sm text-muted-foreground"><ArrowLeft className="size-4" />返回轮次详情</Link>
+      {supported && getRoundPurpose(round.purpose) !== "announcement" && <RoundAudiencePanel roundId={id} initial={audience} />}
       {supported ? <RoundContentEditor key={id} roundId={id} initial={initial} revision={round.config_revision} locked={submissions.length > 0 || hasSession || round.status === "matched"} status={round.status} canDelete={admin.role === "super_admin"} adminAccount={user?.email ?? ""} hasMatches={hasSession} /> : <p role="alert" className="rounded-xl border bg-card p-5 text-sm">{ROUND_SETUP_ERROR}</p>}
     </div>
   </div>

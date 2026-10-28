@@ -269,4 +269,5 @@ for(const name of ['test_accounts','test_round_members','test_pool_write_context
 check(await scalar('SELECT count(*)::integer FROM private.test_pool_write_context'),0,'controlled context always cleared')
 const postflight=(await db.exec(read('supabase/audits/test-account-pool-postflight.sql'))).flatMap(r=>r.rows??[]).find(r=>r.verification)?.verification;check(postflight.status,'PASS','read-only postflight validates live schema and retained retired identity');
 console.log(`Test account pool audit: ${checks} checks passed; isolated PGlite only. Real member questionnaire contents and matching scoring rules unchanged.`)
-await db.close()
+export const testPoolAuditContext={...ctx,accounts,real,formal,round,ids,outsider,outsiderUser,server,player};
+if(!process.env.TEST_ROUND_FORMAL_ACCESS_SUITE)await db.close()

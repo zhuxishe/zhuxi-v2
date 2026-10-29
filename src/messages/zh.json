@@ -752,7 +752,7 @@
     "sharedTimesExpand": "查看全部 {count} 个日期",
     "sharedTimesPast": "已过日期",
     "sharedTimesCollapse": "收起",
-    "sharedTimesHint": "根据双方本轮最新填写的可用时间整理，实际安排请与搭档确认。",
+    "sharedTimesHint": "以上时间段为双方共同空闲日期，实际活动时间各位请与搭档确认。祝大家玩的开心呢",
     "sharedTimesEmpty": "双方本轮填写的时间暂时没有交集，请与搭档重新确认。",
     "sharedTimesUnavailable": "暂时无法确认双方的共同时段，可先与搭档核对。",
     "sharedTimeRecommendationChanged": "推荐时段不在当前共同时段中，请与搭档再次确认。",

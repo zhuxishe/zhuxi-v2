@@ -71,8 +71,14 @@ describe("legacy admin member-read compatibility contract", () => {
       "export async function fetchPendingCancellations",
       "export async function fetchCancellationCount",
     )
+    const roleColumns = roundSubmissions.match(
+      /const columns = admin\.role === "super_admin"\s*\?\s*`([^`]+)`\s*:\s*`([^`]+)`/,
+    )
+    expect(roleColumns).not.toBeNull()
+    expect(roleColumns![1]).toContain("member_number")
+    expect(roleColumns![2]).not.toContain("member_number")
+    expect(cancellations).not.toContain("member_number")
     for (const text of [roundSubmissions, cancellations]) {
-      expect(text).not.toContain("member_number")
       expect(text).not.toContain("user_id")
       expect(text).not.toContain("personality_quiz_results")
     }

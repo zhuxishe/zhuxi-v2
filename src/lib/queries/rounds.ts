@@ -57,7 +57,7 @@ export async function fetchRoundSubmissions(roundId: string) {
       id, round_id, member_id, game_type_pref, gender_pref, availability,
       interest_tags, social_style, message, created_at, updated_at, cancelled_at,
       member:members (
-        id,
+        id, member_number,
         member_identity (full_name, nickname, school_name)
       )
     `

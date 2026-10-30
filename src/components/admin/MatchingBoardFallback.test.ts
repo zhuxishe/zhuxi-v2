@@ -7,7 +7,7 @@ import type { MatchSessionViewProps } from "./MatchSessionView"
 
 const mocks = vi.hoisted(() => ({ mutate: vi.fn(), refresh: vi.fn() }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
-vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ inspectBoardGroup: mocks.mutate, inspectBoardGroupMove: mocks.mutate, inspectBoardPair: mocks.mutate, inspectBoardMultiMove: mocks.mutate, rematchBoard: mocks.mutate, saveBoard: mocks.mutate, loadMatchingBoard: vi.fn(), setBoardMemberLock: mocks.mutate }))
+vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ recommendBoardSmallGroups: vi.fn(async () => ({ success: true, recommendations: [] })), inspectBoardSmallGroupCandidates: vi.fn(async () => ({ success: true, passed: true })), inspectBoardGroup: mocks.mutate, inspectBoardGroupMove: mocks.mutate, inspectBoardPair: mocks.mutate, inspectBoardMultiMove: mocks.mutate, rematchBoard: mocks.mutate, saveBoard: mocks.mutate, loadMatchingBoard: vi.fn(), setBoardMemberLock: mocks.mutate }))
 vi.mock("@/app/admin/matching/[id]/actions", () => ({ confirmSession: mocks.mutate, unpublishSession: mocks.mutate, lockPair: mocks.mutate, unlockPair: mocks.mutate }))
 vi.mock("@/app/admin/matching/[id]/manual-actions", () => ({ recoverMatchingAdjustment: mocks.mutate }))
 import { fallbackBoard, MatchingBoardView } from "./MatchingBoardView"

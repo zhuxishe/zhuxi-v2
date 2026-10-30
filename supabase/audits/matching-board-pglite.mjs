@@ -97,6 +97,7 @@ await db.exec(testScopeSql.slice(sourceScopeStart,testScopeSql.indexOf('$migrati
 await db.exec(read('supabase/migrations/20261025161221_matching_three_pool_board.sql'))
 await db.exec(read('supabase/migrations/20261025170225_matching_board_member_locks.sql'))
 await db.exec(read('supabase/migrations/20261027223546_matching_board_time_groups.sql'))
+if(process.env.MATCHING_BOARD_SMALL_GROUP_SKIP_MIGRATION!=='1')await db.exec(read('supabase/migrations/20261030103412_matching_board_small_groups.sql'))
 const ids=Array.from({length:12},()=>randomUUID()),users=ids.map(()=>randomUUID())
 for(let i=0;i<ids.length;i++){
  await db.query('INSERT INTO public.members(id,user_id,member_number) VALUES($1,$2,$3)',[ids[i],users[i],`BOARD_${i}`])

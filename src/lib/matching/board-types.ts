@@ -11,6 +11,8 @@ export interface BoardMulti {
   resultId?: string
   memberIds: string[]
   bestSlot: string | null
+  /** Explicitly confirmed in the 4–6-person section; absent for ordinary time groups. */
+  groupKind?: "small"
 }
 export interface BoardDraft {
   duos: BoardDuo[]
@@ -29,6 +31,20 @@ export interface BoardLayout {
   multiMode?: "grouped"
   waitingMultiIds?: string[]
   multiPoolSlot?: string | null
+  /** Complete member sets of saved small groups, resolved against active results on read. */
+  smallGroupMemberIds?: string[][]
+}
+export interface BoardSmallGroupRecommendation {
+  key: string
+  memberIds: string[]
+  bestSlot: string
+  commonSlots: string[]
+}
+export interface BoardSmallGroupRecommendationsResult {
+  success?: true
+  recommendations?: BoardSmallGroupRecommendation[]
+  revisionToken?: string
+  error?: string
 }
 export type BoardDisplayRow = MatchResultRow & { key: string; resultId?: string; status?: string }
 export type BoardSourceRow = MatchResultRow & { id: string; status: string }

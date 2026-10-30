@@ -6,9 +6,9 @@ import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, Boar
 import type { EnrichedMember } from "./match-detail-types"
 import type { MatchSessionViewProps } from "./MatchSessionView"
 
-const mocks = vi.hoisted(() => ({ group: vi.fn(), groupMove: vi.fn(), multi: vi.fn(), save: vi.fn(), load: vi.fn(), refresh: vi.fn(), publish: vi.fn() }))
+const mocks = vi.hoisted(() => ({ group: vi.fn(), groupMove: vi.fn(), multi: vi.fn(), save: vi.fn(), load: vi.fn(), refresh: vi.fn(), publish: vi.fn(), recommend: vi.fn(), inspectSuggestion: vi.fn() }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
-vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ inspectBoardGroup: mocks.group, inspectBoardGroupMove: mocks.groupMove, inspectBoardPair: vi.fn(), inspectBoardMultiMove: mocks.multi, rematchBoard: vi.fn(), saveBoard: mocks.save, loadMatchingBoard: mocks.load, setBoardMemberLock: vi.fn() }))
+vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ recommendBoardSmallGroups: mocks.recommend, inspectBoardSmallGroupCandidates: mocks.inspectSuggestion, inspectBoardGroup: mocks.group, inspectBoardGroupMove: mocks.groupMove, inspectBoardPair: vi.fn(), inspectBoardMultiMove: mocks.multi, rematchBoard: vi.fn(), saveBoard: mocks.save, loadMatchingBoard: mocks.load, setBoardMemberLock: vi.fn() }))
 vi.mock("@/app/admin/matching/[id]/actions", () => ({ confirmSession: mocks.publish, unpublishSession: vi.fn(), lockPair: vi.fn(), unlockPair: vi.fn() }))
 vi.mock("@/app/admin/matching/[id]/manual-actions", () => ({ recoverMatchingAdjustment: vi.fn() }))
 import { MatchingBoardView } from "./MatchingBoardView"
@@ -90,8 +90,11 @@ beforeEach(() => {
   document.body.innerHTML = '<div id="root"></div>'
   root = createRoot(document.getElementById("root")!)
   props = fixture()
-  mocks.group.mockImplementation(async ({ draft, memberIds, slot }: BoardRequest & { memberIds: string[]; slot: string }): Promise<BoardActionResult> => {
+  mocks.recommend.mockResolvedValue({ success: true, recommendations: [], revisionToken: "revision-current" })
+  mocks.inspectSuggestion.mockResolvedValue({ success: true, passed: true })
+  mocks.group.mockImplementation(async ({ draft, memberIds, slot, groupKind }: BoardRequest & { memberIds: string[]; slot: string; groupKind?: "small" }): Promise<BoardActionResult> => {
     const next = groupDraft(draft, memberIds, slot)
+    if (groupKind) next.multiGroups![next.multiGroups!.length - 1].groupKind = groupKind
     return { passed: true, draft: next, rows: displayRows(next) }
   })
   mocks.groupMove.mockImplementation(async ({ draft, memberId, groupKey }: BoardRequest & { memberId: string; groupKey: string }): Promise<BoardActionResult> => {
@@ -277,5 +280,93 @@ describe("multiplayer time grouping board", () => {
     await act(async () => group().querySelector<HTMLButtonElement>('[data-member-id="A"]')!.click())
     expect(document.querySelectorAll('[data-slot="popover-content"]')).toHaveLength(1)
     expect(mocks.group).not.toHaveBeenCalled()
+  })
+})
+
+describe("small-group suggestions integrated with the board", () => {
+  function suggest() {
+    mocks.recommend.mockResolvedValue({ success: true, recommendations: [{ key: "suggestion", memberIds: [...poolIds], bestSlot: SLOT, commonSlots: [SLOT] }], revisionToken: "revision-current" })
+  }
+  const suggestion = () => document.querySelector<HTMLElement>('[data-board-small-key="suggestion"]')!
+  const middle = () => document.querySelector<HTMLElement>('[aria-label="4–6人分组"]')!
+
+  it("loads suggestions once between the unchanged upper pool and time groups", async () => {
+    suggest(); await render()
+    expect(mocks.recommend).toHaveBeenCalledOnce()
+    expect(chips(upper())).toEqual(poolIds)
+    expect(chips(suggestion())).toEqual(poolIds)
+    expect(chips(candidate())).toEqual(poolIds)
+    expect(document.body.textContent).not.toContain("尚未保存")
+    const headings = [...document.querySelectorAll('[aria-label="多人本池子"] h3')].map((heading) => heading.textContent)
+    expect(headings).toEqual(["多人候选池", "4–6人分组", "按时间分组"])
+    await setReason()
+    expect(mocks.recommend).toHaveBeenCalledOnce()
+    expect(mocks.save).not.toHaveBeenCalled()
+  })
+
+  it("confirms a unique small group in the middle and saves its kind", async () => {
+    suggest(); await render()
+    await click("确认第 1 个4–6人建议组")
+    expect(mocks.group).toHaveBeenCalledWith(expect.objectContaining({ groupKind: "small", memberIds: poolIds, slot: SLOT }))
+    expect(middle().querySelector('[data-board-group-key="new-group"]')).not.toBeNull()
+    expect(suggestion()).toBeNull()
+    expect(chips(upper())).toEqual([])
+    expect(candidate()).toBeNull()
+    await setReason(); await click("保存调整")
+    expect(mocks.save.mock.calls[0][0].draft.multiGroups[0].groupKind).toBe("small")
+    expect(mocks.publish).not.toHaveBeenCalled()
+  })
+
+  it("edits only suggestions, allows three temporarily, then checks a drag before confirming", async () => {
+    suggest(); await render()
+    for (const id of ["D", "E", "F"]) await click(`将 ${name(id)}移出建议 1`)
+    expect(chips(suggestion())).toEqual(["A", "B", "C"])
+    expect(button("确认第 1 个4–6人建议组").disabled).toBe(true)
+    expect(chips(upper())).toEqual(poolIds)
+    await drag(upper().querySelector('[data-member-id="D"]')!, suggestion())
+    expect(mocks.inspectSuggestion).toHaveBeenCalledWith(expect.objectContaining({ memberIds: ["A", "B", "C", "D"], slot: SLOT }))
+    expect(chips(suggestion())).toEqual(["A", "B", "C", "D"])
+    expect(button("确认第 1 个4–6人建议组").disabled).toBe(false)
+    expect(mocks.recommend).toHaveBeenCalledOnce()
+    expect(mocks.save).not.toHaveBeenCalled()
+  })
+
+  it("keeps the previous suggestion when a candidate fails server compatibility", async () => {
+    suggest(); await render()
+    await click(`将 ${name("F")}移出建议 1`)
+    mocks.inspectSuggestion.mockResolvedValue({ passed: false, reasons: ["当前不满足匹配条件"] })
+    await drag(upper().querySelector('[data-member-id="F"]')!, suggestion())
+    expect(chips(suggestion())).toEqual(["A", "B", "C", "D", "E"])
+    expect(document.body.textContent).toContain("当前不满足匹配条件")
+  })
+
+  it("prunes members confirmed in the time section without reshuffling the remaining suggestion", async () => {
+    suggest(); await render()
+    await click(`确认 ${format(SLOT_TWO)}分组`)
+    expect(chips(suggestion())).toEqual(["D", "E", "F"])
+    expect(middle().querySelector('[data-board-group-key="new-group"]')).toBeNull()
+    expect(mocks.recommend).toHaveBeenCalledOnce()
+    await click("撤销")
+    expect(chips(suggestion())).toEqual(poolIds)
+  })
+
+  it("requires a confirmed small group to return to 4–6 before save", async () => {
+    const draft = groupDraft(props.boardSnapshot!.draft, ["A", "B", "C", "D"])
+    draft.multiGroups![0].groupKind = "small"
+    props.boardSnapshot = { ...props.boardSnapshot!, draft, rows: displayRows(draft) }
+    await render()
+    await drag(group().querySelector('[data-member-id="D"]')!, upper())
+    expect(chips(group())).toEqual(["A", "B", "C"])
+    expect(middle().textContent).toContain("请调整为 4–6 人后保存")
+    await setReason()
+    expect(button("保存调整").disabled).toBe(true)
+    expect(button("确认发布").disabled).toBe(true)
+  })
+
+  it("recommends on mobile for viewing without exposing edit controls", async () => {
+    desktop = false; suggest(); await render()
+    expect(chips(suggestion())).toEqual(poolIds)
+    expect(button("确认第 1 个4–6人建议组").disabled).toBe(true)
+    expect(button("重新推荐").disabled).toBe(true)
   })
 })

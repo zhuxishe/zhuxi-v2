@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MatchingBoardView } from '@/components/admin/MatchingBoardView'
 import * as boardEngine from '@/lib/matching/board-engine'
+import { recommendSmallGroups } from '@/lib/matching/board-small-groups'
 import { inspectManualAdjustment } from '@/lib/matching/adjustment-engine'
 import { createScoringV3Config } from '@/lib/matching/scoring-policy'
 const params = new URLSearchParams(location.search)
@@ -28,12 +29,13 @@ if (params.get('mode') === 'empty') {
   context.originalRows = context.originalRows.slice(0,1)
   currentDraft = boardEngine.createBoardDraft(context.originalRows,ids,context.originalLayout)
 }
-if (params.get('mode') === 'grouped') {
-  const grouped = [poolIds.slice(0,3),poolIds.slice(3,6)]
+if (params.get('mode') === 'grouped' || params.get('mode') === 'small') {
+  const small = params.get('mode') === 'small'
+  const grouped = small ? [poolIds.slice(0,4),poolIds.slice(4,7)] : [poolIds.slice(0,3),poolIds.slice(3,6)]
   context.originalRows = [context.originalRows[0],...grouped.map((members,i)=>makeRow(members,`fixture-group-${i+1}`,i===0?'2026-11-02_上午':baseSlot))]
-  currentDraft = { ...currentDraft, multiMode:'grouped', multi:{key:'fixture-waiting',memberIds:poolIds.slice(6),bestSlot:baseSlot}, multiGroups:grouped.map((members,i)=>({key:`fixture-group-${i+1}`,resultId:`fixture-group-${i+1}`,memberIds:members,bestSlot:i===0?'2026-11-02_上午':baseSlot})) }
+  currentDraft = { ...currentDraft, multiMode:'grouped', multi:{key:'fixture-waiting',memberIds:poolIds.slice(small?7:6),bestSlot:baseSlot}, multiGroups:grouped.map((members,i)=>({key:`fixture-group-${i+1}`,resultId:`fixture-group-${i+1}`,memberIds:members,bestSlot:i===0?'2026-11-02_上午':baseSlot,...(small&&i===0?{groupKind:'small'}:{})})) }
 }
-if (currentDraft.multiMode === 'grouped') context.originalLayout = {waitingDuoIds:currentDraft.waitingDuoIds,brokenPairs:currentDraft.brokenPairs,multiMode:'grouped',waitingMultiIds:currentDraft.multi?.memberIds??[],multiPoolSlot:currentDraft.multi?.bestSlot??null}
+if (currentDraft.multiMode === 'grouped') context.originalLayout = {waitingDuoIds:currentDraft.waitingDuoIds,brokenPairs:currentDraft.brokenPairs,multiMode:'grouped',waitingMultiIds:currentDraft.multi?.memberIds??[],multiPoolSlot:currentDraft.multi?.bestSlot??null,smallGroupMemberIds:currentDraft.multiGroups.filter(group=>group.groupKind==='small').map(group=>group.memberIds)}
 if (params.get('locked') === '1') context.originalRows = context.originalRows.map((row,i)=>i===1?{...row,status:'locked'}:row)
 const boardMembers = ids.map((id,i)=>({id,record_source:null,member_identity:{full_name:names[i],nickname:null,school_name:'示例大学',gender:i===13?'':i%2?'female':'male',hobby_tags:['推理','音乐'],nationality:'中国',degree_level:'硕士',department:'社会学'},member_interests:{game_type_pref:candidates[i].gameTypePref,scenario_theme_tags:['推理'],preferred_time_slots:[],social_goal_primary:'结交朋友'},member_personality:{expression_style_tags:[],group_role_tags:[],extroversion:3,warmup_speed:'适中'},member_boundaries:{preferred_gender_mix:'都可以'}}))
 const submissionPrefs = Object.fromEntries(ids.map((id,i)=>[id,{game_type_pref:candidates[i].gameTypePref,gender_pref:'都可以',availability:candidates[i].availability,interest_tags:['推理','音乐']}]))
@@ -47,7 +49,9 @@ window.__boardActions = {
  setBoardMemberLock:async({memberId,locked,operationId})=>{context.lockedMemberIds=locked?[...new Set([...context.lockedMemberIds,memberId])]:context.lockedMemberIds.filter(id=>id!==memberId);revision++;return {success:true,operationId}},
  inspectBoardPair:wrap(({draft,memberIds})=>checked(boardEngine.previewBoardPair(context,draft,memberIds))),
  inspectBoardMultiMove:wrap(({draft,memberId})=>checked(boardEngine.previewBoardMultiMove(context,draft,memberId))),
- inspectBoardGroup:wrap(({draft,memberIds,slot})=>checked(boardEngine.previewBoardGroup(context,draft,memberIds,slot))),
+ recommendBoardSmallGroups:wrap(({draft})=>({recommendations:recommendSmallGroups(context.engine,draft.multi?.memberIds??[],draft.multi?.bestSlot??null),revisionToken:String(revision)})),
+ inspectBoardSmallGroupCandidates:wrap(({draft,memberIds,slot})=>checked(boardEngine.previewBoardSmallGroupCandidates(context,draft,memberIds,slot))),
+ inspectBoardGroup:wrap(({draft,memberIds,slot,groupKind})=>checked(boardEngine.previewBoardGroup(context,draft,memberIds,slot,groupKind))),
  inspectBoardGroupMove:wrap(({draft,memberId,groupKey})=>checked(boardEngine.previewBoardGroupMove(context,draft,memberId,groupKey))),
  rematchBoard:wrap(({draft})=>checked(boardEngine.rematchBoardDraft(context,draft))),
  saveBoard:wrap(({draft,operationId})=>{
@@ -58,7 +62,7 @@ window.__boardActions = {
    context.originalRows=out.rows.map(row=>({...row,id:row.resultId??idsByKey.get(row.key),status:row.status??'draft'}))
    const canonical=entry=>({...entry,key:idsByKey.get(entry.key),resultId:idsByKey.get(entry.key)})
    currentDraft={...out.draft,duos:out.draft.duos.map(canonical),...(out.draft.multiMode==='grouped'?{multiGroups:groups.map(canonical)}:{multi:out.draft.multi?canonical(out.draft.multi):null})}
-   context.originalLayout={waitingDuoIds:currentDraft.waitingDuoIds,brokenPairs:currentDraft.brokenPairs,...(currentDraft.multiMode==='grouped'?{multiMode:'grouped',waitingMultiIds:currentDraft.multi?.memberIds??[],multiPoolSlot:currentDraft.multi?.bestSlot??null}:{})}
+   context.originalLayout={waitingDuoIds:currentDraft.waitingDuoIds,brokenPairs:currentDraft.brokenPairs,...(currentDraft.multiMode==='grouped'?{multiMode:'grouped',waitingMultiIds:currentDraft.multi?.memberIds??[],multiPoolSlot:currentDraft.multi?.bestSlot??null,smallGroupMemberIds:currentDraft.multiGroups.filter(group=>group.groupKind==='small').map(group=>group.memberIds)}:{})}
    revision++; return {operationId}
  }),
  confirmSession:async()=>({error:'此页面仅作本地验收，不发布真实结果'}),

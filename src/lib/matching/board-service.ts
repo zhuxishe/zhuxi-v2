@@ -5,8 +5,9 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { validateUuids } from "@/lib/sanitize"
 import { prepareMatchingRunInput } from "./run-input"
-import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, rematchBoardDraft, type BoardContext } from "./board-engine"
-import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference, BoardMemberLockRequest, BoardMemberLockOperationSummary, BoardLayout } from "./board-types"
+import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, previewBoardSmallGroupCandidates, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
+import { recommendSmallGroups } from "./board-small-groups"
+import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference, BoardMemberLockRequest, BoardMemberLockOperationSummary, BoardLayout, BoardSmallGroupRecommendationsResult } from "./board-types"
 
 type RpcError = { code?: string; message: string }
 type RpcClient = { rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{ data: T | null; error: RpcError | null }> }
@@ -29,6 +30,10 @@ interface Receipt { session_id: string; operation_id: string; request_hash: stri
 function errorMessage(error: unknown) {
   if (error instanceof BoardValidationError) return error.message
   const message = typeof error === "object" && error && "message" in error ? String(error.message) : ""
+  if (message === "SMALL_GROUP_TOO_MANY") return "一次最多为500名待分组成员生成建议，请先按时间分批确认部分小组后重试。"
+  if (message === "SMALL_GROUP_TIME_INVALID") return "部分待分组成员的可用时间不完整，请先核对资料后重新推荐。"
+  if (/^MATCH_BOARD_SMALL_GROUP_REQUIRED(?::|$)/.test(message)) return "此方案已包含4–6人分组，当前页面版本或分组类型已变化，请刷新后继续调整。"
+  if (/^MATCH_BOARD_SMALL_GROUP_SIZE(?::|$)/.test(message)) return "4–6人小组须调整为4至6名成员后保存；也可移空解散。"
   if (/^MATCH_BOARD_GROUPED_REQUIRED(?::|$)/.test(message)) return "此方案已启用多人分组，当前页面版本已过期，请刷新后在分组区域继续调整。"
   if (/STALE|CHANGED|REVISION/.test(message)) return "方案或人员资料已变化，本次未保存。请刷新后重新调整。"
   if (/LOCKED/.test(message)) return "已锁定的匹配不能调整，请先解锁并刷新。"
@@ -136,12 +141,35 @@ export async function inspectMatchingBoardMultiMove(input: BoardRequest & { memb
     return previewBoardMultiMove(context, input.draft, input.memberId)
   })
 }
-export async function inspectMatchingBoardGroup(input: BoardRequest & { memberIds: string[]; slot: string }): Promise<BoardActionResult> {
+export async function inspectMatchingBoardGroup(input: BoardRequest & { memberIds: string[]; slot: string; groupKind?: "small" }): Promise<BoardActionResult> {
   return preview(input, (context) => {
     if (!Array.isArray(input.memberIds) || input.memberIds.length < 3 || input.memberIds.length > 10000 || typeof input.slot !== "string" || input.slot.length > 100) throw new BoardValidationError("请选择至少3人和有效共同时间")
     validateUuids(input.memberIds)
-    return previewBoardGroup(context, input.draft, input.memberIds, input.slot)
+    return previewBoardGroup(context, input.draft, input.memberIds, input.slot, input.groupKind)
   })
+}
+export async function inspectMatchingBoardSmallGroupCandidates(input: BoardRequest & { memberIds: string[]; slot: string }): Promise<BoardActionResult> {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "没有查看报名资料及生成分组建议的权限。" }
+  return preview(input, (context) => {
+    if (!Array.isArray(input.memberIds) || input.memberIds.length < 1 || input.memberIds.length > 10000 || typeof input.slot !== "string" || !input.slot.length || input.slot.length > 100) throw new BoardValidationError("请选择待分组成员和有效共同时间")
+    validateUuids(input.memberIds)
+    return previewBoardSmallGroupCandidates(context, input.draft, input.memberIds, input.slot)
+  })
+}
+
+export async function recommendMatchingBoardSmallGroups(input: BoardRequest): Promise<BoardSmallGroupRecommendationsResult> {
+  const admin = await requireAdmin()
+  if (admin.role !== "super_admin") return { error: "没有查看报名资料及生成分组建议的权限。" }
+  try {
+    validateRequest(input)
+    const data = await captureBoard(rpcClient(), input.sessionId, admin.id, input.expectedRevision)
+    requireEditable(data)
+    const context = contextFor(data)
+    validateBoardStructure(context, input.draft)
+    if (input.draft.multi?.resultId && data.results.some((row) => row.id === input.draft.multi!.resultId && row.status === "locked")) throw new BoardValidationError("多人池已锁定，请先解锁再生成分组建议。")
+    return { success: true, recommendations: recommendSmallGroups(context.engine, input.draft.multi?.memberIds ?? [], input.draft.multi?.bestSlot ?? null), revisionToken: data.base_revision }
+  } catch (error) { return { error: errorMessage(error) } }
 }
 export async function inspectMatchingBoardGroupMove(input: BoardRequest & { memberId: string; groupKey: string }): Promise<BoardActionResult> {
   return preview(input, (context) => {
@@ -203,7 +231,9 @@ export async function saveMatchingBoard(input: BoardRequest & { operationId: str
       p_session_id: input.sessionId, p_actor_admin_id: admin.id, p_operation_id: input.operationId, p_reason: reason.reason,
       p_expected_revision: input.expectedRevision, p_engine: context.engine, p_keep_result_ids: evaluation.keepResultIds,
       p_rows: evaluation.changedRows, p_layout: { waitingDuoIds: evaluation.draft.waitingDuoIds, brokenPairs: evaluation.draft.brokenPairs,
-        ...(evaluation.draft.multiMode === "grouped" ? { multiMode: "grouped", waitingMultiIds: evaluation.draft.multi?.memberIds ?? [], multiPoolSlot: evaluation.draft.multi?.bestSlot ?? null } : {}),
+        ...(evaluation.draft.multiMode === "grouped" ? { multiMode: "grouped", waitingMultiIds: evaluation.draft.multi?.memberIds ?? [], multiPoolSlot: evaluation.draft.multi?.bestSlot ?? null,
+          smallGroupMemberIds: (evaluation.draft.multiGroups ?? []).filter((group) => group.groupKind === "small").map((group) => [...group.memberIds]),
+        } : {}),
       },
       p_unmatched_ids: evaluation.unmatchedIds, p_request_hash: hash,
     })

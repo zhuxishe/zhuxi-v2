@@ -8,13 +8,16 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog"
 import { getBoardGroupTimeCandidates } from "@/lib/matching/board-group-time-options"
 import { MatchingBoardGroups } from "./MatchingBoardGroups"
+import { MatchingBoardSmallGroups } from "./MatchingBoardSmallGroups"
+import { useSmallGroupRecommendations } from "./use-small-group-recommendations"
+import { availableSmallGroups, moveSmallGroupCandidate } from "./matching-small-group-local"
 import { getBoardTimeOptions } from "@/lib/matching/board-time-options"
 import { cn } from "@/lib/utils"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
-import { loadMatchingBoard, inspectBoardPair, inspectBoardMultiMove, inspectBoardGroup, inspectBoardGroupMove, rematchBoard, saveBoard, setBoardMemberLock } from "@/app/admin/matching/[id]/board-actions"
+import { loadMatchingBoard, inspectBoardPair, inspectBoardMultiMove, inspectBoardGroup, inspectBoardGroupMove, inspectBoardSmallGroupCandidates, rematchBoard, saveBoard, setBoardMemberLock } from "@/app/admin/matching/[id]/board-actions"
 import { confirmSession, unpublishSession, lockPair, unlockPair } from "@/app/admin/matching/[id]/actions"
 import { recoverMatchingAdjustment } from "@/app/admin/matching/[id]/manual-actions"
-import type { BoardActionResult, BoardDraft, BoardDisplayRow, BoardSnapshot, BoardMemberLockRequest } from "@/lib/matching/board-types"
+import type { BoardActionResult, BoardDraft, BoardDisplayRow, BoardSnapshot, BoardMemberLockRequest, BoardSmallGroupRecommendation } from "@/lib/matching/board-types"
 import type { EnrichedMatchResult, EnrichedMember } from "./match-detail-types"
 import type { MatchSessionViewProps } from "./MatchSessionView"
 import { MatchingBoardDetails } from "./MatchingBoardDetails"
@@ -79,6 +82,14 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
   useEffect(() => { dirtyRef.current = dirty || pendingOperation }, [dirty, pendingOperation])
   const mutable = !readOnly && session.status === "draft" && session.results_ready === true && !!snapshot.revisionToken
   const editable = mutable && desktop && !busy && !pendingOperation && !reloadNeeded
+  const canRecommend = mutable && canViewRawSubmissions && snapshot.canViewRaw
+  const poolLocked = !!draft.multi?.resultId && snapshot.lockedResultIds.includes(draft.multi.resultId)
+  const small = useSmallGroupRecommendations(
+    { sessionId: session.id, draft, expectedRevision: snapshot.revisionToken }, canRecommend,
+    busy || dirty || pendingOperation || reloadNeeded || poolLocked,
+  )
+  const currentPrefs = snapshot.currentSubmissionPrefs ?? submissionPrefs
+  const smallSuggestions = availableSmallGroups(small.recommendations, draft.multi?.memberIds ?? [], currentPrefs)
   const reasonValid = adminAuditReasonIsValid(reason)
   const initialRows = useRef(snapshot.rows)
   const memberLockStorageKey = `matching-board-member-lock:${session.id}`
@@ -200,13 +211,38 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
       catch (err) { setError(err instanceof Error ? err.message : "无法移动成员") }
     }
   }
-  const createGroup = (slot: string, memberIds: string[]) => {
+  const createGroup = (slot: string, memberIds: string[], groupKind?: "small") => {
     if (!editable || memberIds.length < 3 || memberIds.some(locked)) return
+    if (groupKind === "small" && (memberIds.length < 4 || memberIds.length > 6)) return
     void run(async () => {
-      const response = await inspectBoardGroup({ ...request(), memberIds, slot })
+      const response = await inspectBoardGroup({ ...request(), memberIds, slot, ...(groupKind ? { groupKind } : {}) })
       if (response.error || !response.passed || !response.draft) { setError(response.error || response.reasons?.join("；") || "这些成员暂不能组成小组"); return }
       apply(response.draft, response.rows ?? version.rows)
       setNotice(`已确认 ${memberIds.length} 人小组，其他候选时段已移除这些成员。保存后生效。`)
+    })
+  }
+  const confirmSmallGroup = (group: BoardSmallGroupRecommendation) => {
+    const current = smallSuggestions.find((suggestion) => suggestion.key === group.key)
+    if (current) createGroup(current.bestSlot, current.memberIds, "small")
+  }
+  const removeSmallCandidate = (key: string, id: string) => {
+    if (!editable || poolLocked || small.loading) return
+    small.setRecommendations((groups) => groups.map((group) => group.key === key ? { ...group, memberIds: group.memberIds.filter((memberId) => memberId !== id) } : group).filter((group) => group.memberIds.length > 0))
+    setNotice(`${name(id)} 已移出本组推荐，仍在上方候选池中。`)
+  }
+  const moveToSmallSuggestion = (id: string, key: string) => {
+    if (!editable || poolLocked || small.loading) return
+    if (!draft.multi?.memberIds.includes(id)) { setError("请先将此人移回上方多人候选池，再加入推荐小组。"); return }
+    let next: BoardSmallGroupRecommendation[]
+    try { next = moveSmallGroupCandidate(smallSuggestions, id, key, currentPrefs) }
+    catch (err) { setError(err instanceof Error ? err.message : "无法调整推荐小组"); return }
+    const target = next.find((group) => group.key === key)
+    if (!target || smallSuggestions.find((group) => group.key === key)?.memberIds.includes(id)) return
+    void run(async () => {
+      const response = await inspectBoardSmallGroupCandidates({ ...request(), memberIds: target.memberIds, slot: target.bestSlot })
+      if (response.error || !response.passed) { setError(response.error || response.reasons?.join("；") || "此人不满足该推荐组的匹配条件。"); return }
+      small.setRecommendations(next)
+      setNotice("已调整推荐分组；人数恢复为4–6人后可确认，其他建议保持原位。")
     })
   }
   const moveToGroup = (id: string, groupKey: string) => {
@@ -368,7 +404,8 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
     const pool = hit?.closest<HTMLElement>("[data-board-drop-pool]")
     const group = hit?.closest<HTMLElement>("[data-board-group-key]")?.dataset.boardGroupKey
     const slot = hit?.closest<HTMLElement>("[data-board-time-slot]")?.dataset.boardTimeSlot
-    setOver(group ? `group:${group}` : slot ? `time:${slot}` : pool?.dataset.boardDropPool ?? null)
+    const smallKey = hit?.closest<HTMLElement>("[data-board-small-key]")?.dataset.boardSmallKey
+    setOver(group ? `group:${group}` : smallKey ? `small:${smallKey}` : slot ? `time:${slot}` : pool?.dataset.boardDropPool ?? null)
     const scroll = hit?.closest<HTMLElement>("[data-board-scroll]") ?? pool?.querySelector<HTMLElement>("[data-board-scroll]")
     if (scroll) {
       const rect = scroll.getBoundingClientRect()
@@ -385,10 +422,12 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
     const pool = hit?.closest<HTMLElement>("[data-board-drop-pool]")?.dataset.boardDropPool as Pool | undefined
     const groupKey = hit?.closest<HTMLElement>("[data-board-group-key]")?.dataset.boardGroupKey
     const slot = hit?.closest<HTMLElement>("[data-board-time-slot]")?.dataset.boardTimeSlot
+    const smallKey = hit?.closest<HTMLElement>("[data-board-small-key]")?.dataset.boardSmallKey
     stopPointer()
     if (!didDrag) return
     event.preventDefault()
     if (groupKey) moveToGroup(current.id, groupKey)
+    else if (smallKey) moveToSmallSuggestion(current.id, smallKey)
     else if (slot) {
       const option = groupTimes.candidates.find((candidate) => candidate.slot === slot)
       if (!option?.memberIds.includes(current.id)) setError("此人不在该时段的待分组候选中，请先移回上方人员池并核对可用时间。")
@@ -398,6 +437,7 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
         setNotice("已调整此时段的候选选择；点击「确认分组」后才会组成正式小组。")
       }
     }
+    else if (pool === "multi" && current.instance.startsWith("small:")) removeSmallCandidate(current.instance.slice(6), current.id)
     else if (pool === "multi" && current.instance.startsWith("candidate:")) toggleCandidate(current.instance.slice(10), current.id, false)
     else if (other && other !== current.id && pool === "duo") choosePair([current.id, other])
     else if (pool && other !== current.id) move(current.id, pool)
@@ -434,7 +474,12 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
             </>}
             {free && (draft.multiGroups?.length ?? 0) > 0 && <label className="flex items-center gap-2 text-xs">移入小组
               <select aria-label={`将 ${name(id)}移入小组`} value="" disabled={!editable || pinned(id)} className="max-w-56 rounded-md border bg-background px-2 py-1.5" onChange={(event) => { if (event.target.value) moveToGroup(id, event.target.value) }}>
-                <option value="">选择目标小组</option>{draft.multiGroups?.map((group, index) => <option key={group.key} value={group.key} disabled={group.memberIds.includes(id) || (!!group.resultId && snapshot.lockedResultIds.includes(group.resultId))}>第 {index + 1} 组 · {formatSlot(group.bestSlot)}</option>)}
+                <option value="">选择目标小组</option>{draft.multiGroups?.map((group) => <option key={group.key} value={group.key} disabled={group.memberIds.includes(id) || (!!group.resultId && snapshot.lockedResultIds.includes(group.resultId))}>{group.groupKind === "small" ? "4–6人" : "时间分组"}第 {(draft.multiGroups ?? []).filter((entry) => entry.groupKind === group.groupKind).findIndex((entry) => entry.key === group.key) + 1} 组 · {formatSlot(group.bestSlot)}</option>)}
+              </select>
+            </label>}
+            {free && draft.multi?.memberIds.includes(id) && smallSuggestions.length > 0 && <label className="flex items-center gap-2 text-xs">调整推荐分组
+              <select aria-label={`将 ${name(id)}移入推荐小组`} value="" disabled={!editable || small.loading || poolLocked} className="max-w-56 rounded-md border bg-background px-2 py-1.5" onChange={(event) => { if (event.target.value) moveToSmallSuggestion(id, event.target.value) }}>
+                <option value="">选择推荐小组</option>{smallSuggestions.map((group, index) => <option key={group.key} value={group.key} disabled={group.memberIds.includes(id)}>推荐 {index + 1} · {group.memberIds.length} 人 · {formatSlot(group.bestSlot)}</option>)}
               </select>
             </label>}
             {duo?.resultId && <Button size="sm" variant="ghost" disabled={reloadNeeded || busy || dirty || pendingOperation} onClick={() => setResultLock(duo.resultId!, isLocked, "整对关系")}>{isLocked ? "解除锁定" : "锁定配对"}</Button>}
@@ -459,7 +504,9 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
   const matched = boardMatchedCount(draft)
   const grouped = draft.multiMode === "grouped"
   const incompleteMulti = !grouped && !!draft.multi && draft.multi.memberIds.length < 3
-  const incompleteGroups = !!draft.multiGroups?.some((group) => group.memberIds.length < 3)
+  const incompleteSmallGroups = !!draft.multiGroups?.some((group) => group.groupKind === "small" && (group.memberIds.length < 4 || group.memberIds.length > 6))
+  const incompleteOrdinaryGroups = !!draft.multiGroups?.some((group) => group.groupKind !== "small" && group.memberIds.length < 3)
+  const incompleteGroups = incompleteSmallGroups || incompleteOrdinaryGroups
   const waitingForGroups = grouped && !!draft.multi?.memberIds.length
   const groupTimes = getBoardGroupTimeCandidates(draft.multi?.memberIds ?? [], snapshot.currentSubmissionPrefs ?? submissionPrefs)
   const multiLocked = !!draft.multi?.resultId && snapshot.lockedResultIds.includes(draft.multi.resultId)
@@ -512,7 +559,8 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
     {(error || notice || busy) && <div aria-live="polite" role={error ? "alert" : "status"} className={cn("rounded-lg border px-4 py-3 text-sm", error ? "border-red-200 bg-red-50 text-red-800" : "border-primary/20 bg-primary/5 text-primary")}>{busy ? "正在核验，请稍候…" : error || notice}</div>}
     {incompleteMulti && <p role="alert" className="text-sm text-amber-700">多人池暂有 {draft.multi!.memberIds.length} 人，至少 3 人才能保存。请继续加入成员，或将剩余成员移到其他池子。</p>}
     {waitingForGroups && <p className="text-sm text-muted-foreground">上方还有 {draft.multi!.memberIds.length} 人待分组，可以先保存草稿；发布前请完成分组，或将其移到未匹配池。</p>}
-    {incompleteGroups && <p role="alert" className="text-sm text-amber-700">有小组不足 3 人。请补入成员，或将该组所有成员移回人员池后再保存。</p>}
+    {incompleteOrdinaryGroups && <p role="alert" className="text-sm text-amber-700">有小组不足 3 人。请补入成员，或将该组所有成员移回人员池后再保存。</p>}
+    {incompleteSmallGroups && <p role="alert" className="text-sm text-amber-700">有4–6人小组的人数超出范围。请调整至4–6人，或将该组移空后再保存。</p>}
     <div className="grid items-start gap-4 lg:grid-cols-[1fr_1.45fr_.85fr]">
       {pool("duo", "双人本池子", `${draft.duos.length} 对已配对 · ${draft.waitingDuoIds.length} 人待配对`, <Users className="size-4 text-primary" />, "灰线表示原配对已解除；独立姓名等待新搭档。",
         <>
@@ -535,7 +583,14 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
           <div data-board-scroll className="flex max-h-56 min-h-20 flex-wrap content-start gap-2 overflow-y-auto">{draft.multi?.memberIds.filter((id) => visible([id])).map((id) => chip(id))}{!draft.multi && <p className="py-4 text-sm text-muted-foreground">暂无待分组人员，可从其他池子移入。</p>}</div>
           {!grouped && draft.multi && <details className="rounded-lg border bg-muted/10"><summary className="cursor-pointer px-3 py-2 text-xs">多人池评分{multiScore ? ` · ${multiScore.total_score.toFixed(1)}` : " · 保存时重新核验"}</summary><div className="border-t p-3">{multiScore ? <><p className="mb-2 text-sm">整池两两平均：{multiScore.total_score.toFixed(1)}</p>{canViewRawSubmissions && multiScore.score_breakdown != null && <ScoreBreakdownChart breakdown={multiScore.score_breakdown} />}</> : <p className="text-xs text-muted-foreground">保存时重新核验并计算。</p>}</div></details>}
         </div>
-        <MatchingBoardGroups groups={draft.multiGroups ?? []} candidates={groupTimes} canViewTimes={canViewRawSubmissions} editable={editable} poolLocked={multiLocked} over={over} excluded={excludedCandidates} visible={visible} name={name}
+        <MatchingBoardSmallGroups groups={(draft.multiGroups ?? []).filter((group) => group.groupKind === "small")} recommendations={smallSuggestions} prefs={currentPrefs}
+          canViewTimes={canViewRawSubmissions} canRecommend={canRecommend} editable={editable} poolLocked={multiLocked} loading={small.loading} loaded={small.loaded}
+          recommendationError={small.error} waitingCount={draft.multi?.memberIds.length ?? 0} over={over} visible={visible} name={name}
+          chip={(id, instance, candidate) => chip(id, undefined, undefined, instance, candidate)} onRefresh={() => { if (editable && !multiLocked && !small.loading) void small.refresh() }}
+          onConfirm={confirmSmallGroup} onRemoveMember={removeSmallCandidate} locked={(group) => !!group.resultId && snapshot.lockedResultIds.includes(group.resultId)}
+          lockDisabled={!editable || dirty} onLock={(group, isLocked) => { if (group.resultId) setResultLock(group.resultId, isLocked, "多人小组") }}
+          isGroupSaved={(group) => !!snapshot.draft.multiGroups?.some((savedGroup) => savedGroup.resultId === group.resultId && !!group.resultId && savedGroup.groupKind === "small" && savedGroup.bestSlot === group.bestSlot && savedGroup.memberIds.length === group.memberIds.length && savedGroup.memberIds.every((id) => group.memberIds.includes(id)))} />
+        <MatchingBoardGroups groups={(draft.multiGroups ?? []).filter((group) => group.groupKind !== "small")} candidates={groupTimes} canViewTimes={canViewRawSubmissions} editable={editable} poolLocked={multiLocked} over={over} excluded={excludedCandidates} visible={visible} name={name}
           chip={(id, instance, candidate) => chip(id, undefined, undefined, instance, candidate)} onToggle={toggleCandidate} onConfirm={createGroup}
           locked={(group) => !!group.resultId && snapshot.lockedResultIds.includes(group.resultId)} lockDisabled={!editable || dirty}
           onLock={(group, isLocked) => { if (group.resultId) setResultLock(group.resultId, isLocked, "多人小组") }} />

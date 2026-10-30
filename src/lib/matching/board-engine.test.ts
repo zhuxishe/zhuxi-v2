@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
+import { createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, previewBoardSmallGroupCandidates, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
 import { inspectManualAdjustment } from "./adjustment-engine"
 import { pairKey } from "./pair-history"
 import type { BoardDraft, BoardSourceRow } from "./board-types"
@@ -24,6 +24,59 @@ function original(ctx: BoardContext, ids: string[], id: string, locked = false):
   return row
 }
 const draft = (ctx: BoardContext) => createBoardDraft(ctx.originalRows, ctx.cohortMemberIds)
+
+describe("confirmed 4–6 person group boundaries", () => {
+  it("persists an explicit group kind while ordinary time groups retain their old size range", () => {
+    const ctx = context(11); original(ctx, ctx.cohortMemberIds, "pool")
+    const first = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3", "4"], "2026-10-31_下午", "small")
+    expect(first.draft.multiGroups![0].groupKind).toBe("small")
+    const second = previewBoardGroup(ctx, first.draft, ["5", "6", "7", "8", "9", "10", "11"], "2026-10-31_晚上")
+    expect(second.draft.multiGroups![1].groupKind).toBeUndefined()
+    expect(evaluateBoard(ctx, second.draft, true).changedRows.map((row) => row.group_members?.length)).toEqual([4, 7])
+    expect(() => previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午", "small")).toThrow("4至6")
+    expect(() => previewBoardGroup(ctx, draft(ctx), ["1", "2", "3", "4", "5", "6", "7"], "2026-10-31_下午", "small")).toThrow("4至6")
+  })
+  it("allows temporary 3 and 7 person edits but blocks saving until the marked groups are repaired", () => {
+    const ctx = context(10); original(ctx, ctx.cohortMemberIds, "pool")
+    const first = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3", "4"], "2026-10-31_下午", "small")
+    const both = previewBoardGroup(ctx, first.draft, ["5", "6", "7", "8", "9", "10"], "2026-10-31_下午", "small").draft
+    const changed = previewBoardGroupMove(ctx, both, "4", both.multiGroups![1].key).draft
+    expect(changed.multiGroups!.map((group) => group.memberIds.length)).toEqual([3, 7])
+    expect(() => evaluateBoard(ctx, changed, true)).toThrow("4–6人小组")
+    const fixed = previewBoardGroupMove(ctx, changed, "4", both.multiGroups![0].key).draft
+    expect(evaluateBoard(ctx, fixed, true).changedRows).toHaveLength(2)
+  })
+  it("restores a saved small-group marker by set equality, without relabeling other groups", () => {
+    const ctx = context(9); original(ctx, ["1", "2", "3", "4"], "small"); original(ctx, ["5", "6", "7", "8"], "ordinary")
+    ctx.originalLayout = { waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", waitingMultiIds: ["9"], multiPoolSlot: "2026-10-31_下午", smallGroupMemberIds: [["4", "2", "3", "1"]] }
+    const restored = createBoardDraft(ctx.originalRows, ctx.cohortMemberIds, ctx.originalLayout)
+    expect(restored.multiGroups!.map((group) => group.groupKind)).toEqual(["small", undefined])
+    expect(evaluateBoard(ctx, restored, true).keepResultIds).toEqual(["small", "ordinary"])
+    delete restored.multiGroups![0].groupKind
+    expect(() => evaluateBoard(ctx, restored, true)).toThrow("不能改为普通时间分组")
+  })
+  it("previews a recommendation change without assignment and retains subset/time/lock validation", () => {
+    const ctx = context(8); original(ctx, ctx.cohortMemberIds.slice(0, 7), "pool")
+    const input = draft(ctx), before = structuredClone(input)
+    expect(previewBoardSmallGroupCandidates(ctx, input, ["1", "2", "3"], "2026-10-31_下午")).toMatchObject({ passed: true, draft: before, rows: [] })
+    expect(previewBoardSmallGroupCandidates(ctx, input, ctx.cohortMemberIds.slice(0, 7), "2026-10-31_下午").passed).toBe(true)
+    expect(previewBoardSmallGroupCandidates(ctx, input, ["1", "2", "3", "4"], "2026-11-01_下午").passed).toBe(false)
+    expect(() => previewBoardSmallGroupCandidates(ctx, input, ["1", "8"], "2026-10-31_下午")).toThrow("待分组池")
+    ctx.originalRows[0].status = "locked"
+    expect(() => previewBoardSmallGroupCandidates(ctx, input, ["1", "2", "3", "4"], "2026-10-31_下午")).toThrow("已锁定")
+    expect(input).toEqual(before)
+  })
+  it("does not allow malformed kinds or small markers on a legacy pool or duo", () => {
+    const ctx = context(8); original(ctx, ctx.cohortMemberIds, "pool")
+    const input = draft(ctx)
+    input.multi!.groupKind = "small"
+    expect(() => evaluateBoard(ctx, input)).toThrow("调整内容无效")
+    delete input.multi!.groupKind
+    const grouped = previewBoardGroup(ctx, input, ["1", "2", "3", "4"], "2026-10-31_下午", "small").draft
+    Object.assign(grouped.multiGroups![0], { groupKind: "forged" })
+    expect(() => evaluateBoard(ctx, grouped)).toThrow("调整内容无效")
+  })
+})
 
 describe("three-pool draft invariants", () => {
   it("retains unchanged result IDs, slots and historical scores verbatim", () => {

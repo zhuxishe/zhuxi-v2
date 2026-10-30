@@ -64,7 +64,8 @@ export function createBoardDraft(rows: BoardSourceRow[], cohortMemberIds: string
     multi: grouped
       ? waitingMultiIds.length ? { key: "waiting-multi", memberIds: waitingMultiIds, bestSlot: layout?.multiPoolSlot ?? null } : null
       : multis[0] ? { key: multis[0].id, resultId: multis[0].id, memberIds: [...multis[0].group_members!], bestSlot: multis[0].best_slot } : null,
-    ...(grouped ? { multiMode: "grouped" as const, multiGroups: multis.map((row) => ({ key: row.id, resultId: row.id, memberIds: [...row.group_members!], bestSlot: row.best_slot })) } : {}),
+    ...(grouped ? { multiMode: "grouped" as const, multiGroups: multis.map((row) => ({ key: row.id, resultId: row.id, memberIds: [...row.group_members!], bestSlot: row.best_slot,
+      ...(layout?.smallGroupMemberIds?.some((ids) => sameIds(ids, row.group_members!)) ? { groupKind: "small" as const } : {}) })) } : {}),
     waitingDuoIds,
     brokenPairs: (layout?.brokenPairs ?? []).filter((pair) => pair.memberIds.every((id) => waiting.has(id))).map((pair) => ({ ...pair, key: pair.key ?? duoKey(pair.memberIds) })),
     unmatchedIds: cohortMemberIds.filter((id) => !assigned.has(id) && !waiting.has(id) && !waitingMulti.has(id)),
@@ -78,10 +79,11 @@ export function assertBoardDraft(value: unknown): asserts value is BoardDraft {
   const ids = (v: unknown): v is string[] => Array.isArray(v) && v.length <= 10000 && v.every((id) => typeof id === "string" && id.length > 0 && id.length <= 200)
   const group = (v: unknown, size?: number) => {
     if (!v || typeof v !== "object" || Array.isArray(v)) return false
-    const item = v as BoardDraft["duos"][number]
+    const item = v as BoardMulti
     return typeof item.key === "string" && item.key.length > 0 && item.key.length <= 1000 && ids(item.memberIds)
       && (size === undefined || item.memberIds.length === size) && (item.resultId === undefined || typeof item.resultId === "string")
       && (item.bestSlot === null || typeof item.bestSlot === "string")
+      && (item.groupKind === undefined || item.groupKind === "small")
   }
   if (!Array.isArray(draft.duos) || draft.duos.length > 5000 || !draft.duos.every((item) => group(item, 2))
       || (draft.multi !== null && (!group(draft.multi) || !draft.multi.memberIds.length))
@@ -89,6 +91,8 @@ export function assertBoardDraft(value: unknown): asserts value is BoardDraft {
       || (draft.multiGroups !== undefined && (!Array.isArray(draft.multiGroups) || draft.multiGroups.length > 5000 || !draft.multiGroups.every((item) => group(item) && item.memberIds.length > 0)))
       || (draft.multiMode !== "grouped" && !!draft.multiGroups?.length)
       || (draft.multiMode === "grouped" && draft.multi?.resultId !== undefined)
+      || (draft.multi?.groupKind !== undefined)
+      || draft.duos.some((item) => "groupKind" in item)
       || !ids(draft.waitingDuoIds) || !ids(draft.unmatchedIds) || !Array.isArray(draft.brokenPairs)
       || draft.brokenPairs.length > 5000 || !draft.brokenPairs.every((pair) => pair && typeof pair.key === "string" && ids(pair.memberIds) && pair.memberIds.length === 2)) fail("调整内容无效，请刷新后重试")
 }
@@ -111,6 +115,7 @@ export function validateBoardStructure(context: BoardContext, draft: BoardDraft)
     const row = originals.get(entry.resultId)
     if (!row || row.status === "cancelled" || Boolean(row.group_members?.length) !== multiEntries(draft).includes(entry)) fail("原配对编号不属于当前有效结果")
     if (!multiEntries(draft).includes(entry) && !sameIds(entry.memberIds, rowIds(row!))) fail("新配对不能沿用其他配对编号")
+    if (row?.group_members?.length && context.originalLayout?.smallGroupMemberIds?.some((ids) => sameIds(ids, row.group_members!)) && (entry as BoardMulti).groupKind !== "small") fail("已确认的4–6人小组不能改为普通时间分组，请保留原分组类型")
   }
   const lockedMembers = new Set(context.lockedMemberIds ?? [])
   for (const memberId of lockedMembers) {
@@ -152,6 +157,7 @@ export function evaluateBoard(context: BoardContext, input: BoardDraft, forSave 
   const draft = structuredClone(input), rows: BoardDisplayRow[] = [], keepResultIds: string[] = [], changedRows: MatchResultRow[] = []
   const originals = new Map(context.originalRows.filter((row) => row.status !== "cancelled").map((row) => [row.id, row]))
   for (const entry of resultEntries(draft)) {
+    if (forSave && (entry as BoardMulti).groupKind === "small" && (entry.memberIds.length < 4 || entry.memberIds.length > 6)) fail("4–6人小组须补足4人或调整至不超过6人后保存；也可移空解散")
     const original = entry.resultId ? originals.get(entry.resultId) : undefined
     const unchanged = original && sameIds(entry.memberIds, rowIds(original)) && slotKey(entry.bestSlot) === slotKey(original.best_slot)
     if (unchanged) {
@@ -253,10 +259,22 @@ function nextGroupKey(draft: BoardDraft, memberId: string, slot: string) {
   return `${base}:${suffix}`
 }
 
-/** Confirm a time-row selection as one independently published group. */
-export function previewBoardGroup(context: BoardContext, input: BoardDraft, memberIds: string[], slot: string) {
+/** Check an editable suggestion without assigning any people or enforcing size. */
+export function previewBoardSmallGroupCandidates(context: BoardContext, input: BoardDraft, memberIds: string[], slot: string) {
   validateBoardStructure(context, input)
+  if (!memberIds.length || new Set(memberIds).size !== memberIds.length) fail("请选择不同的待分组成员")
+  if (memberIds.some((id) => !input.multi?.memberIds.includes(id))) fail("只能从当前待分组池选择成员")
+  if (input.multi?.resultId && context.originalRows.some((row) => row.id === input.multi!.resultId && row.status === "locked")) fail("多人池已锁定，请先解锁再分组")
+  const inspection = inspectMulti(context, memberIds, slot, true)
+  return { draft: structuredClone(input), rows: [] as BoardDisplayRow[], passed: inspection.passed, reasons: inspection.reasons }
+}
+
+/** Confirm a time-row selection as one independently published group. */
+export function previewBoardGroup(context: BoardContext, input: BoardDraft, memberIds: string[], slot: string, groupKind?: "small") {
+  validateBoardStructure(context, input)
+  if (groupKind !== undefined && groupKind !== "small") fail("多人分组类型无效")
   if (memberIds.length < 3 || memberIds.length > 10000 || new Set(memberIds).size !== memberIds.length) fail("每个正式多人组至少需要3名不同成员")
+  if (groupKind === "small" && (memberIds.length < 4 || memberIds.length > 6)) fail("请将4–6人小组调整为4至6名成员后再确认")
   if (memberIds.some((id) => !input.multi?.memberIds.includes(id))) fail("只能从当前待分组池选择成员")
   const inspection = inspectMulti(context, memberIds, slot, false)
   if (!inspection.passed) return { draft: structuredClone(input), rows: [] as BoardDisplayRow[], passed: false, reasons: inspection.reasons }
@@ -267,7 +285,7 @@ export function previewBoardGroup(context: BoardContext, input: BoardDraft, memb
     if (draft.multi) draft.multi = { key: "waiting-multi", memberIds: draft.multi.memberIds, bestSlot: draft.multi.bestSlot }
   }
   memberIds.forEach((id) => removeAvailableMember(draft, id))
-  draft.multiGroups = [...(draft.multiGroups ?? []), { key: nextGroupKey(draft, memberIds[0], slot), memberIds: [...memberIds], bestSlot: inspection.bestSlot }]
+  draft.multiGroups = [...(draft.multiGroups ?? []), { key: nextGroupKey(draft, memberIds[0], slot), memberIds: [...memberIds], bestSlot: inspection.bestSlot, ...(groupKind ? { groupKind } : {}) }]
   const evaluated = evaluateBoard(context, draft)
   return { draft: evaluated.draft, rows: evaluated.rows, passed: true, reasons: [] }
 }

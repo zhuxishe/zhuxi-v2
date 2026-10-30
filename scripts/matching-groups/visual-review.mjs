@@ -52,4 +52,4 @@ http.createServer((req,res)=>{
   const file=path==='/logo.svg'?resolve(source,'public/logo.svg'):resolve(dest,filename)
   res.setHeader('Content-Type',path==='/logo.svg'?'image/svg+xml':filename.endsWith('.js')?'application/javascript':filename.endsWith('.css')?'text/css':'text/html')
   res.end(readFileSync(file))
-}).listen(port,'127.0.0.1',()=>console.log(`Group UI fixture: http://127.0.0.1:${port} (?mode=grouped|empty&permission=admin&status=confirmed&locked=1)`))
+}).listen(port,'127.0.0.1',()=>console.log(`Group UI fixture: http://127.0.0.1:${port} (?mode=grouped|small|empty&permission=admin&status=confirmed&locked=1)`))

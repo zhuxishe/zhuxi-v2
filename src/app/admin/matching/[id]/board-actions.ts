@@ -2,8 +2,10 @@
 
 import { fetchMatchingBoard, inspectMatchingBoardGroup, inspectMatchingBoardGroupMove, inspectMatchingBoardMultiMove, inspectMatchingBoardPair, inspectMatchingBoardSmallGroupCandidates, recommendMatchingBoardSmallGroups, rematchMatchingBoard, saveMatchingBoard, setMatchingBoardMemberLock } from "@/lib/matching/board-service"
 import type { BoardMemberLockRequest, BoardRequest } from "@/lib/matching/board-types"
+import { fetchSavedMatchingReview } from "@/lib/matching/session-review-service"
 
 export async function loadMatchingBoard(sessionId: string) { return fetchMatchingBoard(sessionId) }
+export async function loadSavedMatchingReview(sessionId: string) { return fetchSavedMatchingReview(sessionId) }
 export async function inspectBoardPair(input: BoardRequest & { memberIds: [string, string] }) { return inspectMatchingBoardPair(input) }
 export async function inspectBoardMultiMove(input: BoardRequest & { memberId: string }) { return inspectMatchingBoardMultiMove(input) }
 export async function inspectBoardGroup(input: BoardRequest & { memberIds: string[]; slot: string; groupKind?: "small" }) { return inspectMatchingBoardGroup(input) }

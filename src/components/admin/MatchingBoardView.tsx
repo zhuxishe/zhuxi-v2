@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from "react"
 import { useRouter } from "next/navigation"
 import { Check, CheckCircle, Download, GripVertical, Link2Off, LockKeyhole, LockKeyholeOpen, RefreshCw, Search, Undo2, Users, UserRound, XCircle } from "lucide-react"
-import { Button, buttonVariants } from "@/components/ui/button"
+import { Button } from "@/components/ui/button"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogTitle } from "@/components/ui/dialog"
 import { getBoardGroupTimeCandidates } from "@/lib/matching/board-group-time-options"
 import { MatchingBoardGroups } from "./MatchingBoardGroups"
+import { MatchingPublicationReview } from "./MatchingPublicationReview"
+import { downloadMatchingReview, MatchingReviewDownloadError } from "./matching-review-download"
 import { MatchingBoardSmallGroups } from "./MatchingBoardSmallGroups"
 import { useSmallGroupRecommendations } from "./use-small-group-recommendations"
 import { availableSmallGroups, moveSmallGroupCandidate } from "./matching-small-group-local"
@@ -78,9 +80,16 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
   const draft = version.draft
   const dirty = JSON.stringify(draft) !== JSON.stringify(snapshot.draft)
   const pendingOperation = !!pendingSave || !!pendingMemberLock
+  const reviewBlocked = dirty || pendingOperation || reloadNeeded
+  const savedReview = snapshot.savedReview ?? null
+  const reviewReady = !!savedReview && savedReview.sessionId === session.id && savedReview.revisionToken === snapshot.revisionToken
+  const sessionStatus = reviewReady ? savedReview.sessionStatus : session.status
+  // Withdrawal clears result-row versions but preserves the session version.
+  const publicationVersion = reviewReady && sessionStatus === "confirmed"
+    ? savedReview.publicationVersion ?? session.publication_version ?? 0 : session.publication_version ?? 0
   const dirtyRef = useRef(dirty)
   useEffect(() => { dirtyRef.current = dirty || pendingOperation }, [dirty, pendingOperation])
-  const mutable = !readOnly && session.status === "draft" && session.results_ready === true && !!snapshot.revisionToken
+  const mutable = !readOnly && sessionStatus === "draft" && session.results_ready === true && !!snapshot.revisionToken
   const editable = mutable && desktop && !busy && !pendingOperation && !reloadNeeded
   const canRecommend = mutable && canViewRawSubmissions && snapshot.canViewRaw
   const poolLocked = !!draft.multi?.resultId && snapshot.lockedResultIds.includes(draft.multi.resultId)
@@ -336,14 +345,49 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
       saved.current = false; dirtyRef.current = false
       setPendingSave(null); setHistory([]); setSelected([]); setOpenedId(null)
       try { sessionStorage.removeItem(storageKey) } catch {}
-      setNotice("调整已保存，正在更新页面。")
+      setNotice("调整已保存，下方「发布前结果确认」已更新，可核对后导出或发布。")
       router.refresh()
     })
   }
-  const directAction = (action: () => Promise<{ error?: string }>) => {
+  const directAction = (action: () => Promise<{ error?: string; unknown?: boolean }>) => {
     if (!desktop || reloadNeeded) return
     if (dirty || pendingOperation) { setError("请先保存或撤销当前调整，再执行此操作。"); return }
-    void run(async () => { const response = await action(); if (response.error) setError(response.error); else router.refresh() })
+    void run(async () => {
+      let response: { error?: string; unknown?: boolean }
+      try { response = await action() }
+      catch { setReloadNeeded(true); setError("操作结果暂时无法确认，请先重新核对，不要重复发布。"); return }
+      if (response.error) { if (response.unknown) setReloadNeeded(true); setError(response.error); return }
+      try {
+        const fresh = await loadMatchingBoard(session.id)
+        setSnapshot(fresh); setVersion({ draft: fresh.draft, rows: fresh.rows }); setHistory([]); setSelected([]); setOpenedId(null)
+        setNotice("操作已完成，下方确认区已更新为最新保存结果。")
+      } catch {
+        setReloadNeeded(true); setError("操作已完成，但暂时无法读取最新结果。请重新核对方案。")
+      }
+      router.refresh()
+    })
+  }
+  const exportReviewed = () => {
+    if (!canViewRawSubmissions || !reviewReady || reviewBlocked || busy || !savedReview) return
+    void run(async () => {
+      try {
+        await downloadMatchingReview(session.id, savedReview.revisionToken, savedReview.publicationSignature)
+        setNotice("已导出下方确认表对应的已保存结果。")
+      } catch (err) {
+        if (err instanceof MatchingReviewDownloadError && err.stale) setReloadNeeded(true)
+        setError(err instanceof Error ? err.message : "暂时无法导出，请重试。")
+      }
+    })
+  }
+  const refreshReview = () => {
+    if (dirty || pendingOperation || busy) return
+    void run(async () => {
+      const fresh = await loadMatchingBoard(session.id)
+      setSnapshot(fresh); setVersion({ draft: fresh.draft, rows: fresh.rows }); setHistory([]); setSelected([]); setOpenedId(null)
+      setReloadNeeded(false)
+      setNotice(fresh.savedReview ? "已重新读取保存方案，请核对下方结果。" : "暂时无法生成结果确认表，请稍后重试。")
+      router.refresh()
+    })
   }
 
   const setResultLock = (resultId: string, currentlyLocked: boolean, kind: "多人池" | "多人小组" | "整对关系") => {
@@ -529,9 +573,10 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
         {dirty && <span className="text-xs font-medium text-amber-700">尚未保存</span>}
       </div>
       <div className="flex flex-wrap gap-2">
-        {canViewRawSubmissions && <a className={buttonVariants({ size: "sm", variant: "outline" })} href={`/admin/matching/${session.id}/export`}><Download className="size-3.5" />导出 Excel</a>}
-        {!readOnly && session.status === "draft" && <Button size="sm" disabled={reloadNeeded || !desktop || busy || dirty || pendingOperation || !reasonValid || !session.results_ready || waitingForGroups || incompleteGroups} onClick={() => directAction(() => confirmSession(session.id, reason, session.publication_version ?? 0))}><CheckCircle className="size-3.5" />确认发布</Button>}
-        {!readOnly && session.status === "confirmed" && <Button size="sm" variant="outline" disabled={reloadNeeded || !desktop || busy || !reasonValid} onClick={() => { if (window.confirm("撤回后玩家将无法看到结果，确定撤回发布？")) directAction(() => unpublishSession(session.id, reason, session.publication_version ?? 0)) }}><XCircle className="size-3.5" />撤回发布</Button>}
+        <Button size="sm" variant="ghost" onClick={() => document.getElementById("publication-review")?.scrollIntoView({ behavior: "smooth", block: "start" })}>查看发布前结果</Button>
+        {canViewRawSubmissions && <Button size="sm" variant="outline" disabled={!reviewReady || reviewBlocked || busy} title={reviewBlocked ? "请先保存调整，再核对下方结果并导出" : "导出下方确认表对应的已保存结果"} onClick={exportReviewed}><Download className="size-3.5" />导出 Excel</Button>}
+        {!readOnly && sessionStatus === "draft" && <Button size="sm" disabled={!reviewReady || !!savedReview?.issues.length || reloadNeeded || !desktop || busy || dirty || pendingOperation || !reasonValid || !session.results_ready || waitingForGroups || incompleteGroups} onClick={() => directAction(() => confirmSession(session.id, reason, publicationVersion, savedReview?.publicationSignature, savedReview?.revisionToken))}><CheckCircle className="size-3.5" />确认发布</Button>}
+        {!readOnly && sessionStatus === "confirmed" && <Button size="sm" variant="outline" disabled={reloadNeeded || !desktop || busy || !reasonValid} onClick={() => { if (window.confirm("撤回后玩家将无法看到结果，确定撤回发布？")) directAction(() => unpublishSession(session.id, reason, publicationVersion)) }}><XCircle className="size-3.5" />撤回发布</Button>}
       </div>
     </div>
     {!readOnly && <div className="flex flex-col gap-2 rounded-xl border bg-muted/10 p-3 lg:flex-row lg:items-center">
@@ -543,7 +588,7 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
         <Button size="sm" disabled={reloadNeeded || busy || !desktop || !!pendingMemberLock || (!pendingSave && (!dirty || !reasonValid || incompleteMulti || incompleteGroups))} onClick={persist}><Check className="size-3.5" />{pendingSave ? "核对上次保存" : "保存调整"}</Button>
       </div>}
     </div>}
-    {session.status === "confirmed" && <p className="text-sm text-muted-foreground">结果已发布。如需调整配对，请先撤回发布；取消申请仍可在审批页面处理。</p>}
+    {sessionStatus === "confirmed" && <p className="text-sm text-muted-foreground">结果已发布。如需调整配对，请先撤回发布；取消申请仍可在审批页面处理。</p>}
     {!session.results_ready && <p className="text-sm text-muted-foreground">匹配结果尚未生成完成，完成后才能发布。</p>}
     {props.boardUnavailable && <p role="alert" className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">暂时无法加载编辑状态，当前仅可查看。请刷新后重试。</p>}
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -599,6 +644,11 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
         <><div className="flex flex-wrap gap-3">{draft.unmatchedIds.filter((id) => visible([id])).map((id) => chip(id))}</div>{!draft.unmatchedIds.length && <p className="py-8 text-center text-sm text-muted-foreground">当前无人等待重新匹配</p>}</>,
         mutable ? <Button className="hidden lg:inline-flex" variant="outline" size="sm" disabled={!editable || !draft.unmatchedIds.length} onClick={rerun}><RefreshCw className={cn("size-3.5", busy && "animate-spin")} />重新匹配</Button> : null)}
     </div>
+    <MatchingPublicationReview review={savedReview} blocked={reviewBlocked} loading={busy} refreshDisabled={dirty || pendingOperation}
+      blockedReason={pendingOperation ? "保存或锁定结果尚待确认，请先核对原操作结果。" : dirty ? "上方存在未保存调整，请先保存，再核对最终结果。" : reloadNeeded ? "方案或报名资料可能已变化，请重新读取后再核对。" : undefined}
+      error={!reviewReady && !reviewBlocked ? "暂时无法读取完整的已保存结果，请重新读取后再导出或发布。" : undefined}
+      onRefresh={refreshReview} />
+    {canViewRawSubmissions && <div className="flex justify-end"><Button size="sm" variant="outline" disabled={!reviewReady || reviewBlocked || busy} onClick={exportReviewed}><Download className="size-3.5" />导出已核对结果</Button></div>}
     <div className="space-y-3">
       {canViewRawSubmissions && candidates.length > 0 && <details className="rounded-xl border"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">时间热力图与资料来源</summary><div className="space-y-3 border-t p-4"><p className="text-xs text-muted-foreground">热力图和原批资料沿用本次运行的输入快照；新调整在保存时重新核验当前资料。</p><TimeSlotHeatmap candidates={candidates} /></div></details>}
       {diagnostics.length > 0 && <details className="rounded-xl border"><summary className="cursor-pointer px-4 py-3 text-sm font-medium">已保存的未匹配诊断</summary><div className="border-t p-4"><p className="mb-3 text-xs text-muted-foreground">这里是上次保存的诊断；上方三个池子显示当前编辑。</p><UnmatchedDiagnostics diagnostics={diagnostics} submissionPrefs={submissionPrefs} canViewRawSubmissions={canViewRawSubmissions} /></div></details>}

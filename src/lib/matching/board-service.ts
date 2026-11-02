@@ -7,6 +7,7 @@ import { validateUuids } from "@/lib/sanitize"
 import { prepareMatchingRunInput } from "./run-input"
 import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, previewBoardSmallGroupCandidates, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
 import { recommendSmallGroups } from "./board-small-groups"
+import { buildSavedMatchingReview } from "./session-review"
 import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference, BoardMemberLockRequest, BoardMemberLockOperationSummary, BoardLayout, BoardSmallGroupRecommendationsResult } from "./board-types"
 
 type RpcError = { code?: string; message: string }
@@ -106,7 +107,10 @@ export async function fetchMatchingBoard(sessionId: string): Promise<BoardSnapsh
   const draft = createBoardDraft(data.results, data.cohort_member_ids, data.layout)
   // Loading is read-only and must remain possible when an existing member becomes ineligible.
   const rows = data.results.filter((row) => row.status !== "cancelled").map((row) => ({ ...row, key: row.id, resultId: row.id }))
-  return { draft, revisionToken: data.base_revision, rows: redactBoardRows(rows, admin.role === "super_admin"),
+  let savedReview: BoardSnapshot["savedReview"] = null
+  try { savedReview = buildSavedMatchingReview(sessionId, data, admin.role === "super_admin") }
+  catch { /* A failed review read must not fabricate a publishable summary or disable existing recovery. */ }
+  return { draft, savedReview, revisionToken: data.base_revision, rows: redactBoardRows(rows, admin.role === "super_admin"),
     lockedResultIds: data.results.filter((row) => row.status === "locked").map((row) => row.id),
     lockedMemberIds: (data.locked_member_ids ?? []).filter((id) => data.cohort_member_ids.includes(id)),
     memberLockOperations: (data.member_lock_operations ?? []).map((operation) => ({ id: operation.id, created_at: operation.created_at, locked: operation.locked })),

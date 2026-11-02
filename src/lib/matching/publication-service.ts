@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { matchingPublicationError } from "./publication-errors"
 import { inspectPublicationPreflight, preparePublicationPreflightInput, type PublicationResultInput } from "./publication-preflight"
+import { matchingReviewPublicationSignature } from "./session-review"
 
 type RpcError = { code?: string; message: string }
 type RpcClient = { rpc<T>(name: string, args: Record<string, unknown>): PromiseLike<{ data: T | null; error: RpcError | null }> }
@@ -11,9 +12,9 @@ interface PublicationPreparation extends PublicationReceipt {
   current_rows?: PublicationResultInput[]
   revision_token?: string
 }
-interface PublicationInput { sessionId: string; actorAdminId: string; reason: string; expectedPublicationVersion: number }
+interface PublicationInput { sessionId: string; actorAdminId: string; reason: string; expectedPublicationVersion: number; expectedReviewSignature?: string; expectedReviewRevision?: string }
 interface PublicationAuthorization extends PublicationReceipt { preflight_id?: string }
-export type CheckedPublicationResult = { data: PublicationReceipt; error?: never } | { error: string; data?: never }
+export type CheckedPublicationResult = { data: PublicationReceipt; error?: never; unknown?: never } | { error: string; data?: never; unknown?: true }
 
 const UNKNOWN = "暂时无法确认发布结果，请保留当前版本并刷新核对；请勿另行重复发布。"
 const INPUT_INVALID = "暂时无法完整复核当前匹配资料，本次未发布，请刷新核对后重试。"
@@ -50,6 +51,11 @@ function definiteRejection(error: RpcError | null): boolean {
  * The checked transaction independently binds the proof to current inputs.
  */
 export async function publishMatchingSession(input: PublicationInput): Promise<CheckedPublicationResult> {
+  const reviewed = input.expectedReviewSignature !== undefined || input.expectedReviewRevision !== undefined
+  if (reviewed && (typeof input.expectedReviewSignature !== "string" || !/^[a-f0-9]{64}$/.test(input.expectedReviewSignature)
+    || typeof input.expectedReviewRevision !== "string" || !input.expectedReviewRevision.length || input.expectedReviewRevision.length > 1000)) {
+    return { error: "发布前核对版本无效，请重新读取结果后再发布。" }
+  }
   const db = createAdminClient() as unknown as RpcClient
   let preparation: PublicationPreparation
   try {
@@ -62,6 +68,17 @@ export async function publishMatchingSession(input: PublicationInput): Promise<C
 
   try {
     if (!preparation.revision_token || !Array.isArray(preparation.current_rows)) return { error: INPUT_INVALID }
+    if (reviewed) {
+      // Also bind waiting/unmatched placement and every saved board detail to
+      // the review. The existing authorization proof then closes the race from
+      // preparation through the final atomic publication transaction.
+      const board = await db.rpc<{ base_revision?: string }>("admin_get_matching_board", { p_session_id: input.sessionId, p_actor_admin_id: input.actorAdminId })
+      if (board.error || !board.data?.base_revision) return { error: INPUT_INVALID }
+      if (board.data.base_revision !== input.expectedReviewRevision
+        || input.expectedReviewSignature !== matchingReviewPublicationSignature(input.sessionId, preparation.current_rows, preparation.capture)) {
+        return { error: "已保存方案或共同时间已变化，请重新读取发布前结果确认，核对后再发布。" }
+      }
+    }
     const engine = preparePublicationPreflightInput(preparation.capture)
     const inspection = inspectPublicationPreflight(engine, preparation.current_rows)
     if (!inspection.passed) {
@@ -92,11 +109,11 @@ export async function publishMatchingSession(input: PublicationInput): Promise<C
     if (!error && data?.published === true) return { data: receipt(data) }
     if (definiteRejection(error)) return { error: matchingPublicationError(error, "发布复核未通过，请刷新核对；本次未发布。") }
     const known = await alreadyPublished(db, input)
-    return known ? { data: known } : { error: UNKNOWN }
+    return known ? { data: known } : { error: UNKNOWN, unknown: true }
   } catch {
     // A lost response is not evidence of rollback. Read the original version's
     // receipt only; never retry the write or send compensating notifications.
     const known = await alreadyPublished(db, input)
-    return known ? { data: known } : { error: UNKNOWN }
+    return known ? { data: known } : { error: UNKNOWN, unknown: true }
   }
 }

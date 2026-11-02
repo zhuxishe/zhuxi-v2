@@ -5,8 +5,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot } from "@/lib/matching/board-types"
 import type { EnrichedMember } from "./match-detail-types"
 import type { MatchSessionViewProps } from "./MatchSessionView"
+import { buildSavedMatchingReview } from "@/lib/matching/session-review"
+import { MatchingReviewDownloadError } from "./matching-review-download"
 
-const mocks = vi.hoisted(() => ({ group: vi.fn(), groupMove: vi.fn(), multi: vi.fn(), save: vi.fn(), load: vi.fn(), refresh: vi.fn(), publish: vi.fn(), recommend: vi.fn(), inspectSuggestion: vi.fn() }))
+const mocks = vi.hoisted(() => ({ group: vi.fn(), groupMove: vi.fn(), multi: vi.fn(), save: vi.fn(), load: vi.fn(), refresh: vi.fn(), publish: vi.fn(), recommend: vi.fn(), inspectSuggestion: vi.fn(), download: vi.fn() }))
+vi.mock("./matching-review-download", async (original) => ({ ...await original<typeof import("./matching-review-download")>(), downloadMatchingReview: mocks.download }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
 vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ recommendBoardSmallGroups: mocks.recommend, inspectBoardSmallGroupCandidates: mocks.inspectSuggestion, inspectBoardGroup: mocks.group, inspectBoardGroupMove: mocks.groupMove, inspectBoardPair: vi.fn(), inspectBoardMultiMove: mocks.multi, rematchBoard: vi.fn(), saveBoard: mocks.save, loadMatchingBoard: mocks.load, setBoardMemberLock: vi.fn() }))
 vi.mock("@/app/admin/matching/[id]/actions", () => ({ confirmSession: mocks.publish, unpublishSession: vi.fn(), lockPair: vi.fn(), unlockPair: vi.fn() }))
@@ -24,11 +27,22 @@ const members: EnrichedMember[] = ids.map((id, i) => ({ id, record_source: null,
 function resultRow(key: string, memberIds: string[], bestSlot = SLOT): BoardDisplayRow {
   return { key, resultId: key, status: "draft", member_a_id: memberIds[0], member_b_id: null, group_members: memberIds, total_score: 70, score_breakdown: null, rank: 1, best_slot: bestSlot, game_type: "多人" }
 }
+function reviewed(snapshot: BoardSnapshot): BoardSnapshot {
+  const draft = snapshot.draft
+  const layout = { waitingDuoIds: draft.waitingDuoIds, brokenPairs: draft.brokenPairs,
+    ...(draft.multiMode === "grouped" ? { multiMode: "grouped" as const, waitingMultiIds: draft.multi?.memberIds ?? [], multiPoolSlot: draft.multi?.bestSlot ?? null,
+      smallGroupMemberIds: (draft.multiGroups ?? []).filter((group) => group.groupKind === "small").map((group) => group.memberIds) } : {}) }
+  return { ...snapshot, savedReview: buildSavedMatchingReview("grouping-session", {
+    base_revision: snapshot.revisionToken, session_status: "draft", cohort_member_ids: snapshot.cohortMemberIds, layout,
+    results: snapshot.rows.map((row) => ({ ...row, id: row.resultId ?? row.key, status: row.status ?? "draft" })),
+    capture: { captured_at: "2026-11-02T01:00:00Z", source: { submissions: Object.entries(snapshot.currentSubmissionPrefs ?? {}).map(([member_id, pref]) => ({ ...pref, member_id, member: members.find((member) => member.id === member_id) })) } },
+  }, snapshot.canViewRaw) }
+}
 function fixture(): MatchSessionViewProps {
   const prefs = Object.fromEntries(ids.map((id) => [id, { availability: { "2026-11-01": ["下午"], ...(poolIds.slice(0, 3).includes(id) ? { "2026-11-02": ["上午"] } : {}), ...(poolIds.slice(3).includes(id) ? { "2026-11-03": ["晚上"] } : {}) } }]))
   const draft: BoardDraft = { duos: [], multi: { key: "original-pool", resultId: "original-pool", memberIds: [...poolIds], bestSlot: SLOT }, waitingDuoIds: ["W"], brokenPairs: [], unmatchedIds: ["U"] }
   const boardSnapshot: BoardSnapshot = { draft, rows: [resultRow("original-pool", poolIds)], revisionToken: "revision-current", lockedResultIds: [], lockedMemberIds: [], cohortMemberIds: ids, canViewRaw: true, currentSubmissionPrefs: prefs }
-  return { session: { id: "grouping-session", session_name: "多人分组", status: "draft", results_ready: true, total_candidates: ids.length, total_matched: 6, total_unmatched: 2, round_id: "round", publication_version: 2 }, results: [], diagnostics: [], candidates: [], boardSnapshot, boardMembers: members, canViewRawSubmissions: true }
+  return { session: { id: "grouping-session", session_name: "多人分组", status: "draft", results_ready: true, total_candidates: ids.length, total_matched: 6, total_unmatched: 2, round_id: "round", publication_version: 2 }, results: [], diagnostics: [], candidates: [], boardSnapshot: reviewed(boardSnapshot), boardMembers: members, canViewRawSubmissions: true }
 }
 let root: Root
 let props: MatchSessionViewProps
@@ -49,6 +63,10 @@ async function setReason() {
 }
 async function render(overrides: Partial<MatchSessionViewProps> = {}) {
   props = { ...props, ...overrides }
+  if (overrides.session && props.boardSnapshot?.savedReview) {
+    props.boardSnapshot.savedReview.sessionStatus = overrides.session.status
+    props.boardSnapshot.savedReview.publicationVersion = overrides.session.publication_version ?? null
+  }
   await act(async () => root.render(createElement(MatchingBoardView, props)))
 }
 function groupDraft(draft: BoardDraft, selectedIds: string[], slot = SLOT): BoardDraft {
@@ -62,7 +80,7 @@ function useGroupedFixture(waiting = ["D", "E", "F"]) {
   const draft = groupDraft(props.boardSnapshot!.draft, ["A", "B", "C"])
   draft.multi = waiting.length ? { key: "waiting", memberIds: waiting, bestSlot: SLOT } : null
   if (!waiting.length) draft.multiGroups![0].memberIds.push("D", "E", "F")
-  props.boardSnapshot = { ...props.boardSnapshot!, draft, rows: displayRows(draft) }
+  props.boardSnapshot = reviewed({ ...props.boardSnapshot!, draft, rows: displayRows(draft) })
 }
 async function drag(source: Element, target: Element) {
   vi.useFakeTimers()
@@ -111,9 +129,11 @@ beforeEach(() => {
     return { passed: true, draft: next, rows: displayRows(next) }
   })
   mocks.save.mockResolvedValue({ success: true })
+  mocks.publish.mockResolvedValue({ success: true })
+  mocks.download.mockResolvedValue(undefined)
   mocks.load.mockImplementation(async (): Promise<BoardSnapshot> => {
     const draft = structuredClone(mocks.save.mock.calls.at(-1)?.[0].draft ?? props.boardSnapshot!.draft) as BoardDraft
-    return { ...props.boardSnapshot!, draft, rows: displayRows(draft), revisionToken: "after-save" }
+    return reviewed({ ...props.boardSnapshot!, draft, rows: displayRows(draft), revisionToken: "after-save" })
   })
 })
 afterEach(async () => {
@@ -368,5 +388,106 @@ describe("small-group suggestions integrated with the board", () => {
     expect(chips(suggestion())).toEqual(poolIds)
     expect(button("确认第 1 个4–6人建议组").disabled).toBe(true)
     expect(button("重新推荐").disabled).toBe(true)
+  })
+})
+
+describe("saved publication review below the board", () => {
+  const review = () => document.querySelector<HTMLElement>('[aria-label="发布前结果确认"]')!
+  it("shows the saved group rather than unconfirmed recommendations, and exports the reviewed version", async () => {
+    mocks.recommend.mockResolvedValue({ success: true, recommendations: [{ key: "suggestion", memberIds: poolIds.slice(0, 4), bestSlot: SLOT, commonSlots: [SLOT] }] })
+    await render()
+    expect(review().querySelectorAll("tbody tr[data-review-result]")).toHaveLength(1)
+    expect(review().textContent).toContain("6 人")
+    expect(review().textContent).toContain("待双人搭档")
+    expect(review().textContent).toContain(name("W"))
+    await click("导出 Excel")
+    expect(mocks.download).toHaveBeenCalledWith("grouping-session", "revision-current", props.boardSnapshot!.savedReview!.publicationSignature)
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+  })
+  it("hides old review rows and prevents export until all edits are saved", async () => {
+    await render()
+    await click(`确认 ${format(SLOT_TWO)}分组`)
+    expect(review().textContent).toContain("未保存调整")
+    expect(review().querySelector("table")).toBeNull()
+    expect(button("导出 Excel").disabled).toBe(true)
+    expect(button("导出已核对结果").disabled).toBe(true)
+    expect(button("重新核对").disabled).toBe(true)
+    await setReason(); await click("保存调整")
+    expect(review().querySelectorAll("tbody tr[data-review-result]")).toHaveLength(1)
+    expect(review().textContent).toContain("3 人")
+    expect(review().textContent).toContain("待多人分组")
+    expect(button("导出 Excel").disabled).toBe(false)
+    await click("导出已核对结果")
+    expect(mocks.download).toHaveBeenCalledWith("grouping-session", "after-save", expect.any(String))
+  })
+  it("invalidates stale export and lets a read-only refresh restore the review without saving", async () => {
+    await render()
+    mocks.download.mockRejectedValue(new MatchingReviewDownloadError("方案已变化，请重新核对", true))
+    await click("导出 Excel")
+    expect(review().querySelector("table")).toBeNull()
+    expect(button("导出 Excel").disabled).toBe(true)
+    expect(button("重新核对").disabled).toBe(false)
+    await click("重新核对")
+    expect(review().querySelector("table")).not.toBeNull()
+    expect(mocks.load).toHaveBeenCalledOnce()
+    expect(mocks.save).not.toHaveBeenCalled()
+  })
+  it("passes both the reviewed content and saved revision into publication", async () => {
+    useGroupedFixture([])
+    await render(); await setReason(); await click("确认发布")
+    expect(mocks.publish).toHaveBeenCalledWith("grouping-session", expect.any(String), 2,
+      props.boardSnapshot!.savedReview!.publicationSignature, "revision-current")
+  })
+  it("fails closed if a complete saved review is unavailable", async () => {
+    props.boardSnapshot!.savedReview = null
+    await render(); await setReason()
+    expect(review().textContent).toContain("暂时无法读取")
+    expect(button("导出 Excel").disabled).toBe(true)
+    expect(button("确认发布").disabled).toBe(true)
+  })
+  it("reads the successful publication state into the table before props are refreshed", async () => {
+    useGroupedFixture([])
+    const fresh = reviewed({ ...props.boardSnapshot!, revisionToken: "published-revision" })
+    fresh.savedReview!.sessionStatus = "confirmed"; fresh.savedReview!.publicationVersion = 3
+    mocks.load.mockResolvedValue(fresh)
+    await render(); await setReason(); await click("确认发布")
+    expect(review().textContent).toContain("已发布 · 第 3 版")
+    expect([...document.querySelectorAll("button")].some((item) => item.textContent === "确认发布")).toBe(false)
+    expect(button("撤回发布")).toBeDefined()
+    expect(mocks.refresh).toHaveBeenCalled()
+    await click("导出 Excel")
+    expect(mocks.download).toHaveBeenCalledWith("grouping-session", "published-revision", fresh.savedReview!.publicationSignature)
+  })
+  it.each(["unknown", "transport", "reload"])("hides the old plan after %s publication outcome until a read-only refresh", async (kind) => {
+    useGroupedFixture([])
+    if (kind === "unknown") mocks.publish.mockResolvedValue({ error: "发布结果待核对", unknown: true })
+    if (kind === "transport") mocks.publish.mockRejectedValue(new Error("lost action response"))
+    if (kind === "reload") mocks.load.mockRejectedValueOnce(new Error("saved but read failed"))
+    await render(); await setReason(); await click("确认发布")
+    expect(review().querySelector("table")).toBeNull()
+    expect(button("导出 Excel").disabled).toBe(true)
+    expect(button("确认发布").disabled).toBe(true)
+    expect(button("重新核对").disabled).toBe(false)
+    await click("重新核对")
+    expect(review().querySelector("table")).not.toBeNull()
+    expect(mocks.publish).toHaveBeenCalledOnce()
+  })
+  it("updates actions when a read-only refresh discovers another administrator already published", async () => {
+    useGroupedFixture([])
+    const fresh = reviewed({ ...props.boardSnapshot!, revisionToken: "other-admin-version" })
+    fresh.savedReview!.sessionStatus = "confirmed"; fresh.savedReview!.publicationVersion = 3
+    mocks.load.mockResolvedValue(fresh)
+    await render(); await click("重新核对")
+    expect(review().textContent).toContain("已发布 · 第 3 版")
+    expect(button("撤回发布")).toBeDefined()
+    expect(mocks.publish).not.toHaveBeenCalled()
+    expect(mocks.save).not.toHaveBeenCalled()
+  })
+  it("uses the session version when draft result rows have been reset to zero after withdrawal", async () => {
+    useGroupedFixture([])
+    props.boardSnapshot!.savedReview!.publicationVersion = 0
+    props.session.publication_version = 2
+    await render(); await setReason(); await click("确认发布")
+    expect(mocks.publish).toHaveBeenCalledWith("grouping-session", expect.any(String), 2, expect.any(String), "revision-current")
   })
 })

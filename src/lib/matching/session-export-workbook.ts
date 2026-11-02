@@ -5,6 +5,7 @@ import { getImportMetadata } from "./import-metadata"
 import { sessionSubmissionInputLabel, type MatchingInputSnapshot } from "./input-snapshot-reader"
 import { unmatchedDiagnosticMessages } from "./unmatched-diagnostic-display"
 import { styleSessionExportSheet } from "./session-export-style"
+import type { SavedMatchingReview } from "./session-review-types"
 
 type Row = Record<string, any>
 type Cell = string | number | null
@@ -14,6 +15,8 @@ export interface SessionExportData {
   members: Row[]
   submissions: Row[]
   snapshot: MatchingInputSnapshot | null
+  /** Current, versioned saved-result read model used by the publication review. */
+  review?: SavedMatchingReview
 }
 
 export function exportMemberIds(row: Row): string[] {
@@ -43,8 +46,13 @@ function commonTimes(ids: string[], submissions: Record<string, Row>): string {
   const options = getBoardTimeOptions(ids, submissions, null)
   if (!options.complete) return "资料不足，无法计算"
   if (!options.commonSlots.length) return "无共同可用时间段"
+  return slotsText(options.commonSlots)
+}
+
+function slotsText(slots: string[]): string {
+  if (!slots.length) return "无共同可用时间段"
   const days = new Map<string, string[]>()
-  for (const slot of options.commonSlots) {
+  for (const slot of slots) {
     const [date, period] = slot.split("_")
     days.set(date, [...(days.get(date) ?? []), period])
   }
@@ -81,6 +89,7 @@ function addSheet(book: ExcelJS.Workbook, name: string, headers: string[], rows:
 
 /** Pure presentation builder. It neither changes results nor publishes/notifies. */
 export function createSessionExportWorkbook(data: SessionExportData): ExcelJS.Workbook {
+  if (data.review) return createReviewedWorkbook(data, data.review)
   const { results, diagnostics, snapshot } = data
   const submissions = Object.fromEntries(data.submissions.map((row) => [row.member_id, row]))
   const members = new Map(data.members.map((row) => {
@@ -142,5 +151,81 @@ export function createSessionExportWorkbook(data: SessionExportData): ExcelJS.Wo
     unmatchedRows, [18, 16, 14, 16, 64, 30, 28], 2)
   addSheet(book, "结果发布", ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段"],
     publicationRows, [12, 12, 8, 44, 46, 30, 42])
+  return book
+}
+
+/** The compact review and this workbook consume exactly the same saved groups and time intersection. */
+function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingReview): ExcelJS.Workbook {
+  if (!review.canViewTimes || !review.revisionToken || !review.publicationSignature) throw new Error("无法读取完整核对结果，请重新核对后导出")
+  const active = data.results.filter((row) => row.status !== "cancelled")
+  const results = new Map(active.map((row) => [row.id, row]))
+  if (results.size !== active.length || active.length !== review.groups.length) throw new Error("核对结果与已保存分组不一致，请重新读取后导出")
+  const seen = new Set<string>()
+  const submissions = new Map(data.submissions.map((row) => [row.member_id, row]))
+  const source = "当前已保存方案／本次核对报名资料"
+  const state = review.sessionStatus === "confirmed" ? "已发布" : "已保存草稿（未发布）"
+  const version = review.revisionToken
+  const captured = review.capturedAt ?? ""
+  const duoRows: Cell[][] = [], multiRows: Cell[][] = [], publicationRows: Cell[][] = []
+  for (const group of review.groups) {
+    const row = results.get(group.resultId)
+    const ids = group.members.map((member) => member.id)
+    const savedIds = row ? exportMemberIds(row) : []
+    const normalizedSlot = (value: unknown) => typeof value === "string" ? value.replace(/ /g, "_") : null
+    if (!row || ids.length !== savedIds.length || ids.some((id) => !savedIds.includes(id))
+      || normalizedSlot(group.recommendedSlot) !== normalizedSlot(row.best_slot)
+      || (group.kind === "multi") !== !!row.group_members?.length
+      || (group.kind === "duo" ? ids.length !== 2 : ids.length < 3)
+      || (group.groupKind === "small" && (ids.length < 4 || ids.length > 6))) throw new Error("核对结果与已保存分组不一致，请重新读取后导出")
+    for (const id of ids) {
+      if (seen.has(id)) throw new Error("匹配结果中存在重复玩家，请先核对方案后再导出")
+      seen.add(id)
+    }
+    const names = group.members.map((member) => member.name).join("\n")
+    const numbers = group.members.map((member) => member.memberNumber || "未分配编号").join("\n")
+    const best = slotText(group.recommendedSlot)
+    const times = group.timeStatus === "ready" ? slotsText(group.commonSlots) : "资料不足，无法计算"
+    const otherTimes = group.timeStatus === "ready" ? slotsText(group.commonSlots.filter((slot) => normalizedSlot(slot) !== normalizedSlot(group.recommendedSlot))).replace("无共同可用时间段", "无其他共同时间") : "资料不足，无法计算"
+    const type = group.kind === "multi" ? "多人本" : "双人本"
+    const subset = Object.fromEntries(ids.map((id) => [id, submissions.get(id) ?? {}]))
+    const note = group.members.flatMap((member) => {
+      const sub = submissions.get(member.id)
+      const value = text(sub?.message) || text(getImportMetadata(sub?.import_metadata)?.raw_notes)
+      return value ? [`${member.name}：${value}`] : []
+    }).join("\n")
+    const score = typeof row.total_score === "number" ? row.total_score : null
+    if (group.kind === "multi") {
+      multiRows.push([names, numbers, type, genderSummary(ids, subset), best, times, score, note, source, captured,
+        group.label, ids.length, group.groupKind === "small" ? "4–6人组" : "普通多人组", otherTimes, version, state])
+    } else {
+      duoRows.push([group.members[0].name, group.members[0].memberNumber || "未分配编号", preference(subset[ids[0]].gender_pref),
+        group.members[1].name, group.members[1].memberNumber || "未分配编号", preference(subset[ids[1]].gender_pref),
+        type, genderSummary(ids, subset), best, times, score, note, source, captured, group.label, otherTimes, version, state])
+    }
+    publicationRows.push([group.label, type, ids.length, names, numbers, best, times, otherTimes, version, state])
+  }
+  const unassigned = [
+    ...review.waitingDuo.map((member) => ({ member, status: "待双人搭档" })),
+    ...review.waitingMulti.map((member) => ({ member, status: "待多人分组" })),
+    ...review.unmatched.map((member) => ({ member, status: "未匹配" })),
+  ]
+  const unmatchedRows = unassigned.map(({ member, status }): Cell[] => {
+    if (seen.has(member.id)) throw new Error("待安排人员与分组重复，请重新核对后导出")
+    seen.add(member.id)
+    const sub = submissions.get(member.id)
+    const note = text(sub?.message) || text(getImportMetadata(sub?.import_metadata)?.raw_notes)
+    return [member.name, member.memberNumber || "未分配编号", gameType(sub?.game_type_pref), preference(sub?.gender_pref),
+      [`安排状态：${status}`, ...(note ? [`报名留言：${note}`] : [])].join("\n"), source, captured, status, version, state]
+  })
+  if (seen.size !== review.summary.total) throw new Error("核对名单人数不一致，请重新读取后导出")
+  const book = new ExcelJS.Workbook()
+  addSheet(book, "双人本配对结果", ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at", "组别", "其他共同时间", "核对版本", "方案状态"],
+    duoRows, [16, 16, 14, 16, 16, 14, 12, 34, 30, 42, 14, 42, 34, 28, 14, 42, 36, 24], 2)
+  addSheet(book, "多人本配对结果", ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at", "组别", "人数", "分组方式", "其他共同时间", "核对版本", "方案状态"],
+    multiRows, [42, 46, 12, 36, 30, 42, 14, 48, 34, 28, 14, 8, 16, 42, 36, 24])
+  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "安排状态", "核对版本", "方案状态"],
+    unmatchedRows, [18, 16, 14, 16, 64, 34, 28, 18, 36, 24], 2)
+  addSheet(book, "结果发布", ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段", "其他共同时间", "核对版本", "方案状态"],
+    publicationRows, [14, 12, 8, 44, 46, 30, 42, 42, 36, 24])
   return book
 }

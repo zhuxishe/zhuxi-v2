@@ -1,12 +1,13 @@
 import ExcelJS from "exceljs"
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ admin: vi.fn(), from: vi.fn(), snapshot: vi.fn() }))
+const mocks = vi.hoisted(() => ({ admin: vi.fn(), from: vi.fn(), snapshot: vi.fn(), review: vi.fn() }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.admin }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: mocks.from }) }))
 vi.mock("./input-snapshot-reader", async (original) => ({
   ...await original<typeof import("./input-snapshot-reader")>(), fetchMatchingInputSnapshot: mocks.snapshot,
 }))
+vi.mock("./session-review-service", () => ({ readSavedMatchingReview: mocks.review, MatchingReviewStaleError: class extends Error { constructor() { super("方案或报名资料已变化，请重新核对后导出") } } }))
 import { buildSessionExportWorkbook } from "./session-export"
 import type { MatchingInputSnapshot } from "./input-snapshot-reader"
 
@@ -77,7 +78,7 @@ beforeEach(() => {
   queries = []
   tableErrors = {}
   tables = {
-    match_sessions: [{ id: "session", session_name: "测试批次", status: "draft", round_id: "round", round: { round_name: "本轮" } }],
+    match_sessions: [{ id: "session", session_name: "测试批次", status: "draft", round_id: "round", round: { round_name: "本轮", purpose: "registration" } }],
     match_results: [{ id: "result-ab", rank: 1, status: "draft", member_a_id: ids.a, member_b_id: ids.b,
       best_slot: "2026-10-25_晚上", total_score: 55 }],
     unmatched_diagnostics: [{ member_id: ids.c, reason: "无合适搭档", details: { count: 0 } }],

@@ -6,6 +6,7 @@ vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: mocks.db }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.authenticatedDb }))
 vi.mock("./publication-preflight", () => ({ preparePublicationPreflightInput: mocks.prepare, inspectPublicationPreflight: mocks.inspect }))
 import { publishMatchingSession } from "./publication-service"
+import { matchingReviewPublicationSignature } from "./session-review"
 
 const input = { sessionId: "session-id", actorAdminId: "admin-id", reason: "核对后正式发布匹配", expectedPublicationVersion: 3 }
 const receipt = { session_id: input.sessionId, round_id: "round-id", published: true, already_applied: false }
@@ -16,9 +17,11 @@ function fixture() {
   const prepare = vi.fn().mockResolvedValue({ data: { capture: captured, current_rows: rows, revision_token: "current-input-hash", round_id: "round-id" }, error: null })
   const authorize = vi.fn().mockResolvedValue({ data: { preflight_id: "server-proof" }, error: null })
   const publish = vi.fn().mockResolvedValue({ data: receipt, error: null })
+  const board = vi.fn().mockResolvedValue({ data: { base_revision: "reviewed-board" }, error: null })
   const rpc = vi.fn(async (name, args) => {
     if (name === "admin_prepare_match_publication") return prepare(args)
     if (name === "admin_authorize_match_publication") return authorize(args)
+    if (name === "admin_get_matching_board") return board(args)
     throw new Error(`Unexpected operation ${name}`)
   })
   mocks.db.mockReturnValue({ rpc })
@@ -29,7 +32,7 @@ function fixture() {
   mocks.authenticatedDb.mockResolvedValue({ rpc: authenticatedRpc })
   mocks.prepare.mockReturnValue(engine)
   mocks.inspect.mockReturnValue({ passed: true, issues: [] })
-  return { prepare, authorize, publish, rpc, authenticatedRpc }
+  return { prepare, authorize, publish, rpc, authenticatedRpc, board }
 }
 beforeEach(() => { vi.resetAllMocks() })
 
@@ -147,7 +150,7 @@ describe("final publication current-input preflight", () => {
     f.publish.mockResolvedValue({ data: null, error: { message: "network unavailable" } })
     f.prepare.mockResolvedValueOnce({ data: { capture: captured, current_rows: rows, revision_token: "revision" }, error: null })
       .mockRejectedValueOnce(new Error("still unavailable"))
-    expect(await publishMatchingSession(input)).toEqual({ error: expect.stringContaining("无法确认发布结果") })
+    expect(await publishMatchingSession(input)).toEqual({ error: expect.stringContaining("无法确认发布结果"), unknown: true })
     expect(f.publish).toHaveBeenCalledTimes(1)
   })
   it("does not turn an unrelated later publication into a successful same-version receipt", async () => {
@@ -155,7 +158,7 @@ describe("final publication current-input preflight", () => {
     f.publish.mockRejectedValue(new Error("lost"))
     f.prepare.mockResolvedValueOnce({ data: { capture: captured, current_rows: rows, revision_token: "revision" }, error: null })
       .mockResolvedValueOnce({ data: null, error: { code: "PT409", message: "MATCH_PUBLICATION_STALE" } })
-    expect(await publishMatchingSession(input)).toEqual({ error: expect.stringContaining("无法确认发布结果") })
+    expect(await publishMatchingSession(input)).toEqual({ error: expect.stringContaining("无法确认发布结果"), unknown: true })
     expect(f.publish).toHaveBeenCalledTimes(1)
   })
   it("stops preparation errors without leaking raw source or running the match/scoring engine", async () => {
@@ -163,6 +166,70 @@ describe("final publication current-input preflight", () => {
     f.prepare.mockResolvedValue({ data: null, error: { code: "PT409", message: "MATCH_PUBLICATION_INCOMPLETE" } })
     expect(await publishMatchingSession(input)).toEqual({ error: "本次匹配尚未完整生成，请刷新并核对后再发布" })
     expect(mocks.prepare).not.toHaveBeenCalled()
+    expect(f.publish).not.toHaveBeenCalled()
+  })
+})
+
+describe("publication is bound to the saved result review", () => {
+  const reviewCapture = { source: { submissions: ["a", "b"].map((member_id) => ({ member_id, availability: { "2026-10-25": ["下午", "晚上"] } })) } }
+  const reviewedInput = () => ({ ...input, expectedReviewRevision: "reviewed-board",
+    expectedReviewSignature: matchingReviewPublicationSignature(input.sessionId, rows, reviewCapture) })
+  function reviewedFixture() {
+    const f = fixture()
+    f.prepare.mockResolvedValue({ data: { capture: structuredClone(reviewCapture), current_rows: structuredClone(rows), revision_token: "checked-publication-source" }, error: null })
+    return f
+  }
+  it("compares both the full board revision and visible published fields before authorization", async () => {
+    const f = reviewedFixture()
+    expect(await publishMatchingSession(reviewedInput())).toEqual({ data: receipt })
+    expect(f.board).toHaveBeenCalledExactlyOnceWith({ p_session_id: input.sessionId, p_actor_admin_id: input.actorAdminId })
+    expect(f.authorize).toHaveBeenCalledWith(expect.objectContaining({ p_revision_token: "checked-publication-source" }))
+    expect(f.publish).toHaveBeenCalledOnce()
+    expect(f.rpc.mock.calls.map(([name]) => name)).toEqual(["admin_prepare_match_publication", "admin_get_matching_board", "admin_authorize_match_publication"])
+  })
+  it("blocks a changed waiting or unmatched layout even if all active groups are unchanged", async () => {
+    const f = reviewedFixture()
+    f.board.mockResolvedValue({ data: { base_revision: "waiting-layout-changed" }, error: null })
+    expect(await publishMatchingSession(reviewedInput())).toEqual({ error: expect.stringContaining("重新读取发布前结果确认") })
+    expect(f.authorize).not.toHaveBeenCalled(); expect(f.publish).not.toHaveBeenCalled()
+  })
+  it("blocks a changed current shared time even if a supplied board revision happens to match", async () => {
+    const f = reviewedFixture(), changed = structuredClone(reviewCapture)
+    changed.source.submissions[0].availability["2026-10-25"] = ["下午"]
+    f.prepare.mockResolvedValue({ data: { capture: changed, current_rows: rows, revision_token: "checked-publication-source" }, error: null })
+    expect(await publishMatchingSession(reviewedInput())).toEqual({ error: expect.stringContaining("共同时间已变化") })
+    expect(f.authorize).not.toHaveBeenCalled(); expect(f.publish).not.toHaveBeenCalled()
+  })
+  it("blocks changed membership before authorizing a publish", async () => {
+    const f = reviewedFixture()
+    f.prepare.mockResolvedValue({ data: { capture: reviewCapture, current_rows: [{ ...rows[0], member_b_id: "c" }], revision_token: "checked-publication-source" }, error: null })
+    expect(await publishMatchingSession(reviewedInput())).toEqual({ error: expect.stringContaining("已保存方案") })
+    expect(f.authorize).not.toHaveBeenCalled()
+  })
+  it("preserves the receipt-first retry when the reviewed version has already published", async () => {
+    const f = reviewedFixture()
+    f.prepare.mockResolvedValue({ data: { ...receipt, already_applied: true }, error: null })
+    expect(await publishMatchingSession(reviewedInput())).toEqual({ data: { ...receipt, already_applied: true } })
+    expect(f.board).not.toHaveBeenCalled(); expect(f.authorize).not.toHaveBeenCalled(); expect(f.publish).not.toHaveBeenCalled()
+  })
+  it.each([
+    { expectedReviewRevision: "reviewed-board" },
+    { expectedReviewSignature: "a".repeat(64) },
+    { expectedReviewRevision: "", expectedReviewSignature: "a".repeat(64) },
+    { expectedReviewRevision: "reviewed-board", expectedReviewSignature: "invalid" },
+  ])("requires a valid pair of review tokens: %j", async (tokens) => {
+    const f = fixture()
+    expect(await publishMatchingSession({ ...input, ...tokens })).toEqual({ error: expect.stringContaining("核对版本无效") })
+    expect(f.rpc).not.toHaveBeenCalled(); expect(f.publish).not.toHaveBeenCalled()
+  })
+  it("does not authorize when the fresh board cannot be read", async () => {
+    const f = reviewedFixture(); f.board.mockResolvedValue({ data: null, error: { message: "PRIVATE DB" } })
+    expect(await publishMatchingSession(reviewedInput())).toEqual({ error: expect.stringContaining("本次未发布") })
+    expect(f.authorize).not.toHaveBeenCalled()
+  })
+  it("still uses the original proof check to reject a race after review validation", async () => {
+    const f = reviewedFixture(); f.authorize.mockResolvedValue({ data: null, error: { code: "PT409", message: "MATCH_PUBLICATION_PREFLIGHT_STALE" } })
+    expect(await publishMatchingSession(reviewedInput())).toEqual({ error: expect.stringContaining("复核后发生变化") })
     expect(f.publish).not.toHaveBeenCalled()
   })
 })

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdmin } from "@/lib/auth/admin"
 import { buildSessionExportWorkbook } from "@/lib/matching/session-export"
+import { MatchingReviewStaleError } from "@/lib/matching/session-review-service"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -17,14 +18,19 @@ export async function GET(request: NextRequest, { params }: Props) {
 
   try {
     const { id } = await params
-    const { buffer, fileName } = await buildSessionExportWorkbook(id)
+    const { buffer, fileName } = await buildSessionExportWorkbook(id, {
+      expectedRevision: request.nextUrl.searchParams.get("revision") ?? undefined,
+      expectedPublicationSignature: request.nextUrl.searchParams.get("signature") ?? undefined,
+    })
     return new NextResponse(new Uint8Array(buffer), {
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         "Content-Disposition": `attachment; filename="${encodeURIComponent(fileName)}"`,
+        "Cache-Control": "private, no-store",
       },
     })
   } catch (error) {
+    if (error instanceof MatchingReviewStaleError) return NextResponse.json({ error: error.message }, { status: 409, headers: { "Cache-Control": "private, no-store" } })
     console.error("[matching export]", error)
     const message = error instanceof Error && /[\u3400-\u9fff]/.test(error.message)
       ? error.message

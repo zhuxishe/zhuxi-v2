@@ -3,23 +3,54 @@ import { buildRoundSubmissionSelect, supportsImportMetadataColumn } from "./impo
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchMatchingInputSnapshot, selectSessionSubmissionInputs } from "./input-snapshot-reader"
 import { createSessionExportWorkbook, exportCohortIds } from "./session-export-workbook"
+import { getRoundPurpose } from "./round-config"
+import { MatchingReviewStaleError, readSavedMatchingReview } from "./session-review-service"
+
+export interface SessionExportExpectation {
+  expectedRevision?: string
+  expectedPublicationSignature?: string
+}
+
+function validateExpectation(input: SessionExportExpectation) {
+  for (const value of [input.expectedRevision, input.expectedPublicationSignature]) {
+    if (value !== undefined && (typeof value !== "string" || !value.length || value.length > 1000)) throw new Error("核对版本无效，请重新读取结果后导出")
+  }
+}
 
 function safeFileName(value: string): string {
   return value.replace(/[\\/:*?"<>|]+/g, "-")
 }
 
-export async function buildSessionExportWorkbook(sessionId: string): Promise<{ buffer: Buffer; fileName: string }> {
+export async function buildSessionExportWorkbook(sessionId: string, expectation: SessionExportExpectation = {}): Promise<{ buffer: Buffer; fileName: string }> {
   const admin = await requireAdmin()
   if (admin.role !== "super_admin") {
     throw new Error("仅超级管理员可导出原始匹配数据")
   }
+  validateExpectation(expectation)
   const db = createAdminClient() as any
   const { data: session, error: sessionError } = await db
     .from("match_sessions")
-    .select("id, session_name, status, round_id, round:match_rounds(round_name)")
+    .select("id, session_name, status, round_id, round:match_rounds(round_name, purpose)")
     .eq("id", sessionId)
     .single()
   if (sessionError || !session) throw new Error("匹配会话不存在")
+
+  const round = Array.isArray(session.round) ? session.round[0] : session.round
+  const name = session.session_name ?? round?.round_name ?? sessionId
+  const date = new Date().toISOString().slice(0, 10)
+  if (session.round_id && getRoundPurpose(round?.purpose) === "matching") {
+    // One authoritative capture supplies saved groups, current answers, member
+    // identities and the review version. Never fall back to the old snapshot
+    // when this read fails, since that would silently export another scheme.
+    const { review, workbookData } = await readSavedMatchingReview(sessionId, expectation.expectedRevision)
+    if (expectation.expectedPublicationSignature !== undefined && expectation.expectedPublicationSignature !== review.publicationSignature) {
+      throw new MatchingReviewStaleError()
+    }
+    const workbook = createSessionExportWorkbook({ ...workbookData, diagnostics: [], snapshot: null, review })
+    const rawBuffer = await workbook.xlsx.writeBuffer()
+    return { buffer: Buffer.isBuffer(rawBuffer) ? rawBuffer : Buffer.from(rawBuffer), fileName: `${safeFileName(name)}-${date}.xlsx` }
+  }
+  if (expectation.expectedRevision !== undefined || expectation.expectedPublicationSignature !== undefined) throw new MatchingReviewStaleError()
 
   const [{ data: results, error: resultError }, { data: diagnostics, error: diagnosticError }, inputSnapshot] = await Promise.all([
     db.from("match_results").select("*").eq("session_id", sessionId).order("rank", { ascending: true }),
@@ -45,7 +76,6 @@ export async function buildSessionExportWorkbook(sessionId: string): Promise<{ b
     liveSubmissions = submissions ?? []
   }
   const { rows: inputRows } = selectSessionSubmissionInputs(inputSnapshot, liveSubmissions, allMemberIds)
-  const roundName = Array.isArray(session.round) ? session.round[0]?.round_name ?? "" : session.round?.round_name ?? ""
   let members: any[] = []
   if (allMemberIds.size > 0) {
     const { data, error } = await db
@@ -57,8 +87,6 @@ export async function buildSessionExportWorkbook(sessionId: string): Promise<{ b
   }
   const workbook = createSessionExportWorkbook({ results: results ?? [], diagnostics: diagnostics ?? [],
     members, submissions: inputRows, snapshot: inputSnapshot })
-  const name = session.session_name ?? roundName ?? sessionId
-  const date = new Date().toISOString().slice(0, 10)
   const rawBuffer = await workbook.xlsx.writeBuffer()
   return {
     buffer: Buffer.isBuffer(rawBuffer) ? rawBuffer : Buffer.from(rawBuffer),

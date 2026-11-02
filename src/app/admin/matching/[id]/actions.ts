@@ -156,7 +156,9 @@ async function changePublication(
   sessionId: string,
   rawReason: string,
   expectedPublicationVersion: number,
-) {
+  expectedReviewSignature?: string,
+  expectedReviewRevision?: string,
+): Promise<{ success?: true; error?: string; unknown?: true }> {
   const admin = await requireAdmin()
   const reasonResult = normalizeAdminAuditReason(rawReason)
   if (!reasonResult.ok) return { error: reasonResult.error }
@@ -165,8 +167,9 @@ async function changePublication(
   }
   let data: { round_id?: string | null } | null
   if (operation === "admin_publish_match_session") {
-    const checked = await publishMatchingSession({ sessionId, actorAdminId: admin.id, reason: reasonResult.reason, expectedPublicationVersion })
-    if (checked.error) return { error: checked.error }
+    const checked = await publishMatchingSession({ sessionId, actorAdminId: admin.id, reason: reasonResult.reason, expectedPublicationVersion,
+      ...(expectedReviewSignature !== undefined ? { expectedReviewSignature } : {}), ...(expectedReviewRevision !== undefined ? { expectedReviewRevision } : {}) })
+    if (checked.error) return { error: checked.error, ...(checked.unknown ? { unknown: true as const } : {}) }
     data = checked.data ?? null
   } else {
     const supabase = await createClient()
@@ -197,8 +200,8 @@ export async function deleteSession(sessionId: string, rawReason: string, expect
   return changePublication("admin_delete_match_session_draft", sessionId, rawReason, expectedPublicationVersion)
 }
 
-export async function confirmSession(sessionId: string, rawReason: string, expectedPublicationVersion: number) {
-  return changePublication("admin_publish_match_session", sessionId, rawReason, expectedPublicationVersion)
+export async function confirmSession(sessionId: string, rawReason: string, expectedPublicationVersion: number, expectedReviewSignature?: string, expectedReviewRevision?: string) {
+  return changePublication("admin_publish_match_session", sessionId, rawReason, expectedPublicationVersion, expectedReviewSignature, expectedReviewRevision)
 }
 
 /** 撤回当前发布版本，停止用户访问并释放本轮占用。 */

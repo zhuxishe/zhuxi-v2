@@ -59,6 +59,8 @@ export interface BoardOperationSummary { id: string; created_at: string; member_
 export interface BoardMemberLockOperationSummary { id: string; created_at: string; locked: boolean }
 export interface BoardMemberLockRequest { sessionId: string; memberId: string; locked: boolean; expectedRevision: string; operationId: string }
 export interface BoardSnapshot {
+  /** Safe read-only summary of the same saved capture, never the local editing draft. */
+  savedReview?: import("./session-review-types").SavedMatchingReview | null
   draft: BoardDraft
   revisionToken: string
   rows: BoardDisplayRow[]

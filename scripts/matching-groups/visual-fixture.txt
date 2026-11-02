@@ -3,6 +3,8 @@
 import React, { useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { MatchingBoardView } from '@/components/admin/MatchingBoardView'
+import { MatchingPublicationReview } from '@/components/admin/MatchingPublicationReview'
+import { getBoardTimeOptions } from '@/lib/matching/board-time-options'
 import * as boardEngine from '@/lib/matching/board-engine'
 import { recommendSmallGroups } from '@/lib/matching/board-small-groups'
 import { inspectManualAdjustment } from '@/lib/matching/adjustment-engine'
@@ -41,7 +43,19 @@ const boardMembers = ids.map((id,i)=>({id,record_source:null,member_identity:{fu
 const submissionPrefs = Object.fromEntries(ids.map((id,i)=>[id,{game_type_pref:candidates[i].gameTypePref,gender_pref:'都可以',availability:candidates[i].availability,interest_tags:['推理','音乐']}]))
 const raw = params.get('permission') !== 'admin'
 let revision=1
-function snapshot() { return {draft:structuredClone(currentDraft),revisionToken:String(revision),rows:context.originalRows.map(r=>({...r,key:r.id,resultId:r.id})),lockedResultIds:context.originalRows.filter(r=>r.status==='locked').map(r=>r.id),lockedMemberIds:context.lockedMemberIds,cohortMemberIds:ids,canViewRaw:raw,operations:[],...(raw?{currentSubmissionPrefs:submissionPrefs}:{})} }
+const reviewMember = id => ({id,name:names[ids.indexOf(id)]??id,memberNumber:`TST_${String(ids.indexOf(id)+1).padStart(3,'0')}`})
+function savedReview() {
+ let duo=0,multi=0
+ const groups=[...context.originalRows.filter(row=>!row.group_members?.length),...context.originalRows.filter(row=>row.group_members?.length)].map(row=>{
+  const kind=row.group_members?.length?'multi':'duo'
+  const memberIds=row.group_members??[row.member_a_id,row.member_b_id]
+  const times=getBoardTimeOptions(memberIds,submissionPrefs,row.best_slot)
+  return {resultId:row.id,label:kind==='duo'?`双人 ${String(++duo).padStart(2,'0')}`:`多人 ${String(++multi).padStart(2,'0')}`,kind,members:memberIds.map(reviewMember),recommendedSlot:row.best_slot,commonSlots:raw?times.commonSlots:[],timeStatus:raw?times.complete?'ready':'unavailable':'hidden'}
+ })
+ const waitingDuo=currentDraft.waitingDuoIds.map(reviewMember),waitingMulti=currentDraft.multiMode==='grouped'?(currentDraft.multi?.memberIds??[]).map(reviewMember):[],unmatched=currentDraft.unmatchedIds.map(reviewMember)
+ return {sessionId:'00000000-0000-4000-8000-000000000100',revisionToken:String(revision),publicationSignature:`fixture-review-${revision}`,capturedAt:'2026-11-02T05:00:00Z',sessionStatus:params.get('status')==='confirmed'?'confirmed':'draft',publicationVersion:params.get('status')==='confirmed'?2:0,canViewTimes:raw,groups,waitingDuo,waitingMulti,unmatched,summary:{total:ids.length,duoGroups:duo,multiGroups:multi,matched:groups.reduce((n,g)=>n+g.members.length,0),waitingDuo:waitingDuo.length,waitingMulti:waitingMulti.length,unmatched:unmatched.length},issues:waitingMulti.length?['仍有成员等待多人分组。']:[]}
+}
+function snapshot() { return {draft:structuredClone(currentDraft),revisionToken:String(revision),savedReview:savedReview(),rows:context.originalRows.map(r=>({...r,key:r.id,resultId:r.id})),lockedResultIds:context.originalRows.filter(r=>r.status==='locked').map(r=>r.id),lockedMemberIds:context.lockedMemberIds,cohortMemberIds:ids,canViewRaw:raw,operations:[],...(raw?{currentSubmissionPrefs:submissionPrefs}:{})} }
 const wrap = task => async request => { try { return {success:true,...task(request)} } catch (error) { return {error:error.message} } }
 const checked = out => ({draft:out.draft,rows:out.rows,passed:out.passed??true,reasons:out.reasons??[]})
 window.__boardActions = {
@@ -76,4 +90,19 @@ function App() {
  window.__boardRefresh=()=>setCurrent(snapshot())
  return <div style={{maxWidth:1800,margin:'0 auto'}}><header className="flex items-center justify-between gap-4 border-b px-6 py-5"><strong>竹溪社 · 多人分组</strong><span className="text-xs text-muted-foreground">虚构人员 · 本地交互验收 · 不连接线上数据</span></header><MatchingBoardView key={current.revisionToken} session={{id:'00000000-0000-4000-8000-000000000100',session_name:'多人时间分组验收',status:params.get('status')==='confirmed'?'confirmed':'draft',results_ready:true,total_candidates:ids.length,total_matched:14,total_unmatched:2,round_id:'round',publication_version:2}} results={[]} diagnostics={[]} candidates={[]} boardSnapshot={current} boardMembers={boardMembers} submissionPrefs={raw?submissionPrefs:{}} canViewRawSubmissions={raw}/></div>
 }
-createRoot(document.getElementById('root')).render(<App />)
+function reviewExample(count) {
+ const members=Array.from({length:count},(_,index)=>({id:`review-member-${index+1}`,name:`示例成员${String(index+1).padStart(3,'0')}`,memberNumber:`TST_${String(index+1).padStart(3,'0')}`}))
+ const duoCount=Math.floor((count-14)/2),groups=[]
+ const slots=['2026-11-04_下午','2026-11-05_上午','2026-11-05_下午','2026-11-06_晚上','2026-11-07_上午']
+ for(let index=0;index<duoCount;index++)groups.push({resultId:`review-duo-${index+1}`,label:`双人 ${String(index+1).padStart(2,'0')}`,kind:'duo',members:members.slice(index*2,index*2+2),recommendedSlot:slots[0],commonSlots:raw?slots:[],timeStatus:raw?'ready':'hidden'})
+ for(let index=0;index<2;index++)groups.push({resultId:`review-multi-${index+1}`,label:`多人 ${String(index+1).padStart(2,'0')}`,kind:'multi',groupKind:'small',members:members.slice(duoCount*2+index*5,duoCount*2+(index+1)*5),recommendedSlot:slots[index+1],commonSlots:raw?slots:[],timeStatus:raw?'ready':'hidden'})
+ const remaining=members.slice(duoCount*2+10)
+ return {...savedReview(),groups,waitingDuo:remaining.slice(0,1),waitingMulti:remaining.slice(1,3),unmatched:remaining.slice(3),summary:{total:count,duoGroups:duoCount,multiGroups:2,matched:duoCount*2+10,waitingDuo:1,waitingMulti:2,unmatched:remaining.length-3},issues:['仍有2人等待多人分组。']}
+}
+function ReviewApp() {
+ const [blocked,setBlocked]=useState(params.get('dirty')==='1')
+ const [version,setVersion]=useState(1)
+ const value={...reviewExample(params.get('count')==='50'?50:100),revisionToken:`fixture-${version}`}
+ return <main className="mx-auto max-w-6xl space-y-5 p-4 sm:p-8"><header className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="text-lg font-semibold">竹溪社 · 发布前结果确认</h1><p className="mt-1 text-xs text-muted-foreground">虚构人员 · 本地界面验收 · 不连接线上数据</p></div><button className="rounded-lg border px-3 py-2 text-xs" onClick={()=>setBlocked(value=>!value)}>{blocked?'模拟保存完成':'模拟未保存调整'}</button></header><MatchingPublicationReview review={value} blocked={blocked} loading={false} onRefresh={()=>setVersion(value=>value+1)}/></main>
+}
+createRoot(document.getElementById('root')).render(params.get('screen')==='review'?<ReviewApp/>:<App />)

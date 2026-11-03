@@ -58,7 +58,7 @@ export function MatchCard({ matchId, partner, sessionName, date, reviewed, cance
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold">
-            {isGroup ? `🎲 ${partner.name}` : `${labels.partner}: ${partner.name}`}
+            {isGroup ? partner.name : `${labels.partner}: ${partner.name}`}
           </p>
           <p className="text-xs text-muted-foreground mt-0.5">
             {sessionName}

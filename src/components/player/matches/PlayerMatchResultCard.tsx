@@ -1,6 +1,6 @@
 import type { ComponentProps } from "react"
 import { MatchCard } from "@/components/player/MatchCard"
-import { formatPublishedMatchSlot, publishedMatchTitle } from "@/lib/matching/publication-display"
+import { formatPublishedMatchSlot, publishedMatchTitle, publishedMultiGroupTitle } from "@/lib/matching/publication-display"
 
 interface Props {
   match: Record<string, unknown>
@@ -17,7 +17,7 @@ export function PlayerMatchResultCard({ match, memberId, nameMap, reviewedIds, d
   const groupMembers = match.group_members as string[] | null
   const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0
   const partner = isGroup
-    ? { name: `${groupMembers.length}人组`, hobbyTags: [] as string[], gameTypePref: null, scenarioThemeTags: [] as string[], expressionStyleTags: [] as string[], groupRoleTags: [] as string[] }
+    ? { name: publishedMultiGroupTitle(match.group_number), hobbyTags: [] as string[], gameTypePref: null, scenarioThemeTags: [] as string[], expressionStyleTags: [] as string[], groupRoleTags: [] as string[] }
     : extractPartner(match, memberId)
   const memberNames = isGroup
     ? groupMembers.filter((id) => id !== memberId).map((id) => nameMap.get(id) ?? "").filter(Boolean)

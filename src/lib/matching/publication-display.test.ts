@@ -1,10 +1,16 @@
 import { afterEach, describe, expect, it } from "vitest"
-import { formatPublishedMatchSlot, publishedMatchTitle } from "./publication-display"
+import { formatPublishedMatchSlot, publishedMatchTitle, publishedMultiGroupTitle } from "./publication-display"
 
 const originalTimeZone = process.env.TZ
 afterEach(() => { process.env.TZ = originalTimeZone })
 
 describe("saved matching recommendations", () => {
+  it("formats real group ordinals and never treats missing numbers as group size", () => {
+    expect(publishedMultiGroupTitle(1)).toBe("多人组01")
+    expect(publishedMultiGroupTitle(2)).toBe("多人组02")
+    expect(publishedMultiGroupTitle(100)).toBe("多人组100")
+    for (const value of [undefined, null, 0, -1, NaN, 1.5, "2"]) expect(publishedMultiGroupTitle(value)).toBe("多人组")
+  })
   it.each(["Asia/Tokyo", "America/Los_Angeles", "Europe/London"])("preserves the saved day in %s", (zone) => {
     process.env.TZ = zone
     expect(formatPublishedMatchSlot("2026-11-03_晚上", "zh-CN")).toMatch(/2026\/11\/3.*晚上/)

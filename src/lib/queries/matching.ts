@@ -4,6 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { validateUuids } from "@/lib/sanitize"
 import { filterAccessibleMatchingResults } from "@/lib/matching/test-round-access"
 import { getPlayerSharedAvailability, type PlayerSharedAvailability } from "@/lib/matching/player-shared-availability"
+import { withPublishedMultiGroupNumbers } from "@/lib/matching/published-group-numbers"
 
 export async function fetchMatchSessions() {
   await requireAdmin()
@@ -156,7 +157,8 @@ export async function fetchPlayerMatches(memberId: string) {
     .order("created_at", { ascending: false })
 
   if (error) throw error
-  return filterAccessibleMatchingResults((data ?? []).filter(isCurrentPublishedMatch))
+  const visible = await filterAccessibleMatchingResults((data ?? []).filter(isCurrentPublishedMatch))
+  return withPublishedMultiGroupNumbers(visible, supabase)
 }
 
 export async function fetchMatchDetail(matchId: string, memberId: string) {
@@ -206,7 +208,8 @@ export async function fetchMatchDetail(matchId: string, memberId: string) {
   if (!(await filterAccessibleMatchingResults([data])).length) return null
   const shared = await fetchVisibleDuoSharedAvailability(supabase, data, memberId)
   if (!shared.stillVisible) return null
-  return { ...data, sharedAvailability: shared.availability }
+  const [numbered] = await withPublishedMultiGroupNumbers([data], supabase)
+  return { ...numbered, sharedAvailability: shared.availability }
 }
 
 function relationObject(value: unknown): Record<string, unknown> | null {

@@ -39,3 +39,9 @@ export function publishedMatchTitle(session: Record<string, unknown> | undefined
   const sessionName = typeof session?.session_name === "string" ? session.session_name : ""
   return round?.round_name || sessionName
 }
+
+/** Group labels identify the published batch's M01/M02 order, not its size. */
+export function publishedMultiGroupTitle(number: unknown): string {
+  return typeof number === "number" && Number.isSafeInteger(number) && number > 0
+    ? `多人组${String(number).padStart(2, "0")}` : "多人组"
+}

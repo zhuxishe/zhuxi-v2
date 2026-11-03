@@ -4,7 +4,7 @@ import { fetchMatchDetail } from "@/lib/queries/matching"
 import { fetchReviewedMatchIds } from "@/lib/queries/reviews"
 import { fetchGroupMemberNames } from "@/lib/queries/group-members"
 import { getTranslations, getLocale } from "next-intl/server"
-import { formatPublishedMatchSlot, publishedMatchTitle } from "@/lib/matching/publication-display"
+import { formatPublishedMatchSlot, publishedMatchTitle, publishedMultiGroupTitle } from "@/lib/matching/publication-display"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -34,7 +34,7 @@ export default async function MatchDetailPage({ params }: { params: Params }) {
   const groupNames = isGroup ? await fetchGroupMemberNames(otherIds) : []
 
   const partner = isGroup
-    ? { name: `${groupMembers.length}人组`, hobbyTags: [] as string[], gameTypePref: null, scenarioThemeTags: [] as string[], expressionStyleTags: [] as string[], groupRoleTags: [] as string[] }
+    ? { name: publishedMultiGroupTitle(match.group_number), hobbyTags: [] as string[], gameTypePref: null, scenarioThemeTags: [] as string[], expressionStyleTags: [] as string[], groupRoleTags: [] as string[] }
     : extractPartner(match, player.memberId)
 
   const session = unwrap(match.session)

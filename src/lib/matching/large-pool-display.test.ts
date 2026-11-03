@@ -15,7 +15,7 @@ describe("existing player surfaces with a thirteen-member pool", () => {
   it("renders all twelve other members in the existing match detail and review selector", async () => {
     const others = members.slice(1)
     const detail = createElement(MatchDetailCard, {
-      partner: { name: "13人组", hobbyTags: [], gameTypePref: null, scenarioThemeTags: [], expressionStyleTags: [], groupRoleTags: [] },
+      partner: { name: "多人组02", hobbyTags: [], gameTypePref: null, scenarioThemeTags: [], expressionStyleTags: [], groupRoleTags: [] },
       sessionName: "匹配批次", reviewed: false, matchId: "pool-result", isGroup: true,
       groupMemberNames: others.map((member) => member.name), recommendedTime: "2030/11/3 晚上",
       labels: { partner: "搭档", unknown: "未知", interests: "兴趣", socialStyle: "社交", gameType: "类型",
@@ -23,7 +23,8 @@ describe("existing player surfaces with a thirteen-member pool", () => {
     })
     const detailHtml = await new Response(await renderToReadableStream(detail)).text()
     for (const member of others) expect(detailHtml).toContain(member.name)
-    expect(detailHtml).toContain("13人组")
+    expect(detailHtml).toContain("多人组02")
+    expect(detailHtml).not.toContain("🎲")
     expect(detailHtml).toContain("组员姓名13")
     expect(detailHtml).toContain('<button type="button"')
     expect(detailHtml).not.toContain('href="/app/reviews/new/pool-result"')

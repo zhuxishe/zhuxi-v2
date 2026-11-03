@@ -5,6 +5,8 @@ export interface BoardDuo {
   resultId?: string
   memberIds: [string, string]
   bestSlot: string | null
+  /** Explicit administrator-selected common slot; never accepts an incompatible time. */
+  manuallyScheduled?: true
 }
 export interface BoardMulti {
   key: string

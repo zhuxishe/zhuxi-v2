@@ -3,6 +3,7 @@
 import { fetchMatchingBoard, inspectMatchingBoardGroup, inspectMatchingBoardGroupMove, inspectMatchingBoardGroupDissolve, inspectMatchingBoardGroupTime, inspectMatchingBoardMultiMove, inspectMatchingBoardPair, inspectMatchingBoardSmallGroupCandidates, recommendMatchingBoardSmallGroups, rematchMatchingBoard, saveMatchingBoard, setMatchingBoardMemberLock } from "@/lib/matching/board-service"
 import type { BoardMemberLockRequest, BoardRequest } from "@/lib/matching/board-types"
 import { fetchSavedMatchingReview } from "@/lib/matching/session-review-service"
+import { previewMatchingBoardCsv, applyMatchingBoardCsv, type MatchingBoardCsvRequest } from "@/lib/matching/board-csv-service"
 
 export async function loadMatchingBoard(sessionId: string) { return fetchMatchingBoard(sessionId) }
 export async function loadSavedMatchingReview(sessionId: string) { return fetchSavedMatchingReview(sessionId) }
@@ -18,3 +19,5 @@ export async function rematchBoard(input: BoardRequest) { return rematchMatching
 export async function saveBoard(input: BoardRequest & { operationId: string; reason: string }) { return saveMatchingBoard(input) }
 
 export async function setBoardMemberLock(input: BoardMemberLockRequest) { return setMatchingBoardMemberLock(input) }
+export async function previewBoardCsv(input: MatchingBoardCsvRequest) { return previewMatchingBoardCsv(input) }
+export async function applyBoardCsv(input: MatchingBoardCsvRequest) { return applyMatchingBoardCsv(input) }

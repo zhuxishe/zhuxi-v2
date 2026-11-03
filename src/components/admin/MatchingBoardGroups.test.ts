@@ -7,11 +7,12 @@ import type { EnrichedMember } from "./match-detail-types"
 import type { MatchSessionViewProps } from "./MatchSessionView"
 import { buildSavedMatchingReview } from "@/lib/matching/session-review"
 import { MatchingReviewDownloadError } from "./matching-review-download"
+import { TextDecoder, TextEncoder } from "node:util"
 
-const mocks = vi.hoisted(() => ({ group: vi.fn(), groupMove: vi.fn(), dissolve: vi.fn(), groupTime: vi.fn(), multi: vi.fn(), save: vi.fn(), load: vi.fn(), refresh: vi.fn(), publish: vi.fn(), recommend: vi.fn(), inspectSuggestion: vi.fn(), download: vi.fn() }))
+const mocks = vi.hoisted(() => ({ group: vi.fn(), groupMove: vi.fn(), dissolve: vi.fn(), groupTime: vi.fn(), multi: vi.fn(), save: vi.fn(), load: vi.fn(), refresh: vi.fn(), publish: vi.fn(), recommend: vi.fn(), inspectSuggestion: vi.fn(), download: vi.fn(), csvPreview: vi.fn(), csvApply: vi.fn() }))
 vi.mock("./matching-review-download", async (original) => ({ ...await original<typeof import("./matching-review-download")>(), downloadMatchingReview: mocks.download }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
-vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ recommendBoardSmallGroups: mocks.recommend, inspectBoardSmallGroupCandidates: mocks.inspectSuggestion, inspectBoardGroup: mocks.group, inspectBoardGroupMove: mocks.groupMove, inspectBoardGroupDissolve: mocks.dissolve, inspectBoardGroupTime: mocks.groupTime, inspectBoardPair: vi.fn(), inspectBoardMultiMove: mocks.multi, rematchBoard: vi.fn(), saveBoard: mocks.save, loadMatchingBoard: mocks.load, setBoardMemberLock: vi.fn() }))
+vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ recommendBoardSmallGroups: mocks.recommend, inspectBoardSmallGroupCandidates: mocks.inspectSuggestion, inspectBoardGroup: mocks.group, inspectBoardGroupMove: mocks.groupMove, inspectBoardGroupDissolve: mocks.dissolve, inspectBoardGroupTime: mocks.groupTime, inspectBoardPair: vi.fn(), inspectBoardMultiMove: mocks.multi, rematchBoard: vi.fn(), saveBoard: mocks.save, loadMatchingBoard: mocks.load, setBoardMemberLock: vi.fn(), previewBoardCsv: mocks.csvPreview, applyBoardCsv: mocks.csvApply }))
 vi.mock("@/app/admin/matching/[id]/actions", () => ({ confirmSession: mocks.publish, unpublishSession: vi.fn(), lockPair: vi.fn(), unlockPair: vi.fn() }))
 vi.mock("@/app/admin/matching/[id]/manual-actions", () => ({ recoverMatchingAdjustment: vi.fn() }))
 import { MatchingBoardView } from "./MatchingBoardView"
@@ -589,5 +590,40 @@ describe("saved publication review below the board", () => {
     props.session.publication_version = 2
     await render(); await setReason(); await click("确认发布")
     expect(mocks.publish).toHaveBeenCalledWith("grouping-session", expect.any(String), 2, expect.any(String), "revision-current")
+  })
+})
+
+describe("CSV integration with the existing board save boundary", () => {
+  it("applies one complete imported draft without saving or publishing and undoes it in one step", async () => {
+    vi.stubGlobal("TextDecoder", TextDecoder)
+    const next = groupDraft(props.boardSnapshot!.draft, ["A", "B", "C"], SLOT_TWO)
+    const count = { duoGroups: 0, multiGroups: 1, matched: 6, unmatched: 1, waitingDuo: 1, waitingMulti: 0 }
+    const response = { success: true, preview: { draft: next, rows: displayRows(next), revisionToken: "revision-current", unchanged: false,
+      summary: { before: count, after: { ...count, matched: 3, waitingMulti: 3 }, changedMembers: 6, createdGroups: 1, removedGroups: 1, changedTimes: 1 },
+      changes: poolIds.map((id) => ({ memberId: id, name: name(id), before: "原多人池", after: "CSV新分组或待分组" })) } }
+    mocks.csvPreview.mockResolvedValue(response); mocks.csvApply.mockResolvedValue(response)
+    await render()
+    expect(button("下载调整模板CSV").disabled).toBe(false)
+    const file = new File(["CSV调整"], "匹配调整.csv", { type: "text/csv" })
+    Object.defineProperty(file, "arrayBuffer", { value: async () => new TextEncoder().encode("CSV调整").buffer })
+    const input = document.querySelector<HTMLInputElement>('[aria-label="选择人工调整CSV文件"]')!
+    Object.defineProperty(input, "files", { configurable: true, value: [file] })
+    await act(async () => input.dispatchEvent(new Event("change", { bubbles: true })))
+    expect(group()).toBeNull(); expect(mocks.save).not.toHaveBeenCalled()
+    await click("应用到编辑草稿")
+    expect(chips(group())).toEqual(["A", "B", "C"])
+    expect(button("下载调整模板CSV").disabled).toBe(true)
+    expect(button("上传人工调整CSV").disabled).toBe(true)
+    expect(mocks.csvApply).toHaveBeenCalledExactlyOnceWith({ sessionId: "grouping-session", expectedRevision: "revision-current", csvText: "CSV调整" })
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+    await click("撤销")
+    expect(group()).toBeNull(); expect(chips(upper()).sort()).toEqual([...poolIds].sort())
+    expect(button("下载调整模板CSV").disabled).toBe(false)
+  })
+  it("hides CSV imports from published or ordinary-administrator views", async () => {
+    await render({ canViewRawSubmissions: false })
+    expect([...document.querySelectorAll("button")].some((item) => item.textContent === "上传人工调整CSV")).toBe(false)
+    await render({ canViewRawSubmissions: true, session: { ...props.session, status: "confirmed" } })
+    expect([...document.querySelectorAll("button")].some((item) => item.textContent === "下载调整模板CSV")).toBe(false)
   })
 })

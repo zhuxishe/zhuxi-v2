@@ -90,6 +90,7 @@ export function assertBoardDraft(value: unknown): asserts value is BoardDraft {
       && (item.manuallyAdjusted === undefined || item.manuallyAdjusted === true)
   }
   if (!Array.isArray(draft.duos) || draft.duos.length > 5000 || !draft.duos.every((item) => group(item, 2))
+      || draft.duos.some((item) => item.manuallyScheduled !== undefined && item.manuallyScheduled !== true)
       || (draft.multi !== null && (!group(draft.multi) || !draft.multi.memberIds.length))
       || (draft.multiMode !== undefined && draft.multiMode !== "grouped")
       || (draft.multiGroups !== undefined && (!Array.isArray(draft.multiGroups) || draft.multiGroups.length > 5000 || !draft.multiGroups.every((item) => group(item) && item.memberIds.length > 0)))
@@ -97,6 +98,8 @@ export function assertBoardDraft(value: unknown): asserts value is BoardDraft {
       || (draft.multiMode === "grouped" && draft.multi?.resultId !== undefined)
       || (draft.multi?.groupKind !== undefined)
       || (draft.multi?.manuallyAdjusted !== undefined)
+      || (draft.multi && "manuallyScheduled" in draft.multi)
+      || draft.multiGroups?.some((item) => "manuallyScheduled" in item)
       || draft.duos.some((item) => "groupKind" in item || "manuallyAdjusted" in item)
       || draft.multiGroups?.some((item) => item.manuallyAdjusted && item.groupKind !== "small")
       || !ids(draft.waitingDuoIds) || !ids(draft.unmatchedIds) || !Array.isArray(draft.brokenPairs)
@@ -193,8 +196,13 @@ export function evaluateBoard(context: BoardContext, input: BoardDraft, forSave 
     } else {
       const inspection = inspectManualAdjustment(context.engine, entry.memberIds)
       if (!inspection.passed) fail(inspection.reasons.join("；"))
-      entry.bestSlot = inspection.bestSlot
-      for (const row of inspection.rows) { rows.push({ ...row, key: entry.key, status: "draft" }); changedRows.push(row) }
+      if ("manuallyScheduled" in entry && entry.manuallyScheduled === true) {
+        if (!hasSlot(candidates(context, entry.memberIds), entry.bestSlot)) fail("双人推荐时间必须是双方共同可用的日期和时段")
+        for (const row of inspection.rows) { const selected = { ...row, best_slot: entry.bestSlot }; rows.push({ ...selected, key: entry.key, status: "draft" }); changedRows.push(selected) }
+      } else {
+        entry.bestSlot = inspection.bestSlot
+        for (const row of inspection.rows) { rows.push({ ...row, key: entry.key, status: "draft" }); changedRows.push(row) }
+      }
     }
   }
   if (draft.multiMode === "grouped" && draft.multi) {

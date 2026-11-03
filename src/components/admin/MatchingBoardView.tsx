@@ -13,6 +13,7 @@ import { downloadMatchingReview, MatchingReviewDownloadError } from "./matching-
 import { MatchingBoardSmallGroups } from "./MatchingBoardSmallGroups"
 import { MatchingBoardManualGroup } from "./MatchingBoardManualGroup"
 import { MatchingBoardUnmatchedMessage } from "./MatchingBoardUnmatchedMessage"
+import { MatchingBoardCsvAdjustment } from "./MatchingBoardCsvAdjustment"
 import { useSmallGroupRecommendations } from "./use-small-group-recommendations"
 import { availableSmallGroups, moveSmallGroupCandidate } from "./matching-small-group-local"
 import { getBoardTimeOptions } from "@/lib/matching/board-time-options"
@@ -628,6 +629,10 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="ghost" onClick={() => document.getElementById("publication-review")?.scrollIntoView({ behavior: "smooth", block: "start" })}>查看发布前结果</Button>
         {canViewRawSubmissions && <Button size="sm" variant="outline" disabled={!reviewReady || reviewBlocked || busy} title={reviewBlocked ? "请先保存调整，再核对下方结果并导出" : "导出下方确认表对应的已保存结果"} onClick={exportReviewed}><Download className="size-3.5" />导出 Excel</Button>}
+        {canViewRawSubmissions && !readOnly && sessionStatus === "draft" && <MatchingBoardCsvAdjustment sessionId={session.id} revisionToken={snapshot.revisionToken} publicationSignature={savedReview?.publicationSignature ?? ""}
+          boardFingerprint={JSON.stringify(draft)} disabled={!editable || !reviewReady || reviewBlocked || invalidMessage || !session.results_ready}
+          onApplied={({ draft: next, rows }) => { apply(next, rows); setQuery(""); editingMessage.current = false }}
+          onStale={(message) => { setReloadNeeded(true); setError(message) }} onNotice={setNotice} onError={setError} />}
         {!readOnly && sessionStatus === "draft" && <Button size="sm" disabled={!reviewReady || !!savedReview?.issues.length || reloadNeeded || !desktop || busy || dirty || pendingOperation || !reasonValid || !session.results_ready || waitingForGroups || incompleteGroups || invalidMessage} onClick={() => directAction(() => confirmSession(session.id, reason, publicationVersion, savedReview?.publicationSignature, savedReview?.revisionToken))}><CheckCircle className="size-3.5" />确认发布</Button>}
         {!readOnly && sessionStatus === "confirmed" && <Button size="sm" variant="outline" disabled={reloadNeeded || !desktop || busy || !reasonValid} onClick={() => { if (window.confirm("撤回后玩家将无法看到结果，确定撤回发布？")) directAction(() => unpublishSession(session.id, reason, publicationVersion)) }}><XCircle className="size-3.5" />撤回发布</Button>}
       </div>

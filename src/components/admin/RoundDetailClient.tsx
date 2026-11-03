@@ -20,16 +20,12 @@ import type { MatchingEligibilitySummary, MatchingRunRecord } from "@/lib/matchi
 import { MatchingRunRecords } from "./MatchingRunRecords"
 import { MatchingEligibilityCard } from "./MatchingEligibilityCard"
 import { clearMatchingRequestId, matchingRequestId } from "./matching-run-request"
+import type { RoundStats } from "@/lib/matching/round-stats"
 type Sub = Record<string, any>
-interface Stats {
-  total: number
-  gameTypeDist: { duo: number; multi: number; either: number }
-  slotCounts: Record<string, number>
-}
 interface Props {
   round: RoundRecord
   submissions: Sub[]
-  stats: Stats
+  stats: RoundStats
   allMembers: { id: string; name: string }[]
   canManageSubmissions: boolean
   canImportMembers: boolean

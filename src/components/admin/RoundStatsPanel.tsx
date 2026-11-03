@@ -1,13 +1,9 @@
 import { calendarDateRange, calendarWeekday } from "@/lib/calendar-date"
-
-interface Stats {
-  total: number
-  gameTypeDist: { duo: number; multi: number; either: number }
-  slotCounts: Record<string, number>
-}
+import type { RoundStats } from "@/lib/matching/round-stats"
+import { RoundGenderPreferenceChart } from "./RoundGenderPreferenceChart"
 
 interface Props {
-  stats: Stats
+  stats: RoundStats
   activityStart: string
   activityEnd: string
 }
@@ -25,11 +21,19 @@ export function RoundStatsPanel({ stats, activityStart, activityEnd }: Props) {
   return (
     <div className="space-y-4">
       {/* KPI 卡片 */}
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <KpiCard label="总报名" value={total} />
-        <KpiCard label="双人" value={gameTypeDist.duo} color="text-pink-600" />
-        <KpiCard label="多人" value={gameTypeDist.multi} color="text-blue-600" />
-        <KpiCard label="都可以" value={gameTypeDist.either} />
+      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(24rem,1fr)]">
+        <div className="flex flex-col gap-2">
+          <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-3" aria-label="本轮报名人数统计">
+            <KpiCard label="总报名" value={total} />
+            <KpiCard label="双人" value={gameTypeDist.duo} color="text-pink-600" />
+            <KpiCard label="多人" value={gameTypeDist.multi} color="text-blue-600" />
+            <KpiCard label="都可以" value={gameTypeDist.either} />
+            <KpiCard label="男生" value={stats.genderDist.male} color="text-blue-600" />
+            <KpiCard label="女生" value={stats.genderDist.female} color="text-pink-600" />
+          </div>
+          <p className="text-[11px] leading-relaxed text-muted-foreground">统计当前未取消的报名；男生、女生仅统计本人性别明确选择男或女的报名者。</p>
+        </div>
+        <RoundGenderPreferenceChart total={total} distribution={stats.genderPreferenceDist} />
       </div>
 
       {/* 时段热力图 */}
@@ -89,7 +93,7 @@ export function RoundStatsPanel({ stats, activityStart, activityEnd }: Props) {
 
 function KpiCard({ label, value, color }: { label: string; value: number; color?: string }) {
   return (
-    <div className="rounded-lg bg-card p-3 shadow-soft text-center">
+    <div className="flex flex-col justify-center rounded-lg bg-card p-3 shadow-soft text-center" role="group" aria-label={`${label}：${value}人`}>
       <p className={`text-xl font-bold ${color ?? ""}`}>{value}</p>
       <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
     </div>

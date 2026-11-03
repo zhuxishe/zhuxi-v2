@@ -34,7 +34,7 @@ function button(name: string) {
 }
 async function render(eligibilitySummary: MatchingEligibilitySummary | null, submissions: Record<string, unknown>[] = []) {
   await act(async () => root.render(createElement(RoundDetailClient, { round, submissions,
-    stats: { total: 23, gameTypeDist: { duo: 0, multi: 0, either: 23 }, slotCounts: {} },
+    stats: { total: 23, gameTypeDist: { duo: 0, multi: 0, either: 23 }, slotCounts: {}, genderDist: { male: 0, female: 0, unspecified: 23 }, genderPreferenceDist: { male: 0, female: 0, either: 23, unspecified: 0 } },
     allMembers: [], canManageSubmissions: false, canImportMembers: false,
     initialNow: "2026-10-24T01:00:00Z", eligibilitySummary, initialRuns: [run],
   })))

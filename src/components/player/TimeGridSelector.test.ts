@@ -40,7 +40,7 @@ describe("activity date grid rendering", () => {
   it("keeps the final date and its counts visible in the admin heatmap", () => {
     const html = renderToStaticMarkup(createElement(RoundStatsPanel, {
       activityStart: "2026-10-21", activityEnd: "2026-11-03",
-      stats: { total: 3, gameTypeDist: { duo: 1, multi: 1, either: 1 }, slotCounts: { "2026-11-03_上午": 3 } },
+      stats: { total: 3, gameTypeDist: { duo: 1, multi: 1, either: 1 }, slotCounts: { "2026-11-03_上午": 3 }, genderDist: { male: 1, female: 1, unspecified: 1 }, genderPreferenceDist: { male: 1, female: 1, either: 1, unspecified: 0 } },
     }))
     const labels = [...html.matchAll(/>(\d{2}-\d{2}) \(([日月火水木金土])\)<\/td>/g)].map((match) => [match[1], match[2]])
     expect(labels).toHaveLength(14)

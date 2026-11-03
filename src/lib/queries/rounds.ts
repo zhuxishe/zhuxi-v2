@@ -3,6 +3,7 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { requireAdmin } from "@/lib/auth/admin"
 import { fetchPlayerRounds } from "./player-rounds"
 import { isRoundSetupError } from "@/lib/matching/round-config"
+import { summarizeRoundStats, type RoundStats } from "@/lib/matching/round-stats"
 
 /** 获取所有匹配轮次 */
 export async function fetchRounds() {
@@ -80,41 +81,19 @@ export async function fetchRoundSubmissions(roundId: string) {
   return data ?? []
 }
 
-/** 获取某轮次的问卷统计（轻量查询，仅读 game_type_pref + availability） */
-export async function fetchRoundStats(roundId: string) {
+/** 获取某轮次的问卷统计；本人性别与搭档倾向只返回聚合，不返回个人资料。 */
+export async function fetchRoundStats(roundId: string): Promise<RoundStats> {
   await requireAdmin()
   const supabase = createAdminClient()
   const { data: submissions, error } = await supabase
     .from("match_round_submissions")
-    .select("game_type_pref, availability")
+    .select("game_type_pref, gender_pref, availability, member:members(member_identity(gender))")
     .eq("round_id", roundId)
     .is("cancelled_at", null)
     .limit(500)
 
   if (error) throw error
-  const total = (submissions ?? []).length
-  const list = submissions ?? []
-  const duoCount = list.filter((s) => s.game_type_pref === "双人").length
-  const multiCount = list.filter((s) => s.game_type_pref === "多人").length
-  const eitherCount = list.filter((s) => s.game_type_pref === "都可以").length
-
-  // 时段热力图
-  const slotCounts: Record<string, number> = {}
-  for (const sub of list) {
-    const avail = sub.availability as Record<string, string[]>
-    for (const [date, slots] of Object.entries(avail)) {
-      for (const slot of slots) {
-        const key = `${date}_${slot}`
-        slotCounts[key] = (slotCounts[key] ?? 0) + 1
-      }
-    }
-  }
-
-  return {
-    total,
-    gameTypeDist: { duo: duoCount, multi: multiCount, either: eitherCount },
-    slotCounts,
-  }
+  return summarizeRoundStats(submissions ?? [])
 }
 
 /** 获取当前 open 的轮次（玩家端用） */

@@ -75,7 +75,8 @@ function buildDraft(original: BoardDraft, assignments: BoardCsvAssignment[], gro
     ...(grouped ? { multiMode: "grouped", multiGroups } : {}), waitingDuoIds,
     brokenPairs: original.brokenPairs.filter((pair) => pair.memberIds.every((id) => waitingDuoIds.includes(id))).map((pair) => structuredClone(pair)),
     unmatchedIds: assignments.filter((item) => item.pool === "未匹配").map((item) => item.memberId),
-    ...(Object.hasOwn(original, "unmatchedMessage") ? { unmatchedMessage: original.unmatchedMessage } : {}) }
+    ...(Object.hasOwn(original, "unmatchedMessage") ? { unmatchedMessage: original.unmatchedMessage } : {}),
+    ...(Object.hasOwn(original, "unmatchedMemberMessages") ? { unmatchedMemberMessages: structuredClone(original.unmatchedMemberMessages) } : {}) }
 }
 
 /** Read-only full-plan validation. It never reruns automatic matching or writes a result. */

@@ -42,6 +42,26 @@ function setup(input = engine(), rows: BoardSourceRow[] = []) {
 beforeEach(() => { vi.resetAllMocks(); mocks.admin.mockResolvedValue({ id: actorId, role: "super_admin" }) })
 
 describe("board service authorization, capture and save boundary", () => {
+  it("saves normalized personal copy and explicit suppression with the same board transaction", async () => {
+    const f = setup()
+    f.request.draft.unmatchedMemberMessages = { [id(1)]: "  只给第一位的说明\n谢谢参与。  ", [id(2)]: null, [id(3)]: " \n " }
+    expect(await saveMatchingBoard(f.request)).toMatchObject({ success: true })
+    expect(f.save.mock.calls[0][0].p_layout.unmatchedMemberMessages).toEqual({ [id(1)]: "只给第一位的说明\n谢谢参与。", [id(2)]: null })
+    expect(f.save).toHaveBeenCalledOnce()
+    expect(f.rpc.mock.calls.every(([name]) => !/publish|notification/.test(name))).toBe(true)
+  })
+  it("rejects an old page omitting saved personal messages or adding a player outside this batch", async () => {
+    const f = setup(), old = await f.read()
+    f.read.mockResolvedValue({ ...old, data: { ...old.data, layout: { waitingDuoIds: [], brokenPairs: [], unmatchedMemberMessages: { [id(1)]: "已保存说明" } } } })
+    expect(await saveMatchingBoard(f.request)).toMatchObject({ error: expect.stringContaining("个人留言已更新") })
+    expect(f.save).not.toHaveBeenCalled()
+    f.request.draft.unmatchedMemberMessages = { [id(999)]: "不属于本批" }
+    expect(await saveMatchingBoard(f.request)).toMatchObject({ error: expect.stringContaining("本批次以外") })
+    expect(f.save).not.toHaveBeenCalled()
+    f.request.draft.unmatchedMemberMessages = {}
+    expect(await saveMatchingBoard(f.request)).toMatchObject({ success: true })
+    expect(f.save.mock.calls[0][0].p_layout.unmatchedMemberMessages).toEqual({})
+  })
   it("can read confirmed snapshots but rejects every preview and save on them", async () => {
     const f = setup()
     const value = await f.read()
@@ -333,7 +353,7 @@ describe("formal multiplayer group service boundary", () => {
     const saved = f.save.mock.calls[0][0]
     expect(saved.p_keep_result_ids).toEqual([])
     expect(saved.p_rows.map((row: BoardSourceRow) => row.group_members)).toEqual([[id(1), id(2), id(3)], [id(4), id(5), id(6)]])
-    expect(saved.p_layout).toEqual({ waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", waitingMultiIds: [id(7)], multiPoolSlot: "2026-10-31_下午", smallGroupMemberIds: [], manualSmallGroupMemberIds: [], unmatchedMessage: "" })
+    expect(saved.p_layout).toEqual({ waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", waitingMultiIds: [id(7)], multiPoolSlot: "2026-10-31_下午", smallGroupMemberIds: [], manualSmallGroupMemberIds: [], unmatchedMessage: "", unmatchedMemberMessages: {} })
     expect(saved.p_unmatched_ids).toEqual([id(7)])
     expect(saved.p_request_hash).not.toBe(boardRequestHash(f.request, reason))
   })

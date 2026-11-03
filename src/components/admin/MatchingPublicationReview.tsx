@@ -5,6 +5,7 @@ import { CheckCheck, ChevronDown, ChevronUp, RefreshCw, Search } from "lucide-re
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { MatchingReviewGroup, MatchingReviewMember, SavedMatchingReview } from "@/lib/matching/session-review-types"
+import { normalizeUnmatchedMemberMessages, normalizeUnmatchedMessage, resolveUnmatchedMessage } from "@/lib/matching/unmatched-message"
 
 export interface MatchingPublicationReviewProps {
   review: SavedMatchingReview | null
@@ -48,6 +49,40 @@ function PendingMembers({ label, members, query, warning }: { label: string; mem
   </details>
 }
 
+/** Show each recipient's final copy without expanding the page into full cards. */
+function UnmatchedMessagesReview({ review }: { review: SavedMatchingReview }) {
+  const [query, setQuery] = useState("")
+  const [limit, setLimit] = useState(PAGE_SIZE)
+  const common = normalizeUnmatchedMessage(review.unmatchedMessage)
+  const personal = normalizeUnmatchedMemberMessages(review.unmatchedMemberMessages)
+  if (!common && !Object.keys(personal).length) return null
+  const recipients = review.messageRecipients ?? [...review.waitingDuo, ...review.unmatched]
+  const rows = recipients.map((member) => {
+    const message = resolveUnmatchedMessage(common, personal, member.id)
+    return { member, message, source: message ? Object.hasOwn(personal, member.id) ? "个人留言" : "统一留言" : "不显示留言" }
+  })
+  const needle = query.trim().toLocaleLowerCase()
+  const filtered = rows.filter(({ member }) => matchesMember(member, needle))
+  const visible = filtered.slice(0, limit)
+  const shown = rows.filter(({ message }) => !!message).length
+  return <div className="space-y-3 rounded-xl border border-primary/15 bg-primary/[0.035] p-4" aria-label="未匹配工作人员留言">
+    <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-sm font-medium text-primary">工作人员留言 · 逐人核对</p><p className="text-xs text-muted-foreground">{review.messageRecipients !== undefined ? "本次可接收" : "待核对接收范围"} · {recipients.length} 人{recipients.some((member) => review.waitingDuo.some((waiting) => waiting.id === member.id)) && "（含等待双人搭档人员）"}</p></div>
+    <p className="text-xs leading-relaxed text-muted-foreground">个人留言优先；沿用统一留言的玩家显示统一内容。实际展示留言 · {shown} 人，不显示留言 · {rows.length - shown} 人。</p>
+    {rows.length ? <>
+      <div className="relative max-w-sm"><Search className="pointer-events-none absolute left-2.5 top-2.5 size-3.5 text-muted-foreground" /><input aria-label="搜索留言接收人" value={query} onChange={(event) => { setQuery(event.target.value); setLimit(PAGE_SIZE) }} placeholder="搜索姓名或会员编号" className="w-full rounded-lg border border-border bg-background py-2 pr-3 pl-8 text-xs" /></div>
+      <div className="overflow-x-auto rounded-lg border border-border bg-background"><table className="w-full min-w-[480px] text-left text-xs"><caption className="sr-only">每位未匹配玩家最终会看到的工作人员留言</caption>
+        <thead className="bg-muted/40 text-muted-foreground"><tr><th scope="col" className="w-36 px-3 py-2 font-medium">玩家</th><th scope="col" className="w-24 px-3 py-2 font-medium">内容来源</th><th scope="col" className="px-3 py-2 font-medium">玩家将看到的留言</th></tr></thead>
+        <tbody className="divide-y divide-border">{visible.map(({ member, message, source }) => <tr key={member.id} data-message-member={member.id} className="align-top"><th scope="row" className="px-3 py-3 font-medium"><span className="block break-words">{member.name}</span>{member.memberNumber && <span className="mt-1 block font-normal text-muted-foreground">{member.memberNumber}</span>}</th><td className="px-3 py-3 text-muted-foreground">{source}</td><td className={cn("whitespace-pre-wrap break-words px-3 py-3 leading-6", !message && "text-muted-foreground")}>{message || "不显示工作人员留言区域"}</td></tr>)}
+          {!visible.length && <tr><td colSpan={3} className="px-3 py-5 text-center text-muted-foreground">没有符合搜索的留言接收人。</td></tr>}
+        </tbody>
+      </table></div>
+      <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground"><p>显示 {visible.length} / {filtered.length} 人</p>{visible.length < filtered.length && <Button type="button" size="sm" variant="outline" onClick={() => setLimit((value) => value + PAGE_SIZE)}>再显示 {Math.min(PAGE_SIZE, filtered.length - visible.length)} 位留言</Button>}</div>
+    </> : <p className="text-xs text-muted-foreground">当前没有未匹配接收人，本次发布不会展示留言。</p>}
+    {review.messageRecipients === undefined && <p className="text-[11px] leading-relaxed text-muted-foreground">接收范围尚待最终资格核验。</p>}
+    <p className="text-[11px] leading-relaxed text-muted-foreground">留言与当前已保存方案一起发布；玩家只看到自己的最终留言。后台操作理由及未匹配诊断不会发送给玩家。</p>
+  </div>
+}
+
 function ReviewContents({ review }: { review: SavedMatchingReview }) {
   const [filter, setFilter] = useState<"all" | "duo" | "multi">("all")
   const [query, setQuery] = useState("")
@@ -56,9 +91,6 @@ function ReviewContents({ review }: { review: SavedMatchingReview }) {
   const filtered = review.groups.filter((group) => (filter === "all" || group.kind === filter) && (!needle || group.members.some((member) => matchesMember(member, needle))))
   const rows = filtered.slice(0, limit)
   const { summary } = review
-  const unmatchedMessage = review.unmatchedMessage?.trim()
-  const messageRecipients = review.messageRecipients ?? [...review.waitingDuo, ...review.unmatched]
-  const exactRecipients = review.messageRecipients !== undefined
   const captured = review.capturedAt && Number.isFinite(Date.parse(review.capturedAt))
     ? new Date(review.capturedAt).toLocaleString("zh-CN", { timeZone: "Asia/Tokyo", hour12: false }) : null
   return <>
@@ -106,15 +138,7 @@ function ReviewContents({ review }: { review: SavedMatchingReview }) {
           <PendingMembers label="未匹配" members={review.unmatched} query={needle} />
         </div>
       </div>}
-      {unmatchedMessage && <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/[0.035] p-4" aria-label="未匹配工作人员留言">
-        <p className="text-sm font-medium text-primary">工作人员留言 · 给未匹配玩家</p>
-        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{unmatchedMessage}</p>
-        {messageRecipients.length ? <details className="text-xs text-muted-foreground" open={messageRecipients.length <= 10}>
-          <summary className="cursor-pointer">{exactRecipients ? "本次可接收" : "待核对接收范围"} · {messageRecipients.length} 人{messageRecipients.some((member) => review.waitingDuo.some((waiting) => waiting.id === member.id)) && "（含等待双人搭档人员）"}</summary>
-          <p className="mt-2 break-words leading-6">{messageRecipients.map((member) => member.name).join("、")}</p>
-        </details> : <p className="text-xs text-muted-foreground">当前没有未匹配接收人，本次发布不会展示这段留言。</p>}
-        <p className="text-[11px] leading-relaxed text-muted-foreground">{!exactRecipients && "接收范围尚待最终资格核验。"}与当前已保存方案一起发布；后台操作理由及未匹配诊断不会发送给玩家。</p>
-      </div>}
+      <UnmatchedMessagesReview review={review} />
       <p className="text-[11px] leading-relaxed text-muted-foreground">时间均为日本时间。{captured ? `核对资料读取于 ${captured}。` : ""}如需更换人员，请回到上方三个池子调整并保存。</p>
     </div>
   </>

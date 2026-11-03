@@ -30,6 +30,8 @@ export interface BoardDraft {
   unmatchedIds: string[]
   /** Public-facing message for the final unmatched recipients of this batch. */
   unmatchedMessage?: string
+  /** Missing member inherits common copy; null explicitly hides that player's message. */
+  unmatchedMemberMessages?: Record<string, string | null>
 }
 export interface BoardLayout {
   waitingDuoIds: string[]
@@ -41,6 +43,7 @@ export interface BoardLayout {
   smallGroupMemberIds?: string[][]
   manualSmallGroupMemberIds?: string[][]
   unmatchedMessage?: string
+  unmatchedMemberMessages?: Record<string, string | null>
 }
 export interface BoardSmallGroupRecommendation {
   key: string

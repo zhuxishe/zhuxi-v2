@@ -600,6 +600,9 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
   const incompleteOrdinaryGroups = !!draft.multiGroups?.some((group) => group.groupKind !== "small" && group.memberIds.length < 3)
   const incompleteGroups = incompleteSmallGroups || incompleteOrdinaryGroups
   const invalidMessage = Array.from((draft.unmatchedMessage ?? "").trim()).length > 300
+    || Object.values(draft.unmatchedMemberMessages ?? {}).some((message) => typeof message === "string" && Array.from(message.trim()).length > 300)
+  const messageMembersById = new Map([...(savedReview?.groups.flatMap((group) => group.members) ?? []), ...(savedReview?.waitingDuo ?? []), ...(savedReview?.waitingMulti ?? []), ...(savedReview?.unmatched ?? [])].map((entry) => [entry.id, entry]))
+  const messageMembers = [...new Set([...draft.unmatchedIds, ...draft.waitingDuoIds])].map((id) => ({ id, name: name(id), memberNumber: messageMembersById.get(id)?.memberNumber ?? null }))
   const waitingForGroups = grouped && !!draft.multi?.memberIds.length
   const groupTimes = getBoardGroupTimeCandidates(draft.multi?.memberIds ?? [], snapshot.currentSubmissionPrefs ?? submissionPrefs)
   const multiLocked = !!draft.multi?.resultId && snapshot.lockedResultIds.includes(draft.multi.resultId)
@@ -703,12 +706,17 @@ export function MatchingBoardView(props: MatchSessionViewProps) {
       </section>
       {pool("unmatched", "未匹配池子", `${draft.unmatchedIds.length} 人`, <UserRound className="size-4 text-amber-700" />, "重新匹配只处理本池人员，保留已有配对和多人池时间。",
         <><div className="flex flex-wrap gap-3">{draft.unmatchedIds.filter((id) => visible([id])).map((id) => chip(id))}</div>{!draft.unmatchedIds.length && <p className="py-8 text-center text-sm text-muted-foreground">当前无人等待重新匹配</p>}
-          <MatchingBoardUnmatchedMessage value={draft.unmatchedMessage ?? ""} editable={editable} recipients={draft.unmatchedIds.length + draft.waitingDuoIds.length} waitingDuo={draft.waitingDuoIds.length}
+          <MatchingBoardUnmatchedMessage value={draft.unmatchedMessage ?? ""} memberMessages={draft.unmatchedMemberMessages} members={messageMembers} editable={editable} recipients={draft.unmatchedIds.length + draft.waitingDuoIds.length} waitingDuo={draft.waitingDuoIds.length}
             onBlur={() => { editingMessage.current = false }} onChange={(value) => {
               if (!editable) return
               if (!editingMessage.current) { setHistory((old) => [...old, version].slice(-100)); editingMessage.current = true }
               saved.current = false
               setVersion({ draft: { ...draft, unmatchedMessage: value }, rows: version.rows }); setError("")
+            }} onMemberMessagesChange={(memberMessages) => {
+              if (!editable) return
+              if (!editingMessage.current) { setHistory((old) => [...old, version].slice(-100)); editingMessage.current = true }
+              saved.current = false
+              setVersion({ draft: { ...draft, unmatchedMemberMessages: memberMessages }, rows: version.rows }); setError("")
             }} /></>,
         mutable ? <Button className="hidden lg:inline-flex" variant="outline" size="sm" disabled={!editable || !draft.unmatchedIds.length} onClick={rerun}><RefreshCw className={cn("size-3.5", busy && "animate-spin")} />重新匹配</Button> : null)}
     </div>

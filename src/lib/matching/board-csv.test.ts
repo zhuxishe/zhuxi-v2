@@ -127,6 +127,18 @@ describe("signed full-cohort template", () => {
 })
 
 describe("complete manual board import", () => {
+  it("preserves all personal overrides and suppression when CSV rearranges assignments", () => {
+    const f = fixture()
+    const personal = { "1": "给已匹配成员保留的说明", "8": null, "9": "给九号的说明" }
+    f.context.originalLayout!.unmatchedMemberMessages = personal
+    f.draft.unmatchedMemberMessages = structuredClone(personal)
+    const csv = edit(f.template(), (rows) => assign(rows, ["9"], "多人"))
+    const result = preview(f, csv)
+    expect(result.success).toBe(true)
+    expect(result.preview!.draft.unmatchedMemberMessages).toEqual(personal)
+    expect(f.draft.unmatchedMemberMessages).toEqual(personal)
+    expect(result.preview!.draft.unmatchedMemberMessages).not.toBe(f.draft.unmatchedMemberMessages)
+  })
   it("bulk regroups everyone and preserves manually chosen duo time through the final save evaluation", () => {
     const f = fixture()
     const csv = edit(f.template(), (rows) => {

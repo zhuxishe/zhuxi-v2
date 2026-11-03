@@ -214,7 +214,8 @@ describe("saved publication review table", () => {
     const message = document.querySelector('[aria-label="未匹配工作人员留言"]')!
     expect(message.textContent).toContain("后续继续协调\n<script>literal</script>")
     expect(message.textContent).toContain("待核对接收范围 · 2 人（含等待双人搭档人员）")
-    expect(message.textContent).toContain("示例L、示例N")
+    expect(message.textContent).toContain("示例L")
+    expect(message.textContent).toContain("示例N")
     expect(message.textContent).not.toContain("示例M")
     expect(message.querySelector("script")).toBeNull()
     await render({ blocked: true })
@@ -235,5 +236,39 @@ describe("saved publication review table", () => {
     expect(message.textContent).not.toContain("待核对接收范围")
     await render({ review: { ...fixture(), unmatchedMessage: "后续协调", messageRecipients: [] } })
     expect(message.textContent).toContain("当前没有未匹配接收人")
+  })
+  it("shows each player's final replacement, fallback or suppressed note without mixing their contents", async () => {
+    const review = fixture()
+    review.unmatchedMessage = "统一说明"
+    review.unmatched.push(member("O"))
+    review.messageRecipients = [member("L"), member("N"), member("O")]
+    review.unmatchedMemberMessages = { L: "只给L的说明\n第二行", N: null, A: "不该出现在此处的草稿" }
+    await render({ review })
+    const row = (id: string) => document.querySelector<HTMLElement>(`[data-message-member="${id}"]`)!
+    expect(row("L").textContent).toContain("个人留言")
+    expect(row("L").textContent).toContain("只给L的说明\n第二行")
+    expect(row("L").textContent).not.toContain("统一说明")
+    expect(row("N").textContent).toContain("不显示工作人员留言区域")
+    expect(row("N").textContent).not.toContain("统一说明")
+    expect(row("O").textContent).toContain("统一留言")
+    expect(row("O").textContent).toContain("统一说明")
+    expect(text()).toContain("实际展示留言 · 2 人，不显示留言 · 1 人")
+    expect(text()).not.toContain("不该出现在此处")
+    review.unmatchedMessage = null
+    await render({ review: { ...review } })
+    expect(row("L").textContent).toContain("只给L的说明")
+    expect(row("O").textContent).toContain("不显示工作人员留言区域")
+  })
+  it("paginates a hundred message recipients and searches their member numbers beyond the visible rows", async () => {
+    const recipients = Array.from({ length: 100 }, (_, index) => member(String(index + 1)))
+    await render({ review: { ...fixture(), unmatchedMessage: "统一说明", messageRecipients: recipients } })
+    expect(document.querySelectorAll("[data-message-member]")).toHaveLength(20)
+    await click("再显示 20 位留言")
+    expect(document.querySelectorAll("[data-message-member]")).toHaveLength(40)
+    const input = document.querySelector<HTMLInputElement>('[aria-label="搜索留言接收人"]')!
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "ZXS_100"); input.dispatchEvent(new Event("input", { bubbles: true })) })
+    expect(document.querySelectorAll("[data-message-member]")).toHaveLength(1)
+    expect(document.querySelector("[data-message-member]")?.getAttribute("data-message-member")).toBe("100")
+    expect(text()).toContain("显示 1 / 1 人")
   })
 })

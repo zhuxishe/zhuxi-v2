@@ -201,6 +201,19 @@ describe("publication is bound to the saved result review", () => {
     const current = { ...reviewedInput(), expectedReviewSignature: matchingReviewPublicationSignature(input.sessionId, rows, reviewCapture, "新留言") }
     expect(await publishMatchingSession(current)).toEqual({ data: receipt })
   })
+  it("binds personal overrides and suppression before authorizing publication", async () => {
+    const f = reviewedFixture()
+    const personal = { a: "个人说明甲", b: null }
+    f.prepare.mockResolvedValue({ data: { capture: reviewCapture, current_rows: rows, revision_token: "checked-publication-source", unmatched_member_messages: personal }, error: null })
+    expect(await publishMatchingSession(reviewedInput())).toEqual({ error: expect.stringContaining("重新读取发布前结果确认") })
+    expect(f.authorize).not.toHaveBeenCalled(); expect(f.publish).not.toHaveBeenCalled()
+    const current = { ...reviewedInput(), expectedReviewSignature: matchingReviewPublicationSignature(input.sessionId, rows, reviewCapture, null, undefined, personal) }
+    expect(await publishMatchingSession(current)).toEqual({ data: receipt })
+    f.authorize.mockClear(); f.publish.mockClear()
+    f.prepare.mockResolvedValue({ data: { capture: reviewCapture, current_rows: rows, revision_token: "checked-publication-source", unmatched_member_messages: { a: "个人说明甲" } }, error: null })
+    expect(await publishMatchingSession(current)).toEqual({ error: expect.stringContaining("重新读取发布前结果确认") })
+    expect(f.authorize).not.toHaveBeenCalled(); expect(f.publish).not.toHaveBeenCalled()
+  })
   it("blocks a changed current shared time even if a supplied board revision happens to match", async () => {
     const f = reviewedFixture(), changed = structuredClone(reviewCapture)
     changed.source.submissions[0].availability["2026-10-25"] = ["下午"]

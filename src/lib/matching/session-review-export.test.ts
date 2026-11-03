@@ -191,6 +191,18 @@ describe("review-aligned matching export",()=>{
     data.workbookData.members[14].anonymized_at="2026-11-03T00:00:00Z"
     expect(rows(await exported(),"未匹配名单")[2].工作人员留言).toBe("")
   })
+  it("exports each player's resolved message, replacing common text and respecting explicit suppression", async()=>{
+    data.review.unmatchedMessage="统一说明"
+    data.review.unmatchedMemberMessages={ [id(13)]: " 个人说明甲\n第二行 ", [id(15)]: null, [id(1)]: "不应导出到搭档或小组" }
+    expect(rows(await exported(),"未匹配名单").map(row=>row.工作人员留言)).toEqual(["个人说明甲\n第二行","",""])
+    data.review.unmatchedMessage=null
+    data.review.unmatchedMemberMessages={ [id(15)]: "仅给玩家15的说明" }
+    expect(rows(await exported(),"未匹配名单").map(row=>row.工作人员留言)).toEqual(["","","仅给玩家15的说明"])
+    data.review.messageRecipients=[member(13)]
+    expect(rows(await exported(),"未匹配名单").every(row=>row.工作人员留言==="")).toBe(true)
+    data.review.messageRecipients=[member(15)];data.workbookData.members[14].anonymized_at="2026-11-04T00:00:00Z"
+    expect(rows(await exported(),"未匹配名单")[2].工作人员留言).toBe("")
+  })
   it("keeps explicitly manual seven- and three-person small groups separate in the workbook", async()=>{
     const first=data.review.groups[1], second=data.review.groups[2]
     first.members.push(...second.members.splice(0,2));first.manuallyAdjusted=true;second.manuallyAdjusted=true

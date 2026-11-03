@@ -30,7 +30,7 @@ function resultRow(key: string, memberIds: string[], bestSlot = SLOT): BoardDisp
 }
 function reviewed(snapshot: BoardSnapshot): BoardSnapshot {
   const draft = snapshot.draft
-  const layout = { waitingDuoIds: draft.waitingDuoIds, brokenPairs: draft.brokenPairs, unmatchedMessage: draft.unmatchedMessage,
+  const layout = { waitingDuoIds: draft.waitingDuoIds, brokenPairs: draft.brokenPairs, unmatchedMessage: draft.unmatchedMessage, unmatchedMemberMessages: draft.unmatchedMemberMessages,
     ...(draft.multiMode === "grouped" ? { multiMode: "grouped" as const, waitingMultiIds: draft.multi?.memberIds ?? [], multiPoolSlot: draft.multi?.bestSlot ?? null,
       smallGroupMemberIds: (draft.multiGroups ?? []).filter((group) => group.groupKind === "small").map((group) => group.memberIds),
       manualSmallGroupMemberIds: (draft.multiGroups ?? []).filter((group) => group.groupKind === "small" && group.manuallyAdjusted).map((group) => group.memberIds) } : {}) }
@@ -465,6 +465,46 @@ describe("saved publication review below the board", () => {
     const input = document.getElementById("board-unmatched-message") as HTMLTextAreaElement
     await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })) })
   }
+  async function memberMode(id: string, value: string) {
+    const input = document.querySelector<HTMLSelectElement>(`[aria-label="给 ${name(id)}的留言方式"]`)!
+    await act(async () => { input.value = value; input.dispatchEvent(new Event("change", { bubbles: true })) })
+  }
+  async function enterPersonalMessage(id: string, value: string) {
+    const input = document.querySelector<HTMLTextAreaElement>(`[aria-label="给 ${name(id)}的个人留言"]`)!
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })) })
+  }
+  it("edits each person's message locally and saves the map only after explicit Save", async () => {
+    await render(); await memberMode("U", "personal"); await enterPersonalMessage("U", "仅发给U的说明。")
+    await memberMode("W", "none")
+    expect((document.querySelector('[aria-label="示例U最终留言预览"]') as HTMLElement).textContent).toContain("仅发给U的说明。")
+    expect((document.querySelector('[aria-label="示例W最终留言预览"]') as HTMLElement).textContent).not.toContain("仅发给U的说明。")
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+    expect(button("导出 Excel").disabled).toBe(true)
+    await setReason(); await click("保存调整")
+    expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ draft: expect.objectContaining({ unmatchedMemberMessages: { U: "仅发给U的说明。", W: null } }) }))
+    expect(review().querySelector('[data-message-member="U"]')?.textContent).toContain("仅发给U的说明。")
+    expect(review().querySelector('[data-message-member="W"]')?.textContent).toContain("不显示工作人员留言区域")
+    expect(review().querySelector('[data-message-member="W"]')?.textContent).not.toContain("仅发给U的说明。")
+    expect(mocks.publish).not.toHaveBeenCalled()
+  })
+  it("undoes a personal suppression without changing matching membership", async () => {
+    await render(); await memberMode("U", "none")
+    expect(button("导出 Excel").disabled).toBe(true)
+    await click("撤销")
+    expect(document.querySelector<HTMLSelectElement>('[aria-label="给 示例U的留言方式"]')!.value).toBe("common")
+    expect(review().querySelector("table")).not.toBeNull()
+    expect(chips(upper())).toEqual(poolIds)
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+  })
+  it("blocks Save for oversized personal copy while preserving Unicode and common content", async () => {
+    await render(); await setReason(); await memberMode("U", "personal"); await enterPersonalMessage("U", "字".repeat(301))
+    expect(button("保存调整").disabled).toBe(true)
+    expect(document.body.textContent).toContain("示例U的个人留言最多300字")
+    await enterPersonalMessage("U", "🌿".repeat(300))
+    expect(button("保存调整").disabled).toBe(false)
+    expect((document.getElementById("board-unmatched-message") as HTMLTextAreaElement).value).toBe("")
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+  })
   it("keeps public message edits local, invalidates the saved review, and lets one undo restore the previous message", async () => {
     await render()
     expect(document.body.textContent).toContain("当前待核对：2 人（含 1 人等待双人搭档）")

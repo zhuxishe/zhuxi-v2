@@ -6,7 +6,7 @@ import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { validateUuids } from "@/lib/sanitize"
 import { prepareMatchingRunInput } from "./run-input"
 import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardGroupDissolve, previewBoardGroupTime, previewBoardMultiMove, previewBoardPair, previewBoardSmallGroupCandidates, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
-import { normalizeUnmatchedMessage } from "./unmatched-message"
+import { normalizeUnmatchedMessage, normalizeUnmatchedMemberMessages } from "./unmatched-message"
 import { recommendSmallGroups } from "./board-small-groups"
 import { buildSavedMatchingReview } from "./session-review"
 import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference, BoardMemberLockRequest, BoardMemberLockOperationSummary, BoardLayout, BoardSmallGroupRecommendationsResult } from "./board-types"
@@ -39,6 +39,8 @@ function errorMessage(error: unknown) {
   if (/^MATCH_BOARD_MANUAL_GROUP_REQUIRED(?::|$)/.test(message)) return "人工分组信息已变化，请刷新后继续调整，避免丢失人工分组标记。"
   if (/^MATCH_BOARD_UNMATCHED_MESSAGE_REQUIRED(?::|$)/.test(message)) return "工作人员留言已更新，请刷新核对后继续保存，避免覆盖现有留言。"
   if (/^MATCH_BOARD_UNMATCHED_MESSAGE_INVALID(?::|$)/.test(message)) return "工作人员留言须为300字以内的文字，请修改后再保存。"
+  if (/^MATCH_BOARD_MEMBER_MESSAGES_REQUIRED(?::|$)/.test(message)) return "个人留言已更新，请刷新后继续保存，避免覆盖其他人的留言。"
+  if (/^MATCH_BOARD_MEMBER_MESSAGES_/.test(message)) return "个人留言未通过校验，请核对玩家名单及每条留言的300字限制。"
   if (/^MATCH_BOARD_GROUPED_REQUIRED(?::|$)/.test(message)) return "此方案已启用多人分组，当前页面版本已过期，请刷新后在分组区域继续调整。"
   if (/STALE|CHANGED|REVISION/.test(message)) return "方案或人员资料已变化，本次未保存。请刷新后重新调整。"
   if (/LOCKED/.test(message)) return "已锁定的匹配不能调整，请先解锁并刷新。"
@@ -56,6 +58,7 @@ function validateRequest(input: BoardRequest) {
   if (typeof input.expectedRevision !== "string" || !input.expectedRevision.length || input.expectedRevision.length > 1000) throw new BoardValidationError("缺少方案版本，请刷新后重试")
   assertBoardDraft(input.draft)
   validateUuids([...input.draft.duos.flatMap((duo) => duo.memberIds), ...(input.draft.multi?.memberIds ?? []), ...(input.draft.multiGroups ?? []).flatMap((group) => group.memberIds), ...input.draft.waitingDuoIds, ...input.draft.unmatchedIds])
+  validateUuids(Object.keys(input.draft.unmatchedMemberMessages ?? {}))
 }
 async function captureBoard(db: RpcClient, sessionId: string, actorId: string, expectedRevision?: string) {
   const { data, error } = await db.rpc<Capture>("admin_get_matching_board", { p_session_id: sessionId, p_actor_admin_id: actorId })
@@ -252,6 +255,7 @@ export async function saveMatchingBoard(input: BoardRequest & { operationId: str
       p_expected_revision: input.expectedRevision, p_engine: context.engine, p_keep_result_ids: evaluation.keepResultIds,
       p_rows: evaluation.changedRows, p_layout: { waitingDuoIds: evaluation.draft.waitingDuoIds, brokenPairs: evaluation.draft.brokenPairs,
         unmatchedMessage: normalizeUnmatchedMessage(evaluation.draft.unmatchedMessage) ?? "",
+        unmatchedMemberMessages: normalizeUnmatchedMemberMessages(evaluation.draft.unmatchedMemberMessages, context.cohortMemberIds),
         ...(evaluation.draft.multiMode === "grouped" ? { multiMode: "grouped", waitingMultiIds: evaluation.draft.multi?.memberIds ?? [], multiPoolSlot: evaluation.draft.multi?.bestSlot ?? null,
           smallGroupMemberIds: (evaluation.draft.multiGroups ?? []).filter((group) => group.groupKind === "small").map((group) => [...group.memberIds]),
           manualSmallGroupMemberIds: (evaluation.draft.multiGroups ?? []).filter((group) => group.groupKind === "small" && group.manuallyAdjusted).map((group) => [...group.memberIds]),

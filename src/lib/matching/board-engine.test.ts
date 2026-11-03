@@ -26,6 +26,18 @@ function original(ctx: BoardContext, ids: string[], id: string, locked = false):
 const draft = (ctx: BoardContext) => createBoardDraft(ctx.originalRows, ctx.cohortMemberIds)
 
 describe("manual group creation, dissolution and public draft message", () => {
+  it("loads personal messages by cohort and preserves them while assignments change", () => {
+    const ctx = context(6)
+    ctx.originalLayout = { waitingDuoIds: [], brokenPairs: [], unmatchedMemberMessages: { "1": "  给一号的说明  ", "2": null } }
+    const input = createBoardDraft([], ctx.cohortMemberIds, ctx.originalLayout)
+    expect(input.unmatchedMemberMessages).toEqual({ "1": "给一号的说明", "2": null })
+    const paired = previewBoardPair(ctx, input, ["1", "3"]).draft
+    expect(paired.unmatchedMemberMessages).toEqual(input.unmatchedMemberMessages)
+    expect(paired.unmatchedIds).not.toContain("1")
+    expect(() => evaluateBoard(ctx, { ...paired, unmatchedMemberMessages: { outside: "说明" } }, true)).toThrow("本批次以外")
+    const omitted = { ...input }; delete omitted.unmatchedMemberMessages
+    expect(() => evaluateBoard(ctx, omitted, true)).toThrow("个人留言已更新")
+  })
   it("creates a seven-person manual small group directly from unmatched, leaving unrelated pool times unchanged", () => {
     const ctx = context(10)
     original(ctx, ["1", "2", "3"], "pool")

@@ -70,6 +70,21 @@ describe("saved publication review projection", () => {
     data.unmatched_message_recipient_ids = []
     expect(buildSavedMatchingReview("session", data, true).messageRecipients).toEqual([])
   })
+  it("projects only eligible personal overrides while binding retained notes to the saved review", () => {
+    const data = fixture()
+    data.layout!.unmatchedMessage = "统一说明"
+    data.layout!.unmatchedMemberMessages = { "7": " 个人说明甲\n第二行 ", "9": null, "1": "已安排人员保留草稿", "8": "待分组草稿" }
+    data.unmatched_message_recipient_ids = ["7", "9"]
+    const review = buildSavedMatchingReview("session", data, true)
+    expect(review.unmatchedMemberMessages).toEqual({ "7": "个人说明甲\n第二行", "9": null })
+    expect(JSON.stringify(review)).not.toContain("已安排人员保留草稿")
+    expect(JSON.stringify(review)).not.toContain("待分组草稿")
+    const before = review.publicationSignature
+    data.layout!.unmatchedMemberMessages["1"] = "另一段保留草稿"
+    expect(buildSavedMatchingReview("session", data, true).publicationSignature).not.toBe(before)
+    data.layout!.unmatchedMemberMessages = { "outside": "其他批次" }
+    expect(() => buildSavedMatchingReview("session", data, true)).toThrow("本批次以外")
+  })
   it.each([{ ids: ["1"] }, { ids: ["8"] }, { ids: ["outside"] }, { ids: ["9", "9"] }])("rejects invalid message recipients $ids", ({ ids }) => {
     const data = fixture(); data.unmatched_message_recipient_ids = ids
     expect(() => buildSavedMatchingReview("session", data, true)).toThrow("接收名单")
@@ -196,6 +211,22 @@ describe("review signature binds the published fields", () => {
     expect(() => sign("后续联系", ["9", "9"])).toThrow("接收名单")
     data.layout!.unmatchedMessage = "后续联系"; data.unmatched_message_recipient_ids = ["9", "7"]
     expect(buildSavedMatchingReview("session", data, true).publicationSignature).toBe(before)
+  })
+  it("binds normalized personal overrides, explicit suppression and their recipient plan without changing legacy empty signatures", () => {
+    const data = fixture()
+    const sign = (personal?: Record<string, string | null>, ids?: string[]) => matchingReviewPublicationSignature("session", data.results, data.capture, null, ids, personal)
+    expect(sign({})).toBe(sign())
+    expect(sign({ "7": " \n " })).toBe(sign())
+    const a = sign({ "7": " 个人说明甲 ", "9": null }, ["7", "9"])
+    expect(sign({ "9": null, "7": "个人说明甲" }, ["9", "7"])).toBe(a)
+    expect(sign({ "7": "个人说明乙", "9": null }, ["7", "9"])).not.toBe(a)
+    expect(sign({ "7": "个人说明甲" }, ["7", "9"])).not.toBe(a)
+    expect(sign({ "7": "个人说明甲", "9": null }, ["7"])).not.toBe(a)
+    data.layout!.unmatchedMemberMessages = { "7": "个人说明甲", "9": null }; data.unmatched_message_recipient_ids = ["7", "9"]
+    expect(buildSavedMatchingReview("session", data, true).publicationSignature).toBe(a)
+    const matchedOnly = structuredClone(data.capture) as { source: { submissions: Array<{ member_id: string }> } }
+    matchedOnly.source.submissions = matchedOnly.source.submissions.filter((person) => ["1", "2", "3", "4", "5", "6"].includes(person.member_id))
+    expect(matchingReviewPublicationSignature("session", data.results, matchedOnly, null, ["7", "9"], data.layout!.unmatchedMemberMessages)).toBe(a)
   })
   it("is stable across source/result ordering, legacy slot separators, display and score metadata", () => {
     const data = fixture(), first = matchingReviewPublicationSignature("session", data.results, data.capture)

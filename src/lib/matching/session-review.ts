@@ -3,7 +3,7 @@ import { getBoardTimeOptions } from "./board-time-options"
 import type { BoardLayout, BoardSourceRow, BoardSubmissionPreference } from "./board-types"
 import type { PublicationResultInput } from "./publication-preflight"
 import type { MatchingReviewMember, SavedMatchingReview } from "./session-review-types"
-import { normalizeUnmatchedMessage } from "./unmatched-message"
+import { normalizeUnmatchedMemberMessages, normalizeUnmatchedMessage } from "./unmatched-message"
 
 type Row = Record<string, unknown>
 export interface SavedReviewCapture {
@@ -63,7 +63,7 @@ function preferences(capture: unknown) {
  * and capture timestamps. The final publication proof still binds all existing
  * eligibility, hard-constraint, layout and saved-result revision checks.
  */
-export function matchingReviewPublicationSignature(sessionId: string, rows: readonly PublicationResultInput[], capture: unknown, unmatchedMessage?: string | null, recipientIds?: readonly string[]): string {
+export function matchingReviewPublicationSignature(sessionId: string, rows: readonly PublicationResultInput[], capture: unknown, unmatchedMessage?: string | null, recipientIds?: readonly string[], memberMessages?: Record<string, string | null>): string {
   const prefs = preferences(capture)
   const payload = rows.filter((row) => row.status !== "cancelled").map((row) => {
     const memberIds = idsOf(row).sort()
@@ -72,9 +72,15 @@ export function matchingReviewPublicationSignature(sessionId: string, rows: read
       timeStatus: times.complete ? "ready" : "unavailable", commonSlots: times.commonSlots }
   }).sort((a, b) => a.resultId.localeCompare(b.resultId))
   const message = normalizeUnmatchedMessage(unmatchedMessage)
+  // Publication preflight intentionally captures only matched members' answers.
+  // The board projection and database validate override keys against the full cohort.
+  const personal = normalizeUnmatchedMemberMessages(memberMessages)
+  const hasPersonal = Object.keys(personal).length > 0
   if (recipientIds !== undefined && (!Array.isArray(recipientIds) || recipientIds.some((id) => typeof id !== "string") || new Set(recipientIds).size !== recipientIds.length)) throw new Error("工作人员留言接收名单无效，请重新核对。")
   return createHash("sha256").update(JSON.stringify({ sessionId, groups: payload, ...(message ? { unmatchedMessage: message,
-    ...(recipientIds !== undefined ? { messageRecipientIds: [...recipientIds].sort() } : {}) } : {}) })).digest("hex")
+    ...(recipientIds !== undefined ? { messageRecipientIds: [...recipientIds].sort() } : {}) } : {}),
+    ...(hasPersonal ? { unmatchedMemberMessages: Object.fromEntries(Object.entries(personal).sort(([a], [b]) => a.localeCompare(b))),
+      ...(!message && recipientIds !== undefined ? { messageRecipientIds: [...recipientIds].sort() } : {}) } : {}) })).digest("hex")
 }
 
 /** Safe projection of a single board capture. No original run snapshot is consulted. */
@@ -82,6 +88,7 @@ export function buildSavedMatchingReview(sessionId: string, data: SavedReviewCap
   const submissions = sourceRows(data.capture), prefs = preferences(data.capture)
   const unmatchedMessage = normalizeUnmatchedMessage(data.layout?.unmatchedMessage)
   const cohort = [...new Set(data.cohort_member_ids)]
+  const personal = normalizeUnmatchedMemberMessages(data.layout?.unmatchedMemberMessages, cohort)
   const allowed = new Set(cohort), members = new Map<string, MatchingReviewMember>()
   for (const row of submissions) {
     const id = row.member_id as string
@@ -124,6 +131,8 @@ export function buildSavedMatchingReview(sessionId: string, data: SavedReviewCap
   if (recipientIds !== undefined && (!Array.isArray(recipientIds) || new Set(recipientIds).size !== recipientIds.length || recipientIds.some((id) => typeof id !== "string" || !possibleRecipients.has(id)))) {
     throw new Error("工作人员留言接收名单与已保存方案不一致，请重新核对。")
   }
+  const eligibleRecipients = new Set(recipientIds ?? possibleRecipients)
+  const projectedPersonal = Object.fromEntries(Object.entries(personal).filter(([id]) => eligibleRecipients.has(id)))
   if (waitingMultiIds.length) issues.add("仍有多人候选尚未分组，请完成安排或移至未匹配池后再发布。")
   const rawVersions = [...new Set(active.map((row) => (row as unknown as Row).publication_version))]
   // New result rows in a withdrawn draft start at version 0 even when the
@@ -132,7 +141,8 @@ export function buildSavedMatchingReview(sessionId: string, data: SavedReviewCap
   const publicationVersion = data.session_status === "confirmed" && rawVersions.length === 1 && Number.isSafeInteger(rawVersions[0]) && Number(rawVersions[0]) > 0
     ? rawVersions[0] as number : null
   const capturedAt = object(data.capture) && typeof data.capture.captured_at === "string" ? data.capture.captured_at : null
-  return { sessionId, revisionToken: data.base_revision, publicationSignature: matchingReviewPublicationSignature(sessionId, active, data.capture, unmatchedMessage, recipientIds), unmatchedMessage,
+  return { sessionId, revisionToken: data.base_revision, publicationSignature: matchingReviewPublicationSignature(sessionId, active, data.capture, unmatchedMessage, recipientIds, personal), unmatchedMessage,
+    ...(Object.keys(projectedPersonal).length ? { unmatchedMemberMessages: projectedPersonal } : {}),
     ...(recipientIds !== undefined ? { messageRecipients: recipientIds.map(memberOf) } : {}),
     capturedAt, sessionStatus: data.session_status ?? "unknown", publicationVersion, canViewTimes, groups,
     waitingDuo: waitingDuoIds.map(memberOf), waitingMulti: waitingMultiIds.map(memberOf), unmatched: unmatchedIds.map(memberOf),

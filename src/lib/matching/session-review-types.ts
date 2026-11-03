@@ -33,6 +33,8 @@ export interface SavedMatchingReview {
   unmatched: MatchingReviewMember[]
   /** Public message saved with this board; empty on historical boards. */
   unmatchedMessage?: string | null
+  /** Eligible members' personal overrides only; null deliberately suppresses the common message. */
+  unmatchedMemberMessages?: Record<string, string | null>
   /** Exact eligible recipients from the database's planned publication rules. */
   messageRecipients?: MatchingReviewMember[]
   summary: { total: number; duoGroups: number; multiGroups: number; matched: number; waitingDuo: number; waitingMulti: number; unmatched: number }

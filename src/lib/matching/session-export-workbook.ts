@@ -8,7 +8,7 @@ import { styleSessionExportSheet } from "./session-export-style"
 import type { SavedMatchingReview } from "./session-review-types"
 import { memberGenderLabel } from "./export-member-gender"
 import { exportUnmatchedReasons } from "./export-unmatched-reason"
-import { normalizeUnmatchedMessage } from "./unmatched-message"
+import { normalizeUnmatchedMemberMessages, normalizeUnmatchedMessage, resolveUnmatchedMessage } from "./unmatched-message"
 
 type Row = Record<string, any>
 type Cell = string | number | null
@@ -188,6 +188,7 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
   const version = review.revisionToken
   const captured = review.capturedAt ?? ""
   const unmatchedMessage = normalizeUnmatchedMessage(review.unmatchedMessage)
+  const personalMessages = normalizeUnmatchedMemberMessages(review.unmatchedMemberMessages)
   const messageRecipientIds = new Set((review.messageRecipients ?? [...review.waitingDuo, ...review.unmatched]).map((member) => member.id))
   const duoRows: Cell[][] = [], multiRows: Cell[][] = [], publicationRows: Cell[][] = []
   for (const group of review.groups) {
@@ -241,7 +242,7 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
     return [member.name, member.memberNumber || "未分配编号", gameType(sub?.game_type_pref), preference(sub?.gender_pref),
       [`安排状态：${status}`, ...(note ? [`报名留言：${note}`] : [])].join("\n"), source, captured, status, version, state,
       personalGender(members.get(member.id)), exportUnmatchedReasons(diagnosticLists.get(member.id) ?? [], { placement, anonymized: !!members.get(member.id)?.anonymized_at }),
-      placement === "waiting_multi" || !messageRecipientIds.has(member.id) || members.get(member.id)?.anonymized_at ? "" : unmatchedMessage ?? ""]
+      placement === "waiting_multi" || !messageRecipientIds.has(member.id) || members.get(member.id)?.anonymized_at ? "" : resolveUnmatchedMessage(unmatchedMessage, personalMessages, member.id) ?? ""]
   })
   if (seen.size !== review.summary.total) throw new Error("核对名单人数不一致，请重新读取后导出")
   const book = new ExcelJS.Workbook()

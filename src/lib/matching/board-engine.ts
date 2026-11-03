@@ -5,7 +5,7 @@ import { findGroupBestSlot } from "./match-utils"
 import type { MatchingEngineInput } from "./run-input"
 import { runFullMatching, type MatchResultRow } from "./run-matching"
 import type { MatchCandidate } from "./types"
-import { normalizeUnmatchedMessage } from "./unmatched-message"
+import { normalizeUnmatchedMessage, normalizeUnmatchedMemberMessages } from "./unmatched-message"
 
 export interface BoardContext {
   engine: MatchingEngineInput
@@ -51,6 +51,7 @@ function hasSlot(members: MatchCandidate[], slot: string | null) {
 
 /** Build only UI-safe structural data. Cancelled historical results are not active assignments. */
 export function createBoardDraft(rows: BoardSourceRow[], cohortMemberIds: string[], layout?: BoardLayout | null): BoardDraft {
+  const memberMessages = normalizeUnmatchedMemberMessages(layout?.unmatchedMemberMessages, cohortMemberIds)
   const active = rows.filter((row) => row.status !== "cancelled")
   const multis = active.filter((row) => !!row.group_members?.length)
   const grouped = layout?.multiMode === "grouped"
@@ -72,6 +73,7 @@ export function createBoardDraft(rows: BoardSourceRow[], cohortMemberIds: string
     brokenPairs: (layout?.brokenPairs ?? []).filter((pair) => pair.memberIds.every((id) => waiting.has(id))).map((pair) => ({ ...pair, key: pair.key ?? duoKey(pair.memberIds) })),
     unmatchedIds: cohortMemberIds.filter((id) => !assigned.has(id) && !waiting.has(id) && !waitingMulti.has(id)),
     ...(normalizeUnmatchedMessage(layout?.unmatchedMessage) ? { unmatchedMessage: normalizeUnmatchedMessage(layout?.unmatchedMessage)! } : {}),
+    ...(Object.keys(memberMessages).length ? { unmatchedMemberMessages: memberMessages } : {}),
   }
 }
 
@@ -105,11 +107,14 @@ export function assertBoardDraft(value: unknown): asserts value is BoardDraft {
       || !ids(draft.waitingDuoIds) || !ids(draft.unmatchedIds) || !Array.isArray(draft.brokenPairs)
       || draft.brokenPairs.length > 5000 || !draft.brokenPairs.every((pair) => pair && typeof pair.key === "string" && ids(pair.memberIds) && pair.memberIds.length === 2)) fail("调整内容无效，请刷新后重试")
   try { normalizeUnmatchedMessage(draft.unmatchedMessage) } catch (error) { fail(error instanceof Error ? error.message : "工作人员留言无效") }
+  try { normalizeUnmatchedMemberMessages(draft.unmatchedMemberMessages) } catch (error) { fail(error instanceof Error ? error.message : "个人留言无效") }
 }
 
 export function validateBoardStructure(context: BoardContext, draft: BoardDraft) {
   assertBoardDraft(draft)
   if (normalizeUnmatchedMessage(context.originalLayout?.unmatchedMessage) && !Object.hasOwn(draft, "unmatchedMessage")) fail("工作人员留言已更新，请刷新核对后继续保存；如需清空请明确删除文字")
+  if (Object.keys(normalizeUnmatchedMemberMessages(context.originalLayout?.unmatchedMemberMessages)).length && !Object.hasOwn(draft, "unmatchedMemberMessages")) fail("个人留言已更新，请刷新后继续保存；如需清空请明确删除个人留言")
+  try { normalizeUnmatchedMemberMessages(draft.unmatchedMemberMessages, context.cohortMemberIds) } catch (error) { fail(error instanceof Error ? error.message : "个人留言无效") }
   if (context.originalLayout?.multiMode === "grouped" && draft.multiMode !== "grouped") fail("已保存的多人分组不能恢复为旧的整池模式")
   const members = [...draft.duos.flatMap((duo) => duo.memberIds), ...(draft.multi?.memberIds ?? []), ...(draft.multiGroups ?? []).flatMap((group) => group.memberIds), ...draft.waitingDuoIds, ...draft.unmatchedIds]
   if (new Set(members).size !== members.length) fail("同一人员不能同时出现在多个位置")

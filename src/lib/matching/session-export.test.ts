@@ -19,10 +19,10 @@ const uuid = (number: number) => `10000000-0000-4000-8000-${String(number).padSt
 const ids = { a: uuid(1), b: uuid(2), c: uuid(3), d: uuid(4), later: uuid(5) }
 const numberOf = (number: number) => `ZXS_${String(number).padStart(3, "0")}`
 const sheetHeaders = {
-  双人本配对结果: ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at"],
-  多人本配对结果: ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at"],
-  未匹配名单: ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at"],
-  结果发布: ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段"],
+  双人本配对结果: ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at", "玩家性别"],
+  多人本配对结果: ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at", "玩家性别"],
+  未匹配名单: ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "玩家性别", "未匹配成功原因"],
+  结果发布: ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段", "玩家性别"],
 } as const
 const commonAvailability = { "2026-10-25": ["下午", "晚上"], "2026-10-26": ["上午"] }
 
@@ -133,6 +133,19 @@ describe("session export workbook contract", () => {
       expect(textCells(sheet)).not.toContain("不应导出的本人性别")
     }
     expect(queries.find((query) => query.table === "members")?.select).toContain("member_number")
+  })
+
+  it("adds current personal genders and a separate saved reason in historical exports too", async () => {
+    tables.members[0].member_identity.gender = "male"
+    tables.members[1].member_identity = [{ ...tables.members[1].member_identity, gender: "female" }]
+    tables.members[2].member_identity.gender = "other"
+    tables.unmatched_diagnostics = [{ member_id: ids.c, reason: "unmatched_after_all_stages", details: { stage: "manual_board" } }]
+    const book = await workbook()
+    expectFourSheets(book)
+    expect(rows(book, "双人本配对结果")[0]).toMatchObject({ 玩家性别: "当前姓名-a：男\n当前姓名-b：女", 性别偏向1: "偏向女生" })
+    expect(rows(book, "结果发布")[0].玩家性别).toBe("当前姓名-a：男\n当前姓名-b：女")
+    expect(rows(book, "未匹配名单")[0]).toMatchObject({ 玩家性别: "其他", 未匹配成功原因: "人工调整后暂未安排，未保存具体的算法排除原因" })
+    expect(queries.find((query) => query.table === "members")?.select).toContain("gender")
   })
 
   it.each([3, 6, 8, 13])("keeps all %i group names and numbers in the same order, including the last member", async (size) => {

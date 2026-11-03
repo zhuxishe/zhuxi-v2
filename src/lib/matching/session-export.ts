@@ -46,7 +46,7 @@ export async function buildSessionExportWorkbook(sessionId: string, expectation:
     if (expectation.expectedPublicationSignature !== undefined && expectation.expectedPublicationSignature !== review.publicationSignature) {
       throw new MatchingReviewStaleError()
     }
-    const workbook = createSessionExportWorkbook({ ...workbookData, diagnostics: [], snapshot: null, review })
+    const workbook = createSessionExportWorkbook({ ...workbookData, snapshot: null, review })
     const rawBuffer = await workbook.xlsx.writeBuffer()
     return { buffer: Buffer.isBuffer(rawBuffer) ? rawBuffer : Buffer.from(rawBuffer), fileName: `${safeFileName(name)}-${date}.xlsx` }
   }
@@ -80,7 +80,7 @@ export async function buildSessionExportWorkbook(sessionId: string, expectation:
   if (allMemberIds.size > 0) {
     const { data, error } = await db
       .from("members")
-      .select("id, member_number, member_identity(full_name, nickname)")
+      .select("id, member_number, anonymized_at, member_identity(full_name, nickname, gender)")
       .in("id", [...allMemberIds])
     if (error) throw error
     members = data ?? []

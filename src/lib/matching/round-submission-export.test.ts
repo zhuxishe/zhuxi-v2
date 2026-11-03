@@ -69,7 +69,7 @@ describe("round submission export", () => {
     const member = { member_number: "ZXS_016", member_identity: { full_name: "测试甲", school_name: "测试学校" } }
     const csv = buildRoundSubmissionCsv([{ member_id: "internal-uuid", member: array ? [member] : member,
       created_at: "2026-10-30T10:58:37.478936+00:00" }], normalizeRoundConfig({}), "matching")
-    expect(csv.split("\r\n")[0]).toBe('\uFEFF"成员编号","姓名","学校","提交时间","游戏类型","搭档性别偏好","可用时间","兴趣题材","社交风格","留言"')
+    expect(csv.split("\r\n")[0]).toBe('\uFEFF"成员编号","姓名","学校","提交时间","游戏类型","搭档性别偏好","可用时间","兴趣题材","社交风格","留言","玩家性别"')
     expect(csv.split("\r\n")[1]).toContain('"ZXS_016","测试甲","测试学校","2026-10-30 19:58:37"')
     expect(csv).not.toContain("internal-uuid")
   })
@@ -83,5 +83,28 @@ describe("round submission export", () => {
   it.each([null, undefined, "", "invalid", "2026-10-30T09:58:37"])("does not invent a submission timestamp for %j", (created_at) => {
     const csv = buildRoundSubmissionCsv([{ created_at }], normalizeRoundConfig({}), "matching")
     expect(csv.split("\r\n")[1].split(",")[3]).toBe('""')
+  })
+
+  it.each([["male", "男"], ["female", "女"], ["other", "其他"], [null, "未填写"], [undefined, "未填写"], ["unexpected", "未填写"]])("exports personal gender %j without confusing partner preference", (gender, expected) => {
+    const csv = buildRoundSubmissionCsv([{ gender_pref: "女", member: { member_number: "ZXS_016", member_identity: { full_name: "示例甲", gender } }, custom_answers: { food: ["veg"] } }], config, "matching")
+    expect(csv.split("\r\n")[0]).toBe('\uFEFF"成员编号","姓名","学校","提交时间","游戏类型","搭档性别偏好","可用时间","兴趣题材","社交风格","留言","饮食选择","玩家性别"')
+    expect(csv.split("\r\n")[1].split(",")[5]).toBe('"女"')
+    expect(csv.split("\r\n")[1]).toMatch(new RegExp(`,"素食","${expected}"$`))
+  })
+
+  it.each(["matching", "registration"] as const)("supports nested array identities and keeps special names escaped in %s exports", (purpose) => {
+    const csv = buildRoundSubmissionCsv([{ member_id: "id", member: [{ member_number: "ZXS_008", member_identity: [{ nickname: '昵称,"甲"', gender: "female" }] }], custom_answers: { food: ["veg"] } }], config, purpose)
+    expect(csv).toContain('"昵称,""甲"""')
+    expect(csv.split("\r\n")[0]).toMatch(/,"饮食选择","玩家性别"$/)
+    expect(csv.split("\r\n")[1]).toMatch(/,"素食","女"$/)
+    expect(csv.charCodeAt(0)).toBe(0xFEFF)
+  })
+
+  it("does not reconstruct personal gender from preferences, imported history or anonymized remnants", () => {
+    const csv = buildRoundSubmissionCsv([
+      { gender_pref: "男", import_metadata: { legacy_profile: { gender: "female" } }, member: null },
+      { gender_pref: "男", member: { anonymized_at: "2026-11-03T00:00:00Z", member_identity: { gender: "female" } } },
+    ], normalizeRoundConfig({}), "matching")
+    expect(csv.split("\r\n").slice(1).map((line) => line.split(",").at(-1))).toEqual(['"未填写"', '"未填写"'])
   })
 })

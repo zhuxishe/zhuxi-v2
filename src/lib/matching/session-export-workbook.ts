@@ -6,6 +6,8 @@ import { sessionSubmissionInputLabel, type MatchingInputSnapshot } from "./input
 import { unmatchedDiagnosticMessages } from "./unmatched-diagnostic-display"
 import { styleSessionExportSheet } from "./session-export-style"
 import type { SavedMatchingReview } from "./session-review-types"
+import { memberGenderLabel } from "./export-member-gender"
+import { exportUnmatchedReasons } from "./export-unmatched-reason"
 
 type Row = Record<string, any>
 type Cell = string | number | null
@@ -35,6 +37,20 @@ const text = (value: unknown): string => typeof value === "string" ? value.trim(
 const preference = (value: unknown) => value === "男" ? "偏向男生" : value === "女" ? "偏向女生" : value === "都可以" ? "不限" : "未填写"
 const gameType = (value: unknown) => value === "双人" ? "双人本" : value === "多人" ? "多人本" : value === "都可以" ? "都可以" : "未填写"
 const dateLabel = (date: string) => `${date}（周${"日一二三四五六"[calendarWeekday(date)]}）`
+const relation = (value: unknown): Row | null => {
+  const row = Array.isArray(value) ? value.length === 1 ? value[0] : null : value
+  return row && typeof row === "object" && !Array.isArray(row) ? row as Row : null
+}
+const personalGender = (member: Row | undefined) => memberGenderLabel(member?.anonymized_at ? null : relation(member?.member_identity)?.gender)
+const genderLines = (ids: string[], nameOf: (id: string) => string, genderOf: (id: string) => string) => ids.map((id) => `${nameOf(id)}：${genderOf(id)}`).join("\n")
+function diagnosticsByMember(rows: Row[]) {
+  const result = new Map<string, Row[]>()
+  for (const row of rows) {
+    if (typeof row.member_id !== "string") continue
+    result.set(row.member_id, [...(result.get(row.member_id) ?? []), row])
+  }
+  return result
+}
 
 function slotText(value: unknown) {
   const match = typeof value === "string" && /^(\d{4}-\d{2}-\d{2})[ _](上午|下午|晚上)$/.exec(value)
@@ -94,11 +110,12 @@ export function createSessionExportWorkbook(data: SessionExportData): ExcelJS.Wo
   const submissions = Object.fromEntries(data.submissions.map((row) => [row.member_id, row]))
   const members = new Map(data.members.map((row) => {
     const identity = Array.isArray(row.member_identity) ? row.member_identity[0] : row.member_identity
-    return [row.id, { name: text(identity?.full_name) || text(identity?.nickname) || "姓名未提供", number: text(row.member_number) || "未分配编号" }]
+    return [row.id, { name: row.anonymized_at ? "已注销成员" : text(identity?.full_name) || text(identity?.nickname) || "姓名未提供", number: row.anonymized_at ? "未分配编号" : text(row.member_number) || "未分配编号", gender: personalGender(row), anonymized: !!row.anonymized_at }]
   }))
   const nameOf = (id: string) => members.get(id)?.name ?? "姓名未提供"
   const numberOf = (id: string) => members.get(id)?.number ?? "未分配编号"
-  const noteOf = (id: string) => text(submissions[id]?.message) || text(getImportMetadata(submissions[id]?.import_metadata)?.raw_notes)
+  const genderOf = (id: string) => members.get(id)?.gender ?? "未填写"
+  const noteOf = (id: string) => members.get(id)?.anonymized ? "" : text(submissions[id]?.message) || text(getImportMetadata(submissions[id]?.import_metadata)?.raw_notes)
   const capturedAt = snapshot?.captured_at ?? ""
   const active = results.filter((row) => row.status !== "cancelled")
   const matched = new Set<string>()
@@ -126,31 +143,32 @@ export function createSessionExportWorkbook(data: SessionExportData): ExcelJS.Wo
       ? "含后续人工调整当前资料" : sessionSubmissionInputLabel(snapshot, ids[0])
     const score = typeof row.total_score === "number" ? row.total_score : null
     if (multi) {
-      multiRows.push([names, numbers, type, genderSummary(ids, submissions), best, times, score, notes, source, capturedAt])
+      multiRows.push([names, numbers, type, genderSummary(ids, submissions), best, times, score, notes, source, capturedAt, genderLines(ids, nameOf, genderOf)])
     } else {
       duoRows.push([nameOf(ids[0]), numberOf(ids[0]), preference(submissions[ids[0]]?.gender_pref),
         nameOf(ids[1]), numberOf(ids[1]), preference(submissions[ids[1]]?.gender_pref),
-        type, genderSummary(ids, submissions), best, times, score, notes, source, capturedAt])
+        type, genderSummary(ids, submissions), best, times, score, notes, source, capturedAt, genderLines(ids, nameOf, genderOf)])
     }
-    publicationRows.push([group, type, ids.length, names, numbers, best, times])
+    publicationRows.push([group, type, ids.length, names, numbers, best, times, genderLines(ids, nameOf, genderOf)])
   }
   const diagnosticMap = new Map(diagnostics.map((row) => [row.member_id, row]))
+  const diagnosticLists = diagnosticsByMember(diagnostics)
   const cancelled = new Set(results.filter((row) => row.status === "cancelled").flatMap(exportMemberIds))
   const unmatchedRows = exportCohortIds(results, diagnostics, snapshot).filter((id) => !matched.has(id))
     .sort((a, b) => numberOf(a).localeCompare(numberOf(b), "zh-CN", { numeric: true }) || nameOf(a).localeCompare(nameOf(b), "zh-CN"))
     .map((id): Cell[] => [nameOf(id), numberOf(id), gameType(submissions[id]?.game_type_pref), preference(submissions[id]?.gender_pref),
-      [`未匹配原因：${diagnosticText(diagnosticMap.get(id), cancelled.has(id))}`, ...(noteOf(id) ? [`报名留言：${noteOf(id)}`] : [])].join("\n"),
-      sessionSubmissionInputLabel(snapshot, id), capturedAt])
+      [`未匹配原因：${members.get(id)?.anonymized ? "成员已注销，不提供诊断信息" : diagnosticText(diagnosticMap.get(id), cancelled.has(id))}`, ...(noteOf(id) ? [`报名留言：${noteOf(id)}`] : [])].join("\n"),
+      sessionSubmissionInputLabel(snapshot, id), capturedAt, genderOf(id), exportUnmatchedReasons(diagnosticLists.get(id) ?? [], { anonymized: members.get(id)?.anonymized, cancelled: cancelled.has(id) })])
 
   const book = new ExcelJS.Workbook()
-  addSheet(book, "双人本配对结果", ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at"],
-    duoRows, [16, 16, 14, 16, 16, 14, 12, 34, 30, 42, 14, 42, 30, 28], 2)
-  addSheet(book, "多人本配对结果", ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at"],
-    multiRows, [42, 46, 12, 36, 30, 42, 14, 48, 30, 28])
-  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at"],
-    unmatchedRows, [18, 16, 14, 16, 64, 30, 28], 2)
-  addSheet(book, "结果发布", ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段"],
-    publicationRows, [12, 12, 8, 44, 46, 30, 42])
+  addSheet(book, "双人本配对结果", ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at", "玩家性别"],
+    duoRows, [16, 16, 14, 16, 16, 14, 12, 34, 30, 42, 14, 42, 30, 28, 32], 2)
+  addSheet(book, "多人本配对结果", ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at", "玩家性别"],
+    multiRows, [42, 46, 12, 36, 30, 42, 14, 48, 30, 28, 36])
+  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "玩家性别", "未匹配成功原因"],
+    unmatchedRows, [18, 16, 14, 16, 64, 30, 28, 14, 68], 2)
+  addSheet(book, "结果发布", ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段", "玩家性别"],
+    publicationRows, [12, 12, 8, 44, 46, 30, 42, 36])
   return book
 }
 
@@ -162,6 +180,8 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
   if (results.size !== active.length || active.length !== review.groups.length) throw new Error("核对结果与已保存分组不一致，请重新读取后导出")
   const seen = new Set<string>()
   const submissions = new Map(data.submissions.map((row) => [row.member_id, row]))
+  const members = new Map(data.members.map((member) => [member.id, member]))
+  const diagnosticLists = diagnosticsByMember(data.diagnostics)
   const source = "当前已保存方案／本次核对报名资料"
   const state = review.sessionStatus === "confirmed" ? "已发布" : "已保存草稿（未发布）"
   const version = review.revisionToken
@@ -183,6 +203,7 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
     }
     const names = group.members.map((member) => member.name).join("\n")
     const numbers = group.members.map((member) => member.memberNumber || "未分配编号").join("\n")
+    const genders = group.members.map((member) => `${member.name}：${personalGender(members.get(member.id))}`).join("\n")
     const best = slotText(group.recommendedSlot)
     const times = group.timeStatus === "ready" ? slotsText(group.commonSlots) : "资料不足，无法计算"
     const otherTimes = group.timeStatus === "ready" ? slotsText(group.commonSlots.filter((slot) => normalizedSlot(slot) !== normalizedSlot(group.recommendedSlot))).replace("无共同可用时间段", "无其他共同时间") : "资料不足，无法计算"
@@ -196,36 +217,37 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
     const score = typeof row.total_score === "number" ? row.total_score : null
     if (group.kind === "multi") {
       multiRows.push([names, numbers, type, genderSummary(ids, subset), best, times, score, note, source, captured,
-        group.label, ids.length, group.groupKind === "small" ? "4–6人组" : "普通多人组", otherTimes, version, state])
+        group.label, ids.length, group.groupKind === "small" ? "4–6人组" : "普通多人组", otherTimes, version, state, genders])
     } else {
       duoRows.push([group.members[0].name, group.members[0].memberNumber || "未分配编号", preference(subset[ids[0]].gender_pref),
         group.members[1].name, group.members[1].memberNumber || "未分配编号", preference(subset[ids[1]].gender_pref),
-        type, genderSummary(ids, subset), best, times, score, note, source, captured, group.label, otherTimes, version, state])
+        type, genderSummary(ids, subset), best, times, score, note, source, captured, group.label, otherTimes, version, state, genders])
     }
-    publicationRows.push([group.label, type, ids.length, names, numbers, best, times, otherTimes, version, state])
+    publicationRows.push([group.label, type, ids.length, names, numbers, best, times, otherTimes, version, state, genders])
   }
   const unassigned = [
-    ...review.waitingDuo.map((member) => ({ member, status: "待双人搭档" })),
-    ...review.waitingMulti.map((member) => ({ member, status: "待多人分组" })),
-    ...review.unmatched.map((member) => ({ member, status: "未匹配" })),
+    ...review.waitingDuo.map((member) => ({ member, status: "待双人搭档", placement: "waiting_duo" as const })),
+    ...review.waitingMulti.map((member) => ({ member, status: "待多人分组", placement: "waiting_multi" as const })),
+    ...review.unmatched.map((member) => ({ member, status: "未匹配", placement: "unmatched" as const })),
   ]
-  const unmatchedRows = unassigned.map(({ member, status }): Cell[] => {
+  const unmatchedRows = unassigned.map(({ member, status, placement }): Cell[] => {
     if (seen.has(member.id)) throw new Error("待安排人员与分组重复，请重新核对后导出")
     seen.add(member.id)
     const sub = submissions.get(member.id)
     const note = text(sub?.message) || text(getImportMetadata(sub?.import_metadata)?.raw_notes)
     return [member.name, member.memberNumber || "未分配编号", gameType(sub?.game_type_pref), preference(sub?.gender_pref),
-      [`安排状态：${status}`, ...(note ? [`报名留言：${note}`] : [])].join("\n"), source, captured, status, version, state]
+      [`安排状态：${status}`, ...(note ? [`报名留言：${note}`] : [])].join("\n"), source, captured, status, version, state,
+      personalGender(members.get(member.id)), exportUnmatchedReasons(diagnosticLists.get(member.id) ?? [], { placement, anonymized: !!members.get(member.id)?.anonymized_at })]
   })
   if (seen.size !== review.summary.total) throw new Error("核对名单人数不一致，请重新读取后导出")
   const book = new ExcelJS.Workbook()
-  addSheet(book, "双人本配对结果", ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at", "组别", "其他共同时间", "核对版本", "方案状态"],
-    duoRows, [16, 16, 14, 16, 16, 14, 12, 34, 30, 42, 14, 42, 34, 28, 14, 42, 36, 24], 2)
-  addSheet(book, "多人本配对结果", ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at", "组别", "人数", "分组方式", "其他共同时间", "核对版本", "方案状态"],
-    multiRows, [42, 46, 12, 36, 30, 42, 14, 48, 34, 28, 14, 8, 16, 42, 36, 24])
-  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "安排状态", "核对版本", "方案状态"],
-    unmatchedRows, [18, 16, 14, 16, 64, 34, 28, 18, 36, 24], 2)
-  addSheet(book, "结果发布", ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段", "其他共同时间", "核对版本", "方案状态"],
-    publicationRows, [14, 12, 8, 44, 46, 30, 42, 42, 36, 24])
+  addSheet(book, "双人本配对结果", ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at", "组别", "其他共同时间", "核对版本", "方案状态", "玩家性别"],
+    duoRows, [16, 16, 14, 16, 16, 14, 12, 34, 30, 42, 14, 42, 34, 28, 14, 42, 36, 24, 32], 2)
+  addSheet(book, "多人本配对结果", ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at", "组别", "人数", "分组方式", "其他共同时间", "核对版本", "方案状态", "玩家性别"],
+    multiRows, [42, 46, 12, 36, 30, 42, 14, 48, 34, 28, 14, 8, 16, 42, 36, 24, 36])
+  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "安排状态", "核对版本", "方案状态", "玩家性别", "未匹配成功原因"],
+    unmatchedRows, [18, 16, 14, 16, 64, 34, 28, 18, 36, 24, 14, 68], 2)
+  addSheet(book, "结果发布", ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段", "其他共同时间", "核对版本", "方案状态", "玩家性别"],
+    publicationRows, [14, 12, 8, 44, 46, 30, 42, 42, 36, 24, 36])
   return book
 }

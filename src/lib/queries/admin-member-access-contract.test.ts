@@ -77,6 +77,10 @@ describe("legacy admin member-read compatibility contract", () => {
     expect(roleColumns).not.toBeNull()
     expect(roleColumns![1]).toContain("member_number")
     expect(roleColumns![2]).not.toContain("member_number")
+    expect(roleColumns![1]).toContain("anonymized_at")
+    expect(roleColumns![2]).not.toContain("anonymized_at")
+    expect(roleColumns![1]).toMatch(/member_identity\s*\([^)]*\bgender\b/)
+    expect(roleColumns![2]).not.toMatch(/member_identity\s*\([^)]*\bgender\b/)
     expect(cancellations).not.toContain("member_number")
     for (const text of [roundSubmissions, cancellations]) {
       expect(text).not.toContain("user_id")

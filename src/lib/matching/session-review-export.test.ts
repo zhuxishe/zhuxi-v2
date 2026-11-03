@@ -24,7 +24,8 @@ function fixture() {
   ]
   const review: SavedMatchingReview = { sessionId: id(500), revisionToken: revision, publicationSignature: signature, capturedAt: "2026-11-02T05:00:00Z", sessionStatus: "draft", publicationVersion: 0, canViewTimes: true, groups, waitingDuo: [member(13)], waitingMulti: [member(14)], unmatched: [member(15)], summary: { total: 15, matched: 12, duoGroups: 1, multiGroups: 2, waitingDuo: 1, waitingMulti: 1, unmatched: 1 }, issues: [] }
   const workbookData = { results: groups.map((g, index) => ({ id: g.resultId, member_a_id: g.members[0].id, member_b_id: g.kind === "duo" ? g.members[1].id : null, group_members: g.kind === "multi" ? g.members.map(m=>m.id) : null, best_slot: g.recommendedSlot, rank: index + 1, status: "draft", total_score: 70 + index })),
-    members: Array.from({length:15},(_,i)=>({id:id(i+1),member_number:`ZXS_${i+1}`,member_identity:{full_name:`无关旧名${i+1}`}})),
+    diagnostics: [] as Array<{member_id:string;reason:string;details:unknown}>,
+    members: Array.from({length:15},(_,i)=>({id:id(i+1),member_number:`ZXS_${i+1}`,anonymized_at:null as string|null,member_identity:{full_name:`无关旧名${i+1}`,gender:(i%3===0?"male":i%3===1?"female":"other") as string|null}})),
     submissions: Array.from({length:15},(_,i)=>({member_id:id(i+1),availability:{"2026-11-05":["下午"],"2026-11-06":["晚上"]},gender_pref:"都可以",game_type_pref:i<2?"双人":"多人",message:`当前留言${i+1}`})),cohortMemberIds:Array.from({length:15},(_,i)=>id(i+1)),layout:null,capturedAt:review.capturedAt }
   return { review, workbookData }
 }
@@ -152,5 +153,46 @@ describe("review-aligned matching export",()=>{
     expect(build).toThrow("重复")
     data=fixture();data.workbookData.results.pop()
     expect(build).toThrow("不一致")
+  })
+  it("appends one personal-gender column to every sheet, mapping each group member by name", async()=>{
+    const book=await exported()
+    expect(rows(book,"双人本配对结果")[0]).toMatchObject({玩家性别:"玩家1：男\n玩家2：女",性别偏向1:"不限",性别偏向2:"不限"})
+    const expected=data.review.groups[1].members.map((member,index)=>`${member.name}：${["其他","男","女","其他","男"][index]}`).join("\n")
+    expect(rows(book,"多人本配对结果")[0].玩家性别).toBe(expected)
+    expect(rows(book,"结果发布")[1].玩家性别).toBe(expected)
+    expect(rows(book,"未匹配名单").map(row=>row.玩家性别)).toEqual(["男","女","其他"])
+    for(const sheet of book.worksheets){
+      const headers=(sheet.getRow(1).values as string[]).slice(1)
+      expect(headers.filter(value=>value==="玩家性别")).toHaveLength(1)
+      expect(headers.at(-1)).toBe(sheet.name==="未匹配名单"?"未匹配成功原因":"玩家性别")
+      expect(sheet.getColumn(headers.indexOf("玩家性别")+1).width).toBeGreaterThanOrEqual(14)
+    }
+  })
+  it("exports the saved unmatched diagnosis separately from messages and preserves search limitations",async()=>{
+    data.workbookData.diagnostics=[{member_id:id(15),reason:"not_selected",details:{version:"matching_diagnostic:1",code:"not_selected",search_mode:"bounded",cohort_size:15,shared_time_peer_count:6,feasible_duo_count:2,multi_max_shared_peer_count:5}}]
+    const book=await exported(), unmatched=rows(book,"未匹配名单")
+    expect(unmatched[0].未匹配成功原因).toContain("待双人搭档")
+    expect(unmatched[1].未匹配成功原因).toContain("待多人分组")
+    expect(unmatched[2].未匹配成功原因).toContain("不能据此认定无法匹配")
+    expect(unmatched[2].未匹配成功原因).toContain("限额搜索")
+    expect(unmatched[2].备注).toContain("当前留言15")
+    expect(unmatched[2].未匹配成功原因).not.toContain("当前留言15")
+  })
+  it("reports manual, unknown and multiple recorded reasons without silently selecting one",async()=>{
+    data.workbookData.diagnostics=[{member_id:id(15),reason:"unmatched_after_all_stages",details:{stage:"manual_board"}}]
+    expect(rows(await exported(),"未匹配名单")[2].未匹配成功原因).toContain("人工调整后暂未安排")
+    data.workbookData.diagnostics=[]
+    expect(rows(await exported(),"未匹配名单")[2].未匹配成功原因).toContain("未保存具体未匹配原因")
+    data.workbookData.diagnostics=[{member_id:id(15),reason:"历史记录甲",details:null},{member_id:id(15),reason:"历史记录乙",details:null}]
+    expect(rows(await exported(),"未匹配名单")[2].未匹配成功原因).toContain("已保存多条诊断记录")
+  })
+  it("does not infer missing gender from partner preference or export erased diagnostic details",async()=>{
+    data.workbookData.members[0].member_identity.gender=null
+    data.workbookData.submissions[0].gender_pref="男"
+    data.workbookData.members[14].anonymized_at="2026-11-03T00:00:00Z"
+    data.workbookData.diagnostics=[{member_id:id(15),reason:"不应还原的历史原因",details:null}]
+    const book=await exported()
+    expect(rows(book,"双人本配对结果")[0]).toMatchObject({玩家性别:"玩家1：未填写\n玩家2：女",性别偏向1:"偏向男生"})
+    expect(rows(book,"未匹配名单")[2]).toMatchObject({玩家性别:"未填写",未匹配成功原因:"成员已注销，不提供诊断信息"})
   })
 })

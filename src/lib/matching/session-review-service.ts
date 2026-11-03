@@ -30,5 +30,31 @@ export async function readSavedMatchingReview(sessionId: string, expectedRevisio
   if (admin.role !== "super_admin") throw new Error("仅超级管理员可导出原始匹配数据")
   const data = await readCapture(sessionId, admin.id, expectedRevision)
   const review = buildSavedMatchingReview(sessionId, data, true)
-  return { review, workbookData: savedMatchingReviewWorkbookData(data, review) }
+  const workbookData = savedMatchingReviewWorkbookData(data, review)
+  const erasedIds = new Set(workbookData.members.filter((member) => member.anonymized_at).map((member) => member.id))
+  const unassignedIds = [...new Set([...review.waitingDuo, ...review.waitingMulti, ...review.unmatched]
+    .map((member) => member.id).filter((id) => !erasedIds.has(id)))]
+  if (unassignedIds.length) {
+    const db = createAdminClient()
+    const { data: diagnostics, error, count } = await db.from("unmatched_diagnostics")
+      .select("member_id, reason, details, member:members!inner(anonymized_at)", { count: "exact" })
+      .eq("session_id", sessionId)
+      .in("member_id", unassignedIds)
+      .is("member.anonymized_at", null)
+      .order("id", { ascending: true })
+    if (error || !Array.isArray(diagnostics)) throw new Error("暂时无法读取已保存的未匹配原因，请稍后重试。")
+    if (!Number.isSafeInteger(count) || count !== diagnostics.length) throw new Error("无法完整读取已保存的未匹配原因，请核对记录后重试导出。")
+    const allowed = new Set(unassignedIds)
+    workbookData.diagnostics = diagnostics.flatMap((row) => {
+      if (!allowed.has(row.member_id)) return []
+      const member = Array.isArray(row.member) ? row.member.length === 1 ? row.member[0] : null : row.member
+      if (!member || !("anonymized_at" in member) || typeof row.reason !== "string") throw new Error("未匹配原因资料不完整，请重新核对后导出。")
+      if (member.anonymized_at) return []
+      return [{ member_id: row.member_id, reason: row.reason, details: row.details }]
+    })
+    // Saved diagnostics participate in the board revision. A second capture
+    // rejects any edit/erasure/reassignment between the two read statements.
+    await readCapture(sessionId, admin.id, data.base_revision)
+  }
+  return { review, workbookData }
 }

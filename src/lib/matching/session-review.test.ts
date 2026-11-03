@@ -96,6 +96,44 @@ describe("saved publication review projection", () => {
     expect(JSON.stringify(workbook)).not.toContain("PRIVATE-OLD-NAME")
     expect(JSON.stringify(workbook)).not.toContain("OUTSIDE")
   })
+  it("projects only current personal gender into export data, not partner preference or historical import fields", () => {
+    const data = fixture()
+    sources(data)[0].member.member_identity.gender = "male"
+    sources(data)[0].gender_pref = "女"
+    sources(data)[0].import_metadata.legacy_profile.gender = "女"
+    sources(data)[1].member.member_identity.gender = "female"
+    sources(data)[2].member.member_identity.gender = "other"
+    sources(data)[3].member.member_identity.gender = "UNKNOWN_PRIVATE_VALUE"
+    const review = buildSavedMatchingReview("session", data, true)
+    const exported = savedMatchingReviewWorkbookData(data, review)
+    const genderOf = (id: string) => exported.members.find((member) => member.id === id)!.member_identity.gender
+    expect(["1", "2", "3", "4", "5"].map(genderOf)).toEqual(["male", "female", "other", null, null])
+    expect(review.groups.flatMap((group) => group.members).every((member) => !("gender" in member))).toBe(true)
+    expect(JSON.stringify(exported.members)).not.toContain("UNKNOWN_PRIVATE_VALUE")
+    expect(exported.diagnostics).toEqual([])
+  })
+  it("accepts single-record relation arrays but does not guess missing or ambiguous personal gender", () => {
+    const data = fixture()
+    sources(data)[0].member = [{ member_identity: [{ full_name: "Current array member", gender: "female" }] }]
+    sources(data)[1].member = null
+    sources(data)[2].member = { member_identity: [{ gender: "male" }, { gender: "female" }] }
+    sources(data)[3].member.member_identity.gender = "male"
+    sources(data).push({ ...sources(data)[3], member: { member_identity: { gender: "female" } } })
+    const exported = savedMatchingReviewWorkbookData(data, buildSavedMatchingReview("session", data, true))
+    const genderOf = (id: string) => exported.members.find((member) => member.id === id)!.member_identity.gender
+    expect(["1", "2", "3", "4"].map(genderOf)).toEqual(["female", null, null, null])
+  })
+  it("does not recover personal gender for an erased member from residual source or import data", () => {
+    const data = fixture()
+    sources(data)[0].member.anonymized_at = "2026-11-03T00:00:00Z"
+    sources(data)[0].member.member_identity.gender = "female"
+    sources(data)[0].import_metadata.legacy_profile.gender = "女"
+    const exported = savedMatchingReviewWorkbookData(data, buildSavedMatchingReview("session", data, true))
+    expect(exported.members.find((member) => member.id === "1")).toMatchObject({
+      anonymized_at: "2026-11-03T00:00:00Z", member_identity: { gender: null, full_name: "已注销成员" },
+    })
+    expect(exported.submissions.find((row) => row.member_id === "1")).toEqual({ member_id: "1" })
+  })
   it("fails closed when the capture is missing its current source", () => {
     const data = fixture(); data.capture = { source: {} }
     expect(() => buildSavedMatchingReview("session", data, true)).toThrow("无法完整读取")

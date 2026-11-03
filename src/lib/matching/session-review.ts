@@ -16,7 +16,8 @@ export interface SavedReviewCapture {
 export interface MatchingReviewWorkbookData {
   results: BoardSourceRow[]
   submissions: Row[]
-  members: Array<{ id: string; member_number: string | null; member_identity: { full_name: string; nickname: null } }>
+  members: Array<{ id: string; member_number: string | null; anonymized_at: string | null; member_identity: { full_name: string; nickname: null; gender: string | null } }>
+  diagnostics: Array<{ member_id: string; reason: string; details: unknown }>
   cohortMemberIds: string[]
   layout: BoardLayout | null
   capturedAt: string | null
@@ -127,8 +128,18 @@ export function buildSavedMatchingReview(sessionId: string, data: SavedReviewCap
 /** Server-only workbook inputs. Names and answers come from the same current capture as the review. */
 export function savedMatchingReviewWorkbookData(data: SavedReviewCapture, review: SavedMatchingReview): MatchingReviewWorkbookData {
   const allowed = new Set(data.cohort_member_ids)
-  const submissions = sourceRows(data.capture).filter((row) => allowed.has(row.member_id as string)).map((row) => {
-    if (relation(row.member)?.anonymized_at) return { member_id: row.member_id }
+  const currentRows = sourceRows(data.capture).filter((row) => allowed.has(row.member_id as string))
+  const demographicById = new Map<string, { gender: string | null; anonymizedAt: string | null }>()
+  for (const row of currentRows) {
+    const id = row.member_id as string, current = relation(row.member), identity = relation(current?.member_identity)
+    const previous = demographicById.get(id)
+    const erased = previous?.anonymizedAt || (current?.anonymized_at ? text(current.anonymized_at) || "redacted" : null)
+    const gender = identity?.gender
+    demographicById.set(id, { anonymizedAt: erased,
+      gender: erased || previous || (gender !== "male" && gender !== "female" && gender !== "other") ? null : gender })
+  }
+  const submissions = currentRows.map((row) => {
+    if (demographicById.get(row.member_id as string)?.anonymizedAt) return { member_id: row.member_id }
     const metadata = relation(row.import_metadata)
     return { member_id: row.member_id, game_type_pref: row.game_type_pref, gender_pref: row.gender_pref,
       availability: row.cancelled_at == null ? row.availability : undefined, message: row.message,
@@ -136,6 +147,9 @@ export function savedMatchingReviewWorkbookData(data: SavedReviewCapture, review
   })
   const people = [...review.groups.flatMap((group) => group.members), ...review.waitingDuo, ...review.waitingMulti, ...review.unmatched]
   return { results: data.results.filter((row) => row.status !== "cancelled").map((row) => ({ ...row })), submissions,
-    members: [...new Map(people.map((member) => [member.id, { id: member.id, member_number: member.memberNumber, member_identity: { full_name: member.name, nickname: null } }])).values()],
+    members: [...new Map(people.map((member) => [member.id, { id: member.id, member_number: member.memberNumber,
+      anonymized_at: demographicById.get(member.id)?.anonymizedAt ?? null,
+      member_identity: { full_name: member.name, nickname: null, gender: demographicById.get(member.id)?.gender ?? null } }])).values()],
+    diagnostics: [],
     cohortMemberIds: [...data.cohort_member_ids], layout: data.layout ? structuredClone(data.layout) : null, capturedAt: review.capturedAt }
 }

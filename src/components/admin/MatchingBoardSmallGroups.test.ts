@@ -54,6 +54,22 @@ describe("4–6 person grouping section", () => {
     expect(button("确认第 1 个4–6人建议组").disabled).toBe(true)
   })
 
+  it.each([3, 7])("allows an explicitly manually adjusted %i-person suggestion, retaining the size warning", async (size) => {
+    await render({ recommendations: [{ ...props.recommendations[0], memberIds: ids.slice(0, size), manuallyAdjusted: true }] })
+    expect(button("确认第 1 个4–6人建议组").disabled).toBe(false)
+    expect(text()).toContain("已人工调整，可确认")
+    await act(async () => button("确认第 1 个4–6人建议组").click())
+    expect(props.onConfirm).toHaveBeenCalledExactlyOnceWith(props.recommendations[0])
+  })
+
+  it("continues blocking manual suggestions below three people or without a common time", async () => {
+    await render({ recommendations: [{ ...props.recommendations[0], memberIds: ids.slice(0, 2), manuallyAdjusted: true }] })
+    expect(button("确认第 1 个4–6人建议组").disabled).toBe(true)
+    expect(text()).toContain("至少3人")
+    await render({ recommendations: [{ ...props.recommendations[0], memberIds: ids, manuallyAdjusted: true }], prefs: { ...props.prefs, G: { availability: { "2026-12-01": ["晚上"] } } } })
+    expect(button("确认第 1 个4–6人建议组").disabled).toBe(true)
+  })
+
   it("does not trust stale commonSlots after membership changes", async () => {
     await render({
       recommendations: [{ ...props.recommendations[0], commonSlots: [SLOT] }],

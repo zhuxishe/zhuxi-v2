@@ -5,7 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
 import { validateUuids } from "@/lib/sanitize"
 import { prepareMatchingRunInput } from "./run-input"
-import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, previewBoardSmallGroupCandidates, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
+import { assertBoardDraft, BoardValidationError, createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardGroupDissolve, previewBoardGroupTime, previewBoardMultiMove, previewBoardPair, previewBoardSmallGroupCandidates, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
+import { normalizeUnmatchedMessage } from "./unmatched-message"
 import { recommendSmallGroups } from "./board-small-groups"
 import { buildSavedMatchingReview } from "./session-review"
 import type { BoardActionResult, BoardDisplayRow, BoardDraft, BoardRequest, BoardSnapshot, BoardSourceRow, BoardOperationSummary, BoardSubmissionPreference, BoardMemberLockRequest, BoardMemberLockOperationSummary, BoardLayout, BoardSmallGroupRecommendationsResult } from "./board-types"
@@ -34,7 +35,10 @@ function errorMessage(error: unknown) {
   if (message === "SMALL_GROUP_TOO_MANY") return "一次最多为500名待分组成员生成建议，请先按时间分批确认部分小组后重试。"
   if (message === "SMALL_GROUP_TIME_INVALID") return "部分待分组成员的可用时间不完整，请先核对资料后重新推荐。"
   if (/^MATCH_BOARD_SMALL_GROUP_REQUIRED(?::|$)/.test(message)) return "此方案已包含4–6人分组，当前页面版本或分组类型已变化，请刷新后继续调整。"
-  if (/^MATCH_BOARD_SMALL_GROUP_SIZE(?::|$)/.test(message)) return "4–6人小组须调整为4至6名成员后保存；也可移空解散。"
+  if (/^MATCH_BOARD_SMALL_GROUP_SIZE(?::|$)/.test(message)) return "系统推荐小组须为4–6人；人工调整后至少需要3人，请核对小组标记和人数。"
+  if (/^MATCH_BOARD_MANUAL_GROUP_REQUIRED(?::|$)/.test(message)) return "人工分组信息已变化，请刷新后继续调整，避免丢失人工分组标记。"
+  if (/^MATCH_BOARD_UNMATCHED_MESSAGE_REQUIRED(?::|$)/.test(message)) return "工作人员留言已更新，请刷新核对后继续保存，避免覆盖现有留言。"
+  if (/^MATCH_BOARD_UNMATCHED_MESSAGE_INVALID(?::|$)/.test(message)) return "工作人员留言须为300字以内的文字，请修改后再保存。"
   if (/^MATCH_BOARD_GROUPED_REQUIRED(?::|$)/.test(message)) return "此方案已启用多人分组，当前页面版本已过期，请刷新后在分组区域继续调整。"
   if (/STALE|CHANGED|REVISION/.test(message)) return "方案或人员资料已变化，本次未保存。请刷新后重新调整。"
   if (/LOCKED/.test(message)) return "已锁定的匹配不能调整，请先解锁并刷新。"
@@ -145,11 +149,11 @@ export async function inspectMatchingBoardMultiMove(input: BoardRequest & { memb
     return previewBoardMultiMove(context, input.draft, input.memberId)
   })
 }
-export async function inspectMatchingBoardGroup(input: BoardRequest & { memberIds: string[]; slot: string; groupKind?: "small" }): Promise<BoardActionResult> {
+export async function inspectMatchingBoardGroup(input: BoardRequest & { memberIds: string[]; slot: string; groupKind?: "small"; manuallyAdjusted?: boolean }): Promise<BoardActionResult> {
   return preview(input, (context) => {
     if (!Array.isArray(input.memberIds) || input.memberIds.length < 3 || input.memberIds.length > 10000 || typeof input.slot !== "string" || input.slot.length > 100) throw new BoardValidationError("请选择至少3人和有效共同时间")
     validateUuids(input.memberIds)
-    return previewBoardGroup(context, input.draft, input.memberIds, input.slot, input.groupKind)
+    return previewBoardGroup(context, input.draft, input.memberIds, input.slot, input.groupKind, input.manuallyAdjusted)
   })
 }
 export async function inspectMatchingBoardSmallGroupCandidates(input: BoardRequest & { memberIds: string[]; slot: string }): Promise<BoardActionResult> {
@@ -180,6 +184,18 @@ export async function inspectMatchingBoardGroupMove(input: BoardRequest & { memb
     validateUuids([input.memberId])
     if (typeof input.groupKey !== "string" || !input.groupKey.length || input.groupKey.length > 1000) throw new BoardValidationError("目标多人组无效")
     return previewBoardGroupMove(context, input.draft, input.memberId, input.groupKey)
+  })
+}
+export async function inspectMatchingBoardGroupDissolve(input: BoardRequest & { groupKey: string }): Promise<BoardActionResult> {
+  return preview(input, (context) => {
+    if (typeof input.groupKey !== "string" || !input.groupKey.length || input.groupKey.length > 1000) throw new BoardValidationError("目标多人组无效")
+    return previewBoardGroupDissolve(context, input.draft, input.groupKey)
+  })
+}
+export async function inspectMatchingBoardGroupTime(input: BoardRequest & { groupKey: string; slot: string }): Promise<BoardActionResult> {
+  return preview(input, (context) => {
+    if (typeof input.groupKey !== "string" || !input.groupKey.length || input.groupKey.length > 1000 || typeof input.slot !== "string" || !input.slot.length || input.slot.length > 100) throw new BoardValidationError("请选择有效的小组和共同时间")
+    return previewBoardGroupTime(context, input.draft, input.groupKey, input.slot)
   })
 }
 export async function rematchMatchingBoard(input: BoardRequest): Promise<BoardActionResult> {
@@ -235,8 +251,10 @@ export async function saveMatchingBoard(input: BoardRequest & { operationId: str
       p_session_id: input.sessionId, p_actor_admin_id: admin.id, p_operation_id: input.operationId, p_reason: reason.reason,
       p_expected_revision: input.expectedRevision, p_engine: context.engine, p_keep_result_ids: evaluation.keepResultIds,
       p_rows: evaluation.changedRows, p_layout: { waitingDuoIds: evaluation.draft.waitingDuoIds, brokenPairs: evaluation.draft.brokenPairs,
+        unmatchedMessage: normalizeUnmatchedMessage(evaluation.draft.unmatchedMessage) ?? "",
         ...(evaluation.draft.multiMode === "grouped" ? { multiMode: "grouped", waitingMultiIds: evaluation.draft.multi?.memberIds ?? [], multiPoolSlot: evaluation.draft.multi?.bestSlot ?? null,
           smallGroupMemberIds: (evaluation.draft.multiGroups ?? []).filter((group) => group.groupKind === "small").map((group) => [...group.memberIds]),
+          manualSmallGroupMemberIds: (evaluation.draft.multiGroups ?? []).filter((group) => group.groupKind === "small" && group.manuallyAdjusted).map((group) => [...group.memberIds]),
         } : {}),
       },
       p_unmatched_ids: evaluation.unmatchedIds, p_request_hash: hash,

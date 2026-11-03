@@ -3,6 +3,7 @@ import { getBoardTimeOptions } from "./board-time-options"
 import type { BoardLayout, BoardSourceRow, BoardSubmissionPreference } from "./board-types"
 import type { PublicationResultInput } from "./publication-preflight"
 import type { MatchingReviewMember, SavedMatchingReview } from "./session-review-types"
+import { normalizeUnmatchedMessage } from "./unmatched-message"
 
 type Row = Record<string, unknown>
 export interface SavedReviewCapture {
@@ -12,6 +13,7 @@ export interface SavedReviewCapture {
   layout: BoardLayout | null
   cohort_member_ids: string[]
   session_status?: string
+  unmatched_message_recipient_ids?: string[]
 }
 export interface MatchingReviewWorkbookData {
   results: BoardSourceRow[]
@@ -26,6 +28,7 @@ export interface MatchingReviewWorkbookData {
 const object = (value: unknown): value is Row => !!value && typeof value === "object" && !Array.isArray(value)
 const text = (value: unknown) => typeof value === "string" ? value.trim() : ""
 const normalizeSlot = (value: string | null) => value?.replace(" ", "_") ?? null
+const sameMembers = (left: readonly string[], right: readonly string[]) => left.length === right.length && new Set(left).size === right.length && left.every((id) => right.includes(id))
 const relation = (value: unknown): Row | null => {
   const result = Array.isArray(value) && value.length === 1 ? value[0] : value
   return object(result) ? result : null
@@ -60,7 +63,7 @@ function preferences(capture: unknown) {
  * and capture timestamps. The final publication proof still binds all existing
  * eligibility, hard-constraint, layout and saved-result revision checks.
  */
-export function matchingReviewPublicationSignature(sessionId: string, rows: readonly PublicationResultInput[], capture: unknown): string {
+export function matchingReviewPublicationSignature(sessionId: string, rows: readonly PublicationResultInput[], capture: unknown, unmatchedMessage?: string | null, recipientIds?: readonly string[]): string {
   const prefs = preferences(capture)
   const payload = rows.filter((row) => row.status !== "cancelled").map((row) => {
     const memberIds = idsOf(row).sort()
@@ -68,12 +71,16 @@ export function matchingReviewPublicationSignature(sessionId: string, rows: read
     return { resultId: row.id, memberIds, recommendedSlot: normalizeSlot(row.best_slot),
       timeStatus: times.complete ? "ready" : "unavailable", commonSlots: times.commonSlots }
   }).sort((a, b) => a.resultId.localeCompare(b.resultId))
-  return createHash("sha256").update(JSON.stringify({ sessionId, groups: payload })).digest("hex")
+  const message = normalizeUnmatchedMessage(unmatchedMessage)
+  if (recipientIds !== undefined && (!Array.isArray(recipientIds) || recipientIds.some((id) => typeof id !== "string") || new Set(recipientIds).size !== recipientIds.length)) throw new Error("工作人员留言接收名单无效，请重新核对。")
+  return createHash("sha256").update(JSON.stringify({ sessionId, groups: payload, ...(message ? { unmatchedMessage: message,
+    ...(recipientIds !== undefined ? { messageRecipientIds: [...recipientIds].sort() } : {}) } : {}) })).digest("hex")
 }
 
 /** Safe projection of a single board capture. No original run snapshot is consulted. */
 export function buildSavedMatchingReview(sessionId: string, data: SavedReviewCapture, canViewTimes: boolean): SavedMatchingReview {
   const submissions = sourceRows(data.capture), prefs = preferences(data.capture)
+  const unmatchedMessage = normalizeUnmatchedMessage(data.layout?.unmatchedMessage)
   const cohort = [...new Set(data.cohort_member_ids)]
   const allowed = new Set(cohort), members = new Map<string, MatchingReviewMember>()
   for (const row of submissions) {
@@ -96,12 +103,13 @@ export function buildSavedMatchingReview(sessionId: string, data: SavedReviewCap
       || (multi ? memberIds.length < 3 : memberIds.length !== 2)) issues.add("已保存结果包含不完整或重复的分组成员，请核对后再发布。")
     memberIds.forEach((id) => assigned.add(id))
     const times = getBoardTimeOptions(memberIds, prefs, null)
-    const small = multi && data.layout?.smallGroupMemberIds?.some((ids) => ids.length === memberIds.length && ids.every((id) => memberIds.includes(id)))
-    if (small && (memberIds.length < 4 || memberIds.length > 6)) issues.add("有4–6人小组的人数不符合要求，请调整并保存。")
+    const small = multi && data.layout?.smallGroupMemberIds?.some((ids) => sameMembers(ids, memberIds))
+    const manual = small && data.layout?.manualSmallGroupMemberIds?.some((ids) => sameMembers(ids, memberIds))
+    if (small && !manual && (memberIds.length < 4 || memberIds.length > 6)) issues.add("有4–6人小组的人数不符合要求，请调整并保存。")
     if (!times.complete) issues.add("部分分组缺少有效的当前报名时间，请重新核对资料。")
     else if (!row.best_slot || !times.commonSlots.includes(normalizeSlot(row.best_slot)!)) issues.add("部分分组的推荐时间已不在全员共同时间内，请调整并保存。")
     const label = multi ? `多人 ${String(++multiGroups).padStart(2, "0")}` : `双人 ${String(++duoGroups).padStart(2, "0")}`
-    return { resultId: row.id, label, kind: multi ? "multi" as const : "duo" as const, ...(small ? { groupKind: "small" as const } : {}),
+    return { resultId: row.id, label, kind: multi ? "multi" as const : "duo" as const, ...(small ? { groupKind: "small" as const } : {}), ...(manual ? { manuallyAdjusted: true as const } : {}),
       members: memberIds.map(memberOf), recommendedSlot: normalizeSlot(row.best_slot),
       commonSlots: canViewTimes ? times.commonSlots : [], timeStatus: !canViewTimes ? "hidden" as const : times.complete ? "ready" as const : "unavailable" as const }
   })
@@ -111,6 +119,11 @@ export function buildSavedMatchingReview(sessionId: string, data: SavedReviewCap
     ? [...new Set(data.layout.waitingMultiIds ?? [])].filter((id) => allowed.has(id) && !assigned.has(id) && !waitingDuoSet.has(id)) : []
   const waitingMultiSet = new Set(waitingMultiIds)
   const unmatchedIds = cohort.filter((id) => !assigned.has(id) && !waitingDuoSet.has(id) && !waitingMultiSet.has(id))
+  const recipientIds = data.unmatched_message_recipient_ids
+  const possibleRecipients = new Set([...waitingDuoIds, ...unmatchedIds])
+  if (recipientIds !== undefined && (!Array.isArray(recipientIds) || new Set(recipientIds).size !== recipientIds.length || recipientIds.some((id) => typeof id !== "string" || !possibleRecipients.has(id)))) {
+    throw new Error("工作人员留言接收名单与已保存方案不一致，请重新核对。")
+  }
   if (waitingMultiIds.length) issues.add("仍有多人候选尚未分组，请完成安排或移至未匹配池后再发布。")
   const rawVersions = [...new Set(active.map((row) => (row as unknown as Row).publication_version))]
   // New result rows in a withdrawn draft start at version 0 even when the
@@ -119,7 +132,8 @@ export function buildSavedMatchingReview(sessionId: string, data: SavedReviewCap
   const publicationVersion = data.session_status === "confirmed" && rawVersions.length === 1 && Number.isSafeInteger(rawVersions[0]) && Number(rawVersions[0]) > 0
     ? rawVersions[0] as number : null
   const capturedAt = object(data.capture) && typeof data.capture.captured_at === "string" ? data.capture.captured_at : null
-  return { sessionId, revisionToken: data.base_revision, publicationSignature: matchingReviewPublicationSignature(sessionId, active, data.capture),
+  return { sessionId, revisionToken: data.base_revision, publicationSignature: matchingReviewPublicationSignature(sessionId, active, data.capture, unmatchedMessage, recipientIds), unmatchedMessage,
+    ...(recipientIds !== undefined ? { messageRecipients: recipientIds.map(memberOf) } : {}),
     capturedAt, sessionStatus: data.session_status ?? "unknown", publicationVersion, canViewTimes, groups,
     waitingDuo: waitingDuoIds.map(memberOf), waitingMulti: waitingMultiIds.map(memberOf), unmatched: unmatchedIds.map(memberOf),
     summary: { total: cohort.length, duoGroups, multiGroups, matched: assigned.size, waitingDuo: waitingDuoIds.length, waitingMulti: waitingMultiIds.length, unmatched: unmatchedIds.length }, issues: [...issues] }

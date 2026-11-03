@@ -164,7 +164,7 @@ describe("review-aligned matching export",()=>{
     for(const sheet of book.worksheets){
       const headers=(sheet.getRow(1).values as string[]).slice(1)
       expect(headers.filter(value=>value==="玩家性别")).toHaveLength(1)
-      expect(headers.at(-1)).toBe(sheet.name==="未匹配名单"?"未匹配成功原因":"玩家性别")
+      expect(headers.at(-1)).toBe(sheet.name==="未匹配名单"?"工作人员留言":"玩家性别")
       expect(sheet.getColumn(headers.indexOf("玩家性别")+1).width).toBeGreaterThanOrEqual(14)
     }
   })
@@ -177,6 +177,36 @@ describe("review-aligned matching export",()=>{
     expect(unmatched[2].未匹配成功原因).toContain("限额搜索")
     expect(unmatched[2].备注).toContain("当前留言15")
     expect(unmatched[2].未匹配成功原因).not.toContain("当前留言15")
+  })
+  it("exports the saved public message only for eventual unmatched recipients, separately from private notes", async()=>{
+    data.review.unmatchedMessage='  =HYPERLINK("https://example.invalid","留言")\n请留意通知  '
+    const book=await exported(), unmatched=rows(book,"未匹配名单")
+    expect(unmatched.map(row=>row.工作人员留言)).toEqual([
+      '=HYPERLINK("https://example.invalid","留言")\n请留意通知', "", '=HYPERLINK("https://example.invalid","留言")\n请留意通知',
+    ])
+    expect(unmatched[2].备注).toContain("当前留言15")
+    expect(unmatched[2].未匹配成功原因).not.toContain("HYPERLINK")
+    const sheet=book.getWorksheet("未匹配名单")!, column=(sheet.getRow(1).values as string[]).indexOf("工作人员留言")
+    expect(sheet.getRow(2).getCell(column).type).toBe(ExcelJS.ValueType.String)
+    data.workbookData.members[14].anonymized_at="2026-11-03T00:00:00Z"
+    expect(rows(await exported(),"未匹配名单")[2].工作人员留言).toBe("")
+  })
+  it("keeps explicitly manual seven- and three-person small groups separate in the workbook", async()=>{
+    const first=data.review.groups[1], second=data.review.groups[2]
+    first.members.push(...second.members.splice(0,2));first.manuallyAdjusted=true;second.manuallyAdjusted=true
+    for(const group of [first,second]) data.workbookData.results.find(row=>row.id===group.resultId)!.group_members=group.members.map(person=>person.id)
+    const exportedGroups=rows(await exported(),"多人本配对结果")
+    expect(exportedGroups.map(row=>row.人数)).toEqual([7,3])
+    expect(exportedGroups.map(row=>row.分组方式)).toEqual(["4–6人组（人工调整）","4–6人组（人工调整）"])
+    first.manuallyAdjusted=undefined
+    await expect(exported()).rejects.toThrow("不一致")
+  })
+  it("exports staff copy only for the exact eligible recipient set, leaving cancelled or otherwise excluded rows blank", async()=>{
+    data.review.unmatchedMessage="后续协调"
+    data.review.messageRecipients=[member(15)]
+    expect(rows(await exported(),"未匹配名单").map(row=>row.工作人员留言)).toEqual(["","","后续协调"])
+    data.review.messageRecipients=[]
+    expect(rows(await exported(),"未匹配名单").every(row=>row.工作人员留言==="")).toBe(true)
   })
   it("reports manual, unknown and multiple recorded reasons without silently selecting one",async()=>{
     data.workbookData.diagnostics=[{member_id:id(15),reason:"unmatched_after_all_stages",details:{stage:"manual_board"}}]

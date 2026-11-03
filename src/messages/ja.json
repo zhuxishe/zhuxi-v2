@@ -758,6 +758,7 @@
     "sharedTimeRecommendationChanged": "おすすめの日時は現在の共通日時に含まれていません。相手と再度ご確認ください。",
     "timePending": "スタッフが確認中です",
     "publicationUnmatched": "現時点ではマッチングしていません。今後の案内はサイト内通知をご確認ください。",
+    "staffMessage": "スタッフからのメッセージ",
     "publicationWaiting": "アンケートを受け付けました。マッチングの案内はサイト内通知をご確認ください。",
     "publicationWithdrawn": "マッチングの案内は取り下げられました。今後の案内はサイト内通知をご確認ください。",
     "publicationCancelled": "マッチングはキャンセルされました。履歴から確認できます。",

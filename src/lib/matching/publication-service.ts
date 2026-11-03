@@ -11,6 +11,8 @@ interface PublicationPreparation extends PublicationReceipt {
   capture?: unknown
   current_rows?: PublicationResultInput[]
   revision_token?: string
+  unmatched_message?: string | null
+  unmatched_message_recipient_ids?: string[]
 }
 interface PublicationInput { sessionId: string; actorAdminId: string; reason: string; expectedPublicationVersion: number; expectedReviewSignature?: string; expectedReviewRevision?: string }
 interface PublicationAuthorization extends PublicationReceipt { preflight_id?: string }
@@ -75,7 +77,7 @@ export async function publishMatchingSession(input: PublicationInput): Promise<C
       const board = await db.rpc<{ base_revision?: string }>("admin_get_matching_board", { p_session_id: input.sessionId, p_actor_admin_id: input.actorAdminId })
       if (board.error || !board.data?.base_revision) return { error: INPUT_INVALID }
       if (board.data.base_revision !== input.expectedReviewRevision
-        || input.expectedReviewSignature !== matchingReviewPublicationSignature(input.sessionId, preparation.current_rows, preparation.capture)) {
+        || input.expectedReviewSignature !== matchingReviewPublicationSignature(input.sessionId, preparation.current_rows, preparation.capture, preparation.unmatched_message, preparation.unmatched_message_recipient_ids)) {
         return { error: "已保存方案或共同时间已变化，请重新读取发布前结果确认，核对后再发布。" }
       }
     }

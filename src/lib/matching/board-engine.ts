@@ -5,6 +5,7 @@ import { findGroupBestSlot } from "./match-utils"
 import type { MatchingEngineInput } from "./run-input"
 import { runFullMatching, type MatchResultRow } from "./run-matching"
 import type { MatchCandidate } from "./types"
+import { normalizeUnmatchedMessage } from "./unmatched-message"
 
 export interface BoardContext {
   engine: MatchingEngineInput
@@ -65,10 +66,12 @@ export function createBoardDraft(rows: BoardSourceRow[], cohortMemberIds: string
       ? waitingMultiIds.length ? { key: "waiting-multi", memberIds: waitingMultiIds, bestSlot: layout?.multiPoolSlot ?? null } : null
       : multis[0] ? { key: multis[0].id, resultId: multis[0].id, memberIds: [...multis[0].group_members!], bestSlot: multis[0].best_slot } : null,
     ...(grouped ? { multiMode: "grouped" as const, multiGroups: multis.map((row) => ({ key: row.id, resultId: row.id, memberIds: [...row.group_members!], bestSlot: row.best_slot,
-      ...(layout?.smallGroupMemberIds?.some((ids) => sameIds(ids, row.group_members!)) ? { groupKind: "small" as const } : {}) })) } : {}),
+      ...(layout?.smallGroupMemberIds?.some((ids) => sameIds(ids, row.group_members!)) ? { groupKind: "small" as const,
+        ...(layout?.manualSmallGroupMemberIds?.some((ids) => sameIds(ids, row.group_members!)) ? { manuallyAdjusted: true as const } : {}) } : {}) })) } : {}),
     waitingDuoIds,
     brokenPairs: (layout?.brokenPairs ?? []).filter((pair) => pair.memberIds.every((id) => waiting.has(id))).map((pair) => ({ ...pair, key: pair.key ?? duoKey(pair.memberIds) })),
     unmatchedIds: cohortMemberIds.filter((id) => !assigned.has(id) && !waiting.has(id) && !waitingMulti.has(id)),
+    ...(normalizeUnmatchedMessage(layout?.unmatchedMessage) ? { unmatchedMessage: normalizeUnmatchedMessage(layout?.unmatchedMessage)! } : {}),
   }
 }
 
@@ -84,6 +87,7 @@ export function assertBoardDraft(value: unknown): asserts value is BoardDraft {
       && (size === undefined || item.memberIds.length === size) && (item.resultId === undefined || typeof item.resultId === "string")
       && (item.bestSlot === null || typeof item.bestSlot === "string")
       && (item.groupKind === undefined || item.groupKind === "small")
+      && (item.manuallyAdjusted === undefined || item.manuallyAdjusted === true)
   }
   if (!Array.isArray(draft.duos) || draft.duos.length > 5000 || !draft.duos.every((item) => group(item, 2))
       || (draft.multi !== null && (!group(draft.multi) || !draft.multi.memberIds.length))
@@ -92,13 +96,17 @@ export function assertBoardDraft(value: unknown): asserts value is BoardDraft {
       || (draft.multiMode !== "grouped" && !!draft.multiGroups?.length)
       || (draft.multiMode === "grouped" && draft.multi?.resultId !== undefined)
       || (draft.multi?.groupKind !== undefined)
-      || draft.duos.some((item) => "groupKind" in item)
+      || (draft.multi?.manuallyAdjusted !== undefined)
+      || draft.duos.some((item) => "groupKind" in item || "manuallyAdjusted" in item)
+      || draft.multiGroups?.some((item) => item.manuallyAdjusted && item.groupKind !== "small")
       || !ids(draft.waitingDuoIds) || !ids(draft.unmatchedIds) || !Array.isArray(draft.brokenPairs)
       || draft.brokenPairs.length > 5000 || !draft.brokenPairs.every((pair) => pair && typeof pair.key === "string" && ids(pair.memberIds) && pair.memberIds.length === 2)) fail("调整内容无效，请刷新后重试")
+  try { normalizeUnmatchedMessage(draft.unmatchedMessage) } catch (error) { fail(error instanceof Error ? error.message : "工作人员留言无效") }
 }
 
 export function validateBoardStructure(context: BoardContext, draft: BoardDraft) {
   assertBoardDraft(draft)
+  if (normalizeUnmatchedMessage(context.originalLayout?.unmatchedMessage) && !Object.hasOwn(draft, "unmatchedMessage")) fail("工作人员留言已更新，请刷新核对后继续保存；如需清空请明确删除文字")
   if (context.originalLayout?.multiMode === "grouped" && draft.multiMode !== "grouped") fail("已保存的多人分组不能恢复为旧的整池模式")
   const members = [...draft.duos.flatMap((duo) => duo.memberIds), ...(draft.multi?.memberIds ?? []), ...(draft.multiGroups ?? []).flatMap((group) => group.memberIds), ...draft.waitingDuoIds, ...draft.unmatchedIds]
   if (new Set(members).size !== members.length) fail("同一人员不能同时出现在多个位置")
@@ -116,6 +124,7 @@ export function validateBoardStructure(context: BoardContext, draft: BoardDraft)
     if (!row || row.status === "cancelled" || Boolean(row.group_members?.length) !== multiEntries(draft).includes(entry)) fail("原配对编号不属于当前有效结果")
     if (!multiEntries(draft).includes(entry) && !sameIds(entry.memberIds, rowIds(row!))) fail("新配对不能沿用其他配对编号")
     if (row?.group_members?.length && context.originalLayout?.smallGroupMemberIds?.some((ids) => sameIds(ids, row.group_members!)) && (entry as BoardMulti).groupKind !== "small") fail("已确认的4–6人小组不能改为普通时间分组，请保留原分组类型")
+    if (row?.group_members?.length && context.originalLayout?.manualSmallGroupMemberIds?.some((ids) => sameIds(ids, row.group_members!)) && !(entry as BoardMulti).manuallyAdjusted) fail("请保留人工调整的小组标记，刷新后继续调整")
   }
   const lockedMembers = new Set(context.lockedMemberIds ?? [])
   for (const memberId of lockedMembers) {
@@ -157,7 +166,7 @@ export function evaluateBoard(context: BoardContext, input: BoardDraft, forSave 
   const draft = structuredClone(input), rows: BoardDisplayRow[] = [], keepResultIds: string[] = [], changedRows: MatchResultRow[] = []
   const originals = new Map(context.originalRows.filter((row) => row.status !== "cancelled").map((row) => [row.id, row]))
   for (const entry of resultEntries(draft)) {
-    if (forSave && (entry as BoardMulti).groupKind === "small" && (entry.memberIds.length < 4 || entry.memberIds.length > 6)) fail("4–6人小组须补足4人或调整至不超过6人后保存；也可移空解散")
+    if (forSave && (entry as BoardMulti).groupKind === "small" && !(entry as BoardMulti).manuallyAdjusted && (entry.memberIds.length < 4 || entry.memberIds.length > 6)) fail("系统推荐小组须保持4–6人；人工调整后仍至少需要3人")
     const original = entry.resultId ? originals.get(entry.resultId) : undefined
     const unchanged = original && sameIds(entry.memberIds, rowIds(original)) && slotKey(entry.bestSlot) === slotKey(original.best_slot)
     if (unchanged) {
@@ -190,16 +199,9 @@ export function evaluateBoard(context: BoardContext, input: BoardDraft, forSave 
   }
   if (draft.multiMode === "grouped" && draft.multi) {
     const waitingMembers = candidates(context, draft.multi.memberIds)
-    const originalWaiting = context.originalLayout?.multiMode === "grouped" ? context.originalLayout.waitingMultiIds ?? [] : context.originalRows.find((row) => row.status !== "cancelled" && row.group_members?.length)?.group_members ?? []
-    const originalSlot = context.originalLayout?.multiMode === "grouped" ? context.originalLayout.multiPoolSlot : context.originalRows.find((row) => row.status !== "cancelled" && row.group_members?.length)?.best_slot
-    if (draft.multi.memberIds.some((id) => originalWaiting.includes(id)) && slotKey(draft.multi.bestSlot) !== slotKey(originalSlot ?? null)) fail("保留原多人池成员时不能改变共同时间")
-    if (!hasSlot(waitingMembers, draft.multi.bestSlot)) fail("待分组人员必须拥有池子当前相同的日期和时段")
+    // Candidates are not one assigned group: disjoint times or avoidance between
+    // waiting people are checked only when a concrete group is confirmed.
     if (waitingMembers.some((member) => member.gameTypePref === "双人")) fail("选择了双人的成员不能加入多人池")
-    const relations = new Map(context.engine.pairRelations)
-    for (let i = 0; i < waitingMembers.length; i++) for (let j = i + 1; j < waitingMembers.length; j++) {
-      const constraint = checkSharedMemberConstraints(waitingMembers[i], waitingMembers[j], relations)
-      if (!constraint.passed) fail(constraint.reasons.join("；"))
-    }
   }
   return { draft, rows, keepResultIds, changedRows, unmatchedIds: [...draft.waitingDuoIds, ...draft.unmatchedIds, ...(draft.multiMode === "grouped" ? draft.multi?.memberIds ?? [] : [])] }
 }
@@ -209,7 +211,8 @@ function removeAvailableMember(draft: BoardDraft, memberId: string) {
   draft.waitingDuoIds = draft.waitingDuoIds.filter((id) => id !== memberId)
   draft.unmatchedIds = draft.unmatchedIds.filter((id) => id !== memberId)
   draft.brokenPairs = draft.brokenPairs.filter((pair) => !pair.memberIds.includes(memberId))
-  if (draft.multiGroups) draft.multiGroups = draft.multiGroups.map((group) => ({ ...group, memberIds: group.memberIds.filter((id) => id !== memberId) })).filter((group) => group.memberIds.length > 0)
+  if (draft.multiGroups) draft.multiGroups = draft.multiGroups.map((group) => ({ ...group, memberIds: group.memberIds.filter((id) => id !== memberId),
+    ...(group.groupKind === "small" && group.memberIds.includes(memberId) ? { manuallyAdjusted: true as const } : {}) })).filter((group) => group.memberIds.length > 0)
   if (draft.multi?.memberIds.includes(memberId)) {
     draft.multi.memberIds = draft.multi.memberIds.filter((id) => id !== memberId)
     if (!draft.multi.memberIds.length) draft.multi = null
@@ -234,6 +237,11 @@ export function previewBoardMultiMove(context: BoardContext, input: BoardDraft, 
   const draft = structuredClone(input)
   removeAvailableMember(draft, memberId)
   const nextIds = [...(draft.multi?.memberIds ?? []), memberId]
+  if (draft.multiMode === "grouped") {
+    if (candidates(context, [memberId])[0].gameTypePref === "双人") fail("选择了双人的成员不能加入多人池")
+    draft.multi = { key: "waiting-multi", memberIds: nextIds, bestSlot: null }
+    return { ...evaluateBoard(context, draft), passed: true, reasons: [] }
+  }
   const inspection = inspectMulti(context, nextIds, draft.multi?.bestSlot ?? null, true)
   if (!inspection.passed) {
     draft.unmatchedIds.push(memberId)
@@ -270,12 +278,14 @@ export function previewBoardSmallGroupCandidates(context: BoardContext, input: B
 }
 
 /** Confirm a time-row selection as one independently published group. */
-export function previewBoardGroup(context: BoardContext, input: BoardDraft, memberIds: string[], slot: string, groupKind?: "small") {
+export function previewBoardGroup(context: BoardContext, input: BoardDraft, memberIds: string[], slot: string, groupKind?: "small", manuallyAdjusted = false) {
   validateBoardStructure(context, input)
   if (groupKind !== undefined && groupKind !== "small") fail("多人分组类型无效")
   if (memberIds.length < 3 || memberIds.length > 10000 || new Set(memberIds).size !== memberIds.length) fail("每个正式多人组至少需要3名不同成员")
-  if (groupKind === "small" && (memberIds.length < 4 || memberIds.length > 6)) fail("请将4–6人小组调整为4至6名成员后再确认")
-  if (memberIds.some((id) => !input.multi?.memberIds.includes(id))) fail("只能从当前待分组池选择成员")
+  if (typeof manuallyAdjusted !== "boolean") fail("人工分组标记无效")
+  if (groupKind === "small" && !manuallyAdjusted && (memberIds.length < 4 || memberIds.length > 6)) fail("请将系统推荐小组调整为4至6名成员后再确认")
+  if (memberIds.some((id) => !input.multi?.memberIds.includes(id) && !(manuallyAdjusted && input.unmatchedIds.includes(id)))) fail("只能从当前待分组池或未匹配池选择成员")
+  if (memberIds.some((id) => context.lockedMemberIds?.includes(id))) fail("已锁定的成员必须留在双人池，请先解锁")
   const inspection = inspectMulti(context, memberIds, slot, false)
   if (!inspection.passed) return { draft: structuredClone(input), rows: [] as BoardDisplayRow[], passed: false, reasons: inspection.reasons }
   const draft = structuredClone(input)
@@ -285,7 +295,8 @@ export function previewBoardGroup(context: BoardContext, input: BoardDraft, memb
     if (draft.multi) draft.multi = { key: "waiting-multi", memberIds: draft.multi.memberIds, bestSlot: draft.multi.bestSlot }
   }
   memberIds.forEach((id) => removeAvailableMember(draft, id))
-  draft.multiGroups = [...(draft.multiGroups ?? []), { key: nextGroupKey(draft, memberIds[0], slot), memberIds: [...memberIds], bestSlot: inspection.bestSlot, ...(groupKind ? { groupKind } : {}) }]
+  draft.multiGroups = [...(draft.multiGroups ?? []), { key: nextGroupKey(draft, memberIds[0], slot), memberIds: [...memberIds], bestSlot: inspection.bestSlot,
+    ...(groupKind ? { groupKind, ...(manuallyAdjusted ? { manuallyAdjusted: true as const } : {}) } : {}) }]
   const evaluated = evaluateBoard(context, draft)
   return { draft: evaluated.draft, rows: evaluated.rows, passed: true, reasons: [] }
 }
@@ -301,9 +312,32 @@ export function previewBoardGroupMove(context: BoardContext, input: BoardDraft, 
   if (!inspection.passed) return { draft: structuredClone(input), rows: [] as BoardDisplayRow[], passed: false, reasons: inspection.reasons }
   const draft = structuredClone(input)
   removeAvailableMember(draft, memberId)
-  draft.multiGroups = draft.multiGroups!.map((group) => group.key === groupKey ? { ...group, memberIds: [...group.memberIds, memberId] } : group)
+  draft.multiGroups = draft.multiGroups!.map((group) => group.key === groupKey ? { ...group, memberIds: [...group.memberIds, memberId],
+    ...(group.groupKind === "small" ? { manuallyAdjusted: true as const } : {}) } : group)
   const evaluated = evaluateBoard(context, draft)
   return { draft: evaluated.draft, rows: evaluated.rows, passed: true, reasons: [] }
+}
+
+export function previewBoardGroupDissolve(context: BoardContext, input: BoardDraft, groupKey: string) {
+  validateBoardStructure(context, input)
+  const target = input.multiMode === "grouped" ? input.multiGroups?.find((group) => group.key === groupKey) : undefined
+  if (!target) return fail("目标多人组不存在，请刷新后重试")
+  const draft = structuredClone(input)
+  draft.multiGroups = draft.multiGroups!.filter((group) => group.key !== groupKey)
+  draft.multi = { key: "waiting-multi", memberIds: [...(draft.multi?.memberIds ?? []), ...target.memberIds], bestSlot: null }
+  return { ...evaluateBoard(context, draft), passed: true, reasons: [] }
+}
+
+export function previewBoardGroupTime(context: BoardContext, input: BoardDraft, groupKey: string, slot: string) {
+  validateBoardStructure(context, input)
+  const target = input.multiMode === "grouped" ? input.multiGroups?.find((group) => group.key === groupKey) : undefined
+  if (!target) return fail("目标多人组不存在，请刷新后重试")
+  const inspection = inspectMulti(context, target.memberIds, slot, false)
+  if (!inspection.passed) return { draft: structuredClone(input), rows: [] as BoardDisplayRow[], passed: false, reasons: inspection.reasons }
+  const draft = structuredClone(input)
+  draft.multiGroups = draft.multiGroups!.map((group) => group.key === groupKey ? { ...group, bestSlot: inspection.bestSlot,
+    ...(group.groupKind === "small" ? { manuallyAdjusted: true as const } : {}) } : group)
+  return { ...evaluateBoard(context, draft), passed: true, reasons: [] }
 }
 
 /** The automatic algorithm sees only the current unmatched pool; waiting-duo members stay outside. */

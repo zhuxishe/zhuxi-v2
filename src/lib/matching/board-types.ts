@@ -13,6 +13,8 @@ export interface BoardMulti {
   bestSlot: string | null
   /** Explicitly confirmed in the 4–6-person section; absent for ordinary time groups. */
   groupKind?: "small"
+  /** An administrator explicitly changed or created this small group. */
+  manuallyAdjusted?: true
 }
 export interface BoardDraft {
   duos: BoardDuo[]
@@ -24,6 +26,8 @@ export interface BoardDraft {
   /** Visual references only; both people must also be in waitingDuoIds. */
   brokenPairs: { key: string; memberIds: [string, string] }[]
   unmatchedIds: string[]
+  /** Public-facing message for the final unmatched recipients of this batch. */
+  unmatchedMessage?: string
 }
 export interface BoardLayout {
   waitingDuoIds: string[]
@@ -33,12 +37,15 @@ export interface BoardLayout {
   multiPoolSlot?: string | null
   /** Complete member sets of saved small groups, resolved against active results on read. */
   smallGroupMemberIds?: string[][]
+  manualSmallGroupMemberIds?: string[][]
+  unmatchedMessage?: string
 }
 export interface BoardSmallGroupRecommendation {
   key: string
   memberIds: string[]
   bestSlot: string
   commonSlots: string[]
+  manuallyAdjusted?: true
 }
 export interface BoardSmallGroupRecommendationsResult {
   success?: true

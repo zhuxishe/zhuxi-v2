@@ -40,6 +40,40 @@ describe("saved publication review projection", () => {
     expect(review.groups[0].groupKind).toBeUndefined()
     expect(review.summary.waitingMulti).toBe(0)
   })
+  it.each([3, 7])("accepts an explicitly saved human-adjusted %s-person small group", (size) => {
+    const data = fixture(), ids = data.cohort_member_ids.slice(0, size)
+    data.results = [row("manual", ids, 1)]
+    data.layout = { waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", smallGroupMemberIds: [ids], manualSmallGroupMemberIds: [[...ids].reverse()] }
+    const review = buildSavedMatchingReview("session", data, true)
+    expect(review.groups[0]).toMatchObject({ groupKind: "small", manuallyAdjusted: true })
+    expect(review.issues).toEqual([])
+    data.layout.manualSmallGroupMemberIds = [ids.slice(1)]
+    expect(buildSavedMatchingReview("session", data, true).issues).toContain("有4–6人小组的人数不符合要求，请调整并保存。")
+    data.layout.manualSmallGroupMemberIds = [ids.map(() => ids[0])]
+    expect(buildSavedMatchingReview("session", data, true).issues).toContain("有4–6人小组的人数不符合要求，请调整并保存。")
+  })
+  it("projects only the explicit public message, never internal member or audit text", () => {
+    const data = fixture()
+    data.layout!.unmatchedMessage = "  后续将继续协调。\n请留意通知。  "
+    const review = buildSavedMatchingReview("session", data, true)
+    expect(review.unmatchedMessage).toBe("后续将继续协调。\n请留意通知。")
+    expect(buildSavedMatchingReview("session", fixture(), true).unmatchedMessage).toBeNull()
+    expect(JSON.stringify(review)).not.toContain("notes-")
+  })
+  it("uses the database's exact public-message recipients instead of all unassigned players", () => {
+    const data = fixture()
+    data.layout!.unmatchedMessage = "后续继续协调"
+    data.unmatched_message_recipient_ids = ["9"]
+    const review = buildSavedMatchingReview("session", data, true)
+    expect(review.messageRecipients).toEqual([{ id: "9", name: "Current 9", memberNumber: "ZXS_9" }])
+    expect(review.waitingDuo[0].id).toBe("7")
+    data.unmatched_message_recipient_ids = []
+    expect(buildSavedMatchingReview("session", data, true).messageRecipients).toEqual([])
+  })
+  it.each([{ ids: ["1"] }, { ids: ["8"] }, { ids: ["outside"] }, { ids: ["9", "9"] }])("rejects invalid message recipients $ids", ({ ids }) => {
+    const data = fixture(); data.unmatched_message_recipient_ids = ids
+    expect(() => buildSavedMatchingReview("session", data, true)).toThrow("接收名单")
+  })
   it("does not confuse new result version zero with a withdrawn session's expected publication version", () => {
     const data = fixture()
     data.results = data.results.map((result) => ({ ...result, publication_version: 0 }))
@@ -141,6 +175,28 @@ describe("saved publication review projection", () => {
 })
 
 describe("review signature binds the published fields", () => {
+  it("binds the public message while retaining the legacy signature for an empty message", () => {
+    const data = fixture(), before = matchingReviewPublicationSignature("session", data.results, data.capture)
+    expect(matchingReviewPublicationSignature("session", data.results, data.capture, " \n ")).toBe(before)
+    const note = matchingReviewPublicationSignature("session", data.results, data.capture, "后续联系")
+    expect(note).not.toBe(before)
+    expect(matchingReviewPublicationSignature("session", data.results, data.capture, " 后续联系 ")).toBe(note)
+    expect(matchingReviewPublicationSignature("session", data.results, data.capture, "新的安排")).not.toBe(note)
+    data.layout!.unmatchedMessage = "后续联系"
+    expect(buildSavedMatchingReview("session", data, true).publicationSignature).toBe(note)
+  })
+  it("binds the exact sorted recipient plan when a message is present", () => {
+    const data = fixture()
+    const sign = (message: string, ids?: string[]) => matchingReviewPublicationSignature("session", data.results, data.capture, message, ids)
+    const before = sign("后续联系", ["7", "9"])
+    expect(sign("后续联系", ["9", "7"])).toBe(before)
+    expect(sign("后续联系", ["9"])).not.toBe(before)
+    expect(sign("后续联系", [])).not.toBe(before)
+    expect(sign("", ["7", "9"])).toBe(sign(""))
+    expect(() => sign("后续联系", ["9", "9"])).toThrow("接收名单")
+    data.layout!.unmatchedMessage = "后续联系"; data.unmatched_message_recipient_ids = ["9", "7"]
+    expect(buildSavedMatchingReview("session", data, true).publicationSignature).toBe(before)
+  })
   it("is stable across source/result ordering, legacy slot separators, display and score metadata", () => {
     const data = fixture(), first = matchingReviewPublicationSignature("session", data.results, data.capture)
     data.results.reverse(); data.results[1].best_slot = "2026-11-07 下午"

@@ -17,7 +17,7 @@ export function moveBoardMember(draft: BoardDraft, id: string, target: "duo" | "
   const remaining = draft.multi?.memberIds.filter((member) => member !== id) ?? []
   return { ...draft,
     multi: draft.multi ? remaining.length ? { ...draft.multi, memberIds: remaining } : null : null,
-    ...(draft.multiGroups ? { multiGroups: draft.multiGroups.map((group) => ({ ...group, memberIds: group.memberIds.filter((member) => member !== id) })).filter((group) => group.memberIds.length) } : {}),
+    ...(draft.multiGroups ? { multiGroups: draft.multiGroups.map((group) => ({ ...group, ...(group.groupKind === "small" && group.memberIds.includes(id) ? { manuallyAdjusted: true as const } : {}), memberIds: group.memberIds.filter((member) => member !== id) })).filter((group) => group.memberIds.length) } : {}),
     waitingDuoIds: [...draft.waitingDuoIds.filter((member) => member !== id), ...(target === "duo" ? [id] : [])],
     unmatchedIds: [...draft.unmatchedIds.filter((member) => member !== id), ...(target === "unmatched" ? [id] : [])],
     brokenPairs: draft.brokenPairs.filter((pair) => !pair.memberIds.includes(id)),

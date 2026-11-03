@@ -138,7 +138,7 @@ describe("board service authorization, capture and save boundary", () => {
   })
   it.each([
     ["MATCH_BOARD_SMALL_GROUP_REQUIRED:PRIVATE-DETAIL", "4–6人分组"],
-    ["MATCH_BOARD_SMALL_GROUP_SIZE:PRIVATE-DETAIL", "4至6名成员"],
+    ["MATCH_BOARD_SMALL_GROUP_SIZE:PRIVATE-DETAIL", "系统推荐小组"],
   ])("explains small-group rejection %s without exposing database details", async (message, expected) => {
     const f = setup(); f.save.mockResolvedValue({ data: null, error: { code: "PT409", message } })
     const result = await saveMatchingBoard(f.request)
@@ -302,7 +302,7 @@ describe("formal multiplayer group service boundary", () => {
     expect(await inspectMatchingBoardSmallGroupCandidates({ ...f.request, memberIds: [], slot: "2026-10-31_下午" })).toMatchObject({ error: expect.any(String) })
     expect(f.save).not.toHaveBeenCalled()
   })
-  it("saves complete small-group member sets and rejects a three-person small group before RPC", async () => {
+  it("saves complete group sets and records explicit manual size exceptions after a member move", async () => {
     const f = pool(8)
     const first = await inspectMatchingBoardGroup({ ...f.request, memberIds: [id(1), id(2), id(3), id(4)], slot: "2026-10-31_下午", groupKind: "small" })
     const both = await inspectMatchingBoardGroup({ ...f.request, draft: first.draft!, memberIds: [id(5), id(6), id(7), id(8)], slot: "2026-10-31_下午", groupKind: "small" })
@@ -311,8 +311,8 @@ describe("formal multiplayer group service boundary", () => {
     f.save.mockClear()
     const moved = await inspectMatchingBoardGroupMove({ ...f.request, draft: both.draft!, memberId: id(4), groupKey: both.draft!.multiGroups![1].key })
     expect(moved.passed).toBe(true)
-    expect(await saveMatchingBoard({ ...f.request, draft: moved.draft! })).toMatchObject({ error: expect.stringContaining("4–6人小组") })
-    expect(f.save).not.toHaveBeenCalled()
+    expect(await saveMatchingBoard({ ...f.request, draft: moved.draft! })).toMatchObject({ success: true })
+    expect(f.save.mock.calls[0][0].p_layout.manualSmallGroupMemberIds).toEqual([[id(1), id(2), id(3)], [id(5), id(6), id(7), id(8), id(4)]])
   })
   it("previews an explicit group without writing and rejects stale or published requests", async () => {
     const f = pool()
@@ -333,7 +333,7 @@ describe("formal multiplayer group service boundary", () => {
     const saved = f.save.mock.calls[0][0]
     expect(saved.p_keep_result_ids).toEqual([])
     expect(saved.p_rows.map((row: BoardSourceRow) => row.group_members)).toEqual([[id(1), id(2), id(3)], [id(4), id(5), id(6)]])
-    expect(saved.p_layout).toEqual({ waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", waitingMultiIds: [id(7)], multiPoolSlot: "2026-10-31_下午", smallGroupMemberIds: [] })
+    expect(saved.p_layout).toEqual({ waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", waitingMultiIds: [id(7)], multiPoolSlot: "2026-10-31_下午", smallGroupMemberIds: [], manualSmallGroupMemberIds: [], unmatchedMessage: "" })
     expect(saved.p_unmatched_ids).toEqual([id(7)])
     expect(saved.p_request_hash).not.toBe(boardRequestHash(f.request, reason))
   })

@@ -13,6 +13,8 @@ describe("editable small-group suggestions", () => {
     const result = availableSmallGroups(groups, ["c", "d", "e", "f", "g", "h", "i"], prefs)
     expect(result.map((group) => group.memberIds)).toEqual([["c", "d"], ["e", "f", "g", "h"]])
     expect(result[1].commonSlots).toEqual([bestSlot, "2026-11-05_晚上"])
+    expect(result[0].manuallyAdjusted).toBe(true)
+    expect(result[1].manuallyAdjusted).toBeUndefined()
     expect(groups[0].memberIds).toEqual(["a", "b", "c", "d"])
   })
   it("moves a suggestion member once and permits a temporary three-person source", () => {
@@ -20,6 +22,7 @@ describe("editable small-group suggestions", () => {
     expect(result.map((group) => group.memberIds.length)).toEqual([3, 5])
     expect(result.flatMap((group) => group.memberIds).filter((id) => id === "d")).toHaveLength(1)
     expect(groups[0].memberIds).toHaveLength(4)
+    expect(result.every((group) => group.manuallyAdjusted === true)).toBe(true)
   })
   it("retains the chosen time and rejects a different-date or different-period newcomer", () => {
     const different = { ...prefs, i: { availability: { "2026-11-05": ["晚上"] } } }

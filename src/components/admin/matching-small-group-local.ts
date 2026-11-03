@@ -6,7 +6,7 @@ export function availableSmallGroups(groups: BoardSmallGroupRecommendation[], wa
   const waiting = new Set(waitingIds)
   return groups.map((group) => {
     const memberIds = group.memberIds.filter((id) => waiting.has(id))
-    return { ...group, memberIds, commonSlots: getBoardTimeOptions(memberIds, prefs, group.bestSlot).commonSlots }
+    return { ...group, memberIds, ...(memberIds.length !== group.memberIds.length ? { manuallyAdjusted: true as const } : {}), commonSlots: getBoardTimeOptions(memberIds, prefs, group.bestSlot).commonSlots }
   }).filter((group) => group.memberIds.length > 0)
 }
 
@@ -19,6 +19,6 @@ export function moveSmallGroupCandidate(groups: BoardSmallGroupRecommendation[],
   if (!times.complete || !times.currentValid) throw new Error("此人无法参加该组的推荐时段，请选择拥有相同日期和时段的小组。")
   return groups.map((group) => {
     const ids = group.key === targetKey ? memberIds : group.memberIds.filter((id) => id !== memberId)
-    return { ...group, memberIds: ids, commonSlots: getBoardTimeOptions(ids, prefs, group.bestSlot).commonSlots }
+    return { ...group, memberIds: ids, ...(ids.length !== group.memberIds.length ? { manuallyAdjusted: true as const } : {}), commonSlots: getBoardTimeOptions(ids, prefs, group.bestSlot).commonSlots }
   }).filter((group) => group.memberIds.length > 0)
 }

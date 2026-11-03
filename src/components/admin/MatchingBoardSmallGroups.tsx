@@ -1,11 +1,11 @@
 import type { ReactNode } from "react"
-import { Check, LockKeyhole, LockKeyholeOpen, RefreshCw, UsersRound, X } from "lucide-react"
+import { Check, LockKeyhole, LockKeyholeOpen, Plus, RefreshCw, UsersRound, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import type { BoardMulti, BoardSmallGroupRecommendation, BoardSubmissionPreference } from "@/lib/matching/board-types"
-import { getBoardTimeOptions, type BoardTimeOptions } from "@/lib/matching/board-time-options"
+import { getBoardTimeOptions } from "@/lib/matching/board-time-options"
+import { MatchingBoardGroupTimes } from "./MatchingBoardGroupTimes"
 
-const formatSlot = (slot: string) => slot.replaceAll("_", " ")
 const validSize = (size: number) => size >= 4 && size <= 6
 
 export interface MatchingBoardSmallGroupsProps {
@@ -31,27 +31,17 @@ export interface MatchingBoardSmallGroupsProps {
   lockDisabled: boolean
   onLock: (group: BoardMulti, locked: boolean) => void
   isGroupSaved?: (group: BoardMulti) => boolean
-}
-
-function CommonTimes({ times }: { times: BoardTimeOptions }) {
-  if (!times.complete) return <p className="mt-3 text-xs leading-relaxed text-amber-700">部分成员缺少有效可用时间，请先核对资料。</p>
-  if (!times.commonSlots.length) return <p className="mt-3 text-xs leading-relaxed text-amber-700">当前成员没有全员共同时间，请调整成员后再确认或保存。</p>
-  return <div className="mt-3 border-t border-border/60 pt-3">
-    <p className="mb-2 text-[11px] text-muted-foreground">全员共同时间 · {times.commonSlots.length} 个</p>
-    <div className="flex flex-wrap gap-1.5" aria-label="本组全部共同时间">
-      {times.orderedSlots.map((option) => <span key={option.slot} className={cn("inline-flex flex-wrap items-center gap-x-1 rounded-md px-2 py-1 text-[11px] leading-relaxed", option.current ? "bg-primary/10 font-medium text-primary" : "bg-muted/60 text-muted-foreground")}>
-        {option.current && <span>推荐安排</span>}{formatSlot(option.slot)}
-      </span>)}
-    </div>
-    {!times.currentValid && <p className="mt-2 text-xs text-amber-700">原推荐时段已不适用，请重新推荐或调整成员。</p>}
-  </div>
+  onCreate?: () => void
+  onDissolve?: (group: BoardMulti) => void
+  onTimeChange?: (group: BoardMulti, slot: string) => void
+  onSuggestionTimeChange?: (key: string, slot: string) => void
 }
 
 /** Suggestions do not assign people until the parent confirms them on the server. */
 export function MatchingBoardSmallGroups(props: MatchingBoardSmallGroupsProps) {
   const { groups, recommendations, prefs, canViewTimes, canRecommend, editable, poolLocked, loading, loaded,
     recommendationError, waitingCount, over, visible, name, chip, onRefresh, onConfirm,
-    onRemoveMember, locked, lockDisabled, onLock, isGroupSaved } = props
+    onRemoveMember, locked, lockDisabled, onLock, isGroupSaved, onCreate, onDissolve, onTimeChange, onSuggestionTimeChange } = props
   const suggestedCount = new Set(recommendations.flatMap((group) => group.memberIds)).size
   const remainingCount = Math.max(0, waitingCount - suggestedCount)
 
@@ -59,11 +49,12 @@ export function MatchingBoardSmallGroups(props: MatchingBoardSmallGroupsProps) {
     <div className="space-y-2 px-4 pt-4 pb-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="flex items-center gap-2 text-sm font-semibold"><UsersRound className="size-4 text-sky-700" />4–6人分组</h3>
+        <div className="flex flex-wrap gap-2">{onCreate && canViewTimes && canRecommend && <Button size="sm" variant="outline" className="h-8 text-xs" disabled={!editable || poolLocked || loading} onClick={onCreate}><Plus className="size-3" />手动新增小组</Button>}
         {canViewTimes && canRecommend && <Button size="sm" variant="outline" className="h-8 text-xs" disabled={!editable || poolLocked || loading || !waitingCount} onClick={onRefresh}>
           <RefreshCw className={cn("size-3", loading && "animate-spin")} />{loading ? "推荐中…" : "重新推荐"}
-        </Button>}
+        </Button>}</div>
       </div>
-      <p className="text-xs leading-relaxed text-muted-foreground">优先让更多人入组，再均衡人数。长按姓名可调整，逐组确认后统一保存。</p>
+      <p className="text-xs leading-relaxed text-muted-foreground">系统推荐4–6人，优先让更多人入组，再均衡人数。人工调整可超出推荐人数，至少3人；逐组确认后统一保存。</p>
     </div>
     <div data-board-scroll className="max-h-[min(75vh,760px)] space-y-4 overflow-y-auto px-4 pb-4">
       {groups.length > 0 && <div className="space-y-2" aria-label="已确认的4–6人小组">
@@ -73,14 +64,15 @@ export function MatchingBoardSmallGroups(props: MatchingBoardSmallGroupsProps) {
           const sizeOk = validSize(group.memberIds.length)
           const saved = isGroupSaved ? isGroupSaved(group) : !!group.resultId
           const groupLocked = locked(group)
-          return <div key={group.key} data-board-group-key={group.key} className={cn("rounded-xl border bg-background p-3 shadow-xs", over === `group:${group.key}` ? "border-primary ring-2 ring-primary/20" : !sizeOk ? "border-amber-300" : "border-primary/25")}>
+          return <div key={group.key} tabIndex={-1} data-board-group-key={group.key} className={cn("rounded-xl border bg-background p-3 shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/30", over === `group:${group.key}` ? "border-primary ring-2 ring-primary/20" : !sizeOk ? "border-amber-300" : "border-primary/25")}>
             <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
               <div><p className="text-sm font-semibold">第 {index + 1} 组 <span className="ml-1 text-xs font-normal text-muted-foreground">{group.memberIds.length} 人</span></p><p className="mt-1 text-[11px] text-muted-foreground">已确认 · {saved ? "已保存" : "待保存"}{groupLocked && " · 已锁定"}</p></div>
-              {group.resultId && <Button size="icon-sm" variant="ghost" disabled={lockDisabled} aria-label={`${groupLocked ? "解锁" : "锁定"}第 ${index + 1} 个4–6人小组`} aria-pressed={groupLocked} title="保存当前调整后可锁定或解锁小组" onClick={() => onLock(group, groupLocked)}>{groupLocked ? <LockKeyhole className="size-3.5" /> : <LockKeyholeOpen className="size-3.5 text-muted-foreground" />}</Button>}
+              <div className="flex items-center gap-1">{onDissolve && editable && <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" disabled={groupLocked} onClick={() => onDissolve(group)} aria-label={`解散第 ${index + 1} 个4–6人小组`}>解散小组</Button>}
+              {group.resultId && <Button size="icon-sm" variant="ghost" disabled={lockDisabled} aria-label={`${groupLocked ? "解锁" : "锁定"}第 ${index + 1} 个4–6人小组`} aria-pressed={groupLocked} title="保存当前调整后可锁定或解锁小组" onClick={() => onLock(group, groupLocked)}>{groupLocked ? <LockKeyhole className="size-3.5" /> : <LockKeyholeOpen className="size-3.5 text-muted-foreground" />}</Button>}</div>
             </div>
             <div className="flex flex-wrap gap-2">{group.memberIds.map((id) => <div key={id}>{chip(id, `group:${group.key}`)}</div>)}</div>
-            {!sizeOk && <p className="mt-3 text-xs leading-relaxed text-amber-700">当前 {group.memberIds.length} 人，请调整为 4–6 人后保存，或移空解散此组。</p>}
-            {canViewTimes && <CommonTimes times={getBoardTimeOptions(group.memberIds, prefs, group.bestSlot)} />}
+            {!sizeOk && <p className="mt-3 text-xs leading-relaxed text-amber-700">{group.memberIds.length < 3 ? `当前 ${group.memberIds.length} 人，请补足至少3人后保存，或解散此组。` : group.manuallyAdjusted ? `当前 ${group.memberIds.length} 人，超出系统推荐的4–6人范围；已人工调整，可保存。` : `当前 ${group.memberIds.length} 人，请调整为 4–6 人后保存，或移空解散此组。`}</p>}
+            {canViewTimes && <MatchingBoardGroupTimes memberIds={group.memberIds} prefs={prefs} bestSlot={group.bestSlot} label={`第 ${index + 1} 个4–6人小组`} editable={editable && !groupLocked} onChange={onTimeChange ? (slot) => onTimeChange(group, slot) : undefined} />}
           </div>
         })}
       </div>}
@@ -94,18 +86,18 @@ export function MatchingBoardSmallGroups(props: MatchingBoardSmallGroupsProps) {
           if (!visible(group.memberIds)) return null
           const times = getBoardTimeOptions(group.memberIds, prefs, group.bestSlot)
           const sizeOk = validSize(group.memberIds.length)
-          const canConfirm = editable && !poolLocked && !loading && sizeOk && times.complete && times.currentValid
+          const canConfirm = editable && !poolLocked && !loading && (group.manuallyAdjusted ? group.memberIds.length >= 3 : sizeOk) && times.complete && times.currentValid
           return <div key={group.key} data-board-small-key={group.key} className={cn("rounded-xl border bg-background p-3", over === `small:${group.key}` ? "border-primary ring-2 ring-primary/20" : !sizeOk ? "border-amber-300" : "border-border")}>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div><p className="text-sm font-medium">建议 {index + 1} <span className="ml-1 text-xs font-normal text-muted-foreground">{group.memberIds.length} 人</span></p><p className="mt-1 text-[11px] text-muted-foreground">待确认</p></div>
+              <div><p className="text-sm font-medium">建议 {index + 1} <span className="ml-1 text-xs font-normal text-muted-foreground">{group.memberIds.length} 人</span></p><p className="mt-1 text-[11px] text-muted-foreground">待确认{group.manuallyAdjusted && " · 已人工调整"}</p></div>
               <Button size="sm" variant="outline" className="h-8 text-xs" aria-label={`确认第 ${index + 1} 个4–6人建议组`} disabled={!canConfirm} onClick={() => onConfirm(group)}><Check className="size-3" />确认分组</Button>
             </div>
             <div className="flex flex-wrap gap-2">{group.memberIds.map((id) => <div key={id} className="flex items-center gap-0.5">
               {chip(id, `small:${group.key}`, true)}
               {editable && <button type="button" className="flex size-7 shrink-0 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-40" aria-label={`将 ${name(id)}移出建议 ${index + 1}`} title="移出本建议，仍保留在上方候选池" disabled={poolLocked || loading} onClick={() => onRemoveMember(group.key, id)}><X className="size-3" /></button>}
             </div>)}</div>
-            {!sizeOk && <p className="mt-3 text-xs leading-relaxed text-amber-700">当前 {group.memberIds.length} 人，请调整为 4–6 人后确认。</p>}
-            <CommonTimes times={times} />
+            {!sizeOk && <p className="mt-3 text-xs leading-relaxed text-amber-700">{group.manuallyAdjusted && group.memberIds.length >= 3 ? `当前 ${group.memberIds.length} 人，超出系统推荐的4–6人范围；已人工调整，可确认。` : group.manuallyAdjusted ? `当前 ${group.memberIds.length} 人，请补足至少3人后确认。` : `当前 ${group.memberIds.length} 人，请调整为 4–6 人后确认。`}</p>}
+            <MatchingBoardGroupTimes memberIds={group.memberIds} prefs={prefs} bestSlot={group.bestSlot} label={`推荐 ${index + 1}`} editable={editable && !poolLocked && !loading} onChange={onSuggestionTimeChange ? (slot) => onSuggestionTimeChange(group.key, slot) : undefined} />
           </div>
         })}
         {poolLocked && <p className="text-xs text-muted-foreground">多人池已锁定，请先解锁再调整推荐分组。</p>}

@@ -20,7 +20,10 @@ WITH checks AS (
    AND position('matching_board.assert_groups_ready' in pg_get_functiondef('matching_publication.publish_session(uuid,integer,text)'::regprocedure))>0 publication_guard_ok,
   position('smallGroupMemberIds' in pg_get_functiondef('matching_board.erase_anonymized()'::regprocedure))>0 privacy_guard_ok,
   NOT EXISTS(SELECT 1 FROM matching_board.state s CROSS JOIN LATERAL jsonb_array_elements(COALESCE(s.layout->'smallGroupMemberIds','[]'::jsonb)) g
-   WHERE jsonb_typeof(g)<>'array' OR jsonb_array_length(g) NOT BETWEEN 4 AND 6
+   WHERE jsonb_typeof(g)<>'array' OR jsonb_array_length(g)<3
+    OR (jsonb_array_length(g) NOT BETWEEN 4 AND 6 AND NOT EXISTS(
+      SELECT 1 FROM jsonb_array_elements(COALESCE(s.layout->'manualSmallGroupMemberIds','[]'::jsonb)) manual_group
+      WHERE manual_group @> g AND g @> manual_group))
     OR EXISTS(SELECT 1 FROM jsonb_array_elements_text(g) member JOIN public.members m ON m.id=member::uuid WHERE m.anonymized_at IS NOT NULL)) stored_marker_invariants_ok
 )
 SELECT jsonb_build_object('status',CASE WHEN private_helpers_ok AND save_and_lock_guards_ok AND capture_and_revision_ok AND cached_client_guard_ok AND publication_guard_ok AND privacy_guard_ok AND stored_marker_invariants_ok THEN 'PASS' ELSE 'FAIL' END,

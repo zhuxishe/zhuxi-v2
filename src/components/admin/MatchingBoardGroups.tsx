@@ -1,9 +1,10 @@
 import type { ReactNode } from "react"
-import { CalendarDays, Check, LockKeyhole, LockKeyholeOpen, Users } from "lucide-react"
+import { CalendarDays, Check, LockKeyhole, LockKeyholeOpen, Plus, Users } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import type { BoardMulti } from "@/lib/matching/board-types"
+import type { BoardMulti, BoardSubmissionPreference } from "@/lib/matching/board-types"
 import type { BoardGroupTimeCandidates } from "@/lib/matching/board-group-time-options"
+import { MatchingBoardGroupTimes } from "./MatchingBoardGroupTimes"
 
 const formatSlot = (slot: string | null) => slot?.replaceAll("_", " ") ?? "待选择时间"
 
@@ -23,25 +24,34 @@ interface Props {
   locked: (group: BoardMulti) => boolean
   lockDisabled: boolean
   onLock: (group: BoardMulti, locked: boolean) => void
+  prefs?: Record<string, BoardSubmissionPreference>
+  onCreate?: () => void
+  onDissolve?: (group: BoardMulti) => void
+  onTimeChange?: (group: BoardMulti, slot: string) => void
+  isGroupSaved?: (group: BoardMulti) => boolean
 }
 
 /** Candidate cards can repeat a person; only confirmed groups are assignments. */
 export function MatchingBoardGroups(props: Props) {
-  const { groups, candidates, canViewTimes, editable, poolLocked, over, excluded, visible, name, chip, onToggle, onConfirm, locked, lockDisabled, onLock } = props
+  const { groups, candidates, canViewTimes, editable, poolLocked, over, excluded, visible, name, chip, onToggle, onConfirm, locked, lockDisabled, onLock, prefs, onCreate, onDissolve, onTimeChange, isGroupSaved } = props
   return <div className="@container border-t bg-muted/15">
     <div className="space-y-1 px-4 pt-4 pb-3">
-      <h3 className="flex items-center gap-2 text-sm font-semibold"><CalendarDays className="size-4 text-sky-700" />按时间分组</h3>
+      <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="flex items-center gap-2 text-sm font-semibold"><CalendarDays className="size-4 text-sky-700" />按时间分组</h3>
+        {onCreate && canViewTimes && <Button size="sm" variant="outline" className="h-8 text-xs" disabled={!editable || poolLocked} onClick={onCreate}><Plus className="size-3" />手动新增小组</Button>}
+      </div>
       <p className="text-xs leading-relaxed text-muted-foreground">每组至少 3 人。确认后，成员移出上方人员池与其他候选时段；长按姓名可调整小组。</p>
     </div>
     <div data-board-scroll className="max-h-[min(75vh,760px)] space-y-4 overflow-y-auto px-4 pb-4">
       {groups.length > 0 && <div className="space-y-2" aria-label="已确认的多人小组">
         <p className="text-xs font-medium text-muted-foreground">已确认小组 · {groups.length}</p>
-        {groups.map((group, index) => visible(group.memberIds) && <div key={group.key} data-board-group-key={group.key} className={cn("rounded-xl border bg-background p-3 shadow-xs @lg:grid @lg:grid-cols-[8.5rem_minmax(0,1fr)] @lg:gap-3", over === `group:${group.key}` ? "border-primary ring-2 ring-primary/20" : "border-primary/20")}>
-          <div className="mb-3 flex items-start justify-between gap-2 @lg:mb-0 @lg:flex-col @lg:justify-start">
-            <div><p className="flex items-center gap-1.5 text-sm font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[11px] text-primary">{index + 1}</span>{formatSlot(group.bestSlot)}</p><p className={cn("mt-1 text-xs", group.memberIds.length < 3 ? "text-amber-700" : "text-muted-foreground")}>{group.memberIds.length} 人{group.memberIds.length < 3 ? " · 请补足 3 人后保存" : group.resultId ? " · 已保存" : " · 待保存"}{locked(group) && " · 已锁定"}</p></div>
-            {group.resultId && <Button size="icon-sm" variant="ghost" disabled={lockDisabled} aria-label={`${locked(group) ? "解锁" : "锁定"}第 ${index + 1} 个多人小组`} aria-pressed={locked(group)} title="保存当前调整后可锁定或解锁小组，无需填写理由" onClick={() => onLock(group, locked(group))}>{locked(group) ? <LockKeyhole className="size-3.5" /> : <LockKeyholeOpen className="size-3.5 text-muted-foreground" />}</Button>}
+        {groups.map((group, index) => visible(group.memberIds) && <div key={group.key} tabIndex={-1} data-board-group-key={group.key} className={cn("rounded-xl border bg-background p-3 shadow-xs focus:outline-none focus:ring-2 focus:ring-primary/30", over === `group:${group.key}` ? "border-primary ring-2 ring-primary/20" : "border-primary/20")}>
+          <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+            <div><p className="flex items-center gap-1.5 text-sm font-semibold"><span className="flex size-5 items-center justify-center rounded-full bg-primary/10 text-[11px] text-primary">{index + 1}</span>{formatSlot(group.bestSlot)}</p><p className={cn("mt-1 text-xs", group.memberIds.length < 3 ? "text-amber-700" : "text-muted-foreground")}>{group.memberIds.length} 人 · 已确认{group.memberIds.length < 3 ? " · 请补足 3 人后保存" : (isGroupSaved ? isGroupSaved(group) : !!group.resultId) ? " · 已保存" : " · 待保存"}{locked(group) && " · 已锁定"}</p></div>
+            <div className="flex items-center gap-1">{onDissolve && editable && <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" disabled={locked(group)} onClick={() => onDissolve(group)} aria-label={`解散第 ${index + 1} 个多人小组`}>解散小组</Button>}
+            {group.resultId && <Button size="icon-sm" variant="ghost" disabled={lockDisabled} aria-label={`${locked(group) ? "解锁" : "锁定"}第 ${index + 1} 个多人小组`} aria-pressed={locked(group)} title="保存当前调整后可锁定或解锁小组，无需填写理由" onClick={() => onLock(group, locked(group))}>{locked(group) ? <LockKeyhole className="size-3.5" /> : <LockKeyholeOpen className="size-3.5 text-muted-foreground" />}</Button>}</div>
           </div>
           <div className="flex flex-wrap gap-2">{group.memberIds.map((id) => chip(id, `group:${group.key}`))}</div>
+          {canViewTimes && prefs && <MatchingBoardGroupTimes memberIds={group.memberIds} prefs={prefs} bestSlot={group.bestSlot} label={`第 ${index + 1} 个多人小组`} editable={editable && !locked(group)} onChange={onTimeChange ? (slot) => onTimeChange(group, slot) : undefined} />}
         </div>)}
       </div>}
       {canViewTimes ? <div className="space-y-2" aria-label="候选共同时间段">

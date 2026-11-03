@@ -56,6 +56,9 @@ function ReviewContents({ review }: { review: SavedMatchingReview }) {
   const filtered = review.groups.filter((group) => (filter === "all" || group.kind === filter) && (!needle || group.members.some((member) => matchesMember(member, needle))))
   const rows = filtered.slice(0, limit)
   const { summary } = review
+  const unmatchedMessage = review.unmatchedMessage?.trim()
+  const messageRecipients = review.messageRecipients ?? [...review.waitingDuo, ...review.unmatched]
+  const exactRecipients = review.messageRecipients !== undefined
   const captured = review.capturedAt && Number.isFinite(Date.parse(review.capturedAt))
     ? new Date(review.capturedAt).toLocaleString("zh-CN", { timeZone: "Asia/Tokyo", hour12: false }) : null
   return <>
@@ -81,7 +84,7 @@ function ReviewContents({ review }: { review: SavedMatchingReview }) {
           <thead className="bg-muted/40 text-xs text-muted-foreground"><tr><th scope="col" className="w-28 px-3 py-3 font-medium">组别 / 人数</th><th scope="col" className="min-w-48 px-3 py-3 font-medium">匹配成员</th><th scope="col" className="w-44 px-3 py-3 font-medium">推荐时间</th><th scope="col" className="w-56 px-3 py-3 font-medium">其他共同时间</th></tr></thead>
           <tbody className="divide-y divide-border/70">
             {rows.map((group) => <tr key={group.resultId} data-review-result={group.resultId} className="align-top hover:bg-muted/15">
-              <th scope="row" className="px-3 py-3.5 text-xs font-medium"><span className="block whitespace-nowrap text-primary">{group.label}</span><span className="mt-1 block font-normal text-muted-foreground">{group.members.length} 人</span></th>
+              <th scope="row" className="px-3 py-3.5 text-xs font-medium"><span className="block whitespace-nowrap text-primary">{group.label}</span><span className="mt-1 block font-normal text-muted-foreground">{group.members.length} 人{group.manuallyAdjusted && " · 人工调整"}</span></th>
               <td className="px-3 py-3.5 leading-7"><span className="break-words">{group.members.map((member) => member.name).join(group.kind === "duo" ? " ＆ " : "、")}</span></td>
               <td className="px-3 py-3.5 text-xs leading-relaxed font-medium"><span className="whitespace-nowrap">{slotText(group.recommendedSlot)}</span></td>
               <td className="px-3 py-3.5"><OtherTimes group={group} canViewTimes={review.canViewTimes} /></td>
@@ -102,6 +105,15 @@ function ReviewContents({ review }: { review: SavedMatchingReview }) {
           <PendingMembers label="待多人分组" members={review.waitingMulti} query={needle} warning />
           <PendingMembers label="未匹配" members={review.unmatched} query={needle} />
         </div>
+      </div>}
+      {unmatchedMessage && <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/[0.035] p-4" aria-label="未匹配工作人员留言">
+        <p className="text-sm font-medium text-primary">工作人员留言 · 给未匹配玩家</p>
+        <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{unmatchedMessage}</p>
+        {messageRecipients.length ? <details className="text-xs text-muted-foreground" open={messageRecipients.length <= 10}>
+          <summary className="cursor-pointer">{exactRecipients ? "本次可接收" : "待核对接收范围"} · {messageRecipients.length} 人{messageRecipients.some((member) => review.waitingDuo.some((waiting) => waiting.id === member.id)) && "（含等待双人搭档人员）"}</summary>
+          <p className="mt-2 break-words leading-6">{messageRecipients.map((member) => member.name).join("、")}</p>
+        </details> : <p className="text-xs text-muted-foreground">当前没有未匹配接收人，本次发布不会展示这段留言。</p>}
+        <p className="text-[11px] leading-relaxed text-muted-foreground">{!exactRecipients && "接收范围尚待最终资格核验。"}与当前已保存方案一起发布；后台操作理由及未匹配诊断不会发送给玩家。</p>
       </div>}
       <p className="text-[11px] leading-relaxed text-muted-foreground">时间均为日本时间。{captured ? `核对资料读取于 ${captured}。` : ""}如需更换人员，请回到上方三个池子调整并保存。</p>
     </div>

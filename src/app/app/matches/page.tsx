@@ -48,7 +48,7 @@ export default async function PlayerMatchesPage() {
       reviewedIds={reviewedIds} dateFmt={locale === "ja" ? "ja-JP" : "zh-CN"} labels={labels}
       copy={{ title: t("matchingTitle"), description: t("matchingDescription"), empty: t("matchingEmpty"), historyTitle: t("historyTitle") }}
       publications={publications}
-      publicationLabels={{ unmatched: t("publicationUnmatched"), waiting: t("publicationWaiting"), withdrawn: t("publicationWithdrawn"), cancelled: t("publicationCancelled") }}
+      publicationLabels={{ unmatched: t("publicationUnmatched"), waiting: t("publicationWaiting"), withdrawn: t("publicationWithdrawn"), cancelled: t("publicationCancelled"), staffMessage: t("staffMessage") }}
     />
     <PlayerParticipationRecords records={participation} reviewRounds={reviewRounds} initialNow={new Date().toISOString()} />
   </div>

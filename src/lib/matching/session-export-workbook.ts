@@ -8,6 +8,7 @@ import { styleSessionExportSheet } from "./session-export-style"
 import type { SavedMatchingReview } from "./session-review-types"
 import { memberGenderLabel } from "./export-member-gender"
 import { exportUnmatchedReasons } from "./export-unmatched-reason"
+import { normalizeUnmatchedMessage } from "./unmatched-message"
 
 type Row = Record<string, any>
 type Cell = string | number | null
@@ -158,15 +159,15 @@ export function createSessionExportWorkbook(data: SessionExportData): ExcelJS.Wo
     .sort((a, b) => numberOf(a).localeCompare(numberOf(b), "zh-CN", { numeric: true }) || nameOf(a).localeCompare(nameOf(b), "zh-CN"))
     .map((id): Cell[] => [nameOf(id), numberOf(id), gameType(submissions[id]?.game_type_pref), preference(submissions[id]?.gender_pref),
       [`未匹配原因：${members.get(id)?.anonymized ? "成员已注销，不提供诊断信息" : diagnosticText(diagnosticMap.get(id), cancelled.has(id))}`, ...(noteOf(id) ? [`报名留言：${noteOf(id)}`] : [])].join("\n"),
-      sessionSubmissionInputLabel(snapshot, id), capturedAt, genderOf(id), exportUnmatchedReasons(diagnosticLists.get(id) ?? [], { anonymized: members.get(id)?.anonymized, cancelled: cancelled.has(id) })])
+      sessionSubmissionInputLabel(snapshot, id), capturedAt, genderOf(id), exportUnmatchedReasons(diagnosticLists.get(id) ?? [], { anonymized: members.get(id)?.anonymized, cancelled: cancelled.has(id) }), ""])
 
   const book = new ExcelJS.Workbook()
   addSheet(book, "双人本配对结果", ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at", "玩家性别"],
     duoRows, [16, 16, 14, 16, 16, 14, 12, 34, 30, 42, 14, 42, 30, 28, 32], 2)
   addSheet(book, "多人本配对结果", ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at", "玩家性别"],
     multiRows, [42, 46, 12, 36, 30, 42, 14, 48, 30, 28, 36])
-  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "玩家性别", "未匹配成功原因"],
-    unmatchedRows, [18, 16, 14, 16, 64, 30, 28, 14, 68], 2)
+  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "玩家性别", "未匹配成功原因", "工作人员留言"],
+    unmatchedRows, [18, 16, 14, 16, 64, 30, 28, 14, 68, 56], 2)
   addSheet(book, "结果发布", ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段", "玩家性别"],
     publicationRows, [12, 12, 8, 44, 46, 30, 42, 36])
   return book
@@ -186,6 +187,8 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
   const state = review.sessionStatus === "confirmed" ? "已发布" : "已保存草稿（未发布）"
   const version = review.revisionToken
   const captured = review.capturedAt ?? ""
+  const unmatchedMessage = normalizeUnmatchedMessage(review.unmatchedMessage)
+  const messageRecipientIds = new Set((review.messageRecipients ?? [...review.waitingDuo, ...review.unmatched]).map((member) => member.id))
   const duoRows: Cell[][] = [], multiRows: Cell[][] = [], publicationRows: Cell[][] = []
   for (const group of review.groups) {
     const row = results.get(group.resultId)
@@ -196,7 +199,7 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
       || normalizedSlot(group.recommendedSlot) !== normalizedSlot(row.best_slot)
       || (group.kind === "multi") !== !!row.group_members?.length
       || (group.kind === "duo" ? ids.length !== 2 : ids.length < 3)
-      || (group.groupKind === "small" && (ids.length < 4 || ids.length > 6))) throw new Error("核对结果与已保存分组不一致，请重新读取后导出")
+      || (group.groupKind === "small" && !group.manuallyAdjusted && (ids.length < 4 || ids.length > 6))) throw new Error("核对结果与已保存分组不一致，请重新读取后导出")
     for (const id of ids) {
       if (seen.has(id)) throw new Error("匹配结果中存在重复玩家，请先核对方案后再导出")
       seen.add(id)
@@ -217,7 +220,7 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
     const score = typeof row.total_score === "number" ? row.total_score : null
     if (group.kind === "multi") {
       multiRows.push([names, numbers, type, genderSummary(ids, subset), best, times, score, note, source, captured,
-        group.label, ids.length, group.groupKind === "small" ? "4–6人组" : "普通多人组", otherTimes, version, state, genders])
+        group.label, ids.length, group.groupKind === "small" ? group.manuallyAdjusted ? "4–6人组（人工调整）" : "4–6人组" : "普通多人组", otherTimes, version, state, genders])
     } else {
       duoRows.push([group.members[0].name, group.members[0].memberNumber || "未分配编号", preference(subset[ids[0]].gender_pref),
         group.members[1].name, group.members[1].memberNumber || "未分配编号", preference(subset[ids[1]].gender_pref),
@@ -237,7 +240,8 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
     const note = text(sub?.message) || text(getImportMetadata(sub?.import_metadata)?.raw_notes)
     return [member.name, member.memberNumber || "未分配编号", gameType(sub?.game_type_pref), preference(sub?.gender_pref),
       [`安排状态：${status}`, ...(note ? [`报名留言：${note}`] : [])].join("\n"), source, captured, status, version, state,
-      personalGender(members.get(member.id)), exportUnmatchedReasons(diagnosticLists.get(member.id) ?? [], { placement, anonymized: !!members.get(member.id)?.anonymized_at })]
+      personalGender(members.get(member.id)), exportUnmatchedReasons(diagnosticLists.get(member.id) ?? [], { placement, anonymized: !!members.get(member.id)?.anonymized_at }),
+      placement === "waiting_multi" || !messageRecipientIds.has(member.id) || members.get(member.id)?.anonymized_at ? "" : unmatchedMessage ?? ""]
   })
   if (seen.size !== review.summary.total) throw new Error("核对名单人数不一致，请重新读取后导出")
   const book = new ExcelJS.Workbook()
@@ -245,8 +249,8 @@ function createReviewedWorkbook(data: SessionExportData, review: SavedMatchingRe
     duoRows, [16, 16, 14, 16, 16, 14, 12, 34, 30, 42, 14, 42, 34, 28, 14, 42, 36, 24, 32], 2)
   addSheet(book, "多人本配对结果", ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at", "组别", "人数", "分组方式", "其他共同时间", "核对版本", "方案状态", "玩家性别"],
     multiRows, [42, 46, 12, 36, 30, 42, 14, 48, 34, 28, 14, 8, 16, 42, 36, 24, 36])
-  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "安排状态", "核对版本", "方案状态", "玩家性别", "未匹配成功原因"],
-    unmatchedRows, [18, 16, 14, 16, 64, 34, 28, 18, 36, 24, 14, 68], 2)
+  addSheet(book, "未匹配名单", ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "安排状态", "核对版本", "方案状态", "玩家性别", "未匹配成功原因", "工作人员留言"],
+    unmatchedRows, [18, 16, 14, 16, 64, 34, 28, 18, 36, 24, 14, 68, 56], 2)
   addSheet(book, "结果发布", ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段", "其他共同时间", "核对版本", "方案状态", "玩家性别"],
     publicationRows, [14, 12, 8, 44, 46, 30, 42, 42, 36, 24, 36])
   return book

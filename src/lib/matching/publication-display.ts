@@ -11,6 +11,8 @@ export interface MatchingPublication {
   published_at: string | null
   status: MatchingPublicationStatus
   result_id: string | null
+  /** Frozen public copy for this owned, current unmatched publication only. */
+  unmatched_message?: string | null
 }
 
 /** Format a calendar date without shifting it through the viewer's time zone. */

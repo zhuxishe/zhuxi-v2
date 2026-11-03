@@ -8,10 +8,10 @@ import type { MatchSessionViewProps } from "./MatchSessionView"
 import { buildSavedMatchingReview } from "@/lib/matching/session-review"
 import { MatchingReviewDownloadError } from "./matching-review-download"
 
-const mocks = vi.hoisted(() => ({ group: vi.fn(), groupMove: vi.fn(), multi: vi.fn(), save: vi.fn(), load: vi.fn(), refresh: vi.fn(), publish: vi.fn(), recommend: vi.fn(), inspectSuggestion: vi.fn(), download: vi.fn() }))
+const mocks = vi.hoisted(() => ({ group: vi.fn(), groupMove: vi.fn(), dissolve: vi.fn(), groupTime: vi.fn(), multi: vi.fn(), save: vi.fn(), load: vi.fn(), refresh: vi.fn(), publish: vi.fn(), recommend: vi.fn(), inspectSuggestion: vi.fn(), download: vi.fn() }))
 vi.mock("./matching-review-download", async (original) => ({ ...await original<typeof import("./matching-review-download")>(), downloadMatchingReview: mocks.download }))
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: mocks.refresh }) }))
-vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ recommendBoardSmallGroups: mocks.recommend, inspectBoardSmallGroupCandidates: mocks.inspectSuggestion, inspectBoardGroup: mocks.group, inspectBoardGroupMove: mocks.groupMove, inspectBoardPair: vi.fn(), inspectBoardMultiMove: mocks.multi, rematchBoard: vi.fn(), saveBoard: mocks.save, loadMatchingBoard: mocks.load, setBoardMemberLock: vi.fn() }))
+vi.mock("@/app/admin/matching/[id]/board-actions", () => ({ recommendBoardSmallGroups: mocks.recommend, inspectBoardSmallGroupCandidates: mocks.inspectSuggestion, inspectBoardGroup: mocks.group, inspectBoardGroupMove: mocks.groupMove, inspectBoardGroupDissolve: mocks.dissolve, inspectBoardGroupTime: mocks.groupTime, inspectBoardPair: vi.fn(), inspectBoardMultiMove: mocks.multi, rematchBoard: vi.fn(), saveBoard: mocks.save, loadMatchingBoard: mocks.load, setBoardMemberLock: vi.fn() }))
 vi.mock("@/app/admin/matching/[id]/actions", () => ({ confirmSession: mocks.publish, unpublishSession: vi.fn(), lockPair: vi.fn(), unlockPair: vi.fn() }))
 vi.mock("@/app/admin/matching/[id]/manual-actions", () => ({ recoverMatchingAdjustment: vi.fn() }))
 import { MatchingBoardView } from "./MatchingBoardView"
@@ -29,11 +29,13 @@ function resultRow(key: string, memberIds: string[], bestSlot = SLOT): BoardDisp
 }
 function reviewed(snapshot: BoardSnapshot): BoardSnapshot {
   const draft = snapshot.draft
-  const layout = { waitingDuoIds: draft.waitingDuoIds, brokenPairs: draft.brokenPairs,
+  const layout = { waitingDuoIds: draft.waitingDuoIds, brokenPairs: draft.brokenPairs, unmatchedMessage: draft.unmatchedMessage,
     ...(draft.multiMode === "grouped" ? { multiMode: "grouped" as const, waitingMultiIds: draft.multi?.memberIds ?? [], multiPoolSlot: draft.multi?.bestSlot ?? null,
-      smallGroupMemberIds: (draft.multiGroups ?? []).filter((group) => group.groupKind === "small").map((group) => group.memberIds) } : {}) }
+      smallGroupMemberIds: (draft.multiGroups ?? []).filter((group) => group.groupKind === "small").map((group) => group.memberIds),
+      manualSmallGroupMemberIds: (draft.multiGroups ?? []).filter((group) => group.groupKind === "small" && group.manuallyAdjusted).map((group) => group.memberIds) } : {}) }
   return { ...snapshot, savedReview: buildSavedMatchingReview("grouping-session", {
     base_revision: snapshot.revisionToken, session_status: "draft", cohort_member_ids: snapshot.cohortMemberIds, layout,
+    unmatched_message_recipient_ids: [...draft.waitingDuoIds, ...draft.unmatchedIds],
     results: snapshot.rows.map((row) => ({ ...row, id: row.resultId ?? row.key, status: row.status ?? "draft" })),
     capture: { captured_at: "2026-11-02T01:00:00Z", source: { submissions: Object.entries(snapshot.currentSubmissionPrefs ?? {}).map(([member_id, pref]) => ({ ...pref, member_id, member: members.find((member) => member.id === member_id) })) } },
   }, snapshot.canViewRaw) }
@@ -71,7 +73,7 @@ async function render(overrides: Partial<MatchSessionViewProps> = {}) {
 }
 function groupDraft(draft: BoardDraft, selectedIds: string[], slot = SLOT): BoardDraft {
   const remaining = draft.multi!.memberIds.filter((id) => !selectedIds.includes(id))
-  return { ...draft, multiMode: "grouped", multi: remaining.length ? { key: "waiting", memberIds: remaining, bestSlot: draft.multi!.bestSlot } : null, multiGroups: [...(draft.multiGroups ?? []), { key: "new-group", memberIds: selectedIds, bestSlot: slot }] }
+  return { ...draft, unmatchedIds: draft.unmatchedIds.filter((id) => !selectedIds.includes(id)), multiMode: "grouped", multi: remaining.length ? { key: "waiting", memberIds: remaining, bestSlot: draft.multi!.bestSlot } : null, multiGroups: [...(draft.multiGroups ?? []), { key: "new-group", memberIds: selectedIds, bestSlot: slot }] }
 }
 function displayRows(draft: BoardDraft) {
   return (draft.multiMode === "grouped" ? draft.multiGroups ?? [] : draft.multi ? [draft.multi] : []).map((entry) => resultRow(entry.key, entry.memberIds, entry.bestSlot!))
@@ -110,9 +112,10 @@ beforeEach(() => {
   props = fixture()
   mocks.recommend.mockResolvedValue({ success: true, recommendations: [], revisionToken: "revision-current" })
   mocks.inspectSuggestion.mockResolvedValue({ success: true, passed: true })
-  mocks.group.mockImplementation(async ({ draft, memberIds, slot, groupKind }: BoardRequest & { memberIds: string[]; slot: string; groupKind?: "small" }): Promise<BoardActionResult> => {
+  mocks.group.mockImplementation(async ({ draft, memberIds, slot, groupKind, manuallyAdjusted }: BoardRequest & { memberIds: string[]; slot: string; groupKind?: "small"; manuallyAdjusted?: boolean }): Promise<BoardActionResult> => {
     const next = groupDraft(draft, memberIds, slot)
     if (groupKind) next.multiGroups![next.multiGroups!.length - 1].groupKind = groupKind
+    if (manuallyAdjusted && groupKind) next.multiGroups![next.multiGroups!.length - 1].manuallyAdjusted = true
     return { passed: true, draft: next, rows: displayRows(next) }
   })
   mocks.groupMove.mockImplementation(async ({ draft, memberId, groupKey }: BoardRequest & { memberId: string; groupKey: string }): Promise<BoardActionResult> => {
@@ -125,7 +128,18 @@ beforeEach(() => {
   mocks.multi.mockImplementation(async ({ draft, memberId }: BoardRequest & { memberId: string }): Promise<BoardActionResult> => {
     const next = structuredClone(draft)
     next.multi = { key: "waiting", memberIds: [...(next.multi?.memberIds ?? []), memberId], bestSlot: SLOT }
-    next.multiGroups = next.multiGroups?.map((entry) => ({ ...entry, memberIds: entry.memberIds.filter((id) => id !== memberId) })).filter((entry) => entry.memberIds.length)
+    next.multiGroups = next.multiGroups?.map((entry) => ({ ...entry, ...(entry.groupKind === "small" && entry.memberIds.includes(memberId) ? { manuallyAdjusted: true as const } : {}), memberIds: entry.memberIds.filter((id) => id !== memberId) })).filter((entry) => entry.memberIds.length)
+    return { passed: true, draft: next, rows: displayRows(next) }
+  })
+  mocks.dissolve.mockImplementation(async ({ draft, groupKey }: BoardRequest & { groupKey: string }): Promise<BoardActionResult> => {
+    const next = structuredClone(draft), found = next.multiGroups!.find((entry) => entry.key === groupKey)!
+    next.multiGroups = next.multiGroups!.filter((entry) => entry.key !== groupKey)
+    next.multi = { key: "waiting", memberIds: [...(next.multi?.memberIds ?? []), ...found.memberIds], bestSlot: null }
+    return { passed: true, draft: next, rows: displayRows(next) }
+  })
+  mocks.groupTime.mockImplementation(async ({ draft, groupKey, slot }: BoardRequest & { groupKey: string; slot: string }): Promise<BoardActionResult> => {
+    const next = structuredClone(draft)
+    next.multiGroups = next.multiGroups!.map((entry) => entry.key === groupKey ? { ...entry, bestSlot: slot } : entry)
     return { passed: true, draft: next, rows: displayRows(next) }
   })
   mocks.save.mockResolvedValue({ success: true })
@@ -337,11 +351,11 @@ describe("small-group suggestions integrated with the board", () => {
     expect(mocks.publish).not.toHaveBeenCalled()
   })
 
-  it("edits only suggestions, allows three temporarily, then checks a drag before confirming", async () => {
+  it("allows a manually edited three-person suggestion, and checks further drags before confirmation", async () => {
     suggest(); await render()
     for (const id of ["D", "E", "F"]) await click(`将 ${name(id)}移出建议 1`)
     expect(chips(suggestion())).toEqual(["A", "B", "C"])
-    expect(button("确认第 1 个4–6人建议组").disabled).toBe(true)
+    expect(button("确认第 1 个4–6人建议组").disabled).toBe(false)
     expect(chips(upper())).toEqual(poolIds)
     await drag(upper().querySelector('[data-member-id="D"]')!, suggestion())
     expect(mocks.inspectSuggestion).toHaveBeenCalledWith(expect.objectContaining({ memberIds: ["A", "B", "C", "D"], slot: SLOT }))
@@ -370,16 +384,16 @@ describe("small-group suggestions integrated with the board", () => {
     expect(chips(suggestion())).toEqual(poolIds)
   })
 
-  it("requires a confirmed small group to return to 4–6 before save", async () => {
+  it("allows saving an explicitly adjusted three-person small group with a size warning", async () => {
     const draft = groupDraft(props.boardSnapshot!.draft, ["A", "B", "C", "D"])
     draft.multiGroups![0].groupKind = "small"
     props.boardSnapshot = { ...props.boardSnapshot!, draft, rows: displayRows(draft) }
     await render()
     await drag(group().querySelector('[data-member-id="D"]')!, upper())
     expect(chips(group())).toEqual(["A", "B", "C"])
-    expect(middle().textContent).toContain("请调整为 4–6 人后保存")
+    expect(middle().textContent).toContain("已人工调整，可保存")
     await setReason()
-    expect(button("保存调整").disabled).toBe(true)
+    expect(button("保存调整").disabled).toBe(false)
     expect(button("确认发布").disabled).toBe(true)
   })
 
@@ -391,8 +405,94 @@ describe("small-group suggestions integrated with the board", () => {
   })
 })
 
+describe("manual creation and explicit group controls", () => {
+  it("offers a manual creator in both sections and creates a seven-person small group without saving or publishing", async () => {
+    await render()
+    const middle = document.querySelector('[aria-label="4–6人分组"]')!
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>("button")].filter((item) => item.textContent?.trim() === "手动新增小组")
+    expect(buttons).toHaveLength(2)
+    await act(async () => [...middle.querySelectorAll<HTMLButtonElement>("button")].find((item) => item.textContent?.trim() === "手动新增小组")!.click())
+    for (const id of [...poolIds, "U"]) await act(async () => document.querySelector<HTMLInputElement>(`[aria-label="手动分组选择 ${name(id)}"]`)!.click())
+    expect(document.body.textContent).toContain("当前 7 人，超出系统推荐")
+    await click("确认新小组")
+    expect(mocks.group).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ memberIds: [...poolIds, "U"], groupKind: "small", manuallyAdjusted: true, slot: SLOT }))
+    expect(chips(group())).toEqual([...poolIds, "U"])
+    expect(document.activeElement).toBe(group())
+    expect(document.querySelector('[aria-label="4–6人分组"]')!.textContent).toContain("已人工调整，可保存")
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+  })
+
+  it("creates an ordinary manual group through the time section", async () => {
+    await render()
+    const buttons = [...document.querySelectorAll<HTMLButtonElement>("button")].filter((item) => item.textContent?.trim() === "手动新增小组")
+    await act(async () => buttons[1].click())
+    for (const id of ["A", "B", "U"]) await act(async () => document.querySelector<HTMLInputElement>(`[aria-label="手动分组选择 ${name(id)}"]`)!.click())
+    await click("确认新小组")
+    expect(mocks.group).toHaveBeenCalledWith(expect.objectContaining({ memberIds: ["A", "B", "U"], manuallyAdjusted: true }))
+    expect(mocks.group.mock.calls[0][0].groupKind).toBeUndefined()
+    expect(group().closest('[aria-label="4–6人分组"]')).toBeNull()
+  })
+
+  it("explains dissolution, returns members to waiting, and supports undo", async () => {
+    useGroupedFixture(); await render()
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true)
+    await click("解散第 1 个多人小组")
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("成员将退回多人待分组区"))
+    expect(mocks.dissolve).toHaveBeenCalledWith(expect.objectContaining({ groupKey: "new-group" }))
+    expect(group()).toBeNull()
+    expect(chips(upper()).sort()).toEqual([...poolIds].sort())
+    expect(document.body.textContent).not.toContain("原安排已不在当前全员共同时间")
+    await click("撤销")
+    expect(chips(group())).toEqual(["A", "B", "C"])
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+  })
+
+  it("uses the server to change a formal group's recommendation", async () => {
+    useGroupedFixture(); await render()
+    const time = document.querySelector<HTMLSelectElement>('[aria-label="修改第 1 个多人小组的推荐时间"]')!
+    expect([...time.options].map((option) => option.value)).toEqual([SLOT, SLOT_TWO])
+    await act(async () => { time.value = SLOT_TWO; time.dispatchEvent(new Event("change", { bubbles: true })) })
+    expect(mocks.groupTime).toHaveBeenCalledWith(expect.objectContaining({ groupKey: "new-group", slot: SLOT_TWO }))
+    expect(group().textContent).toContain(format(SLOT_TWO))
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+  })
+})
+
 describe("saved publication review below the board", () => {
   const review = () => document.querySelector<HTMLElement>('[aria-label="发布前结果确认"]')!
+  async function enterMessage(value: string) {
+    const input = document.getElementById("board-unmatched-message") as HTMLTextAreaElement
+    await act(async () => { Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value")!.set!.call(input, value); input.dispatchEvent(new Event("input", { bubbles: true })) })
+  }
+  it("keeps public message edits local, invalidates the saved review, and lets one undo restore the previous message", async () => {
+    await render()
+    expect(document.body.textContent).toContain("当前待核对：2 人（含 1 人等待双人搭档）")
+    await enterMessage("工作人员会继续协调。")
+    await enterMessage("工作人员会继续协调。\n请留意站内通知。")
+    expect(review().textContent).toContain("未保存调整")
+    expect(button("导出 Excel").disabled).toBe(true)
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+    await click("撤销")
+    expect((document.getElementById("board-unmatched-message") as HTMLTextAreaElement).value).toBe("")
+    expect(review().querySelector("table")).not.toBeNull()
+  })
+  it("saves a message with the draft and shows the same text and recipients in the fresh review", async () => {
+    await render(); await enterMessage("后续请留意通知。\n谢谢参与。")
+    await setReason(); await click("保存调整")
+    expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ draft: expect.objectContaining({ unmatchedMessage: "后续请留意通知。\n谢谢参与。" }) }))
+    expect(review().textContent).toContain("后续请留意通知。")
+    expect(review().textContent).toContain("本次可接收 · 2 人")
+    expect(mocks.publish).not.toHaveBeenCalled()
+  })
+  it("counts Unicode characters and blocks an oversized message without truncating the player's intended text", async () => {
+    await render(); await setReason()
+    await enterMessage("🌿".repeat(300))
+    expect(button("保存调整").disabled).toBe(false)
+    await enterMessage("字".repeat(301))
+    expect(document.body.textContent).toContain("工作人员留言最多300字")
+    expect(button("保存调整").disabled).toBe(true)
+    expect(mocks.save).not.toHaveBeenCalled(); expect(mocks.publish).not.toHaveBeenCalled()
+  })
   it("shows the saved group rather than unconfirmed recommendations, and exports the reviewed version", async () => {
     mocks.recommend.mockResolvedValue({ success: true, recommendations: [{ key: "suggestion", memberIds: poolIds.slice(0, 4), bestSlot: SLOT, commonSlots: [SLOT] }] })
     await render()

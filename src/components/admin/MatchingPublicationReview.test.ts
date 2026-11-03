@@ -208,4 +208,32 @@ describe("saved publication review table", () => {
     expect(document.querySelector('[role="alert"]')?.textContent).toContain("仍有成员等待多人分组")
     expect(resultRows()).toHaveLength(3)
   })
+  it("reviews the saved public message and exact unmatched recipients, including waiting duo but excluding pending multi", async () => {
+    const review = fixture(); review.unmatchedMessage = "  后续继续协调\n<script>literal</script>  "
+    await render({ review })
+    const message = document.querySelector('[aria-label="未匹配工作人员留言"]')!
+    expect(message.textContent).toContain("后续继续协调\n<script>literal</script>")
+    expect(message.textContent).toContain("待核对接收范围 · 2 人（含等待双人搭档人员）")
+    expect(message.textContent).toContain("示例L、示例N")
+    expect(message.textContent).not.toContain("示例M")
+    expect(message.querySelector("script")).toBeNull()
+    await render({ blocked: true })
+    expect(document.querySelector('[aria-label="未匹配工作人员留言"]')).toBeNull()
+  })
+  it("omits an empty staff message and explains when a saved message currently has no recipients", async () => {
+    await render({ review: { ...fixture(), unmatchedMessage: " \n " } })
+    expect(document.querySelector('[aria-label="未匹配工作人员留言"]')).toBeNull()
+    await render({ review: { ...fixture(), unmatchedMessage: "后续协调", waitingDuo: [], unmatched: [] } })
+    expect(text()).toContain("当前没有未匹配接收人")
+  })
+  it("shows only the exact current publication recipients when the server provides them", async () => {
+    await render({ review: { ...fixture(), unmatchedMessage: "后续协调", messageRecipients: [member("N")] } })
+    const message = document.querySelector('[aria-label="未匹配工作人员留言"]')!
+    expect(message.textContent).toContain("本次可接收 · 1 人")
+    expect(message.textContent).toContain("示例N")
+    expect(message.textContent).not.toContain("示例L")
+    expect(message.textContent).not.toContain("待核对接收范围")
+    await render({ review: { ...fixture(), unmatchedMessage: "后续协调", messageRecipients: [] } })
+    expect(message.textContent).toContain("当前没有未匹配接收人")
+  })
 })

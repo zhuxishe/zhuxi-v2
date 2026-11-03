@@ -21,7 +21,7 @@ const numberOf = (number: number) => `ZXS_${String(number).padStart(3, "0")}`
 const sheetHeaders = {
   双人本配对结果: ["玩家姓名1", "玩家编号1", "性别偏向1", "玩家姓名2", "玩家编号2", "性别偏向2", "类型", "性别偏向", "best_slot", "双人所有可用时间段", "total_score", "备注", "input_source", "captured_at", "玩家性别"],
   多人本配对结果: ["组内玩家所有姓名", "组内玩家所有编号", "类型", "性别偏向（偏向男生人数vs偏向女生人数）", "best_slot", "多人组内所有可用共同时间段", "total_score", "备注", "input_source", "captured_at", "玩家性别"],
-  未匹配名单: ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "玩家性别", "未匹配成功原因"],
+  未匹配名单: ["玩家姓名", "玩家编号", "类型", "性别偏向", "备注", "input_source", "captured_at", "玩家性别", "未匹配成功原因", "工作人员留言"],
   结果发布: ["组别", "类型", "人数", "玩家姓名", "玩家编号", "推荐时间", "共同可用时间段", "玩家性别"],
 } as const
 const commonAvailability = { "2026-10-25": ["下午", "晚上"], "2026-10-26": ["上午"] }

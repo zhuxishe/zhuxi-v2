@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardMultiMove, previewBoardPair, previewBoardSmallGroupCandidates, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
+import { createBoardDraft, evaluateBoard, previewBoardGroup, previewBoardGroupMove, previewBoardGroupDissolve, previewBoardGroupTime, previewBoardMultiMove, previewBoardPair, previewBoardSmallGroupCandidates, rematchBoardDraft, validateBoardStructure, type BoardContext } from "./board-engine"
 import { inspectManualAdjustment } from "./adjustment-engine"
 import { pairKey } from "./pair-history"
 import type { BoardDraft, BoardSourceRow } from "./board-types"
@@ -25,6 +25,73 @@ function original(ctx: BoardContext, ids: string[], id: string, locked = false):
 }
 const draft = (ctx: BoardContext) => createBoardDraft(ctx.originalRows, ctx.cohortMemberIds)
 
+describe("manual group creation, dissolution and public draft message", () => {
+  it("creates a seven-person manual small group directly from unmatched, leaving unrelated pool times unchanged", () => {
+    const ctx = context(10)
+    original(ctx, ["1", "2", "3"], "pool")
+    ctx.engine.candidates.slice(3).forEach((member) => { member.availability = { "2026-11-01": ["晚上"] } })
+    const result = previewBoardGroup(ctx, draft(ctx), ["4", "5", "6", "7", "8", "9", "10"], "2026-11-01_晚上", "small", true)
+    expect(result.draft.multiGroups![0]).toMatchObject({ groupKind: "small", manuallyAdjusted: true, bestSlot: "2026-11-01_晚上" })
+    expect(result.draft.multi?.memberIds).toEqual(["1", "2", "3"])
+    expect(evaluateBoard(ctx, result.draft, true).changedRows[0].group_members).toHaveLength(7)
+    expect(ctx.originalRows[0].group_members).toEqual(["1", "2", "3"])
+  })
+  it("still rejects missing common time, duo-only members, locked members and blacklist pairs in manual groups", () => {
+    const ctx = context(7), ids = ctx.cohortMemberIds
+    ctx.engine.candidates[6].availability = { "2026-11-01": ["晚上"] }
+    expect(previewBoardGroup(ctx, draft(ctx), ids, "2026-10-31_下午", "small", true).passed).toBe(false)
+    ctx.engine.candidates[6].availability = { "2026-10-31": ["下午"] }
+    ctx.engine.candidates[6].gameTypePref = "双人"
+    expect(previewBoardGroup(ctx, draft(ctx), ids, "2026-10-31_下午", "small", true).passed).toBe(false)
+    ctx.engine.candidates[6].gameTypePref = "多人"
+    ctx.lockedMemberIds = ["7"]
+    expect(() => previewBoardGroup(ctx, draft(ctx), ids, "2026-10-31_下午", "small", true)).toThrow("已锁定")
+    ctx.lockedMemberIds = []
+    ctx.engine.pairRelations.push([pairKey("1", "7"), { playerA: "1", playerB: "7", status: "blacklist", totalPairCount: 1, hasMutualFive: false, reason: "fixture" }])
+    expect(previewBoardGroup(ctx, draft(ctx), ids, "2026-10-31_下午", "small", true).passed).toBe(false)
+    expect(() => previewBoardGroup(ctx, draft(ctx), ["1", "2"], "2026-10-31_下午", "small", true)).toThrow("至少需要3")
+  })
+  it("dissolves different-time groups into one unassigned candidate area without changing results until save", () => {
+    const ctx = context(6)
+    ctx.engine.candidates.slice(3).forEach((member) => { member.availability = { "2026-11-01": ["晚上"] } })
+    const a = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午", undefined, true).draft
+    const b = previewBoardGroup(ctx, a, ["4", "5", "6"], "2026-11-01_晚上", undefined, true).draft
+    const one = previewBoardGroupDissolve(ctx, b, b.multiGroups![0].key).draft
+    const none = previewBoardGroupDissolve(ctx, one, one.multiGroups![0].key).draft
+    expect(none.multi?.memberIds.sort()).toEqual(ctx.cohortMemberIds)
+    expect(evaluateBoard(ctx, none, true).changedRows).toEqual([])
+    expect(ctx.originalRows).toEqual([])
+  })
+  it("edits the recommended time only to a full-group shared slot and keeps locks authoritative", () => {
+    const ctx = context(4)
+    const grouped = previewBoardGroup(ctx, draft(ctx), ctx.cohortMemberIds, "2026-10-31_下午", "small", true).draft
+    const key = grouped.multiGroups![0].key
+    expect(previewBoardGroupTime(ctx, grouped, key, "2026-11-01_晚上").passed).toBe(false)
+    expect(previewBoardGroupTime(ctx, grouped, key, "2026-10-31_晚上").draft.multiGroups![0].bestSlot).toBe("2026-10-31_晚上")
+    original(ctx, ctx.cohortMemberIds, "locked", true)
+    ctx.originalLayout = { waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", smallGroupMemberIds: [ctx.cohortMemberIds] }
+    const locked = createBoardDraft(ctx.originalRows, ctx.cohortMemberIds, ctx.originalLayout)
+    expect(() => previewBoardGroupDissolve(ctx, locked, "locked")).toThrow("已锁定")
+    expect(() => previewBoardGroupTime(ctx, locked, "locked", "2026-10-31_晚上")).toThrow("已锁定")
+  })
+  it("restores manual markers and validates optional message length without assigning or publishing people", () => {
+    const ctx = context(7)
+    original(ctx, ctx.cohortMemberIds, "manual")
+    ctx.originalLayout = { waitingDuoIds: [], brokenPairs: [], multiMode: "grouped", smallGroupMemberIds: [ctx.cohortMemberIds], manualSmallGroupMemberIds: [[...ctx.cohortMemberIds].reverse()], unmatchedMessage: "  后续请留意通知。\n谢谢参与。  " }
+    const restored = createBoardDraft(ctx.originalRows, ctx.cohortMemberIds, ctx.originalLayout)
+    expect(restored.unmatchedMessage).toBe("后续请留意通知。\n谢谢参与。")
+    expect(restored.multiGroups![0].manuallyAdjusted).toBe(true)
+    expect(evaluateBoard(ctx, restored, true).keepResultIds).toEqual(["manual"])
+    const omitted = { ...restored }
+    delete omitted.unmatchedMessage
+    expect(() => evaluateBoard(ctx, omitted, true)).toThrow("工作人员留言已更新")
+    expect(evaluateBoard(ctx, { ...restored, unmatchedMessage: "" }, true).draft.unmatchedMessage).toBe("")
+    expect(() => validateBoardStructure(ctx, { ...restored, unmatchedMessage: "字".repeat(301) })).toThrow("最多300")
+    delete restored.multiGroups![0].manuallyAdjusted
+    expect(() => evaluateBoard(ctx, restored, true)).toThrow("人工调整")
+  })
+})
+
 describe("confirmed 4–6 person group boundaries", () => {
   it("persists an explicit group kind while ordinary time groups retain their old size range", () => {
     const ctx = context(11); original(ctx, ctx.cohortMemberIds, "pool")
@@ -36,13 +103,14 @@ describe("confirmed 4–6 person group boundaries", () => {
     expect(() => previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_下午", "small")).toThrow("4至6")
     expect(() => previewBoardGroup(ctx, draft(ctx), ["1", "2", "3", "4", "5", "6", "7"], "2026-10-31_下午", "small")).toThrow("4至6")
   })
-  it("allows temporary 3 and 7 person edits but blocks saving until the marked groups are repaired", () => {
+  it("allows administrator-adjusted 3 and 7 person groups while preserving explicit manual markers", () => {
     const ctx = context(10); original(ctx, ctx.cohortMemberIds, "pool")
     const first = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3", "4"], "2026-10-31_下午", "small")
     const both = previewBoardGroup(ctx, first.draft, ["5", "6", "7", "8", "9", "10"], "2026-10-31_下午", "small").draft
     const changed = previewBoardGroupMove(ctx, both, "4", both.multiGroups![1].key).draft
     expect(changed.multiGroups!.map((group) => group.memberIds.length)).toEqual([3, 7])
-    expect(() => evaluateBoard(ctx, changed, true)).toThrow("4–6人小组")
+    expect(changed.multiGroups!.every((group) => group.manuallyAdjusted)).toBe(true)
+    expect(evaluateBoard(ctx, changed, true).changedRows.map((row) => row.group_members?.length)).toEqual([3, 7])
     const fixed = previewBoardGroupMove(ctx, changed, "4", both.multiGroups![0].key).draft
     expect(evaluateBoard(ctx, fixed, true).changedRows).toHaveLength(2)
   })
@@ -295,11 +363,11 @@ describe("independent formal multiplayer groups", () => {
     expect(evaluateBoard(ctx, grouped, true).unmatchedIds).toEqual(["2", "3", "4"])
     expect(previewBoardGroup(ctx, grouped, ["2", "3", "4"], "2026-10-31_下午").passed).toBe(false)
   })
-  it("preserves the waiting pool anchor while permitting another valid time for a formal group", () => {
+  it("treats grouped waiting people as candidates while formal groups retain a valid shared slot", () => {
     const ctx = context(6); original(ctx, ctx.cohortMemberIds, "pool")
     const grouped = previewBoardGroup(ctx, draft(ctx), ["1", "2", "3"], "2026-10-31_晚上").draft
     grouped.multi!.bestSlot = "2026-10-31_晚上"
-    expect(() => evaluateBoard(ctx, grouped, true)).toThrow("不能改变共同时间")
+    expect(evaluateBoard(ctx, grouped, true).rows[0].best_slot).toBe("2026-10-31_晚上")
   })
   it("reloads saved group membership and separates waiting people from unmatched diagnostics", () => {
     const ctx = context(9); original(ctx, ["1", "2", "3"], "first"); original(ctx, ["4", "5", "6"], "second")

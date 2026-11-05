@@ -17,6 +17,10 @@ import { CancelRegistrationButton } from "./CancelRegistrationButton"
 import { MatchingProfileDialog } from "./MatchingProfileDialog"
 import { type MatchingProfileKind } from "@/lib/matching/profile-readiness"
 import { buildMatchingCompletionHref } from "@/lib/matching/completion-flow"
+import { RegistrationReviewDialog } from "./RegistrationReviewDialog"
+import { checkMatchingEntry } from "@/app/app/matching/survey/profile-actions"
+import { registrationReviewCopy } from "@/lib/registration-review-gate/copy"
+import type { RegistrationReviewBlocker } from "@/lib/registration-review-gate/types"
 
 interface Props {
   roundId: string
@@ -61,14 +65,33 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
   const [serverClosed, setServerClosed] = useState(false)
   const [missingProfiles, setMissingProfiles] = useState<MatchingProfileKind[] | null>(null)
   const [participationDenied, setParticipationDenied] = useState(false)
+  const [reviewCheck, setReviewCheck] = useState<{ blockers: RegistrationReviewBlocker[]; failed: boolean } | null>(null)
+  const [reviewChecking, setReviewChecking] = useState(false)
   const inFlight = useRef(false)
+  const reviewInFlight = useRef(false)
   const window = { status: "open", survey_start: surveyStart, survey_end: surveyEnd }
   const windowState = useSurveyWindow(window, initialNow)
   const unavailable = windowState !== "open" || serverClosed
-  const blocked = unavailable || missingProfiles !== null || participationDenied
+  const blocked = unavailable || missingProfiles !== null || participationDenied || reviewCheck !== null
   const needsTime = purpose === "matching" && !Object.values(value.availability).some((slots) => slots.length > 0)
   const registered = purpose === "registration" && Boolean(existing) && !existing?.cancelled_at
   const unchanged = registered && !registrationAnswersChanged(config.questions, existing?.custom_answers ?? {}, value.customAnswers)
+
+  async function retryReviewCheck() {
+    if (reviewInFlight.current) return
+    reviewInFlight.current = true
+    setReviewChecking(true)
+    try {
+      const result = await checkMatchingEntry(roundId)
+      if (result.state === "reviews_required") setReviewCheck({ blockers: result.blockers, failed: false })
+      else if (result.state === "continue") { setReviewCheck(null); setError(null) }
+      else if (result.state === "incomplete") { setReviewCheck(null); setMissingProfiles(result.missing) }
+      else setReviewCheck({ blockers: [], failed: true })
+    } catch (error) {
+      unstable_rethrow(error)
+      setReviewCheck({ blockers: [], failed: true })
+    } finally { reviewInFlight.current = false; setReviewChecking(false) }
+  }
 
   async function handleSubmit() {
     if (inFlight.current || cancelling || blocked || unchanged || purpose === "announcement") return
@@ -87,6 +110,13 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
         }),
       })
       if (res.error) {
+        if (res.error === "registrationReviewRequired" || res.error === "registrationReviewCheckFailed") {
+          const blockers = res.reviewBlockers ?? []
+          setReviewCheck({ blockers, failed: res.error === "registrationReviewCheckFailed" || blockers.length === 0 })
+          const copy = registrationReviewCopy(locale)
+          setError(res.error === "registrationReviewRequired" && blockers.length > 0 ? copy.title : copy.failed)
+          return
+        }
         if (res.error === "roundParticipationNotAllowed") setParticipationDenied(true)
         if (res.error === "matchingProfileIncomplete" && "missingProfiles" in res) setMissingProfiles(res.missingProfiles ?? [])
         if (["surveyExpired", "surveyClosed", "surveyNotStarted", "roundNotFound", "surveyUpdated", "surveyReadOnly", "registrationChanged"].includes(res.error)) setServerClosed(true)
@@ -105,6 +135,9 @@ export function SurveyForm({ roundId, roundName, surveyStart, surveyEnd, initial
 
   return (
     <div className="space-y-6 pb-4">
+      <RegistrationReviewDialog open={reviewCheck !== null} roundId={roundId} fromParticipation={fromParticipation}
+        blockers={reviewCheck?.blockers ?? []} failed={reviewCheck?.failed} busy={reviewChecking}
+        onCancel={() => setReviewCheck(null)} onRetry={() => retryReviewCheck()} />
       <MatchingProfileDialog open={missingProfiles !== null} missing={missingProfiles ?? []}
         onCancel={() => setMissingProfiles(null)}
         onRetry={() => router.refresh()}

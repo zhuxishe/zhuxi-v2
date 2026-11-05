@@ -52,6 +52,8 @@ export interface ActivityReviewRound {
   closesAt: string | null
   reviewedCount: number
   hasSubmittedFeedback?: boolean
+  reviewRequired?: boolean
+  lateReview?: boolean
   participantCount: number
   canReview: boolean
   canReport: boolean

@@ -13,6 +13,8 @@ import { fetchMyMatchingReadiness } from "@/lib/matching/readiness-server"
 import { getRoundSubmissionAccess } from "@/lib/matching/round-submission-access"
 import { MatchingCompletionRetry } from "@/components/player/MatchingCompletionRetry"
 import { MatchingProfileGate } from "@/components/player/MatchingProfileGate"
+import { RegistrationReviewGate } from "@/components/player/RegistrationReviewGate"
+import { fetchRegistrationReviewGate } from "@/lib/registration-review-gate/server"
 
 function BackLink({ label, href }: { label: string; href: string }) {
   return (
@@ -94,6 +96,20 @@ export default async function SurveyPage({ searchParams }: { searchParams: Promi
     if (readiness.missing.length) {
       return <MatchingProfileGate roundId={round.id} fromParticipation={fromParticipation} backHref={backHref} missing={readiness.missing} />
     }
+  }
+
+  // Editing an active registration is not a new signup. Rejoining a cancelled
+  // registration is, and must use the same check as the first submission.
+  if (getRoundPurpose(round.purpose) !== "announcement" && (!existing || existing.cancelled_at)) {
+    let reviewGate
+    try {
+      reviewGate = await fetchRegistrationReviewGate(round.id)
+    } catch {
+      return <RegistrationReviewGate roundId={round.id} fromParticipation={fromParticipation}
+        backHref={backHref} blockers={[]} failed />
+    }
+    if (reviewGate.blockers.length) return <RegistrationReviewGate roundId={round.id} fromParticipation={fromParticipation}
+      backHref={backHref} blockers={reviewGate.blockers} />
   }
 
   return (

@@ -28,7 +28,7 @@ export function mapActivityReport(value: unknown, admin = false): ActivityReport
 }
 export function mapReviewRound(value: unknown): ActivityReviewRound {
   const r = record(value), settings = mapReviewSettings(r.settings ?? { ...r, roster_confirmed: true })
-  return { roundId: text(r.round_id), title: text(r.round_name), status: reviewWindowStatus(settings), opensAt: settings.opensAt, closesAt: settings.closesAt, reviewedCount: number(r.reviewed_count), hasSubmittedFeedback: r.has_submitted_feedback === true || number(r.reviewed_count) > 0, participantCount: number(r.participant_count), canReview: r.can_review === true, canReport: r.can_report === true }
+  return { roundId: text(r.round_id), title: text(r.round_name), status: reviewWindowStatus(settings), opensAt: settings.opensAt, closesAt: settings.closesAt, reviewedCount: number(r.reviewed_count), hasSubmittedFeedback: r.has_submitted_feedback === true || number(r.reviewed_count) > 0, reviewRequired: r.review_required === true, lateReview: r.late_review === true, participantCount: number(r.participant_count), canReview: r.can_review === true, canReport: r.can_report === true }
 }
 export function mapReviewContext(value: unknown, search = ""): ActivityReviewContext {
   const r = record(value), settings = mapReviewSettings(r.settings)

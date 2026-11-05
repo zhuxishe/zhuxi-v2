@@ -22,7 +22,8 @@ export async function submitActivityReviewAction(input: SubmitActivityReviewInpu
       p_report_category: input.report?.category ?? null, p_report_details: input.report?.detail.trim() ?? null, p_report_version: input.report?.expectedVersion ?? 0,
       p_request_id: input.requestId ?? null,
     }))
-    revalidatePath("/app")
+    revalidatePath("/app", "layout")
+    revalidatePath("/app/matching/survey")
     revalidatePath("/app/matches")
     revalidatePath(`/app/matches/rounds/${input.roundId}`)
     revalidatePath(`/app/matches/rounds/${input.roundId}/reviews`)

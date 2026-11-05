@@ -82,6 +82,9 @@ export async function submitReview(input: ReviewInput) {
     return { error: "saveFailed" }
   }
 
+  revalidatePath("/app", "layout")
+  revalidatePath("/app/matching/survey")
+  revalidatePath("/admin/activity-reviews")
   revalidatePath("/app/matches")
   revalidatePath(`/app/matches/${input.match_result_id}`)
   return { success: true }

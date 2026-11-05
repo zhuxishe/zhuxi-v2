@@ -3180,6 +3180,24 @@ export type Database = {
       }
     }
     Functions: {
+      player_get_registration_review_gate: {
+        Args: { p_round_id: string }
+        Returns: Json
+      }
+      admin_get_round_review_requirements: {
+        Args: { p_round_id: string }
+        Returns: Json
+      }
+      admin_set_round_review_exemption: {
+        Args: {
+          p_round_id: string
+          p_member_id: string
+          p_exempt: boolean
+          p_reason: string
+          p_expected_version: number
+        }
+        Returns: Json
+      }
       get_my_test_round_ids: {
         Args: Record<PropertyKey, never>
         Returns: string[]

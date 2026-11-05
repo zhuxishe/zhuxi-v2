@@ -2,10 +2,11 @@ import { getLocale } from "next-intl/server"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchActivityReviewContext } from "@/lib/activity-reviews/queries"
 import { ActivityReviewPageContent } from "@/components/player/activity-reviews/ActivityReviewPageContent"
+import { parseRegistrationReturnContext } from "@/lib/registration-review-gate/navigation"
 
 export default async function ActivityReviewsPage({ params, searchParams }: {
   params: Promise<{ roundId: string }>
-  searchParams: Promise<{ search?: string | string[]; page?: string | string[] }>
+  searchParams: Promise<{ search?: string | string[]; page?: string | string[]; returnRound?: string | string[]; from?: string | string[] }>
 }) {
   await requirePlayer()
   const [{ roundId }, query, locale] = await Promise.all([params, searchParams, getLocale()])
@@ -15,5 +16,5 @@ export default async function ActivityReviewsPage({ params, searchParams }: {
   let context = await fetchActivityReviewContext(roundId, search, page)
   const lastPage = Math.max(1, Math.ceil(context.total / context.pageSize))
   if (context.page > lastPage) context = await fetchActivityReviewContext(roundId, search, lastPage)
-  return <ActivityReviewPageContent key={`${roundId}:${context.search}:${context.page}:${context.settings.version}`} context={context} locale={locale} />
+  return <ActivityReviewPageContent key={`${roundId}:${context.search}:${context.page}:${context.settings.version}`} context={context} locale={locale} registrationReturn={parseRegistrationReturnContext(query)} />
 }

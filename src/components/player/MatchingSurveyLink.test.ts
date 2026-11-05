@@ -6,6 +6,7 @@ vi.mock("next/navigation", async (original) => ({ ...await original<typeof impor
 vi.mock("@/app/app/matching/survey/profile-actions", () => ({ checkMatchingEntry: mocks.check }))
 import { MatchingSurveyLink } from "./MatchingSurveyLink"
 import { MatchingProfileDialog } from "./MatchingProfileDialog"
+import { RegistrationReviewDialog } from "./RegistrationReviewDialog"
 const id = "429eea31-9986-42a8-b2b9-67f792e07173"
 const href = `/app/matching/survey?round=${id}&from=participation`
 let states: unknown[], refs: { current: unknown }[], cursor: number, refCursor: number
@@ -17,6 +18,11 @@ function children(tree = render()) { return tree.props.children as ReactNode[] }
 function dialog() {
   const item = children().find((node) => isValidElement(node) && node.type === MatchingProfileDialog)
   if (!isValidElement<Parameters<typeof MatchingProfileDialog>[0]>(item)) throw new Error("Missing dialog")
+  return item.props
+}
+function reviewDialog() {
+  const item = children().find((node) => isValidElement(node) && node.type === RegistrationReviewDialog)
+  if (!isValidElement<Parameters<typeof RegistrationReviewDialog>[0]>(item)) throw new Error("Missing review dialog")
   return item.props
 }
 function click(target = href, modifier = false) {
@@ -68,5 +74,25 @@ describe("matching entry interaction", () => {
     expect(click("/app/profile").preventDefault).not.toHaveBeenCalled()
     expect(click(href, true).preventDefault).not.toHaveBeenCalled()
     expect(mocks.check).not.toHaveBeenCalled()
+  })
+  it("opens the review dialog with all outstanding activities and cancel stays on the entry", async () => {
+    const blockers = [{ round_id: "activity-a" }, { round_id: "activity-b" }]
+    mocks.check.mockResolvedValue({ state: "reviews_required", roundId: id, blockers })
+    click(); await Promise.resolve()
+    expect(reviewDialog()).toMatchObject({ open: true, roundId: id, blockers, fromParticipation: true, failed: false })
+    expect(dialog().open).toBe(false)
+    expect(mocks.push).not.toHaveBeenCalled()
+    reviewDialog().onCancel()
+    expect(reviewDialog().open).toBe(false)
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+  it("rechecks a review read failure and navigates only when the check clears", async () => {
+    mocks.check.mockResolvedValueOnce({ state: "review_failed", roundId: id }).mockResolvedValueOnce({ state: "continue" })
+    click(); await Promise.resolve()
+    expect(reviewDialog()).toMatchObject({ open: true, failed: true, blockers: [] })
+    expect(mocks.push).not.toHaveBeenCalled()
+    reviewDialog().onRetry(); await Promise.resolve()
+    expect(reviewDialog().open).toBe(false)
+    expect(mocks.push).toHaveBeenCalledWith(href)
   })
 })

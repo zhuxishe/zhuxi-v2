@@ -11,11 +11,23 @@ import { registrationOperationError } from "@/lib/matching/registration-operatio
 import { fetchMyMatchingReadiness } from "@/lib/matching/readiness-server"
 import type { MatchingProfileKind } from "@/lib/matching/profile-readiness"
 import { getRoundSubmissionAccess } from "@/lib/matching/round-submission-access"
+import { fetchRegistrationReviewGate } from "@/lib/registration-review-gate/server"
+import type { RegistrationReviewBlocker } from "@/lib/registration-review-gate/types"
 
 interface SurveySubmissionResult {
   success?: true
   error?: string
   missingProfiles?: MatchingProfileKind[]
+  reviewBlockers?: RegistrationReviewBlocker[]
+}
+
+async function registrationReviewError(roundId: string): Promise<SurveySubmissionResult | null> {
+  try {
+    const { blockers } = await fetchRegistrationReviewGate(roundId)
+    return blockers.length ? { error: "registrationReviewRequired", reviewBlockers: blockers } : null
+  } catch {
+    return { error: "registrationReviewCheckFailed" }
+  }
 }
 
 async function matchingProfileError() {
@@ -74,6 +86,12 @@ export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubm
     || (input.registrationIntent && input.registrationIntent !== "create" && !Object.hasOwn(input, "expectedUpdatedAt"))
     || (input.expectedUpdatedAt != null && (typeof input.expectedUpdatedAt !== "string" || !Number.isFinite(Date.parse(input.expectedUpdatedAt))))
   )) return { error: "invalidSurveyInput" }
+  const newRegistration = round.purpose === "registration"
+    ? input.registrationIntent !== "update" : !input.submissionId
+  if (newRegistration) {
+    const reviewError = await registrationReviewError(round.id)
+    if (reviewError) return reviewError
+  }
   const { error } = round.purpose === "registration" ? await supabase.rpc("manage_my_registration", {
     p_round_id: input.roundId, p_operation: input.registrationIntent ?? "create",
     p_expected_updated_at: input.expectedUpdatedAt ?? null,
@@ -90,6 +108,11 @@ export async function submitSurvey(input: SubmitSurveyInput): Promise<SurveySubm
 
   if (error) {
     console.error("[submitSurvey] save", error)
+    if (error.message?.includes("REGISTRATION_REVIEW_REQUIRED")) {
+      // Re-read current obligations rather than trusting stale preflight data.
+      // If the obligation cleared meanwhile, ask for a retry; this write failed.
+      return await registrationReviewError(round.id) ?? { error: "registrationReviewCheckFailed" }
+    }
     if (error.message === "TEST_ROUND_MEMBER_NOT_ALLOWED") {
       return { error: "roundParticipationNotAllowed" }
     }

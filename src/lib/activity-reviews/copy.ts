@@ -1,4 +1,8 @@
 const zh = {
+  lateEntry: "补交本场评分", lateStatus: "可补评", lateComplete: "补评已完成",
+  lateHint: "正常评价时间已截止。你仍可给一位实际交流过的参与者补交评分，完成本场的报名评分要求；文字选填。",
+  lateSavedHint: "本场评分已完成。补评机会已使用，你仍可查看记录和提交举报。",
+  lateEditingHint: "本次补评提交后不能修改，请确认分数后保存。",
   confirm: "确定", onePointTitle: "确认 1.0 分评价", onePointSubmitTitle: "确认提交人工审查",
   onePointConfirmDescription: "1.0分默认对方存在恶意行为，不适合社团健康发展行为，并自动进行举报。请问仍要提交1分的评价吗？",
   onePointSubmitDescription: "提交1.0分评价或举报时候，将自动接入人工审查。为确保社团良性发展，您和对方或许只能保留一位成员继续在社团活动。请问仍要进行举报吗？",
@@ -26,6 +30,10 @@ const zh = {
 }
 
 const ja: typeof zh = {
+  lateEntry: "未提出の評価を送信", lateStatus: "期限後の提出可", lateComplete: "期限後の提出済み",
+  lateHint: "通常の評価期間は終了しました。実際に交流した参加者を一人評価すると、このイベントの評価要件を満たせます。コメントは任意です。",
+  lateSavedHint: "このイベントの評価は完了しました。期限後の提出は一度限りです。記録の閲覧と通報は引き続き可能です。",
+  lateEditingHint: "期限後に提出した評価は変更できません。点数を確認してから保存してください。",
   confirm: "確認", onePointTitle: "1.0 点の評価を確認", onePointSubmitTitle: "管理者による確認への送信",
   onePointConfirmDescription: "1.0 点は、相手に悪意ある行為やサークルの健全な発展にそぐわない行為があったことを意味し、自動的に通報の対象となります。それでも 1 点の評価を送信しますか？",
   onePointSubmitDescription: "1.0 点の評価または通報を送信すると、管理者による確認の対象となります。サークルの健全な運営のため、あなたと相手のうち、どちらか一人だけが活動を継続できることがあります。それでも通報しますか？",

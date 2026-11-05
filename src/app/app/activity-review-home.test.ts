@@ -48,6 +48,17 @@ describe("home event review entry", () => {
     expect(find(page, (props) => Boolean(props.action))?.action?.href).not.toBe("/app/matches#participation")
   })
 
+  it("keeps required activities pending after report-only feedback and after the ordinary deadline", async () => {
+    mocks.rounds = [
+      { ...round, roundId: "required-open", reviewRequired: true, reviewedCount: 0, hasSubmittedFeedback: true },
+      { ...round, roundId: "required-late", reviewRequired: true, lateReview: true, status: "closed", reviewedCount: 0 },
+      { ...round, roundId: "paused", reviewRequired: true, status: "paused", canReview: false, reviewedCount: 0 },
+      { ...round, roundId: "done", reviewRequired: true, reviewedCount: 1 },
+    ]
+    const page = await PlayerHomePage()
+    expect(find(page, (props) => props.pendingReviewCount !== undefined)?.pendingReviewCount).toBe(2)
+  })
+
   it("keeps the shortcut usable with no open activity and uses Japanese activity-based copy", async () => {
     mocks.locale = "ja"
     let page = await PlayerHomePage()

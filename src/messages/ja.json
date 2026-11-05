@@ -1368,6 +1368,8 @@
     "matchPublicationChanged": "マッチング情報が撤回または更新されました。更新後にご確認ください。入力内容は保持されています。",
     "matchingProfileIncomplete": "プロフィールのアンケートを完了してから、マッチングにお申し込みください。",
     "matchingProfileCheckFailed": "プロフィールの完了状況を確認できませんでした。もう一度お試しください。",
+    "registrationReviewRequired": "終了したイベントの評価を完了してからお申し込みください。",
+    "registrationReviewCheckFailed": "イベントの評価状況を確認できません。もう一度お試しください。",
     "saveFailed": "保存に失敗しました。後でお試しください",
     "submitFailed": "送信に失敗しました。後でお試しください",
     "networkError": "ネットワークエラー。接続を確認してください",

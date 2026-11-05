@@ -81,7 +81,8 @@ describe("peer feedback server action boundary", () => {
     expect(result.report).toMatchObject({ category: "privacy", version: 2 })
     expect(result.report).not.toHaveProperty("internalNote")
     expect(result.report).not.toHaveProperty("reporterId")
-    expect(mocks.revalidate).toHaveBeenCalledWith("/app")
+    expect(mocks.revalidate).toHaveBeenCalledWith("/app", "layout")
+    expect(mocks.revalidate).toHaveBeenCalledWith("/app/matching/survey")
     expect(mocks.revalidate).toHaveBeenCalledWith("/admin/activity-reviews")
   })
   it("leaves a concurrently moderated report untouched and returns a useful error", async () => {

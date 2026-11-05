@@ -8,9 +8,12 @@ import { activityReviewCopy } from "@/lib/activity-reviews/copy"
 import type { ActivityReviewActionResult, ActivityReviewContext } from "@/lib/activity-reviews/types"
 import { ActivityReviewEditor, formatActivityReviewTime, type ActivityReviewAction, type ActivityReviewDraft } from "./ActivityReviewEditor"
 import { ActivityReviewHistory } from "./ActivityReviewHistory"
+import { ReviewRegistrationReturn } from "@/components/player/ReviewRegistrationReturn"
+import type { RegistrationReturnContext } from "@/lib/registration-review-gate/navigation"
 
-export function ActivityReviewPageContent({ context, locale, action, initialSelectedMemberId = null }: {
+export function ActivityReviewPageContent({ context, locale, action, initialSelectedMemberId = null, registrationReturn = null }: {
   context: ActivityReviewContext; locale: string; action?: ActivityReviewAction; initialSelectedMemberId?: string | null
+  registrationReturn?: RegistrationReturnContext | null
 }) {
   const copy = activityReviewCopy(locale)
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedMemberId)
@@ -27,18 +30,26 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
     if (result.review) ownReviews.set(memberId, result.review)
     if (result.report) ownReports.set(memberId, result.report)
   }
-  const targetById = new Map(context.participants.map((participant) => [participant.memberId, { memberId: participant.memberId, fullName: participant.fullName, nickname: participant.nickname, canReview: context.canReview, canReport: context.canReport }]))
+  const canReview = context.canReview && (!context.lateReview || ownReviews.size === 0)
+  const targetById = new Map(context.participants.map((participant) => [participant.memberId, { memberId: participant.memberId, fullName: participant.fullName, nickname: participant.nickname, canReview, canReport: context.canReport }]))
   for (const target of context.historyTargets ?? []) targetById.set(target.memberId, target)
-  const historyTargets = context.eligible ? [...targetById.values()].map((target) => ({ ...target, canReview: target.canReview && context.canReview, canReport: target.canReport && context.canReport })) : []
+  const historyTargets = context.eligible ? [...targetById.values()].map((target) => ({ ...target, canReview: target.canReview && canReview, canReport: target.canReport && context.canReport })) : []
   const historyTarget = historyTargets.find((target) => target.memberId === historySelection?.memberId)
   const historyParticipant = historyTarget ? { ...historyTarget, review: ownReviews.get(historyTarget.memberId) ?? null, report: ownReports.get(historyTarget.memberId) ?? null } : null
   const originalReviews = new Set((context.ownReviews ?? context.participants.flatMap((participant) => participant.review ? [participant.review] : [])).map((review) => review.revieweeId))
   const reviewedCount = context.reviewedCount + Object.entries(updates).filter(([memberId, result]) => result.review && !originalReviews.has(memberId)).length
   const baseHref = `/app/matches/rounds/${encodeURIComponent(context.roundId)}/reviews`
   const pages = Math.max(1, Math.ceil(context.total / context.pageSize))
+  const returnQuery = new URLSearchParams()
+  if (registrationReturn) {
+    returnQuery.set("returnRound", registrationReturn.roundId)
+    if (registrationReturn.fromParticipation) returnQuery.set("from", "participation")
+  }
+  const clearHref = returnQuery.size ? `${baseHref}?${returnQuery}` : baseHref
   function pageHref(page: number) {
     const params = new URLSearchParams({ page: String(page) })
     if (context.search) params.set("search", context.search)
+    for (const [key, value] of returnQuery) params.set(key, value)
     return `${baseHref}?${params}`
   }
   function selectParticipant(memberId: string) {
@@ -71,7 +82,7 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
   return <div className="mx-auto max-w-2xl space-y-5 px-4 pb-8 pt-3">
     <Link href="/app/matches#participation" className="-ml-2 inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"><ArrowLeft className="size-4" aria-hidden="true" />{copy.back}</Link>
     <header className="space-y-3">
-      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-primary">{copy.title}</p><span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${context.status === "open" ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{copy.state[context.status]}</span></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs font-semibold text-primary">{copy.title}</p><span className={`rounded-full px-2.5 py-1 text-[11px] font-medium ${canReview ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"}`}>{context.lateReview ? canReview ? copy.lateStatus : copy.lateComplete : copy.state[context.status]}</span></div>
       <h1 className="heading-display break-words text-2xl font-semibold leading-8">{context.title || copy.title}</h1>
       <p className="text-sm leading-6 text-muted-foreground">{copy.intro}</p>
       <div className="space-y-1 text-xs leading-5 text-muted-foreground">
@@ -79,18 +90,22 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
         {context.closesAt && <p>{copy.closesAt} · {formatActivityReviewTime(context.closesAt, locale)}</p>}
       </div>
     </header>
+    <ReviewRegistrationReturn context={registrationReturn} locale={locale} completed={reviewedCount > 0} busy={editorBusy} />
     <div className="rounded-2xl border border-primary/10 bg-primary/5 p-4">
       <p className="flex items-center gap-2 text-sm font-semibold text-primary"><Check className="size-4" aria-hidden="true" />{copy.reviewed(reviewedCount)}</p>
       <p className="mt-2 text-xs leading-5 text-muted-foreground">{copy.privacy}</p>
     </div>
     {!context.eligible || context.status === "unavailable" ? <p role="status" className="rounded-2xl border border-dashed border-border p-5 text-sm leading-6 text-muted-foreground">{copy.unavailableHint}</p> : <>
-      {!context.canReview && <p role="status" className="rounded-xl bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">{copy.closedHint}</p>}
+      {context.lateReview ? <p role="status" className="rounded-xl bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">{canReview ? copy.lateHint : copy.lateSavedHint}</p>
+        : !canReview && <p role="status" className="rounded-xl bg-muted/60 p-3 text-xs leading-5 text-muted-foreground">{copy.closedHint}</p>}
       <section aria-labelledby="activity-review-participants" className="space-y-3">
         <div className="flex items-center justify-between gap-2"><h2 id="activity-review-participants" className="text-base font-semibold">{copy.select}</h2><span className="text-xs text-muted-foreground">{copy.participants(context.participantCount)}</span></div>
         <form action={baseHref} method="get" className="space-y-2" role="search">
+          {registrationReturn && <input type="hidden" name="returnRound" value={registrationReturn.roundId} />}
+          {registrationReturn?.fromParticipation && <input type="hidden" name="from" value="participation" />}
           <label htmlFor="activity-review-search" className="sr-only">{copy.search}</label>
           <div className="flex gap-2"><div className="relative min-w-0 flex-1"><Search className="pointer-events-none absolute left-3 top-3.5 size-4 text-muted-foreground" aria-hidden="true" /><input id="activity-review-search" name="search" defaultValue={context.search} maxLength={80} placeholder={copy.searchPlaceholder} className="min-h-11 w-full rounded-xl border border-border bg-card py-2.5 pl-9 pr-3 text-sm outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20" /></div><button type="submit" className="min-h-11 shrink-0 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2">{copy.searchButton}</button></div>
-          {context.search && <Link href={baseHref} className="inline-flex min-h-11 items-center text-xs font-medium text-primary underline underline-offset-4">{copy.clear}</Link>}
+          {context.search && <Link href={clearHref} className="inline-flex min-h-11 items-center text-xs font-medium text-primary underline underline-offset-4">{copy.clear}</Link>}
         </form>
         {participants.length ? <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {participants.map((participant) => <button key={participant.memberId} type="button" onClick={() => selectParticipant(participant.memberId)} aria-pressed={selectedId === participant.memberId} disabled={editorBusy}
@@ -105,7 +120,7 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
           {context.page < pages ? <Link href={pageHref(context.page + 1)} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-primary">{copy.next}<ChevronRight className="size-4" aria-hidden="true" /></Link> : <span />}
         </nav>}
       </section>
-      {!historySelection && (selected ? <ActivityReviewEditor key={selected.memberId} roundId={context.roundId} participant={selected} canReview={context.canReview} canReport={context.canReport} locale={locale} action={action}
+      {!historySelection && (selected ? <ActivityReviewEditor key={selected.memberId} roundId={context.roundId} participant={selected} canReview={canReview} canReport={context.canReport} lateReview={context.lateReview} locale={locale} action={action}
         draft={drafts[selected.memberId]} onDraftChange={(draft) => setDrafts((previous) => ({ ...previous, [selected.memberId]: draft }))} onBusyChange={setEditorBusy}
         onSaved={(result) => saveResult(selected.memberId, result)} />
         : participants.length > 0 && <div className="space-y-2 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-center"><p className="text-sm font-medium">{copy.choose}</p><p className="text-xs leading-5 text-muted-foreground">{copy.chooseHint}</p></div>)}

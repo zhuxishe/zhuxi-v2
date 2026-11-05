@@ -1,19 +1,21 @@
 import { isValidElement, type ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ submit: vi.fn(), push: vi.fn(), window: vi.fn(), useState: vi.fn(), useRef: vi.fn() }))
+const mocks = vi.hoisted(() => ({ submit: vi.fn(), push: vi.fn(), window: vi.fn(), useState: vi.fn(), useRef: vi.fn(), entry: vi.fn() }))
 vi.mock("react", async (original) => ({ ...await original<typeof import("react")>(), useState: mocks.useState, useRef: mocks.useRef, useEffect: vi.fn() }))
 vi.mock("next/navigation", async (original) => ({ ...await original<typeof import("next/navigation")>(), useRouter: () => ({ push: mocks.push }) }))
 vi.mock("next-intl", () => ({ useLocale: () => "zh", useTranslations: () => Object.assign((key: string) => key, { has: () => true }) }))
 vi.mock("@/lib/i18n/use-tag-labels", () => ({ useTagLabels: () => ({}) }))
 vi.mock("@/lib/matching/use-survey-window", () => ({ useSurveyWindow: mocks.window }))
 vi.mock("@/app/app/matching/survey/actions", () => ({ submitSurvey: mocks.submit }))
+vi.mock("@/app/app/matching/survey/profile-actions", () => ({ checkMatchingEntry: mocks.entry }))
 vi.mock("@/app/app/matching/survey/cancellation-actions", () => ({ cancelRegistration: vi.fn() }))
 import { SurveyForm } from "./SurveyForm"
 import { SurveyActionBar } from "./SurveyActionBar"
 import { RoundFormFields } from "./RoundFormFields"
 import { CancelRegistrationButton } from "./CancelRegistrationButton"
 import { MatchingProfileDialog } from "./MatchingProfileDialog"
+import { RegistrationReviewDialog } from "./RegistrationReviewDialog"
 import { Button } from "@/components/ui/button"
 import { normalizeRoundConfig } from "@/lib/matching/round-config"
 
@@ -141,6 +143,36 @@ describe("editing an existing activity registration", () => {
     expect(find<Parameters<typeof MatchingProfileDialog>[0]>(matching(), MatchingProfileDialog)!.open).toBe(false)
     expect(fields(matching()).value.message).toBe("保留当前答案")
     expect(bar(matching()).disabled).toBe(false)
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+  it("preserves unsaved answers when a new signup is blocked, cancelled, and checked again", async () => {
+    const signup = () => render({ existing: null })
+    const form = fields(signup())
+    form.onChange({ ...form.value, customAnswers: { note: "保留新报名备注" } })
+    const blockers = [{ round_id: "previous-activity" }]
+    mocks.submit.mockResolvedValue({ error: "registrationReviewRequired", reviewBlockers: blockers })
+    await bar(signup()).onSubmit()
+    let dialog = find<Parameters<typeof RegistrationReviewDialog>[0]>(signup(), RegistrationReviewDialog)!
+    expect(dialog).toMatchObject({ open: true, blockers, failed: false })
+    expect(bar(signup()).disabled).toBe(true)
+    dialog.onCancel()
+    expect(fields(signup()).value.customAnswers.note).toBe("保留新报名备注")
+    expect(bar(signup()).disabled).toBe(false)
+    await bar(signup()).onSubmit()
+    dialog = find<Parameters<typeof RegistrationReviewDialog>[0]>(signup(), RegistrationReviewDialog)!
+    mocks.entry.mockResolvedValue({ state: "continue" })
+    await dialog.onRetry()
+    expect(find<Parameters<typeof RegistrationReviewDialog>[0]>(signup(), RegistrationReviewDialog)!.open).toBe(false)
+    expect(fields(signup()).value.customAnswers.note).toBe("保留新报名备注")
+    expect(mocks.submit).toHaveBeenCalledTimes(2)
+    expect(mocks.push).not.toHaveBeenCalled()
+  })
+  it("shows a failed review check as retryable, without inventing an unpaid review obligation", async () => {
+    const signup = () => render({ existing: null })
+    mocks.submit.mockResolvedValue({ error: "registrationReviewCheckFailed" })
+    await bar(signup()).onSubmit()
+    const dialog = find<Parameters<typeof RegistrationReviewDialog>[0]>(signup(), RegistrationReviewDialog)!
+    expect(dialog).toMatchObject({ open: true, failed: true, blockers: [] })
     expect(mocks.push).not.toHaveBeenCalled()
   })
 })

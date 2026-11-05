@@ -9,6 +9,7 @@ vi.mock("@/lib/i18n/use-tag-labels", () => ({ useTagLabels: () => ({}) }))
 vi.mock("@/lib/matching/use-survey-window", () => ({ useSurveyWindow: mocks.window }))
 vi.mock("@/app/app/matching/survey/cancellation-actions", () => ({ cancelRegistration: vi.fn() }))
 vi.mock("@/app/app/matching/survey/actions", () => ({ submitSurvey: mocks.submit }))
+vi.mock("@/app/app/matching/survey/profile-actions", () => ({ checkMatchingEntry: vi.fn() }))
 import { SurveyForm } from "./SurveyForm"
 import { SurveyActionBar } from "./SurveyActionBar"
 import { normalizeRoundConfig } from "@/lib/matching/round-config"

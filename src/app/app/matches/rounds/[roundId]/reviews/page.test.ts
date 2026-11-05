@@ -14,6 +14,14 @@ describe("activity review route query boundaries", () => {
     mocks.context.mockImplementation(async (_roundId: string, search: string, page: number) => ({ search, page, total: 31, pageSize: 24, settings: { version: 1 } }))
   })
 
+  it("carries only a validated registration target into the review page", async () => {
+    const returnRound = "30000000-0000-0000-0000-000000000042"
+    const result = await ActivityReviewsPage({ params: Promise.resolve({ roundId: "round" }), searchParams: Promise.resolve({ returnRound, from: "participation" }) })
+    expect(result.props.registrationReturn).toEqual({ roundId: returnRound, fromParticipation: true })
+    const invalid = await ActivityReviewsPage({ params: Promise.resolve({ roundId: "round" }), searchParams: Promise.resolve({ returnRound: "https://example.test/" }) })
+    expect(invalid.props.registrationReturn).toBeNull()
+  })
+
   it.each(["2147483648", "9007199254740991", "0", "-2", "1.5", "invalid"])("normalizes unsupported page %s before the RPC", async (page) => {
     await ActivityReviewsPage({ params: Promise.resolve({ roundId: "round" }), searchParams: Promise.resolve({ page }) })
     expect(mocks.context).toHaveBeenCalledExactlyOnceWith("round", "", 1)

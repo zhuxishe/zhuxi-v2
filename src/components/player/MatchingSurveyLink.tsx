@@ -6,6 +6,7 @@ import { useRef, useState, type ComponentProps, type MouseEvent } from "react"
 import { checkMatchingEntry, type MatchingEntryCheck } from "@/app/app/matching/survey/profile-actions"
 import { buildMatchingCompletionHref } from "@/lib/matching/completion-flow"
 import { MatchingProfileDialog } from "./MatchingProfileDialog"
+import { RegistrationReviewDialog } from "./RegistrationReviewDialog"
 
 type Props = ComponentProps<typeof Link>
 
@@ -39,6 +40,12 @@ export function MatchingSurveyLink({ href, onClick, children, ...props }: Props)
 
   return <>
     <Link {...props} href={href} onClick={handleClick} aria-busy={busy || undefined} prefetch={isSurvey ? false : props.prefetch}>{children}</Link>
+    <RegistrationReviewDialog open={check?.state === "reviews_required" || check?.state === "review_failed"}
+      roundId={check && "roundId" in check ? check.roundId : params.get("round") ?? ""}
+      fromParticipation={params.get("from") === "participation"}
+      blockers={check?.state === "reviews_required" ? check.blockers : []}
+      failed={check?.state === "review_failed"} busy={busy}
+      onCancel={() => setCheck(null)} onRetry={() => inspect()} />
     <MatchingProfileDialog open={check?.state === "incomplete" || check?.state === "failed"}
       missing={check?.state === "incomplete" ? check.missing : []} failed={check?.state === "failed"} busy={busy}
       onCancel={() => setCheck(null)} onRetry={() => inspect()}

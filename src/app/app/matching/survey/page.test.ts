@@ -1,7 +1,7 @@
 import { isValidElement, type ReactNode } from "react"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ player: vi.fn(), round: vi.fn(), submission: vi.fn(), redirect: vi.fn(), readiness: vi.fn(), access: vi.fn() }))
+const mocks = vi.hoisted(() => ({ player: vi.fn(), round: vi.fn(), submission: vi.fn(), redirect: vi.fn(), readiness: vi.fn(), access: vi.fn(), reviews: vi.fn() }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("@/lib/queries/player-rounds", () => ({ fetchPlayerRound: mocks.round }))
 vi.mock("@/lib/queries/rounds", () => ({ fetchMySubmission: mocks.submission, fetchOpenRound: mocks.round, fetchLatestRound: mocks.round }))
@@ -11,6 +11,8 @@ vi.mock("@/components/player/SurveyForm", () => ({ SurveyForm: "survey-form" }))
 vi.mock("@/lib/matching/readiness-server", () => ({ fetchMyMatchingReadiness: mocks.readiness }))
 vi.mock("@/components/player/MatchingProfileGate", () => ({ MatchingProfileGate: "profile-gate" }))
 vi.mock("@/lib/matching/round-submission-access", () => ({ getRoundSubmissionAccess: mocks.access }))
+vi.mock("@/lib/registration-review-gate/server", () => ({ fetchRegistrationReviewGate: mocks.reviews }))
+vi.mock("@/components/player/RegistrationReviewGate", () => ({ RegistrationReviewGate: "review-gate" }))
 import SurveyPage from "./page"
 import SurveySuccessPage from "./success/page"
 
@@ -36,6 +38,7 @@ describe("survey participation navigation", () => {
     mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, missing: [] })
     mocks.round.mockResolvedValue(round)
     mocks.submission.mockResolvedValue({ id: "own-submission", availability: {} })
+    mocks.reviews.mockResolvedValue({ blockers: [] })
     mocks.redirect.mockImplementation((href: string) => { throw new Error(`redirect:${href}`) })
   })
   afterEach(() => vi.useRealTimers())
@@ -183,5 +186,38 @@ describe("survey participation navigation", () => {
   it("does not show a success record when the current player has not submitted", async () => {
     mocks.submission.mockResolvedValue(null)
     await expect(SurveySuccessPage({ searchParams: Promise.resolve({ roundId }) })).rejects.toThrow(`redirect:${editHref}`)
+  })
+
+  it.each(["matching", "registration"])("blocks new %s participation through a direct URL without rendering the form", async (purpose) => {
+    mocks.round.mockResolvedValue({ ...round, purpose })
+    mocks.submission.mockResolvedValue(null)
+    const blockers = [{ round_id: "previous-round" }]
+    mocks.reviews.mockResolvedValue({ blockers })
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
+    expect(nodes(page)[0]).toMatchObject({ roundId, blockers, backHref: "/app", fromParticipation: false })
+    expect(nodes(page).some((props) => props.existing !== undefined)).toBe(false)
+  })
+
+  it("also gates cancelled registrations but preserves the owned participation return link", async () => {
+    mocks.submission.mockResolvedValue({ id: "saved", cancelled_at: "2026-09-29T12:00:00Z" })
+    mocks.reviews.mockResolvedValue({ blockers: [{ round_id: "previous-round" }] })
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId, from: "participation" }) })
+    expect(nodes(page)[0]).toMatchObject({ backHref: recordHref, fromParticipation: true })
+    expect(nodes(page).some((props) => props.existing !== undefined)).toBe(false)
+  })
+
+  it("does not gate an existing active participation or prevent its edits when reviews are unavailable", async () => {
+    mocks.reviews.mockRejectedValue(new Error("offline"))
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
+    expect(nodes(page).some((props) => props.existing !== undefined)).toBe(true)
+    expect(mocks.reviews).not.toHaveBeenCalled()
+  })
+
+  it("shows retry without an editable form if a direct visitor's review check fails", async () => {
+    mocks.submission.mockResolvedValue(null)
+    mocks.reviews.mockRejectedValue(new Error("offline"))
+    const page = await SurveyPage({ searchParams: Promise.resolve({ round: roundId }) })
+    expect(nodes(page)[0]).toMatchObject({ failed: true, blockers: [] })
+    expect(nodes(page).some((props) => props.existing !== undefined)).toBe(false)
   })
 })

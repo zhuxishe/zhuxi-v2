@@ -1,11 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), rpc: vi.fn(), readiness: vi.fn(), access: vi.fn() }))
+const mocks = vi.hoisted(() => ({ from: vi.fn(), player: vi.fn(), revalidate: vi.fn(), rpc: vi.fn(), readiness: vi.fn(), access: vi.fn(), reviews: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ from: mocks.from, rpc: mocks.rpc }) }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: mocks.player }))
 vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidate }))
 vi.mock("@/lib/matching/readiness-server", () => ({ fetchMyMatchingReadiness: mocks.readiness }))
 vi.mock("@/lib/matching/round-submission-access", () => ({ getRoundSubmissionAccess: mocks.access }))
+vi.mock("@/lib/registration-review-gate/server", () => ({ fetchRegistrationReviewGate: mocks.reviews }))
 import { submitSurvey } from "./actions"
 
 const round = { id: "round", is_test: false, status: "open", survey_start: "2026-09-29T00:00:00Z", survey_end: "2026-09-29T09:00:00Z", activity_start: "2026-10-01", activity_end: "2026-10-14" }
@@ -31,6 +32,7 @@ describe("survey submission availability", () => {
     mocks.rpc.mockResolvedValue({ error: null })
     mocks.readiness.mockResolvedValue({ supplementary: true, personality: true, quiz: true, missing: [] })
     mocks.access.mockResolvedValue({ allowed: true })
+    mocks.reviews.mockResolvedValue({ blockers: [] })
     vi.spyOn(console, "error").mockImplementation(() => {})
   })
   afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
@@ -281,5 +283,59 @@ describe("survey submission availability", () => {
     mocks.from.mockReturnValueOnce(readRound(round))
     expect(await submitSurvey({ ...input, submissionId: "answer", expectedUpdatedAt: null })).toEqual({ success: true })
     expect(mocks.rpc).toHaveBeenCalledWith("save_my_matching_submission", expect.objectContaining({ p_submission_id: "answer", p_expected_updated_at: null }))
+  })
+
+  it.each(["matching", "registration"])("blocks a new %s signup with every outstanding activity before writing", async (purpose) => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose }))
+    const blockers = [{ round_id: "activity-a" }, { round_id: "activity-b" }]
+    mocks.reviews.mockResolvedValue({ blockers })
+    expect(await submitSurvey(input)).toEqual({ error: "registrationReviewRequired", reviewBlockers: blockers })
+    expect(mocks.rpc).not.toHaveBeenCalled()
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it("checks a cancelled registration before rejoining", async () => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose: "registration" }))
+    const blockers = [{ round_id: "activity-b" }]
+    mocks.reviews.mockResolvedValue({ blockers })
+    expect(await submitSurvey({ ...input, registrationIntent: "rejoin", expectedUpdatedAt: null }))
+      .toEqual({ error: "registrationReviewRequired", reviewBlockers: blockers })
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  it.each(["matching", "registration"])("does not lock an already registered %s activity when another activity ends", async (purpose) => {
+    mocks.from.mockReturnValueOnce(readRound({ ...round, purpose }))
+    mocks.reviews.mockRejectedValue(new Error("not needed for existing participation"))
+    expect(await submitSurvey({ ...input, submissionId: "saved", registrationIntent: "update", expectedUpdatedAt: null })).toEqual({ success: true })
+    expect(mocks.reviews).not.toHaveBeenCalled()
+    expect(mocks.rpc).toHaveBeenCalledOnce()
+  })
+
+  it("fails closed when the review preflight cannot be read", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    mocks.reviews.mockRejectedValue(new Error("offline"))
+    expect(await submitSurvey(input)).toEqual({ error: "registrationReviewCheckFailed" })
+    expect(mocks.rpc).not.toHaveBeenCalled()
+  })
+
+  it("rechecks the current activities after the database rejects a deadline race", async () => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    const blockers = [{ round_id: "newly-ended" }]
+    mocks.reviews.mockResolvedValueOnce({ blockers: [] }).mockResolvedValueOnce({ blockers })
+    mocks.rpc.mockResolvedValue({ error: { message: "REGISTRATION_REVIEW_REQUIRED", details: "untrusted stale data" } })
+    expect(await submitSurvey(input)).toEqual({ error: "registrationReviewRequired", reviewBlockers: blockers })
+    expect(mocks.reviews).toHaveBeenCalledTimes(2)
+    expect(mocks.revalidate).not.toHaveBeenCalled()
+  })
+
+  it.each(["failed", "cleared"])("does not claim success when a rejected write's recheck is %s", async (state) => {
+    mocks.from.mockReturnValueOnce(readRound(round))
+    mocks.reviews.mockResolvedValueOnce({ blockers: [] })
+    if (state === "failed") mocks.reviews.mockRejectedValueOnce(new Error("offline"))
+    else mocks.reviews.mockResolvedValueOnce({ blockers: [] })
+    mocks.rpc.mockResolvedValue({ error: { message: "REGISTRATION_REVIEW_REQUIRED" } })
+    expect(await submitSurvey(input)).toEqual({ error: "registrationReviewCheckFailed" })
+    expect(mocks.rpc).toHaveBeenCalledOnce()
+    expect(mocks.revalidate).not.toHaveBeenCalled()
   })
 })

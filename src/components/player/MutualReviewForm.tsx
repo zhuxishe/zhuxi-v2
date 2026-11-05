@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { unstable_rethrow, useRouter } from "next/navigation"
 import { useTranslations } from "next-intl"
 import { submitReview } from "@/app/app/reviews/new/[id]/actions"
 import { Button } from "@/components/ui/button"
@@ -9,15 +9,17 @@ import { PersonalitySlider } from "./PersonalitySlider"
 import { MultiTagSelect } from "@/components/shared/MultiTagSelect"
 import { POSITIVE_REVIEW_TAGS, NEGATIVE_REVIEW_TAGS } from "@/lib/constants/reviews"
 import { useTagLabels } from "@/lib/i18n/use-tag-labels"
+import { registrationReturnHref, type RegistrationReturnContext } from "@/lib/registration-review-gate/navigation"
 
 interface Props {
   reviewerId: string
   revieweeId: string
   matchResultId: string
   publicationVersion: number
+  registrationReturn?: RegistrationReturnContext | null
 }
 
-export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchResultId, publicationVersion }: Props) {
+export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchResultId, publicationVersion, registrationReturn }: Props) {
   const router = useRouter()
   const t = useTranslations("reviews")
   const tErr = useTranslations("errors")
@@ -38,18 +40,25 @@ export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchRes
   async function handleSubmit() {
     setSubmitting(true)
     setError(null)
-    const result = await submitReview({
-      match_result_id: matchResultId,
-      expected_publication_version: publicationVersion,
-      reviewee_id: revieweeId,
-      overall_score: overall, punctuality_score: punctuality,
-      communication_score: communication, teamwork_score: teamwork, fun_score: fun,
-      would_play_again: wouldPlayAgain, positive_tags: positiveTags,
-      negative_tags: negativeTags, comment,
-    })
-    setSubmitting(false)
-    if (result.error) setError(tErr.has(result.error) ? tErr(result.error) : result.error)
-    else router.push("/app")
+    try {
+      const result = await submitReview({
+        match_result_id: matchResultId,
+        expected_publication_version: publicationVersion,
+        reviewee_id: revieweeId,
+        overall_score: overall, punctuality_score: punctuality,
+        communication_score: communication, teamwork_score: teamwork, fun_score: fun,
+        would_play_again: wouldPlayAgain, positive_tags: positiveTags,
+        negative_tags: negativeTags, comment,
+      })
+      if (result.error) setError(tErr.has(result.error) ? tErr(result.error) : result.error)
+      else {
+        router.push(registrationReturn ? registrationReturnHref(registrationReturn) : "/app")
+        router.refresh()
+      }
+    } catch (error) {
+      unstable_rethrow(error)
+      setError(tErr("saveFailed"))
+    } finally { setSubmitting(false) }
   }
 
   return (

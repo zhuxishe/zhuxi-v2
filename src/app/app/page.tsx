@@ -59,9 +59,10 @@ export default async function PlayerHomePage() {
   } : {
     title: roundT(`purpose.${purpose}`), description: roundT(`description.${purpose}`), cta: roundT(`cta.${purpose}`),
   }
-  // Remind once per activity: any submitted rating or report satisfies the reminder.
+  // Required events remain pending after report-only feedback, including late reviews.
   const reviewCopy = activityReviewCopy(locale)
-  const pendingReviewCount = reviewRounds.filter((round) => round.status === "open" && round.canReview && !round.hasSubmittedFeedback && round.reviewedCount === 0).length
+  const pendingReviewCount = reviewRounds.filter((round) => round.canReview && round.reviewedCount === 0
+    && (round.reviewRequired || round.status === "open" && !round.hasSubmittedFeedback)).length
   const pendingReviewHref = "/app/matches#participation"
   const recruitingActivities = activityData.largeActivities.filter((activity) => isUpcomingLargeActivity(activity)).slice(0, 3)
   const priorityActivityId = recruitingActivities[0]?.id ?? null

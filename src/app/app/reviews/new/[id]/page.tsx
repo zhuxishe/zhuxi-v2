@@ -2,15 +2,17 @@ import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { requirePlayer } from "@/lib/auth/player"
-import { getTranslations } from "next-intl/server"
+import { getLocale, getTranslations } from "next-intl/server"
 import { checkReviewExists } from "@/lib/queries/reviews"
 import { MutualReviewForm } from "@/components/player/MutualReviewForm"
 import { GroupReviewSelector } from "@/components/player/GroupReviewSelector"
 import { fetchMatchDetail } from "@/lib/queries/matching"
+import { parseRegistrationReturnContext, registrationReturnHref } from "@/lib/registration-review-gate/navigation"
+import { ReviewRegistrationReturn } from "@/components/player/ReviewRegistrationReturn"
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ reviewee?: string }>
+  searchParams: Promise<{ reviewee?: string; returnRound?: string | string[]; from?: string | string[] }>
 }
 
 /** 获取组员名字（admin client） */
@@ -40,7 +42,16 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
   const t = await getTranslations("reviews")
   const common = await getTranslations("common")
   const { id: matchResultId } = await params
-  const { reviewee: revieweeParam } = await searchParams
+  const query = await searchParams
+  const { reviewee: revieweeParam } = query
+  const registrationReturn = parseRegistrationReturnContext(query)
+  const locale = await getLocale()
+  const returnQuery = new URLSearchParams()
+  if (registrationReturn) {
+    returnQuery.set("returnRound", registrationReturn.roundId)
+    if (registrationReturn.fromParticipation) returnQuery.set("from", "participation")
+  }
+  const selectorHref = `/app/reviews/new/${matchResultId}${returnQuery.size ? `?${returnQuery}` : ""}`
 
   const mr = await fetchMatchDetail(matchResultId, player.memberId)
   if (!mr || mr.status !== "confirmed") notFound()
@@ -74,31 +85,35 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
           <ReviewBackLink href={`/app/matches/${matchResultId}`} label={common("back")} />
           <h1 className="text-xl font-bold mb-1">{t("title")}</h1>
           <p className="text-sm text-muted-foreground mb-6">{t("selectReviewee")}</p>
+          <ReviewRegistrationReturn context={registrationReturn} locale={locale} completed={reviewedSet.size > 0} />
           <GroupReviewSelector
             matchResultId={matchResultId}
             members={members}
             reviewedIds={[...reviewedSet]}
+            registrationReturn={registrationReturn}
           />
         </div>
       )
     }
 
     const alreadyReviewed = await checkReviewExistsPair(matchResultId, player.memberId, revieweeParam)
-    if (alreadyReviewed) redirect(`/app/reviews/new/${matchResultId}`)
+    if (alreadyReviewed) redirect(registrationReturn ? registrationReturnHref(registrationReturn) : selectorHref)
 
     const [revieweeName] = await fetchMemberNames([revieweeParam])
     return (
       <div className="p-6">
-        <ReviewBackLink href={`/app/reviews/new/${matchResultId}`} label={common("back")} />
+        <ReviewBackLink href={selectorHref} label={common("back")} />
         <h1 className="text-xl font-bold mb-1">{t("title")}</h1>
         <p className="text-sm text-muted-foreground mb-6">
           {t("subtitle")} — {revieweeName?.name ?? ""}
         </p>
+        <ReviewRegistrationReturn context={registrationReturn} locale={locale} completed={false} />
         <MutualReviewForm
           reviewerId={player.memberId}
           revieweeId={revieweeParam}
           matchResultId={matchResultId}
           publicationVersion={mr.publication_version}
+          registrationReturn={registrationReturn}
         />
       </div>
     )
@@ -109,18 +124,20 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
   if (!revieweeId) notFound()
 
   const alreadyReviewed = await checkReviewExists(matchResultId, player.memberId)
-  if (alreadyReviewed) redirect("/app/matches#matching")
+  if (alreadyReviewed) redirect(registrationReturn ? registrationReturnHref(registrationReturn) : "/app/matches#matching")
 
   return (
     <div className="p-6">
       <ReviewBackLink href={`/app/matches/${matchResultId}`} label={common("back")} />
       <h1 className="text-xl font-bold mb-1">{t("title")}</h1>
       <p className="text-sm text-muted-foreground mb-6">{t("subtitle")}</p>
+      <ReviewRegistrationReturn context={registrationReturn} locale={locale} completed={false} />
       <MutualReviewForm
         reviewerId={player.memberId}
         revieweeId={revieweeId}
         matchResultId={matchResultId}
         publicationVersion={mr.publication_version}
+        registrationReturn={registrationReturn}
       />
     </div>
   )

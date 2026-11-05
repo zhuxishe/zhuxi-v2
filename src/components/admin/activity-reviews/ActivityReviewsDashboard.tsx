@@ -10,6 +10,8 @@ import { ActivityReviewRoster } from "./ActivityReviewRoster"
 import { ActivityReviewModeration } from "./ActivityReviewModeration"
 import { fieldClass, primaryButtonClass, ReviewHistory } from "./shared"
 import { confirmActivityReviewNavigation } from "./use-unsaved-activity-reviews"
+import type { AdminReviewRequirementsResult } from "@/lib/activity-reviews/requirements"
+import { ReviewRequirementPanel, type SaveReviewExemptionAction } from "./ReviewRequirementPanel"
 
 export const ACTIVITY_REVIEW_STATUS_LABELS: Record<ActivityReviewStatus, string> = { unavailable: "未开放", scheduled: "待开放", open: "开放中", closed: "已截止", paused: "已暂停" }
 export interface AdminActivityReviewActions {
@@ -17,11 +19,13 @@ export interface AdminActivityReviewActions {
   confirmRosterAction: (input: ConfirmActivityReviewRosterInput) => Promise<ActivityReviewActionResult>
   moderateReviewAction: (input: ModerateActivityReviewInput) => Promise<ActivityReviewActionResult>
   moderateReportAction: (input: ModerateActivityReportInput) => Promise<ActivityReviewActionResult>
+  setExemptionAction?: SaveReviewExemptionAction
 }
 
-export function ActivityReviewsDashboard({ data, actions, onNavigate, onSaved }: {
+export function ActivityReviewsDashboard({ data, actions, requirements, onNavigate, onSaved }: {
   data: AdminActivityReviewsData
   actions: AdminActivityReviewActions
+  requirements?: AdminReviewRequirementsResult
   onNavigate: (href: string) => void
   onSaved?: () => void
 }) {
@@ -53,6 +57,7 @@ export function ActivityReviewsDashboard({ data, actions, onNavigate, onSaved }:
             <Metric icon={ShieldAlert} label="待处理举报" value={event?.pendingReportCount ?? context.reports.filter((report) => report.status === "pending" || report.status === "reviewing").length} />
           </div>
         </section>
+        {requirements && actions.setExemptionAction ? <ReviewRequirementPanel roundId={context.roundId} result={requirements} canManage={context.canManageSettings} memberFilter={data.memberFilter} saveAction={actions.setExemptionAction} onSaved={onSaved} /> : null}
         <div className="grid items-start gap-6 xl:grid-cols-2">
           <ActivityReviewSettingsForm key={`settings:${context.roundId}:${context.settings.version}`} roundId={context.roundId} settings={context.settings} canManage={context.canManageSettings} saveAction={actions.saveSettingsAction} onSaved={onSaved} />
           <ActivityReviewRoster key={`roster:${context.roundId}:${context.settings.version}`} context={context} memberOptions={data.memberOptions} saveAction={actions.confirmRosterAction} onSaved={onSaved} />

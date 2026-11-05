@@ -1,0 +1,70 @@
+/* Synthetic UI fixture. Does not authenticate, persist user data or use live APIs. */
+import React, { useState } from 'react'
+import { createRoot } from 'react-dom/client'
+import { RegistrationReviewDialog } from '@/components/player/RegistrationReviewDialog'
+import { ActivityReviewPageContent } from '@/components/player/activity-reviews/ActivityReviewPageContent'
+import { ReviewRequirementPanel } from '@/components/admin/activity-reviews/ReviewRequirementPanel'
+
+const params = new URLSearchParams(location.search)
+const locale = params.get('locale') || 'zh'
+const id = (n: number) => `10000000-0000-4000-8000-${String(n).padStart(12, '0')}`
+const matchingRound = id(1), fixedRound = id(2), targetRound = id(3), matchId = id(4)
+const registrationReturn = { roundId: targetRound, fromParticipation: true }
+const people = [
+  { memberId: id(11), fullName: '林秋', nickname: '小秋' },
+  { memberId: id(12), fullName: '林秋', nickname: '竹叶' },
+  { memberId: id(13), fullName: '王夏', nickname: '星河' },
+]
+const now = '2026-11-20T03:00:00Z'
+const blockers = [
+  { round_id: matchingRound, round_name: locale === 'ja' ? '11月のマッチングイベント' : '竹溪社11月匹配活动', purpose: 'matching', ended_at: '2026-11-17T15:00:00Z', review_href: `/app/reviews/new/${matchId}` },
+  { round_id: fixedRound, round_name: locale === 'ja' ? '11月14日の交流会' : '11月14日交流活动', purpose: 'registration', ended_at: '2026-11-14T09:00:00Z', review_href: `/app/matches/rounds/${fixedRound}/reviews` },
+]
+const settings = { enabled: true, opensAt: '2026-11-14T09:00:00Z', closesAt: '2026-11-16T09:00:00Z', openedAt: '2026-11-14T09:00:00Z', rosterConfirmed: true, version: 3 }
+const reviewContext = {
+  roundId: fixedRound, title: locale === 'ja' ? '11月14日の交流会' : '11月14日交流活动', status: 'closed', opensAt: settings.opensAt, closesAt: settings.closesAt,
+  reviewedCount: 0, hasSubmittedFeedback: false, reviewRequired: true, lateReview: true, participantCount: people.length,
+  canReview: true, canReport: true, eligible: true, settings, participants: people.map((person) => ({ ...person, review: null, report: null })),
+  ownReviews: [], ownReports: [], total: people.length, page: 1, pageSize: 24, search: '',
+}
+const submissions: unknown[] = []
+const adminSubmissions: unknown[] = []
+Object.assign(window, { __submissions: submissions, __adminSubmissions: adminSubmissions, __fixture: 'synthetic-ui-only', __ids: { matchingRound, fixedRound, targetRound, matchId } })
+async function reviewAction(input: any) {
+  submissions.push(input)
+  if (params.get('failFirst') === '1' && submissions.length === 1) return { error: 'PEER_SAVE_FAILED' }
+  return {
+    success: true,
+    review: input.review ? { id: id(40), revieweeId: input.targetMemberId, ...input.review, valid: true, version: input.review.expectedVersion + 1, createdAt: now, updatedAt: now } : null,
+    report: input.report ? { id: id(41), revieweeId: input.targetMemberId, category: input.report.category, detail: input.report.detail, status: 'pending', version: input.report.expectedVersion + 1, createdAt: now, updatedAt: now, supplements: [] } : null,
+  }
+}
+function DialogFixture() {
+  const [open, setOpen] = useState(true)
+  return <main className="mx-auto max-w-2xl space-y-4 p-6"><h1 className="text-xl font-semibold">新活动报名</h1><p>本地界面验收 · 所有成员与提交均为演示数据</p>
+    <button className="rounded-lg bg-primary px-4 py-3 text-primary-foreground" onClick={() => setOpen(true)}>显示待评分活动</button>
+    <RegistrationReviewDialog open={open} roundId={targetRound} fromParticipation blockers={blockers as any} onCancel={() => setOpen(false)} onRetry={() => { (window as any).__recheckCount = ((window as any).__recheckCount || 0) + 1 }} />
+  </main>
+}
+function AdminFixture() {
+  const [participants, setParticipants] = useState(people.map((person, index) => ({ ...person, state: index === 2 ? 'completed' : 'pending', exempt: false, exemptionVersion: 0, exemptionReason: null })))
+  async function save(input: any) {
+    adminSubmissions.push(input)
+    if (params.get('failFirst') === '1' && adminSubmissions.length === 1) return { error: 'PEER_VERSION_CONFLICT' }
+    const current = participants.find((person) => person.memberId === input.memberId)
+    if (!current || current.exemptionVersion !== input.expectedVersion) return { error: 'PEER_VERSION_CONFLICT' }
+    setParticipants((previous) => previous.map((person) => person.memberId === input.memberId ? { ...person, exempt: input.exempt, state: input.exempt ? 'exempt' : 'pending', exemptionVersion: person.exemptionVersion + 1, exemptionReason: input.reason } : person))
+    return { success: true }
+  }
+  return <main className="mx-auto max-w-5xl space-y-5 p-4 sm:p-6"><h1 className="text-xl font-semibold">11月14日交流活动 · 管理员界面验收</h1><p className="text-xs text-muted-foreground">仅模拟当前活动的授予与撤销，不连接真实数据库。</p>
+    <ReviewRequirementPanel roundId={fixedRound} result={{ status: 'ready', data: { required: true, endedAt: '2026-11-14T09:00:00Z', participants } } as any} canManage saveAction={save} onSaved={() => { (window as any).__refreshCount = ((window as any).__refreshCount || 0) + 1 }} />
+  </main>
+}
+function App() {
+  const screen = params.get('screen') || (location.pathname.includes('/rounds/') ? 'late' : location.pathname.includes('/reviews/new/') ? 'matching-destination' : location.pathname.includes('/matching/survey') ? 'return-destination' : 'dialog')
+  if (screen === 'admin') return <AdminFixture />
+  if (screen === 'late') return <ActivityReviewPageContent context={reviewContext as any} locale={locale} action={reviewAction} initialSelectedMemberId={people[0].memberId} registrationReturn={registrationReturn} />
+  if (screen.endsWith('destination')) return <main className="space-y-3 p-6"><h1 className="font-semibold">本地导航目标验证</h1><p className="break-all" data-testid="destination">{location.pathname + location.search}</p><p>此处只验证真实链接导航，不模拟登录或真实报名。</p></main>
+  return <DialogFixture />
+}
+createRoot(document.getElementById('root')!).render(<App />)

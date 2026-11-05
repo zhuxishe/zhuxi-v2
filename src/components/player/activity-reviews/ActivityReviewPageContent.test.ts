@@ -17,6 +17,30 @@ const context: ActivityReviewContext = {
 }
 
 describe("event review page content", () => {
+  it("keeps the original registration across participant search, clear and pagination", () => {
+    const roundId = "30000000-0000-0000-0000-000000000042"
+    const html = renderToStaticMarkup(createElement(ActivityReviewPageContent, {
+      context, locale: "zh", registrationReturn: { roundId, fromParticipation: true },
+    }))
+    expect(html).toContain(`name="returnRound" value="${roundId}"`)
+    expect(html).toContain('name="from" value="participation"')
+    expect(html).toContain(`returnRound=${roundId}&amp;from=participation`)
+    expect(html).toContain(`/app/matching/survey?round=${roundId}&amp;from=participation`)
+    expect(html).toContain("重新检查是否还有其他活动待评")
+  })
+
+  it("presents an authorized late submission instead of saying the closed deadline prevents rating", () => {
+    const html = renderToStaticMarkup(createElement(ActivityReviewPageContent, {
+      context: { ...context, status: "closed", lateReview: true, reviewRequired: true, reviewedCount: 0 },
+      locale: "zh", initialSelectedMemberId: "a",
+    }))
+    expect(html).toContain("可补评")
+    expect(html).toContain("文字选填")
+    expect(html).toContain("本次补评提交后不能修改")
+    expect(html).toContain("保存评价")
+    expect(html).not.toContain("当前不能新增或修改评分")
+  })
+
   it("renders a scoped search, both identity fields and pagination without requiring all participants to be rated", () => {
     const html = renderToStaticMarkup(createElement(ActivityReviewPageContent, { context, locale: "zh" }))
     expect(html).toContain("王小竹"); expect(html).toContain("竹叶"); expect(html).toContain("小溪")

@@ -17,9 +17,10 @@ type Confirmation = { type: "report" | "one_point" } | { type: "submit"; kind: S
 const inputClass = "w-full rounded-xl border border-border bg-background px-3 py-3 text-sm leading-6 outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-60"
 const buttonClass = "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 
-export function ActivityReviewEditor({ roundId, participant, canReview, canReport, locale,
+export function ActivityReviewEditor({ roundId, participant, canReview, canReport, locale, lateReview = false,
   action = submitActivityReviewAction, onSaved, draft, onDraftChange, onBusyChange, mode = "all", onCancel }: {
   roundId: string; participant: ActivityReviewParticipant; canReview: boolean; canReport: boolean; locale: string
+  lateReview?: boolean
   action?: ActivityReviewAction; onSaved?: (result: ActivityReviewActionResult) => void
   draft?: ActivityReviewDraft; onDraftChange?: (draft: ActivityReviewDraft) => void; onBusyChange?: (busy: boolean) => void
   mode?: "all" | "review" | "report"; onCancel?: () => void
@@ -139,7 +140,7 @@ export function ActivityReviewEditor({ roundId, participant, canReview, canRepor
       <p className={`text-right text-[11px] tabular-nums ${Array.from(comment).length > 500 ? "text-destructive" : "text-muted-foreground"}`}>{Array.from(comment).length} / 500</p>
     </div>
     {review && <p className="text-[11px] leading-5 text-muted-foreground">{copy.lastSaved} {formatActivityReviewTime(review.updatedAt, locale)}</p>}
-    <p className="text-xs leading-5 text-muted-foreground">{review?.valid === false ? copy.invalidatedHint : canReview ? copy.editingHint : copy.closedHint}</p>
+    <p className="text-xs leading-5 text-muted-foreground">{review?.valid === false ? copy.invalidatedHint : canReview ? lateReview ? copy.lateEditingHint : copy.editingHint : copy.closedHint}</p>
     {canReview && review?.valid !== false && <button type="button" onClick={() => save("review")} disabled={Boolean(busy) || score === null || Array.from(comment.trim()).length > 500} aria-busy={busy === "review"} className={`${buttonClass} w-full bg-primary text-primary-foreground`}>
       {busy === "review" ? copy.saving : review ? copy.update : copy.save}
     </button>}

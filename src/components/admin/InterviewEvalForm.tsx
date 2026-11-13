@@ -42,9 +42,11 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing, c
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [reason, setReason] = useState("")
+  const [saved, setSaved] = useState(false)
 
   function setField<K extends keyof InterviewEvalFormData>(key: K, val: InterviewEvalFormData[K]) {
     setData((prev) => ({ ...prev, [key]: val }))
+    setSaved(false)
   }
 
   async function handleSubmit() {
@@ -54,14 +56,23 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing, c
     }
     setSubmitting(true)
     setError(null)
-    const result = await submitInterviewEval(memberId, data, interviewDate, reason)
-    setSubmitting(false)
-    if (result.error) setError(result.error)
-    else router.push(`/admin/members/${memberId}`)
+    setSaved(false)
+    try {
+      const result = await submitInterviewEval(memberId, data, interviewDate, reason)
+      if (result.error) setError(result.error)
+      else {
+        setSaved(true)
+        router.refresh()
+      }
+    } catch {
+      setError("保存未完成，请重试。当前填写内容已保留。")
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
-    <div className="max-w-2xl space-y-6">
+    <fieldset disabled={submitting} aria-label="面试评分与备注" className="min-w-0 space-y-6">
       <div className="rounded-xl bg-card p-5 ring-1 ring-foreground/10 space-y-3">
         <div className="grid grid-cols-3 gap-4">
           <div>
@@ -75,7 +86,7 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing, c
           <div>
             <label className="text-xs text-muted-foreground">面试日期</label>
             <input type="date" value={interviewDate}
-              onChange={(e) => setInterviewDate(e.target.value)}
+              onChange={(e) => { setInterviewDate(e.target.value); setSaved(false) }}
               className="w-full mt-1 rounded-md border border-border bg-background px-2.5 py-1.5 text-sm outline-none focus:border-primary" />
           </div>
         </div>
@@ -128,12 +139,13 @@ export function InterviewEvalForm({ memberId, memberName, adminName, existing, c
         </label>
       </div>
 
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+      {saved && <p role="status" className="text-sm text-primary">评估已保存，可以继续填写。</p>}
       {compositeScores ? <p className="text-xs text-muted-foreground">综合评分请使用上方的“保存综合评分”单独保存。</p> : null}
       <div className="flex gap-3">
         <Button onClick={handleSubmit} disabled={submitting || reason.trim().length < 4}>{submitting ? "保存中..." : "保存评估"}</Button>
         <Button variant="outline" onClick={() => router.back()}>取消</Button>
       </div>
-    </div>
+    </fieldset>
   )
 }

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { requirePlayer } from "@/lib/auth/player"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { fetchMatchDetail } from "@/lib/queries/matching"
+import { fetchMatchReviewRoute } from "@/lib/queries/reviews"
 
 interface ReviewInput {
   match_result_id: string
@@ -20,7 +21,7 @@ interface ReviewInput {
   comment: string
 }
 
-export async function submitReview(input: ReviewInput) {
+export async function submitReview(input: ReviewInput): Promise<{ success?: boolean; error?: string; redirectTo?: string }> {
   const player = await requirePlayer()
   const supabase = createAdminClient()
   if (input.reviewee_id === player.memberId) return { error: "unauthorized" }
@@ -46,6 +47,11 @@ export async function submitReview(input: ReviewInput) {
   }
 
   if (!revieweeId) return { error: "unauthorized" }
+
+  const reviewRoute = await fetchMatchReviewRoute(input.match_result_id)
+  if (reviewRoute.reviewSystem === "unified") {
+    return { redirectTo: `/app/matches/rounds/${reviewRoute.roundId}/reviews` }
+  }
 
   // 防重复：检查是否已评价
   const { data: existing } = await supabase
@@ -77,6 +83,11 @@ export async function submitReview(input: ReviewInput) {
     })
 
   if (error) {
+    if (/PEER_UNIFIED_REVIEW_REQUIRED/.test(error.message)) {
+      const currentRoute = await fetchMatchReviewRoute(input.match_result_id)
+      if (currentRoute.reviewSystem === "unified") return { redirectTo: `/app/matches/rounds/${currentRoute.roundId}/reviews` }
+      return { error: "saveFailed" }
+    }
     if (/MATCH_PUBLICATION_STALE|MATCH_NOT_PUBLISHED|MATCH_PUBLICATION_NOT_PUBLISHED/.test(error.message)) return { error: "matchPublicationChanged" }
     console.error("[submitReview]", error)
     return { error: "saveFailed" }

@@ -3,7 +3,7 @@ import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
 import { requirePlayer } from "@/lib/auth/player"
 import { getLocale, getTranslations } from "next-intl/server"
-import { checkReviewExists } from "@/lib/queries/reviews"
+import { checkReviewExists, fetchMatchReviewRoute } from "@/lib/queries/reviews"
 import { MutualReviewForm } from "@/components/player/MutualReviewForm"
 import { GroupReviewSelector } from "@/components/player/GroupReviewSelector"
 import { fetchMatchDetail } from "@/lib/queries/matching"
@@ -60,6 +60,11 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
   const isGroup = Array.isArray(groupMembers) && groupMembers.length > 0
   const inMatch = isGroup ? groupMembers.includes(player.memberId) : mr.member_a_id === player.memberId || mr.member_b_id === player.memberId
   if (!inMatch) notFound()
+
+  const reviewRoute = await fetchMatchReviewRoute(matchResultId)
+  if (reviewRoute.reviewSystem === "unified") {
+    redirect(`/app/matches/rounds/${reviewRoute.roundId}/reviews${returnQuery.size ? `?${returnQuery}` : ""}`)
+  }
 
   if (isGroup) {
     const otherIds = groupMembers.filter((id) => id !== player.memberId)
@@ -123,7 +128,7 @@ export default async function NewReviewPage({ params, searchParams }: Props) {
   const revieweeId = mr.member_a_id === player.memberId ? mr.member_b_id : mr.member_a_id
   if (!revieweeId) notFound()
 
-  const alreadyReviewed = await checkReviewExists(matchResultId, player.memberId)
+  const alreadyReviewed = await checkReviewExists(matchResultId, player.memberId, reviewRoute)
   if (alreadyReviewed) redirect(registrationReturn ? registrationReturnHref(registrationReturn) : "/app/matches#matching")
 
   return (

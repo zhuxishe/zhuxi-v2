@@ -33,9 +33,9 @@ export function validateReviewSettings(input: SaveActivityReviewSettingsInput): 
   const end = typeof input.closesAt === "string" ? Date.parse(input.closesAt) : NaN
   return Number.isFinite(start) && Number.isFinite(end) && start < end ? null : "PEER_SETTINGS_INVALID"
 }
-export function validateReviewRoster(input: ConfirmActivityReviewRosterInput): string | null {
+export function validateReviewRoster(input: ConfirmActivityReviewRosterInput, allowEmpty = false): string | null {
   if (!input || !isReviewUuid(input.roundId) || !version(input.expectedVersion) || !Array.isArray(input.memberIds)
-    || input.memberIds.length < 2 || input.memberIds.length > 2000 || input.memberIds.some(id => !isReviewUuid(id)) || new Set(input.memberIds).size !== input.memberIds.length) return "PEER_INVALID_INPUT"
+    || (!allowEmpty && input.memberIds.length < 2) || input.memberIds.length > 2000 || input.memberIds.some(id => !isReviewUuid(id)) || new Set(input.memberIds).size !== input.memberIds.length) return "PEER_INVALID_INPUT"
   return validReviewReason(input.reason) ? null : "PEER_REASON_REQUIRED"
 }
 export function validateModerateReview(input: ModerateActivityReviewInput): string | null {

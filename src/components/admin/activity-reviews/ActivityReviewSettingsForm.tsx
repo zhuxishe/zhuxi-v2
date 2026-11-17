@@ -15,6 +15,7 @@ export function ActivityReviewSettingsForm({ roundId, settings, canManage, saveA
   saveAction: (input: SaveActivityReviewSettingsInput) => Promise<ActivityReviewActionResult>
   onSaved?: () => void
 }) {
+  const unified = settings.reviewSystem === "unified"
   const autoIncludeSupported = settings.autoIncludeSupported !== false
   const initialAutoInclude = autoIncludeSupported && settings.autoIncludeRegistered !== false
   const [enabled, setEnabled] = useState(settings.enabled)
@@ -27,7 +28,7 @@ export function ActivityReviewSettingsForm({ roundId, settings, canManage, saveA
   const canRefresh = useUnsavedActivityReviews(dirty && !mutation.success)
   const validDates = Boolean(opensAt && closesAt && Date.parse(parseTokyoDateTimeLocal(closesAt)) > Date.parse(parseTokyoDateTimeLocal(opensAt)))
   const disabled = !canManage || mutation.pending || mutation.success
-  const needsRoster = enabled && !autoIncludeRegistered && !settings.rosterConfirmed
+  const needsRoster = !unified && enabled && !autoIncludeRegistered && !settings.rosterConfirmed
 
   async function submit(event: React.FormEvent) {
     event.preventDefault()
@@ -42,7 +43,8 @@ export function ActivityReviewSettingsForm({ roundId, settings, canManage, saveA
       <div><h2 className="font-semibold">互评开放设置</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">与报名开关独立。所有时间使用日本时间（UTC+9）。</p></div>
     </div>
     <form onSubmit={submit} className="mt-5 space-y-4">
-      {settings.version === 0 ? <p className="rounded-lg bg-primary/5 px-3 py-2 text-sm leading-6 text-primary">{autoIncludeRegistered ? "首次配置：填写互评时间并启用本场活动互评后保存，有效报名成员将自动纳入名册。" : "首次配置：先填写开放时间并保持互评关闭，保存设置；再确认到场名册，最后启用互评。"}</p> : null}
+      {settings.version === 0 ? <p className="rounded-lg bg-primary/5 px-3 py-2 text-sm leading-6 text-primary">{autoIncludeRegistered ? "首次配置：填写互评时间并启用本场活动互评后保存，有效报名成员将自动纳入名册。" : unified ? "填写互评时间后可启用新版互评；没有可评对象的成员不会被要求提交评分。" : "首次配置：先填写开放时间并保持互评关闭，保存设置；再确认到场名册，最后启用互评。"}</p> : null}
+      {unified ? <p className="text-xs leading-5 text-muted-foreground">本场使用新版统一互评。{autoIncludeSupported ? "默认按未取消的有效报名纳入参与名单，之后可由工作人员修正；不要求现场逐人确认。" : "已正式公布匹配的参与者可确认实际交流后评价。"}人数不足两人仍可保存设置。</p> : null}
       <fieldset disabled={disabled} className="space-y-4">
         {autoIncludeSupported ? <label className="flex min-h-12 cursor-pointer items-start gap-3 rounded-lg border border-border px-3 py-3">
           <input type="checkbox" checked={autoIncludeRegistered} onChange={(event) => setAutoIncludeRegistered(event.target.checked)} className="mt-1 size-4 accent-primary" />

@@ -12,6 +12,7 @@ import { fieldClass, primaryButtonClass, ReviewHistory } from "./shared"
 import { confirmActivityReviewNavigation } from "./use-unsaved-activity-reviews"
 import type { AdminReviewRequirementsResult } from "@/lib/activity-reviews/requirements"
 import { ReviewRequirementPanel, type SaveReviewExemptionAction } from "./ReviewRequirementPanel"
+import type { RestoreReviewRegistrationAction } from "@/lib/activity-reviews/restore-registration-types"
 
 export const ACTIVITY_REVIEW_STATUS_LABELS: Record<ActivityReviewStatus, string> = { unavailable: "未开放", scheduled: "待开放", open: "开放中", closed: "已截止", paused: "已暂停" }
 export interface AdminActivityReviewActions {
@@ -20,6 +21,7 @@ export interface AdminActivityReviewActions {
   moderateReviewAction: (input: ModerateActivityReviewInput) => Promise<ActivityReviewActionResult>
   moderateReportAction: (input: ModerateActivityReportInput) => Promise<ActivityReviewActionResult>
   setExemptionAction?: SaveReviewExemptionAction
+  restoreRegistrationAction?: RestoreReviewRegistrationAction
 }
 
 export function ActivityReviewsDashboard({ data, actions, requirements, onNavigate, onSaved }: {
@@ -37,7 +39,7 @@ export function ActivityReviewsDashboard({ data, actions, requirements, onNaviga
 
   return <main className="mx-auto max-w-7xl space-y-6 p-4 sm:p-6">
     <header className="flex flex-wrap items-start justify-between gap-4">
-      <div><p className="text-xs font-medium text-primary">活动后的真实互动反馈</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">活动互评</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">确认实际到场名单，开放体验评分，并独立处理活动举报。当前收集的数据暂不计入合拍分数。</p></div>
+      <div><p className="text-xs font-medium text-primary">活动后的真实互动反馈</p><h1 className="mt-1 text-2xl font-semibold tracking-tight">活动互评</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">管理参与名单、体验评分与独立举报。有效单项评分用于后台长期合拍分试算，会员端运营分保持独立。</p></div>
       {context ? <Link href={`/admin/matching/rounds/${context.roundId}`} className="inline-flex min-h-11 items-center rounded-lg border border-border bg-card px-4 text-sm font-medium hover:bg-muted">查看报名轮次</Link> : null}
     </header>
     {data.setupRequired ? <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm leading-6 text-amber-950">活动互评的数据迁移尚未就绪。请完成数据库升级后再确认名册及开放互评；此页面暂不提供提交操作。</div> : <>
@@ -60,7 +62,7 @@ export function ActivityReviewsDashboard({ data, actions, requirements, onNaviga
         {requirements && actions.setExemptionAction ? <ReviewRequirementPanel roundId={context.roundId} result={requirements} canManage={context.canManageSettings} memberFilter={data.memberFilter} saveAction={actions.setExemptionAction} onSaved={onSaved} /> : null}
         <div className="grid items-start gap-6 xl:grid-cols-2">
           <ActivityReviewSettingsForm key={`settings:${context.roundId}:${context.settings.version}`} roundId={context.roundId} settings={context.settings} canManage={context.canManageSettings} saveAction={actions.saveSettingsAction} onSaved={onSaved} />
-          <ActivityReviewRoster key={`roster:${context.roundId}:${context.settings.version}`} context={context} memberOptions={data.memberOptions} saveAction={actions.confirmRosterAction} onSaved={onSaved} />
+          <ActivityReviewRoster key={`roster:${context.roundId}:${context.settings.version}`} context={context} memberOptions={data.memberOptions} saveAction={actions.confirmRosterAction} restoreAction={actions.restoreRegistrationAction} onSaved={onSaved} />
         </div>
         <ActivityReviewModeration key={context.roundId} context={context} memberOptions={data.memberOptions} memberFilter={data.memberFilter} moderateReviewAction={actions.moderateReviewAction} moderateReportAction={actions.moderateReportAction} onSaved={onSaved} />
         <section className="rounded-xl border border-border bg-card p-5"><h2 className="mb-3 font-semibold">开放设置与名册历史</h2><ReviewHistory entries={context.audit.filter((item) => !item.reviewId && !item.reportId)} /></section>

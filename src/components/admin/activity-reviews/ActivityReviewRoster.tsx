@@ -6,14 +6,18 @@ import type { AdminActivityReviewContext, AdminActivityReviewsData, ActivityRevi
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import { useUnsavedActivityReviews } from "./use-unsaved-activity-reviews"
 import { AuditReasonField, fieldClass, MutationFeedback, primaryButtonClass, secondaryButtonClass, useAdminReviewMutation } from "./shared"
+import type { RestoreReviewRegistrationAction } from "@/lib/activity-reviews/restore-registration-types"
+import { RestoreReviewRegistrationForm } from "./RestoreReviewRegistrationForm"
 
-export function ActivityReviewRoster({ context, memberOptions, saveAction, onSaved }: {
+export function ActivityReviewRoster({ context, memberOptions, saveAction, restoreAction, onSaved }: {
   context: AdminActivityReviewContext
   memberOptions: AdminActivityReviewsData["memberOptions"]
   saveAction: (input: ConfirmActivityReviewRosterInput) => Promise<ActivityReviewActionResult>
+  restoreAction?: RestoreReviewRegistrationAction
   onSaved?: () => void
 }) {
-  const initial = context.settings.rosterConfirmed ? context.participants.filter((member) => member.included && !member.canRestore).map((member) => member.memberId) : context.candidates.filter((member) => member.registered && member.eligible).map((member) => member.memberId)
+  const unified = context.settings.reviewSystem === "unified"
+  const initial = context.settings.rosterConfirmed ? context.participants.filter((member) => member.included && (unified || !member.canRestore)).map((member) => member.memberId) : context.candidates.filter((member) => member.registered && member.eligible).map((member) => member.memberId)
   const [selected, setSelected] = useState<string[]>(initial)
   const [search, setSearch] = useState("")
   const [onlyUnselected, setOnlyUnselected] = useState(false)
@@ -24,13 +28,14 @@ export function ActivityReviewRoster({ context, memberOptions, saveAction, onSav
   const registeredIds = new Set(context.candidates.filter((member) => member.registered).map((member) => member.memberId))
   const candidateIds = [...new Set([...context.candidates.map((member) => member.memberId), ...context.participants.map((member) => member.memberId), ...selected])]
   const selectedIds = new Set(selected)
+  const retainedCancelledIds = new Set(unified ? context.participants.filter((member) => member.included && member.canRestore).map((member) => member.memberId) : [])
   const unselectedRegisteredIds = new Set(context.candidates.filter((member) => member.registered && member.eligible && !member.canRestore && !selectedIds.has(member.memberId)).map((member) => member.memberId))
   const query = search.trim().toLocaleLowerCase()
   const shownIds = candidateIds.filter((id) => matchesMember(memberMap.get(id), query) && (!onlyUnselected || unselectedRegisteredIds.has(id)))
   const bulkSelectIds = shownIds.filter((id) => unselectedRegisteredIds.has(id))
   const supplementQuery = supplementSearch.trim().toLocaleLowerCase()
   const supplementMatches = supplementQuery ? memberOptions.filter((member) => !candidateIds.includes(member.memberId) && matchesMember(member, supplementQuery)).slice(0, 20) : []
-  const manualCount = selected.filter((id) => !registeredIds.has(id)).length
+  const manualCount = selected.filter((id) => !registeredIds.has(id) && !retainedCancelledIds.has(id)).length
   const dirty = JSON.stringify([...selected].sort()) !== JSON.stringify([...initial].sort()) || reason.length > 0
   const canRefresh = useUnsavedActivityReviews(dirty && !mutation.success)
   const disabled = !context.canManageSettings || context.settings.version === 0 || mutation.pending || mutation.success
@@ -42,7 +47,7 @@ export function ActivityReviewRoster({ context, memberOptions, saveAction, onSav
   }
   async function submit(event: React.FormEvent) {
     event.preventDefault()
-    if (disabled || selected.length < 2 || !adminAuditReasonIsValid(reason) || !canRefresh()) return
+    if (disabled || (!unified && selected.length < 2) || !adminAuditReasonIsValid(reason) || !canRefresh()) return
     const saved = await mutation.run(() => saveAction({ roundId: context.roundId, memberIds: selected, expectedVersion: context.settings.version, reason: reason.trim() }))
     if (saved) onSaved?.()
   }
@@ -54,8 +59,9 @@ export function ActivityReviewRoster({ context, memberOptions, saveAction, onSav
     </div>
     <form onSubmit={submit} className="mt-4 space-y-4">
       {context.settings.version === 0 ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">请先在开放设置中保存时间，随后即可确认名册。</p> : null}
+      {unified ? <p className="rounded-lg bg-primary/5 px-3 py-2 text-sm leading-6 text-primary">{context.settings.autoIncludeSupported === false ? "已正式公布匹配的参与者可确认实际交流后评价。" : "未取消的有效报名作为默认参与名单，无需等候工作人员逐人确认。"}迟到仍算参加；请仅在确认缺席或名单有误时移除成员，避免作废真实互动评分。</p> : null}
       <fieldset disabled={disabled} className="space-y-4">
-        {selected.length < 2 ? <p role="status" className="text-sm text-muted-foreground">互评至少需要两名实际到场玩家。</p> : null}
+        {selected.length < 2 ? <p role="status" className="text-sm text-muted-foreground">{unified ? "可保存 0 人或 1 人的实际名单；没有其他参与者时不要求提交评分。" : "互评至少需要两名实际到场玩家。"}</p> : null}
         <label className="relative block"><Search className="pointer-events-none absolute left-3 top-3.5 size-4 text-muted-foreground" /><input aria-label="检索活动名册" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="检索姓名或昵称" className={`${fieldClass} pl-9`} /></label>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <button type="button" aria-pressed={onlyUnselected} onClick={() => setOnlyUnselected((current) => !current)} className={`${secondaryButtonClass} aria-pressed:border-primary/40 aria-pressed:bg-primary/10 aria-pressed:text-primary`}><ListFilter aria-hidden="true" className="size-4" />仅看未勾选报名人员</button>
@@ -69,20 +75,21 @@ export function ActivityReviewRoster({ context, memberOptions, saveAction, onSav
             return <label key={id} className="flex min-h-16 cursor-pointer items-center gap-3 border-b border-border/60 px-3 py-3 last:border-0 hover:bg-muted/30">
               <input type="checkbox" checked={selected.includes(id)} onChange={() => toggle(id)} disabled={!eligible && !canRestore && !selected.includes(id)} className="size-4 shrink-0 accent-primary" />
               <span className="min-w-0 flex-1"><span className="block break-words text-sm font-medium">{member?.fullName || "未填写姓名"}</span><span className="block break-words text-xs text-muted-foreground">昵称：{member?.nickname || "未填写"}</span></span>
-              <span className="shrink-0 text-xs text-muted-foreground">{canRestore ? "已取消 · 补录后恢复" : !eligible ? "账号不可用" : registeredIds.has(id) ? "活动报名" : "补录成员"}</span>
+              <span className="shrink-0 text-xs text-muted-foreground">{canRestore ? retainedCancelledIds.has(id) ? "报名已取消 · 历史记录保留" : "已取消 · 补录后恢复" : !eligible ? "账号不可用" : registeredIds.has(id) ? "活动报名" : "补录成员"}</span>
             </label>
           }) : <p className="p-5 text-center text-sm text-muted-foreground">{onlyUnselected ? query ? "当前搜索下没有未勾选的有效报名人员" : "当前没有未勾选的有效报名人员，可关闭筛选查看已选名单" : query ? "没有符合检索条件的玩家" : "暂无报名玩家，可在下方补录已到场成员"}</p>}
         </div>
         <div className="space-y-2 rounded-lg bg-muted/30 p-3">
           <label className="block space-y-2 text-sm font-medium"><span className="inline-flex items-center gap-2"><UserPlus className="size-4" />补录实际到场成员</span><input aria-label="检索补录成员" value={supplementSearch} onChange={(event) => setSupplementSearch(event.target.value)} placeholder="输入已有成员的姓名或昵称" className={fieldClass} /></label>
           {supplementQuery ? <div className="space-y-2">{supplementMatches.length ? supplementMatches.map((member) => <div key={member.memberId} className="flex items-center justify-between gap-3 rounded-lg border border-border bg-background px-3 py-2"><span className="min-w-0 break-words text-sm">{member.fullName || "未填写姓名"}<span className="ml-2 text-xs text-muted-foreground">{member.nickname || "未填写昵称"}</span></span><button type="button" onClick={() => { setSelected((current) => [...current, member.memberId]); setSupplementSearch("") }} className={secondaryButtonClass} aria-label={`补录 ${member.fullName || member.nickname || "成员"}`}>补录</button></div>) : <p className="text-xs text-muted-foreground">没有可补录的匹配成员，或该成员已在上方名册中。</p>}</div> : null}
-          <p className="text-xs leading-5 text-muted-foreground">固定活动保存名册时同步补齐报名；手动选中已取消成员会恢复其报名，无需玩家再次报名。补录、移除与重新确认均会记录操作理由。移除成员会将与其相关的已有评分标记为无效；重新加入后需单独审核恢复。</p>
+          <p className="text-xs leading-5 text-muted-foreground">{unified ? "固定活动新增补录成员时同步补齐或恢复报名。已在名单中的取消者保留历史记录，普通保存不会恢复报名；取消后不能新增评价，误取消请使用下方的明确恢复操作。" : "固定活动保存名册时同步补齐报名；手动选中已取消成员会恢复其报名，无需玩家再次报名。"}补录、移除与重新确认均会记录操作理由。移除成员会将与其相关的已有评分标记为无效；重新加入后需单独审核恢复。</p>
         </div>
         <AuditReasonField id="review-roster-reason" value={reason} onChange={setReason} disabled={disabled} label="名册确认与调整理由" />
       </fieldset>
-      <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-muted-foreground">当前配置版本 {context.settings.version}；保存时检查版本，防止覆盖其他管理员的修改。</span><button type="submit" disabled={disabled || selected.length < 2 || !adminAuditReasonIsValid(reason)} className={primaryButtonClass}>{mutation.pending ? "保存中…" : context.settings.rosterConfirmed ? "更新确认名册" : "确认参与名册"}</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-3"><span className="text-xs text-muted-foreground">当前配置版本 {context.settings.version}；保存时检查版本，防止覆盖其他管理员的修改。</span><button type="submit" disabled={disabled || (!unified && selected.length < 2) || !adminAuditReasonIsValid(reason)} className={primaryButtonClass}>{mutation.pending ? "保存中…" : context.settings.rosterConfirmed ? "更新确认名册" : "确认参与名册"}</button></div>
       <MutationFeedback error={mutation.error} success={mutation.success} />
     </form>
+    {unified && restoreAction && context.canManageSettings ? <div className="mt-4 space-y-3">{context.participants.filter((member) => member.included && member.canRestore).map((member) => <RestoreReviewRegistrationForm key={member.memberId} roundId={context.roundId} memberId={member.memberId} memberName={member.fullName || member.nickname || "该成员"} rosterDirty={dirty && !mutation.success} restoreAction={restoreAction} onSaved={onSaved} />)}</div> : null}
   </section>
 }
 

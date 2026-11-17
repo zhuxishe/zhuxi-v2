@@ -17,6 +17,14 @@ const context: ActivityReviewContext = {
 }
 
 describe("event review page content", () => {
+  it("keeps the same layout for legacy and unified activities without adding an interaction checkbox", () => {
+    const render = (reviewSystem?: "legacy" | "unified") => renderToStaticMarkup(createElement(ActivityReviewPageContent, {
+      context: { ...context, reviewSystem }, locale: "zh", initialSelectedMemberId: "a",
+    }))
+    expect(render("legacy")).toBe(render())
+    expect(render("unified")).toBe(render())
+    expect(render("unified")).not.toContain('type="checkbox"')
+  })
   it("keeps the original registration across participant search, clear and pagination", () => {
     const roundId = "30000000-0000-0000-0000-000000000042"
     const html = renderToStaticMarkup(createElement(ActivityReviewPageContent, {

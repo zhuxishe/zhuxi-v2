@@ -1,8 +1,10 @@
 export type ActivityReviewStatus = "unavailable" | "scheduled" | "open" | "closed" | "paused"
+export type ActivityReviewSystem = "legacy" | "unified"
 export type ActivityReportCategory = "harassment" | "privacy" | "disruption" | "other"
 export type ActivityReportStatus = "pending" | "reviewing" | "resolved" | "dismissed"
 
 export interface ActivityReviewSettings {
+  reviewSystem?: ActivityReviewSystem
   enabled: boolean
   autoIncludeRegistered?: boolean
   autoIncludeSupported?: boolean
@@ -45,6 +47,7 @@ export interface ActivityReviewParticipant {
   report: ActivityReport | null
 }
 export interface ActivityReviewRound {
+  reviewSystem?: ActivityReviewSystem
   roundId: string
   title: string
   status: ActivityReviewStatus

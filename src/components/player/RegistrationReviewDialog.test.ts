@@ -44,6 +44,13 @@ describe("outstanding activity review dialog", () => {
     expect(html).toContain("再試行")
     expect(html).not.toContain("href=")
   })
+  it("renders a unified matching completion link without losing the registration origin", () => {
+    const html = renderToStaticMarkup(createElement(RegistrationReviewDialog, {
+      ...base, blockers: [{ ...blockers[0], review_href: `/app/matches/rounds/${previousId}/reviews` }],
+    }))
+    expect(html).toContain(`/app/matches/rounds/${previousId}/reviews?returnRound=${roundId}&amp;from=participation`)
+    expect(html).not.toContain("无法")
+  })
   it("direct URL cancellation returns to the supplied owned record and retry refreshes without registering", () => {
     const backHref = `/app/matches/rounds/${roundId}`
     const tree = RegistrationReviewGate({ roundId, fromParticipation: true, backHref, blockers })

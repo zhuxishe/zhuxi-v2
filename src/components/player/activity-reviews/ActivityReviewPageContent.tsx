@@ -120,7 +120,7 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
           {context.page < pages ? <Link href={pageHref(context.page + 1)} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-primary">{copy.next}<ChevronRight className="size-4" aria-hidden="true" /></Link> : <span />}
         </nav>}
       </section>
-      {!historySelection && (selected ? <ActivityReviewEditor key={selected.memberId} roundId={context.roundId} participant={selected} canReview={canReview} canReport={context.canReport} lateReview={context.lateReview} locale={locale} action={action}
+      {!historySelection && (selected ? <ActivityReviewEditor key={selected.memberId} roundId={context.roundId} participant={selected} canReview={canReview} canReport={context.canReport} lateReview={context.lateReview} reviewSystem={context.reviewSystem ?? context.settings.reviewSystem} locale={locale} action={action}
         draft={drafts[selected.memberId]} onDraftChange={(draft) => setDrafts((previous) => ({ ...previous, [selected.memberId]: draft }))} onBusyChange={setEditorBusy}
         onSaved={(result) => saveResult(selected.memberId, result)} />
         : participants.length > 0 && <div className="space-y-2 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-center"><p className="text-sm font-medium">{copy.choose}</p><p className="text-xs leading-5 text-muted-foreground">{copy.chooseHint}</p></div>)}
@@ -132,7 +132,7 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
         <DialogTitle className="text-base font-semibold">{historySelection?.kind === "review" ? copy.editReview : historyParticipant?.report?.status === "pending" ? copy.editReport : copy.reportCorrect}</DialogTitle>
         <DialogDescription className="break-words text-sm">{historyParticipant?.fullName || copy.historyUnavailable}{historyParticipant?.nickname ? ` · ${historyParticipant.nickname}` : ""}</DialogDescription>
         {historySelection && historyParticipant && <ActivityReviewEditor key={`${historySelection.memberId}:${historySelection.kind}`} roundId={context.roundId} participant={historyParticipant}
-          canReview={historyTarget?.canReview ?? false} canReport={historyTarget?.canReport ?? false} locale={locale} action={action} mode={historySelection.kind} onBusyChange={setEditorBusy} onCancel={closeHistory}
+          canReview={historyTarget?.canReview ?? false} canReport={historyTarget?.canReport ?? false} reviewSystem={context.reviewSystem ?? context.settings.reviewSystem} locale={locale} action={action} mode={historySelection.kind} onBusyChange={setEditorBusy} onCancel={closeHistory}
           onSaved={(result) => {
             saveResult(historySelection.memberId, result)
             setHistorySuccess(result.report ? !historyParticipant.report ? copy.reportSubmitted : historyParticipant.report.status === "pending" ? copy.reportUpdated : copy.reportSupplementSaved : copy.updated)

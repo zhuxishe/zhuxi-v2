@@ -5,7 +5,7 @@ import { AlertCircle, Check, ChevronDown, ShieldCheck } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { submitActivityReviewAction } from "@/app/app/matches/rounds/[roundId]/reviews/actions"
 import { activityReviewCopy, activityReviewErrorMessage } from "@/lib/activity-reviews/copy"
-import type { ActivityReportCategory, ActivityReviewActionResult, ActivityReviewParticipant, SubmitActivityReviewInput } from "@/lib/activity-reviews/types"
+import type { ActivityReportCategory, ActivityReviewActionResult, ActivityReviewParticipant, ActivityReviewSystem, SubmitActivityReviewInput } from "@/lib/activity-reviews/types"
 import { ActivityReviewScorePicker } from "./ActivityReviewScorePicker"
 
 export type ActivityReviewAction = (input: SubmitActivityReviewInput) => Promise<ActivityReviewActionResult>
@@ -17,10 +17,11 @@ type Confirmation = { type: "report" | "one_point" } | { type: "submit"; kind: S
 const inputClass = "w-full rounded-xl border border-border bg-background px-3 py-3 text-sm leading-6 outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-60"
 const buttonClass = "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 
-export function ActivityReviewEditor({ roundId, participant, canReview, canReport, locale, lateReview = false,
+export function ActivityReviewEditor({ roundId, participant, canReview, canReport, locale, lateReview = false, reviewSystem = "legacy",
   action = submitActivityReviewAction, onSaved, draft, onDraftChange, onBusyChange, mode = "all", onCancel }: {
   roundId: string; participant: ActivityReviewParticipant; canReview: boolean; canReport: boolean; locale: string
   lateReview?: boolean
+  reviewSystem?: ActivityReviewSystem
   action?: ActivityReviewAction; onSaved?: (result: ActivityReviewActionResult) => void
   draft?: ActivityReviewDraft; onDraftChange?: (draft: ActivityReviewDraft) => void; onBusyChange?: (busy: boolean) => void
   mode?: "all" | "review" | "report"; onCancel?: () => void
@@ -72,10 +73,10 @@ export function ActivityReviewEditor({ roundId, participant, canReview, canRepor
     if (usesSupplement && report && report.supplements.length >= 50) { showError(copy.reportSupplementLimit); return }
     if (includesReview && (score === null || score < 1 || score > 5 || !Number.isInteger(score * 2))) { showError(copy.errors.score); return }
     if (includesReview && Array.from(comment.trim()).length > 500) { showError(copy.errors.comment); return }
-    // A one-point review must lead through the report flow, including history edits.
-    // Existing reports require a supplement too: the atomic save checks its
-    // version and reopens moderation even if an administrator handled it meanwhile.
-    if (kind === "review" && score === 1) {
+    // Keep every legacy interaction unchanged. Only a unified review already
+    // saved at one point may reuse its existing report for a comment-only edit.
+    const reusesOnePointReport = reviewSystem === "unified" && review?.score === 1 && Boolean(report)
+    if (kind === "review" && score === 1 && !reusesOnePointReport) {
       if (!canReport) { showError(copy.reportUnavailable); return }
       setConfirmation({ type: "one_point" }); return
     }

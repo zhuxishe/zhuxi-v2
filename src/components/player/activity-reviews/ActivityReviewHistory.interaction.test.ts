@@ -82,6 +82,13 @@ describe("activity review history editing", () => {
     expect(edit("修改评价").participant.review?.comment).toBe("修改后保存的评论")
     expect(context.ownReviews?.[0].comment).toBe("已保存的评论")
   })
+  it("passes the activity's unified policy to a historical review editor", () => {
+    expect(edit("修改评价", { ...context, reviewSystem: "unified" }).reviewSystem).toBe("unified")
+  })
+
+  it("leaves legacy history editing on the legacy default", () => {
+    expect(edit("修改评价").reviewSystem).toBeUndefined()
+  })
 
   it("cancels without saving and reopens the persisted report rather than a cancelled draft", () => {
     const opened = edit("修改举报")

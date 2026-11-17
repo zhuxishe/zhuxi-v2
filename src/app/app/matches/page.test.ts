@@ -70,6 +70,21 @@ describe("participation page composition", () => {
     expect(html.indexOf('id="matching"')).toBeLessThan(html.indexOf('id="participation"'))
   })
 
+  it.each(["closed", "paused"] as const)("retains a %s unified review history entry for a manually added participant without a questionnaire signup", async (status) => {
+    mocks.participation = []
+    mocks.reviewRounds = [{
+      roundId: "manual-matching", title: "管理员补录的匹配活动", reviewSystem: "unified", status,
+      opensAt: "2026-11-01T00:00:00Z", closesAt: "2026-11-20T00:00:00Z",
+      reviewedCount: 1, hasSubmittedFeedback: true, participantCount: 3, canReview: false, canReport: true,
+    }]
+    const html = await renderPage()
+    expect(html).toContain("管理员补录的匹配活动")
+    expect(html).toContain("你已评价 1 位玩家")
+    expect(html).toContain("查看本场评价")
+    expect(html).toContain('href="/app/matches/rounds/manual-matching/reviews"')
+    expect(html).not.toContain('href="/app/matching/survey?round=manual-matching')
+  })
+
   it("preserves existing pair and group detail links, review and cancellation state above registrations", async () => {
     mocks.matches = [pair, { id: "group-result", group_members: ["self", "friend"], session: { session_name: "多人本安排" } }]
     mocks.reviewedIds.add("pair-result")

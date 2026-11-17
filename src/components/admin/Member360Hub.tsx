@@ -1,4 +1,5 @@
 import { formatAdminDateTime } from "@/lib/admin-datetime"
+import { Suspense } from "react"
 import Link from "next/link"
 import {
   Activity,
@@ -28,6 +29,8 @@ import { MemberNumberEditor } from "./MemberNumberEditor"
 import { MemberStatusActions } from "./MemberStatusActions"
 import { MemberStatusBadge } from "./MemberStatusBadge"
 import { MemberCompositeScoreSummary } from "./MemberCompositeScoreSummary"
+import { MemberPeerScorePanel } from "./MemberPeerScorePanel"
+import { MemberPeerScoreCard } from "./MemberPeerScoreCard"
 import type { MemberCompositeScores } from "@/types/member-composite-scores"
 import {
   canRestoreMemberAudit,
@@ -394,6 +397,9 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage, compositeS
 
       {activeTab === "activity" ? (
         <div className="space-y-4">
+          {!isHistoricalRecord && !isAnonymized ? <Suspense fallback={<MemberPeerScoreCard result={{ status: "loading" }} />}>
+            <MemberPeerScorePanel memberId={memberId} />
+          </Suspense> : null}
           <div className="grid gap-4 lg:grid-cols-2">
             <RecordPanel title="活动统计" record={data.dynamicStats} />
             <RecordPanel title="个人主页运营指标" record={data.profileMetrics} />
@@ -404,7 +410,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage, compositeS
           <RecordCollection title="剧本授权与参与记录" records={data.scriptPlayRecords} />
           <section className="rounded-xl border border-border bg-card p-4">
             <h3 className="font-semibold">活动互评</h3>
-            <p className="mt-1 text-sm leading-6 text-muted-foreground">活动体验评分单独管理，暂不计入合拍分数。此处不展示举报人身份、举报原文或内部审核说明。</p>
+            <p className="mt-1 text-sm leading-6 text-muted-foreground">有效单项活动评分用于后台长期合拍分试算，会员端运营分保持独立。此处不展示举报人身份、举报原文或内部审核说明。</p>
             {isSuperAdmin ? <div className="mt-3"><ModuleLink href={`/admin/activity-reviews?memberId=${encodeURIComponent(memberId)}`} label="查看该成员的活动互评" /></div> : <p className="mt-2 text-xs text-muted-foreground">涉及成员的互评明细请由有权限的管理员在活动互评中查看。</p>}
           </section>
           <div className="flex flex-wrap gap-2">

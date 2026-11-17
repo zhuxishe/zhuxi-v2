@@ -94,6 +94,33 @@ beforeEach(() => {
 })
 
 describe("activity review roster filtering and bulk selection", () => {
+  it("keeps an included cancelled member selected in unified mode without changing the legacy selection", async () => {
+    const unifiedContext = { ...context, settings: { ...context.settings, reviewSystem: "unified" as const } }
+    const selectedCancelled = find(row(render(unifiedContext), cancelled.fullName), (element) => element.type === "input" && element.props.type === "checkbox")
+    expect(selectedCancelled?.props.checked).toBe(true)
+    expect(textContent(render(unifiedContext))).toContain("报名已取消 · 历史记录保留")
+    states[4] = "核实其他人员名单"
+    await submit(unifiedContext)
+    expect(mocks.save.mock.calls[0][0].memberIds).toContain(cancelled.memberId)
+    states = []
+    const legacyCancelled = find(row(render(context), cancelled.fullName), (element) => element.type === "input" && element.props.type === "checkbox")
+    expect(legacyCancelled?.props.checked).toBe(false)
+  })
+
+  it("allows zero and one participant corrections only for the unified activity version", async () => {
+    for (const memberIds of [[], [kept.memberId]]) {
+      states = [memberIds, "", false, "", "核实实际参与名单"]
+      const unifiedContext = { ...context, settings: { ...context.settings, reviewSystem: "unified" as const } }
+      expect(button(render(unifiedContext), "更新确认名册").disabled).toBe(false)
+      await submit(unifiedContext)
+      expect(mocks.save).toHaveBeenLastCalledWith({ roundId: context.roundId, memberIds, expectedVersion: 7, reason: "核实实际参与名单" })
+      mocks.save.mockClear()
+      expect(button(render(context), "更新确认名册").disabled).toBe(true)
+      await submit(context)
+      expect(mocks.save).not.toHaveBeenCalled()
+    }
+  })
+
   it("combines the unchecked registration filter with name and nickname search without saving", () => {
     expect(row(render(), cancelled.fullName)).toBeDefined()
     filter()

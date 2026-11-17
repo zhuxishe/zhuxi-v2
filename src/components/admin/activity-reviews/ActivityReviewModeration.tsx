@@ -39,7 +39,7 @@ export function ActivityReviewModeration({ context, memberOptions, memberFilter,
 
   return <div className="space-y-6">
     <section aria-labelledby="activity-review-records" className="rounded-xl border border-border bg-card p-5">
-      <div className="flex items-start gap-3"><Star className="mt-0.5 size-5 shrink-0 text-primary" /><div><h2 id="activity-review-records" className="font-semibold">评分记录</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">有效性调整保留原始评分与处理历史。不会自动生成合拍分数或更改匹配关系。</p></div></div>
+      <div className="flex items-start gap-3"><Star className="mt-0.5 size-5 shrink-0 text-primary" /><div><h2 id="activity-review-records" className="font-semibold">评分记录</h2><p className="mt-1 text-xs leading-5 text-muted-foreground">有效性调整保留原始评分与处理历史，并影响后台长期合拍分试算。会员端运营分与匹配关系保持独立。</p></div></div>
       <form onSubmit={(event) => { event.preventDefault(); if (!confirmActivityReviewNavigation()) return; setQuery(queryDraft); setReviewPage(1) }} className="mt-4 grid gap-3 sm:grid-cols-[1fr_150px_auto]">
         <label className="relative block"><Search className="pointer-events-none absolute left-3 top-3.5 size-4 text-muted-foreground" /><input aria-label="检索评分记录" value={queryDraft} onChange={(event) => setQueryDraft(event.target.value)} placeholder="检索评价人、被评人或评论内容" className={`${fieldClass} pl-9`} /></label>
         <select aria-label="筛选评分有效性" value={validity} onChange={(event) => { if (!confirmActivityReviewNavigation()) return; setValidity(event.target.value); setReviewPage(1) }} className={fieldClass}><option value="all">全部评分</option><option value="valid">有效评分</option><option value="invalid">无效评分</option></select>

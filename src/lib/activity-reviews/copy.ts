@@ -63,6 +63,7 @@ export type ActivityReviewCopy = typeof zh
 
 export function activityReviewErrorMessage(error: string | undefined, locale: string) {
   const copy = activityReviewCopy(locale)
+  if (/one_star_report_required/i.test(error ?? "")) return locale === "ja" ? "1 点の評価には、この参加者への通報内容が必要です。入力してから送信してください。" : "1分评价需要提交对这位玩家的举报说明，请填写后一起提交。"
   if (/report_not_editable/i.test(error ?? "")) return copy.reportStateChanged
   if (/review_invalidated/i.test(error ?? "")) return copy.invalidatedHint
   if (/rate_limit/i.test(error ?? "")) return copy.errors.rateLimit

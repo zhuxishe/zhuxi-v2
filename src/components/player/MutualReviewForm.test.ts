@@ -52,6 +52,12 @@ describe("matching score save and registration return", () => {
     await button(false).onClick()
     expect(mocks.push).toHaveBeenCalledExactlyOnceWith("/app")
   })
+  it("carries the original registration to the unified replacement without claiming a saved review", async () => {
+    mocks.submit.mockResolvedValue({ redirectTo: `/app/matches/rounds/${target}/reviews` })
+    await button().onClick()
+    expect(mocks.push).toHaveBeenCalledExactlyOnceWith(`/app/matches/rounds/${target}/reviews?returnRound=${target}&from=participation`)
+    expect(mocks.refresh).toHaveBeenCalledOnce()
+  })
   it("preserves a session-expiry redirect instead of reporting a failed save", async () => {
     const redirect = Object.assign(new Error("NEXT_REDIRECT"), {
       digest: "NEXT_REDIRECT;replace;/login?next=%2Fapp%2Freviews&reason=session_expired;307;",

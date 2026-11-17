@@ -1,11 +1,11 @@
 import { isValidElement, type ReactNode } from "react"
 import { beforeEach, describe, expect, it, vi } from "vitest"
-const mocks = vi.hoisted(() => ({ match: vi.fn(), reviewed: vi.fn(), redirect: vi.fn((href: string) => { throw new Error(`redirect:${href}`) }) }))
+const mocks = vi.hoisted(() => ({ match: vi.fn(), reviewed: vi.fn(), reviewRoute: vi.fn(), redirect: vi.fn((href: string) => { throw new Error(`redirect:${href}`) }) }))
 vi.mock("@/lib/auth/player", () => ({ requirePlayer: async () => ({ memberId: "self" }) }))
 vi.mock("next-intl/server", () => ({ getLocale: async () => "zh", getTranslations: async () => (key: string) => key }))
 vi.mock("next/navigation", () => ({ redirect: mocks.redirect, notFound: () => { throw new Error("not-found") } }))
 vi.mock("@/lib/queries/matching", () => ({ fetchMatchDetail: mocks.match }))
-vi.mock("@/lib/queries/reviews", () => ({ checkReviewExists: mocks.reviewed }))
+vi.mock("@/lib/queries/reviews", () => ({ checkReviewExists: mocks.reviewed, fetchMatchReviewRoute: mocks.reviewRoute }))
 vi.mock("@/components/player/MutualReviewForm", () => ({ MutualReviewForm: () => null }))
 vi.mock("@/lib/supabase/admin", () => ({ createAdminClient: () => ({ from: (table: string) => {
   const chain = { select: () => chain, eq: () => chain,
@@ -31,6 +31,7 @@ describe("matching review registration return", () => {
     vi.clearAllMocks()
     mocks.match.mockResolvedValue({ status: "confirmed", member_a_id: "self", member_b_id: "partner", group_members: null, publication_version: 1 })
     mocks.reviewed.mockResolvedValue(false)
+    mocks.reviewRoute.mockResolvedValue({ reviewSystem: "legacy", roundId: null, reviewed: false })
   })
 
   it("passes the validated original registration through the duo form without submitting registration", async () => {
@@ -59,5 +60,24 @@ describe("matching review registration return", () => {
       const tree = await NewReviewPage({ params, searchParams: Promise.resolve({ returnRound }) })
       expect(find<Parameters<typeof MutualReviewForm>[0]>(tree, MutualReviewForm)?.registrationReturn).toBeNull()
     }
+  })
+
+  it("routes an authorized unified match to the activity form with its registration return", async () => {
+    mocks.reviewRoute.mockResolvedValue({ reviewSystem: "unified", roundId: target, reviewed: false })
+    await expect(NewReviewPage({ params, searchParams: Promise.resolve({ returnRound: target, from: "participation" }) }))
+      .rejects.toThrow(`redirect:/app/matches/rounds/${target}/reviews?returnRound=${target}&from=participation`)
+    expect(mocks.reviewed).not.toHaveBeenCalled()
+  })
+
+  it("rejects a stranger before requesting the unified review route", async () => {
+    mocks.match.mockResolvedValue({ status: "confirmed", member_a_id: "other", member_b_id: "partner" })
+    await expect(NewReviewPage({ params, searchParams: Promise.resolve({}) })).rejects.toThrow("not-found")
+    expect(mocks.reviewRoute).not.toHaveBeenCalled()
+  })
+
+  it("propagates routing failures instead of rendering a legacy form for a new activity", async () => {
+    mocks.reviewRoute.mockRejectedValue(new Error("routing unavailable"))
+    await expect(NewReviewPage({ params, searchParams: Promise.resolve({}) })).rejects.toThrow("routing unavailable")
+    expect(mocks.reviewed).not.toHaveBeenCalled()
   })
 })

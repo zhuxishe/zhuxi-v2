@@ -304,6 +304,37 @@ describe("event review editor submission boundaries", () => {
     expect(find(render(overrides), (props) => props.role === "alert")?.children).toContain("不能提交举报")
   })
 
+  it.each(["pending", "reviewing", "resolved", "dismissed"] as const)("reuses the existing %s report for a unified one-point comment edit without reopening reporting", async (status) => {
+    const overrides = { reviewSystem: "unified" as const, participant: { ...participant, review: { ...review, score: 1 }, report: { ...report, status } }, mode: "review" as const }
+    setField("activity-review-comment", "只更正本次评价文字，举报内容不变。", render(overrides))
+    await button("更新评价", render(overrides)).onClick()
+    expect(mocks.action).toHaveBeenCalledOnce()
+    expect(mocks.action.mock.calls[0][0]).toMatchObject({ operation: "save", review: { score: 1, expectedVersion: 3, comment: "只更正本次评价文字，举报内容不变。" } })
+    expect(mocks.action.mock.calls[0][0]).not.toHaveProperty("report")
+    expect(find(render(overrides), (props) => Boolean(props.onOpenChange))?.open).toBe(false)
+  })
+
+  it("does not reuse the one-point shortcut without a corresponding report", async () => {
+    const overrides = { reviewSystem: "unified" as const, participant: { ...participant, review: { ...review, score: 1 } } }
+    await button("更新评价", render(overrides)).onClick()
+    expect(mocks.action).not.toHaveBeenCalled()
+    expect(find(render(overrides), (props) => Boolean(props.onOpenChange))?.open).toBe(true)
+  })
+
+  it("keeps both existing confirmations when a unified normal rating changes to one point", async () => {
+    const overrides = { reviewSystem: "unified" as const, participant: { ...participant, review, report } }
+    find(render(overrides), (props) => props.value === 4.5 && Boolean(props.onChange))?.onChange?.(1)
+    await button("更新评价", render(overrides)).onClick()
+    expect(find(render(overrides), (props) => props.children === "1.0分默认对方存在恶意行为，不适合社团健康发展行为，并自动进行举报。请问仍要提交1分的评价吗？")).toBeDefined()
+    await button("确定", render(overrides)).onClick()
+    setField("activity-report-supplement", "补充本次评价对应的具体情况，请核实。", render(overrides))
+    await button("保存评价并提交补充", render(overrides)).onClick()
+    expect(mocks.action).not.toHaveBeenCalled()
+    expect(find(render(overrides), (props) => props.children === "提交1.0分评价或举报时候，将自动接入人工审查。为确保社团良性发展，您和对方或许只能保留一位成员继续在社团活动。请问仍要进行举报吗？")).toBeDefined()
+    await button("确定", render(overrides)).onClick()
+    expect(mocks.action.mock.calls[0][0]).toMatchObject({ review: { score: 1 }, report: { expectedVersion: 2 } })
+  })
+
   it("deduplicates confirmed submissions and retains the request ID on a failed retry", async () => {
     let finish!: (value: { error: string }) => void
     mocks.action.mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))

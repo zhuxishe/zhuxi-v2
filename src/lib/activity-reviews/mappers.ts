@@ -1,13 +1,18 @@
-import type { ActivityReview, ActivityReport, ActivityReviewSettings, ActivityReviewStatus, ActivityReviewContext, ActivityReviewRound, AdminActivityReviewContext, AdminActivityReviewMember, AdminActivityReviewEvent, ActivityReportCategory, ActivityReportStatus } from "./types"
+import type { ActivityReview, ActivityReport, ActivityReviewSettings, ActivityReviewStatus, ActivityReviewContext, ActivityReviewRound, AdminActivityReviewContext, AdminActivityReviewMember, AdminActivityReviewEvent, ActivityReportCategory, ActivityReportStatus, ActivityReviewSystem } from "./types"
 export type JsonRecord = Record<string, unknown>
 export function record(value: unknown): JsonRecord { return value !== null && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {} }
 export function rows(value: unknown): JsonRecord[] { return Array.isArray(value) ? value.map(record) : [] }
 const text = (value: unknown, fallback = "") => typeof value === "string" ? value : fallback
 const nullable = (value: unknown) => typeof value === "string" ? value : null
 const number = (value: unknown, fallback = 0) => typeof value === "number" && Number.isFinite(value) ? value : fallback
+function reviewSystem(value: unknown): ActivityReviewSystem {
+  if (value === undefined || value === null || value === "legacy") return "legacy"
+  if (value === "unified") return "unified"
+  throw new Error("Invalid activity review system")
+}
 export function mapReviewSettings(value: unknown): ActivityReviewSettings {
   const r = record(value)
-  return { enabled: r.enabled === true, autoIncludeRegistered: r.auto_include_registered !== false, autoIncludeSupported: r.auto_include_supported !== false, opensAt: nullable(r.opens_at), closesAt: nullable(r.closes_at), openedAt: nullable(r.opened_at), rosterConfirmed: r.roster_confirmed === true, version: number(r.version) }
+  return { reviewSystem: reviewSystem(r.review_system), enabled: r.enabled === true, autoIncludeRegistered: r.auto_include_registered !== false, autoIncludeSupported: r.auto_include_supported !== false, opensAt: nullable(r.opens_at), closesAt: nullable(r.closes_at), openedAt: nullable(r.opened_at), rosterConfirmed: r.roster_confirmed === true, version: number(r.version) }
 }
 export function reviewWindowStatus(s: ActivityReviewSettings, now = Date.now()): ActivityReviewStatus {
   if (!s.enabled) return s.openedAt ? "paused" : "unavailable"
@@ -28,7 +33,7 @@ export function mapActivityReport(value: unknown, admin = false): ActivityReport
 }
 export function mapReviewRound(value: unknown): ActivityReviewRound {
   const r = record(value), settings = mapReviewSettings(r.settings ?? { ...r, roster_confirmed: true })
-  return { roundId: text(r.round_id), title: text(r.round_name), status: reviewWindowStatus(settings), opensAt: settings.opensAt, closesAt: settings.closesAt, reviewedCount: number(r.reviewed_count), hasSubmittedFeedback: r.has_submitted_feedback === true || number(r.reviewed_count) > 0, reviewRequired: r.review_required === true, lateReview: r.late_review === true, participantCount: number(r.participant_count), canReview: r.can_review === true, canReport: r.can_report === true }
+  return { reviewSystem: reviewSystem(r.review_system ?? settings.reviewSystem), roundId: text(r.round_id), title: text(r.round_name), status: reviewWindowStatus(settings), opensAt: settings.opensAt, closesAt: settings.closesAt, reviewedCount: number(r.reviewed_count), hasSubmittedFeedback: r.has_submitted_feedback === true || number(r.reviewed_count) > 0, reviewRequired: r.review_required === true, lateReview: r.late_review === true, participantCount: number(r.participant_count), canReview: r.can_review === true, canReport: r.can_report === true }
 }
 export function mapReviewContext(value: unknown, search = ""): ActivityReviewContext {
   const r = record(value), settings = mapReviewSettings(r.settings)

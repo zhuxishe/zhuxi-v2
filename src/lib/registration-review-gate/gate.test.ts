@@ -43,6 +43,22 @@ describe("registration review RPC and return navigation", () => {
     expect(parseRegistrationReturnContext({ returnRound: targetId, from: "participation" })).toEqual(context)
     expect(registrationReturnHref(context)).toBe(`/app/matching/survey?round=${targetId}&from=participation`)
   })
+  it("accepts a unified matching blocker and preserves its original registration return", async () => {
+    const matching = { ...blocker, purpose: "matching" as const }
+    mocks.rpc.mockResolvedValue({ data: { blockers: [matching] }, error: null })
+    expect(await fetchRegistrationReviewGate(targetId)).toEqual({ blockers: [matching] })
+    expect(registrationReviewHref(matching, { roundId: targetId, fromParticipation: true }))
+      .toBe(`/app/matches/rounds/${roundId}/reviews?returnRound=${targetId}&from=participation`)
+  })
+  it.each([
+    `/app/matches/rounds/${targetId}/reviews`,
+    `https://outside.example/app/matches/rounds/${roundId}/reviews`,
+    `/app/matches/rounds/${roundId}/reviews?returnTo=https://outside.example`,
+  ])("rejects cross-activity and external destinations for unified matching: %s", (review_href) => {
+    const matching = { ...blocker, purpose: "matching" as const, review_href }
+    expect(() => parseRegistrationReviewGate({ blockers: [matching] })).toThrow("Invalid registration review activity")
+    expect(() => registrationReviewHref(matching, { roundId: targetId, fromParticipation: true })).toThrow("Invalid review destination")
+  })
   it.each([{}, { returnRound: [targetId, roundId] }, { returnRound: "https://outside.example" }])("ignores missing, repeated or external return targets", (query) => {
     expect(parseRegistrationReturnContext(query)).toBeNull()
   })

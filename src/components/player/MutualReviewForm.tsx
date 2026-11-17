@@ -50,7 +50,15 @@ export function MutualReviewForm({ reviewerId: _reviewerId, revieweeId, matchRes
         would_play_again: wouldPlayAgain, positive_tags: positiveTags,
         negative_tags: negativeTags, comment,
       })
-      if (result.error) setError(tErr.has(result.error) ? tErr(result.error) : result.error)
+      if (result.redirectTo) {
+        const query = new URLSearchParams()
+        if (registrationReturn) {
+          query.set("returnRound", registrationReturn.roundId)
+          if (registrationReturn.fromParticipation) query.set("from", "participation")
+        }
+        router.push(`${result.redirectTo}${query.size ? `?${query}` : ""}`)
+        router.refresh()
+      } else if (result.error) setError(tErr.has(result.error) ? tErr(result.error) : result.error)
       else {
         router.push(registrationReturn ? registrationReturnHref(registrationReturn) : "/app")
         router.refresh()

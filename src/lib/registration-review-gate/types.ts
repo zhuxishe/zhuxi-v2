@@ -12,9 +12,11 @@ export interface RegistrationReviewGate {
 
 export const REVIEW_GATE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** Only the two existing review pages are valid destinations, without query strings. */
+/** Unified matching uses the same round-scoped page as fixed activities. */
 export function isRegistrationReviewHref(href: string, purpose: RegistrationReviewBlocker["purpose"], roundId: string) {
-  if (purpose === "registration") return href === `/app/matches/rounds/${roundId}/reviews`
+  if (!REVIEW_GATE_UUID.test(roundId)) return false
+  if (href === `/app/matches/rounds/${roundId}/reviews`) return true
+  if (purpose === "registration") return false
   const match = /^\/app\/reviews\/new\/([^/?#]+)$/.exec(href)
   return Boolean(match && REVIEW_GATE_UUID.test(match[1]))
 }

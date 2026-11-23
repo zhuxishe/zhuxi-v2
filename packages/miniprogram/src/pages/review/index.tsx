@@ -3,6 +3,7 @@ import Taro, { useRouter } from '@tarojs/taro'
 import { useState } from 'react'
 import { supabaseQuery } from '../../lib/supabase'
 import { getMemberId } from '../../lib/member'
+import { ReviewRoute } from './ReviewRoute'
 import './index.scss'
 
 const POSITIVE_TAGS = ['准时', '有趣', '配合度高', '逻辑强', '气氛活跃', '善于倾听', '思路清晰', '很有演技', '新手友好', '温暖']
@@ -91,7 +92,7 @@ export default function Review() {
   }
 
   return (
-    <View className="review-page">
+    <ReviewRoute matchId={matchId}><View className="review-page">
       <View className="form-card">
         <Text className="section-title">评分</Text>
         {SCORE_LABELS.map(({ key, label }) => (
@@ -151,6 +152,6 @@ export default function Review() {
       <View className="submit-btn" onClick={!submitting ? handleSubmit : undefined}>
         <Text className="submit-text">{submitting ? '提交中...' : '提交评价'}</Text>
       </View>
-    </View>
+    </View></ReviewRoute>
   )
 }

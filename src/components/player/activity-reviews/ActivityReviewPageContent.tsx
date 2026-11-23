@@ -4,8 +4,9 @@ import Link from "next/link"
 import { useState } from "react"
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Search, Users } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
-import { activityReviewCopy } from "@/lib/activity-reviews/copy"
-import type { ActivityReviewActionResult, ActivityReviewContext } from "@/lib/activity-reviews/types"
+import { activityReviewCopy, activityReviewV2Copy } from "@/lib/activity-reviews/copy"
+import type { ActivityReviewActionResult, ActivityReviewContext, ActivityNoMatchRequest as NoMatchRequest } from "@/lib/activity-reviews/types"
+import { ActivityNoMatchRequest } from "./ActivityNoMatchRequest"
 import { ActivityReviewEditor, formatActivityReviewTime, type ActivityReviewAction, type ActivityReviewDraft } from "./ActivityReviewEditor"
 import { ActivityReviewHistory } from "./ActivityReviewHistory"
 import { ReviewRegistrationReturn } from "@/components/player/ReviewRegistrationReturn"
@@ -22,6 +23,18 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
   const [editorBusy, setEditorBusy] = useState(false)
   const [historySelection, setHistorySelection] = useState<{ memberId: string; kind: "review" | "report" } | null>(null)
   const [historySuccess, setHistorySuccess] = useState<string | null>(null)
+  const [requestUpdates, setRequestUpdates] = useState<Record<string, NoMatchRequest>>({})
+  const isV2 = (context.policyVersion ?? context.settings.policyVersion) === "unified_v2"
+  const v2copy = activityReviewV2Copy(locale)
+  const requests = new Map((context.ownNoMatchRequests ?? []).map(request => [request.targetMemberId, request]))
+  for (const request of Object.values(requestUpdates)) {
+    const current = requests.get(request.targetMemberId)
+    // A refresh may contain a moderation update or newly masked identity.
+    // Local success only fills a not-yet-refreshed record; it never restores a
+    // name removed by the authoritative response.
+    if (!current) requests.set(request.targetMemberId, request)
+    else if (current.version < request.version) requests.set(request.targetMemberId, { ...request, targetName: current.targetName, targetNickname: current.targetNickname })
+  }
   const participants = context.participants.map((participant) => ({ ...participant, review: updates[participant.memberId]?.review ?? participant.review, report: updates[participant.memberId]?.report ?? participant.report }))
   const selected = participants.find((participant) => participant.memberId === selectedId)
   const ownReviews = new Map((context.ownReviews ?? context.participants.flatMap((participant) => participant.review ? [participant.review] : [])).map((review) => [review.revieweeId, review]))
@@ -120,19 +133,21 @@ export function ActivityReviewPageContent({ context, locale, action, initialSele
           {context.page < pages ? <Link href={pageHref(context.page + 1)} className="inline-flex min-h-11 items-center gap-1 rounded-lg px-2 text-xs font-medium text-primary">{copy.next}<ChevronRight className="size-4" aria-hidden="true" /></Link> : <span />}
         </nav>}
       </section>
-      {!historySelection && (selected ? <ActivityReviewEditor key={selected.memberId} roundId={context.roundId} participant={selected} canReview={canReview} canReport={context.canReport} lateReview={context.lateReview} reviewSystem={context.reviewSystem ?? context.settings.reviewSystem} locale={locale} action={action}
+      {!historySelection && (selected ? <ActivityReviewEditor key={selected.memberId} roundId={context.roundId} participant={selected} canReview={canReview} canReport={context.canReport} lateReview={context.lateReview} reviewSystem={context.reviewSystem ?? context.settings.reviewSystem} policyVersion={context.policyVersion ?? context.settings.policyVersion} locale={locale} action={action}
         draft={drafts[selected.memberId]} onDraftChange={(draft) => setDrafts((previous) => ({ ...previous, [selected.memberId]: draft }))} onBusyChange={setEditorBusy}
         onSaved={(result) => saveResult(selected.memberId, result)} />
         : participants.length > 0 && <div className="space-y-2 rounded-2xl border border-dashed border-border bg-muted/20 p-5 text-center"><p className="text-sm font-medium">{copy.choose}</p><p className="text-xs leading-5 text-muted-foreground">{copy.chooseHint}</p></div>)}
+      {isV2 && selected && <ActivityNoMatchRequest key={`no-match:${selected.memberId}`} roundId={context.roundId} targetMemberId={selected.memberId} targetName={selected.fullName || copy.unnamed} existing={requests.get(selected.memberId)} canRequest={context.canRequestNoMatch === true} locale={locale} onSaved={request => setRequestUpdates(previous => ({ ...previous, [request.targetMemberId]: request }))} />}
     </>}
     {historySuccess && <p role="status" className="rounded-xl bg-primary/7 px-4 py-3 text-sm text-primary">{historySuccess}</p>}
     <ActivityReviewHistory reviews={[...ownReviews.values()]} reports={[...ownReports.values()]} targets={historyTargets} locale={locale} open={!context.eligible} busy={editorBusy} onEdit={editHistory} />
+    {isV2 && requests.size > 0 && <details className="rounded-2xl border border-border bg-card p-4"><summary className="min-h-8 cursor-pointer text-sm font-semibold">{v2copy.history}（{requests.size}）</summary><div className="mt-3 space-y-3">{[...requests.values()].map(request => <article key={request.id} className="rounded-xl bg-muted/30 p-3"><p className="text-sm font-medium">{context.eligible ? targetById.get(request.targetMemberId)?.fullName || request.targetName || copy.historyUnavailable : copy.historyUnavailable} · {v2copy[request.status]}</p>{request.reason && <p className="mt-1 whitespace-pre-wrap break-words text-xs leading-5">{request.reason}</p>}<p className="mt-1 text-xs text-muted-foreground">{formatActivityReviewTime(request.updatedAt, locale)}</p></article>)}</div></details>}
     <Dialog open={Boolean(historySelection && historyParticipant)} onOpenChange={(open) => { if (!open) closeHistory() }}>
       <DialogContent showCloseButton={false} className="max-h-[85dvh] overflow-y-auto rounded-2xl p-5 sm:max-w-lg">
         <DialogTitle className="text-base font-semibold">{historySelection?.kind === "review" ? copy.editReview : historyParticipant?.report?.status === "pending" ? copy.editReport : copy.reportCorrect}</DialogTitle>
         <DialogDescription className="break-words text-sm">{historyParticipant?.fullName || copy.historyUnavailable}{historyParticipant?.nickname ? ` · ${historyParticipant.nickname}` : ""}</DialogDescription>
         {historySelection && historyParticipant && <ActivityReviewEditor key={`${historySelection.memberId}:${historySelection.kind}`} roundId={context.roundId} participant={historyParticipant}
-          canReview={historyTarget?.canReview ?? false} canReport={historyTarget?.canReport ?? false} reviewSystem={context.reviewSystem ?? context.settings.reviewSystem} locale={locale} action={action} mode={historySelection.kind} onBusyChange={setEditorBusy} onCancel={closeHistory}
+          canReview={historyTarget?.canReview ?? false} canReport={historyTarget?.canReport ?? false} reviewSystem={context.reviewSystem ?? context.settings.reviewSystem} policyVersion={context.policyVersion ?? context.settings.policyVersion} locale={locale} action={action} mode={historySelection.kind} onBusyChange={setEditorBusy} onCancel={closeHistory}
           onSaved={(result) => {
             saveResult(historySelection.memberId, result)
             setHistorySuccess(result.report ? !historyParticipant.report ? copy.reportSubmitted : historyParticipant.report.status === "pending" ? copy.reportUpdated : copy.reportSupplementSaved : copy.updated)

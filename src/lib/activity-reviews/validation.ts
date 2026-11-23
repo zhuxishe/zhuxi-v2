@@ -1,4 +1,4 @@
-import type { SubmitActivityReviewInput, SaveActivityReviewSettingsInput, ConfirmActivityReviewRosterInput, ModerateActivityReviewInput, ModerateActivityReportInput } from "./types"
+import type { SubmitActivityReviewInput, SaveActivityReviewSettingsInput, ConfirmActivityReviewRosterInput, ModerateActivityReviewInput, ModerateActivityReportInput, SubmitActivityNoMatchRequestInput } from "./types"
 
 export const REPORT_CATEGORIES = ["harassment", "privacy", "disruption", "other"] as const
 export const REPORT_STATUSES = ["pending", "reviewing", "resolved", "dismissed"] as const
@@ -14,6 +14,7 @@ export function validateReviewSubmission(input: SubmitActivityReviewInput): stri
   if (!input.review && !input.report) return "PEER_INVALID_INPUT"
   if (input.operation !== "save" && (input.review || !input.report || input.report.expectedVersion < 1)) return "PEER_INVALID_INPUT"
   if (input.review) {
+    if (input.policyVersion === "unified_v2" && input.interactionConfirmed !== true) return "PEER_INTERACTION_REQUIRED"
     const { score, comment, expectedVersion } = input.review
     if (typeof score !== "number" || !Number.isFinite(score) || score < 1 || score > 5 || !Number.isInteger(score * 2)) return "PEER_SCORE_INVALID"
     if (typeof comment !== "string" || length(comment) > 500) return "PEER_COMMENT_INVALID"
@@ -32,6 +33,12 @@ export function validateReviewSettings(input: SaveActivityReviewSettingsInput): 
   const start = typeof input.opensAt === "string" ? Date.parse(input.opensAt) : NaN
   const end = typeof input.closesAt === "string" ? Date.parse(input.closesAt) : NaN
   return Number.isFinite(start) && Number.isFinite(end) && start < end ? null : "PEER_SETTINGS_INVALID"
+}
+export function validateNoMatchRequest(input: SubmitActivityNoMatchRequestInput): string | null {
+  if (!input || !isReviewUuid(input.roundId) || !isReviewUuid(input.targetMemberId) || !isReviewUuid(input.requestId)) return "PEER_INVALID_INPUT"
+  if (input.interactionConfirmed !== true) return "PEER_INTERACTION_REQUIRED"
+  if (typeof input.reason !== "string" || length(input.reason) > 1000) return "PEER_NO_MATCH_REASON_INVALID"
+  return null
 }
 export function validateReviewRoster(input: ConfirmActivityReviewRosterInput, allowEmpty = false): string | null {
   if (!input || !isReviewUuid(input.roundId) || !version(input.expectedVersion) || !Array.isArray(input.memberIds)

@@ -8,7 +8,7 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
 vi.mock("@/app/app/matches/rounds/[roundId]/reviews/actions", () => ({ submitActivityReviewAction: mocks.action }))
 import { ActivityReviewEditor, type ActivityReviewDraft } from "./ActivityReviewEditor"
 
-type Props = { children?: ReactNode; id?: string; value?: unknown; disabled?: boolean; open?: boolean; role?: string;
+type Props = { children?: ReactNode; id?: string; type?: string; checked?: boolean; value?: unknown; disabled?: boolean; open?: boolean; role?: string;
   onClick?: () => void | Promise<void>; onChange?: (event: unknown) => void; onOpenChange?: (value: boolean) => void; "aria-expanded"?: boolean }
 function find(node: ReactNode, predicate: (props: Props) => boolean): Props | undefined {
   if (Array.isArray(node)) return node.map((child) => find(child, predicate)).find(Boolean)
@@ -56,6 +56,35 @@ describe("event review editor submission boundaries", () => {
     await button("继续填写举报").onClick()
     expect(find(render(), (props) => props.id === "activity-report-detail")).toBeDefined()
     expect(mocks.action).not.toHaveBeenCalled()
+  })
+
+  it("requires actual interaction for a v2 score and saves one point without a report or punitive dialog", async () => {
+    const overrides = { reviewSystem: "unified" as const, policyVersion: "unified_v2" as const }
+    find(render(overrides), props => props.value === null && Boolean(props.onChange))?.onChange?.(1)
+    await button("保存评价", render(overrides)).onClick()
+    expect(mocks.action).not.toHaveBeenCalled()
+    expect(find(render(overrides), props => props.role === "alert")?.children).toContain("实际有过互动")
+    find(render(overrides), props => props.type === "checkbox")?.onChange?.({ target: { checked: true } })
+    await button("保存评价", render(overrides)).onClick()
+    expect(mocks.action).toHaveBeenCalledOnce()
+    expect(mocks.action.mock.calls[0][0]).toMatchObject({ policyVersion: "unified_v2", interactionConfirmed: true, review: { score: 1 } })
+    expect(mocks.action.mock.calls[0][0]).not.toHaveProperty("report")
+    expect(find(render(overrides), props => Boolean(props.onOpenChange))?.open).toBe(false)
+  })
+
+  it("restores a saved v2 interaction confirmation while allowing score edits independently of an existing report", async () => {
+    const overrides = { policyVersion: "unified_v2" as const, participant: { ...participant, review: { ...review, score: 1, interactionConfirmed: true }, report } }
+    expect(find(render(overrides), props => props.type === "checkbox")?.checked).toBe(true)
+    setField("activity-review-comment", "修正对本次互动的评价。", render(overrides))
+    await button("更新评价", render(overrides)).onClick()
+    expect(mocks.action.mock.calls[0][0]).toMatchObject({ policyVersion: "unified_v2", interactionConfirmed: true, review: { score: 1, expectedVersion: 3 } })
+    expect(mocks.action.mock.calls[0][0]).not.toHaveProperty("report")
+  })
+
+  it("leaves the legacy and pre-existing v1 forms without a new interaction checkbox", () => {
+    for (const policyVersion of ["legacy", "unified_v1"] as const) {
+      expect(find(render({ policyVersion }), props => props.type === "checkbox")).toBeUndefined()
+    }
   })
 
   it("submits a report without creating a rating or saving an unsaved comment", async () => {

@@ -23,6 +23,7 @@ const context:any = {
   reviewedCount:onePoint?1:0,participantCount:3,canReview:true,canReport:true,eligible:true,total:3,page:1,pageSize:24,search:'',
   reviewSystem:__BEFORE__||screen==='peer-legacy'?'legacy':'unified',
   settings:{enabled:true,autoIncludeRegistered:true,opensAt:'2026-11-20T00:00:00Z',closesAt:'2026-12-01T00:00:00Z',openedAt:at,rosterConfirmed:true,version:1,reviewSystem:__BEFORE__||screen==='peer-legacy'?'legacy':'unified'},
+  ...(screen === 'v2' ? { policyVersion: 'unified_v2', canRequestNoMatch: true, ownNoMatchRequests: [] } : {}),
   participants:people.map(p=>({...p,review:onePoint&&p.memberId===id(2)?review:null,report:onePoint&&p.memberId===id(2)?report:null})),
   ownReviews:onePoint?[review]:[],ownReports:onePoint?[report]:[],
   historyTargets:people.map(p=>({...p,canReview:true,canReport:true})),

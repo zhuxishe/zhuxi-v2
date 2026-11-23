@@ -1,9 +1,11 @@
 export type ActivityReviewStatus = "unavailable" | "scheduled" | "open" | "closed" | "paused"
 export type ActivityReviewSystem = "legacy" | "unified"
+export type ActivityReviewPolicyVersion = "legacy" | "unified_v1" | "unified_v2"
 export type ActivityReportCategory = "harassment" | "privacy" | "disruption" | "other"
 export type ActivityReportStatus = "pending" | "reviewing" | "resolved" | "dismissed"
 
 export interface ActivityReviewSettings {
+  policyVersion?: ActivityReviewPolicyVersion
   reviewSystem?: ActivityReviewSystem
   enabled: boolean
   autoIncludeRegistered?: boolean
@@ -15,6 +17,7 @@ export interface ActivityReviewSettings {
   version: number
 }
 export interface ActivityReview {
+  interactionConfirmed?: boolean
   id: string
   reviewerId?: string
   revieweeId: string
@@ -47,6 +50,7 @@ export interface ActivityReviewParticipant {
   report: ActivityReport | null
 }
 export interface ActivityReviewRound {
+  policyVersion?: ActivityReviewPolicyVersion
   reviewSystem?: ActivityReviewSystem
   roundId: string
   title: string
@@ -69,6 +73,8 @@ export interface ActivityReviewHistoryTarget {
   canReport: boolean
 }
 export interface ActivityReviewContext extends ActivityReviewRound {
+  ownNoMatchRequests?: ActivityNoMatchRequest[]
+  canRequestNoMatch?: boolean
   eligible: boolean
   settings: ActivityReviewSettings
   participants: ActivityReviewParticipant[]
@@ -82,6 +88,8 @@ export interface ActivityReviewContext extends ActivityReviewRound {
   setupRequired?: boolean
 }
 export interface SubmitActivityReviewInput {
+  policyVersion?: ActivityReviewPolicyVersion
+  interactionConfirmed?: boolean
   operation: "save" | "append_report" | "edit_report"
   roundId: string
   targetMemberId: string
@@ -95,6 +103,24 @@ export interface ActivityReviewActionResult {
   error?: string
   review?: ActivityReview | null
   report?: ActivityReport | null
+}
+export interface ActivityNoMatchRequest {
+  id: string
+  targetMemberId: string
+  targetName?: string | null
+  targetNickname?: string | null
+  reason: string
+  status: "pending" | "resolved" | "closed"
+  version: number
+  createdAt: string
+  updatedAt: string
+}
+export interface SubmitActivityNoMatchRequestInput {
+  roundId: string
+  targetMemberId: string
+  reason: string
+  interactionConfirmed: boolean
+  requestId: string
 }
 export interface AdminActivityReviewEvent extends ActivityReviewRound {
   settings: ActivityReviewSettings

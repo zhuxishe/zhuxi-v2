@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle, ClipboardList, UserRound, Images, MessagesSquare, MessageSquareText, PieChart, Star, Sparkles } from "lucide-react"
+import { LayoutDashboard, Users, Shuffle, BookOpen, Calendar, ShieldCheck, LogOut, XCircle, MessageCircle, ClipboardList, UserRound, Images, MessagesSquare, MessageSquareText, PieChart, Star, Sparkles, UserRoundMinus } from "lucide-react"
 import { logoutAdmin } from "@/app/admin/login/actions"
 import type { AdminRole } from "@/types"
 
@@ -27,6 +27,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { href: "/admin/activity-reviews", label: "活动互评", icon: Star },
       { href: "/admin/peer-scores", label: "合拍分数", icon: Sparkles },
       { href: "/admin/matching/cancellations", label: "取消申请", icon: XCircle },
+      { href: "/admin/matching/avoidance-requests", label: "拒配申请", icon: UserRoundMinus },
     ],
   },
   {

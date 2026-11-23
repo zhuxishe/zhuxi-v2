@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server"
 import { isReviewUuid } from "@/lib/activity-reviews/validation"
+import { mapReviewPolicy } from "@/lib/activity-reviews/mappers"
+import type { ActivityReviewPolicyVersion } from "@/lib/activity-reviews/types"
 
 type ReviewRpcClient = { rpc(name: string, args?: Record<string, unknown>): PromiseLike<{ data: unknown; error: { code?: string; message: string } | null }> }
-export type MatchReviewRoute = { reviewSystem: "legacy" | "unified"; roundId: string | null; reviewed: boolean }
+export type MatchReviewRoute = { reviewSystem: "legacy" | "unified"; roundId: string | null; reviewed: boolean; policyVersion?: ActivityReviewPolicyVersion }
 
 function missingReviewRpc(error: { code?: string; message: string }, name: string) {
   // An absent new endpoint is expected before the migration. A missing helper
@@ -23,7 +25,7 @@ export async function fetchMatchReviewRoute(matchResultId: string): Promise<Matc
     || (row.round_id !== null && !isReviewUuid(row.round_id)) || (row.review_system === "unified" && !isReviewUuid(row.round_id))) {
     throw new Error("Invalid matching review route response")
   }
-  return { reviewSystem: row.review_system as MatchReviewRoute["reviewSystem"], roundId: row.round_id as string | null, reviewed: row.reviewed }
+  return { ...(row.review_policy !== undefined ? { policyVersion: mapReviewPolicy(row.review_policy, row.review_system as MatchReviewRoute["reviewSystem"]) } : {}), reviewSystem: row.review_system as MatchReviewRoute["reviewSystem"], roundId: row.round_id as string | null, reviewed: row.reviewed }
 }
 
 async function unifiedReviewedMatchIds(client: ReviewRpcClient): Promise<string[]> {

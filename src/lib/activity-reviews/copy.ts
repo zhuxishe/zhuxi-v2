@@ -63,6 +63,10 @@ export type ActivityReviewCopy = typeof zh
 
 export function activityReviewErrorMessage(error: string | undefined, locale: string) {
   const copy = activityReviewCopy(locale)
+  if (/interaction_required|interaction_confirmation_required/i.test(error ?? "")) return activityReviewV2Copy(locale).interactionRequired
+  if (/no_match_already_requested/i.test(error ?? "")) return locale === "ja" ? "この方については申請済みです。ページを更新して記録を確認してください。" : "你已对这位玩家提交过申请，请刷新查看已有记录。"
+  if (/no_match_reason_invalid/i.test(error ?? "")) return activityReviewV2Copy(locale).reasonTooLong
+  if (/policy|version_required/i.test(error ?? "")) return locale === "ja" ? "評価の受付方法を確認できません。ページを再読み込みしてください。" : "评价方式已变化，请刷新页面后重试。"
   if (/one_star_report_required/i.test(error ?? "")) return locale === "ja" ? "1 点の評価には、この参加者への通報内容が必要です。入力してから送信してください。" : "1分评价需要提交对这位玩家的举报说明，请填写后一起提交。"
   if (/report_not_editable/i.test(error ?? "")) return copy.reportStateChanged
   if (/review_invalidated/i.test(error ?? "")) return copy.invalidatedHint
@@ -73,4 +77,22 @@ export function activityReviewErrorMessage(error: string | undefined, locale: st
   if (/comment/i.test(error ?? "")) return copy.errors.comment
   if (/report|detail|supplement/i.test(error ?? "")) return copy.errors.report
   return copy.errors.failed
+}
+
+export function activityReviewV2Copy(locale: string) {
+  return locale === "ja" ? {
+    interaction: "このイベントで、この方と実際に交流したことを確認します。",
+    interactionRequired: "実際に交流したことを確認してから送信してください。",
+    scoreHelp: "1 点は今回の体験がよくなかったことを表します。通報は任意で、別に送信できます。",
+    noMatch: "今後のマッチングについて相談", noMatchHelp: "評価や通報とは別の申請です。管理者が確認し、この申請だけでマッチング除外は確定しません。",
+    reason: "理由・補足（任意）", submit: "マッチングに関する申請を送信", submitting: "送信中…", saved: "申請を受け付けました。管理者が確認します。", reasonTooLong: "理由は 1000 文字以内で入力してください。",
+    pending: "確認待ち", resolved: "対応記録あり", closed: "終了", unavailable: "現在は新しい申請を送信できません。", history: "自分の申請記録",
+  } : {
+    interaction: "我确认在本场活动中与这位玩家实际有过互动。",
+    interactionRequired: "请先确认与这位玩家在本场活动中实际有过互动。",
+    scoreHelp: "1分表示本次体验较差，不会自动举报；遇到不当行为可单独提交举报。",
+    noMatch: "申请不再匹配", noMatchHelp: "此申请与评分、举报分开，由管理员核查处理。提交申请不会立即生效为拒配。",
+    reason: "申请原因或补充说明（选填）", submit: "提交不再匹配申请", submitting: "提交中…", saved: "申请已提交，等待管理员核查。", reasonTooLong: "申请说明最多1000字。",
+    pending: "待核查", resolved: "已记录处理", closed: "已关闭", unavailable: "当前暂不能提交新申请。", history: "我的拒配申请",
+  }
 }

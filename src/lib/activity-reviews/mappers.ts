@@ -1,4 +1,5 @@
 import type { ActivityReview, ActivityReport, ActivityReviewSettings, ActivityReviewStatus, ActivityReviewContext, ActivityReviewRound, AdminActivityReviewContext, AdminActivityReviewMember, AdminActivityReviewEvent, ActivityReportCategory, ActivityReportStatus, ActivityReviewSystem } from "./types"
+import type { ActivityReviewPolicyVersion, ActivityNoMatchRequest } from "./types"
 export type JsonRecord = Record<string, unknown>
 export function record(value: unknown): JsonRecord { return value !== null && typeof value === "object" && !Array.isArray(value) ? value as JsonRecord : {} }
 export function rows(value: unknown): JsonRecord[] { return Array.isArray(value) ? value.map(record) : [] }
@@ -12,7 +13,17 @@ function reviewSystem(value: unknown): ActivityReviewSystem {
 }
 export function mapReviewSettings(value: unknown): ActivityReviewSettings {
   const r = record(value)
-  return { reviewSystem: reviewSystem(r.review_system), enabled: r.enabled === true, autoIncludeRegistered: r.auto_include_registered !== false, autoIncludeSupported: r.auto_include_supported !== false, opensAt: nullable(r.opens_at), closesAt: nullable(r.closes_at), openedAt: nullable(r.opened_at), rosterConfirmed: r.roster_confirmed === true, version: number(r.version) }
+  return { policyVersion: mapReviewPolicy(r.review_policy, reviewSystem(r.review_system)), reviewSystem: reviewSystem(r.review_system), enabled: r.enabled === true, autoIncludeRegistered: r.auto_include_registered !== false, autoIncludeSupported: r.auto_include_supported !== false, opensAt: nullable(r.opens_at), closesAt: nullable(r.closes_at), openedAt: nullable(r.opened_at), rosterConfirmed: r.roster_confirmed === true, version: number(r.version) }
+}
+export function mapReviewPolicy(value: unknown, system: ActivityReviewSystem = "legacy"): ActivityReviewPolicyVersion {
+  if (value === undefined || value === null) return system === "unified" ? "unified_v1" : "legacy"
+  if (value === "legacy" || value === "unified_v1" || value === "unified_v2") return value
+  throw new Error("Invalid activity review policy")
+}
+export function mapActivityNoMatchRequest(value: unknown): ActivityNoMatchRequest {
+  const r = record(value)
+  if (!["pending", "resolved", "closed"].includes(String(r.status))) throw new Error("Invalid no-match request status")
+  return { id: text(r.id), targetMemberId: text(r.target_member_id), targetName: nullable(r.target_name), targetNickname: nullable(r.target_nickname), reason: text(r.reason), status: r.status as ActivityNoMatchRequest["status"], version: number(r.version), createdAt: text(r.created_at), updatedAt: text(r.updated_at) }
 }
 export function reviewWindowStatus(s: ActivityReviewSettings, now = Date.now()): ActivityReviewStatus {
   if (!s.enabled) return s.openedAt ? "paused" : "unavailable"
@@ -22,7 +33,7 @@ export function reviewWindowStatus(s: ActivityReviewSettings, now = Date.now()):
 }
 export function mapActivityReview(value: unknown): ActivityReview {
   const r = record(value)
-  return { id: text(r.id), reviewerId: nullable(r.reviewer_id) ?? undefined, revieweeId: text(r.reviewee_id), score: number(r.score), comment: text(r.comment), version: number(r.version), valid: r.valid !== false, updatedAt: text(r.updated_at), createdAt: nullable(r.created_at) ?? undefined }
+  return { ...(r.interaction_confirmed === true ? { interactionConfirmed: true } : {}), id: text(r.id), reviewerId: nullable(r.reviewer_id) ?? undefined, revieweeId: text(r.reviewee_id), score: number(r.score), comment: text(r.comment), version: number(r.version), valid: r.valid !== false, updatedAt: text(r.updated_at), createdAt: nullable(r.created_at) ?? undefined }
 }
 export function mapActivityReport(value: unknown, admin = false): ActivityReport {
   const r = record(value)
@@ -33,12 +44,12 @@ export function mapActivityReport(value: unknown, admin = false): ActivityReport
 }
 export function mapReviewRound(value: unknown): ActivityReviewRound {
   const r = record(value), settings = mapReviewSettings(r.settings ?? { ...r, roster_confirmed: true })
-  return { reviewSystem: reviewSystem(r.review_system ?? settings.reviewSystem), roundId: text(r.round_id), title: text(r.round_name), status: reviewWindowStatus(settings), opensAt: settings.opensAt, closesAt: settings.closesAt, reviewedCount: number(r.reviewed_count), hasSubmittedFeedback: r.has_submitted_feedback === true || number(r.reviewed_count) > 0, reviewRequired: r.review_required === true, lateReview: r.late_review === true, participantCount: number(r.participant_count), canReview: r.can_review === true, canReport: r.can_report === true }
+  return { policyVersion: mapReviewPolicy(r.review_policy ?? record(r.settings).review_policy, reviewSystem(r.review_system ?? settings.reviewSystem)), reviewSystem: reviewSystem(r.review_system ?? settings.reviewSystem), roundId: text(r.round_id), title: text(r.round_name), status: reviewWindowStatus(settings), opensAt: settings.opensAt, closesAt: settings.closesAt, reviewedCount: number(r.reviewed_count), hasSubmittedFeedback: r.has_submitted_feedback === true || number(r.reviewed_count) > 0, reviewRequired: r.review_required === true, lateReview: r.late_review === true, participantCount: number(r.participant_count), canReview: r.can_review === true, canReport: r.can_report === true }
 }
 export function mapReviewContext(value: unknown, search = ""): ActivityReviewContext {
   const r = record(value), settings = mapReviewSettings(r.settings)
   const reviews = rows(r.reviews).map(mapActivityReview), reports = rows(r.reports).map(item => mapActivityReport(item))
-  return { ...mapReviewRound(r), hasSubmittedFeedback: reviews.length > 0 || reports.length > 0, settings, eligible: r.eligible === true, ownReviews: reviews, ownReports: reports,
+  return { ...mapReviewRound(r), ...(Array.isArray(r.no_match_requests) ? { ownNoMatchRequests: rows(r.no_match_requests).map(mapActivityNoMatchRequest), canRequestNoMatch: r.can_request_no_match === true } : {}), hasSubmittedFeedback: reviews.length > 0 || reports.length > 0, settings, eligible: r.eligible === true, ownReviews: reviews, ownReports: reports,
     ...(Array.isArray(r.history_targets) ? { historyTargets: rows(r.history_targets).map(p => ({ memberId: text(p.member_id), fullName: text(p.full_name), nickname: nullable(p.nickname), canReview: p.can_review === true, canReport: p.can_report === true })) } : {}),
     search, total: number(r.total), page: number(r.page, 1), pageSize: number(r.page_size, 24), participants: rows(r.participants).map(p => ({ memberId: text(p.member_id), fullName: text(p.full_name), nickname: nullable(p.nickname), review: reviews.find(v => v.revieweeId === p.member_id) ?? null, report: reports.find(v => v.revieweeId === p.member_id) ?? null })) }
 }

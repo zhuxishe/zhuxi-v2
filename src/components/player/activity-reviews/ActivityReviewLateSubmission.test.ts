@@ -7,6 +7,7 @@ vi.mock("react", async (original) => ({ ...await original<typeof import("react")
 vi.mock("@/app/app/matches/rounds/[roundId]/reviews/actions", () => ({ submitActivityReviewAction: vi.fn() }))
 import { ActivityReviewPageContent } from "./ActivityReviewPageContent"
 import { ActivityReviewEditor } from "./ActivityReviewEditor"
+import { ActivityNoMatchRequest } from "./ActivityNoMatchRequest"
 import { ReviewRegistrationReturn } from "../ReviewRegistrationReturn"
 
 type Props = { children?: ReactNode }
@@ -24,15 +25,20 @@ const context: ActivityReviewContext = {
   ownReviews: [], ownReports: [], total: 1, page: 1, pageSize: 24, search: "",
 }
 let states: unknown[], cursor: number
-function render() {
+function render(value = context) {
   cursor = 0
-  return ActivityReviewPageContent({ context, locale: "zh", initialSelectedMemberId: "partner",
+  return ActivityReviewPageContent({ context: value, locale: "zh", initialSelectedMemberId: "partner",
     registrationReturn: { roundId: "30000000-0000-0000-0000-000000000002", fromParticipation: false } })
 }
 function editor(tree: ReactNode) {
   const result = find<Parameters<typeof ActivityReviewEditor>[0]>(tree, ActivityReviewEditor)
   if (!result) throw new Error("Missing review editor")
   return result
+}
+function content(node: ReactNode): string {
+  if (typeof node === "string") return node
+  if (Array.isArray(node)) return node.map(content).join("")
+  return isValidElement<Props>(node) ? content(node.props.children) : ""
 }
 
 describe("late review completion and return to registration", () => {
@@ -64,5 +70,26 @@ describe("late review completion and return to registration", () => {
     const tree = render()
     expect(editor(tree).canReview).toBe(true)
     expect(find<Parameters<typeof ReviewRegistrationReturn>[0]>(tree, ReviewRegistrationReturn)?.completed).toBe(false)
+  })
+  it("keeps a v2 late score outstanding after an independent no-match application", () => {
+    const value = { ...context, policyVersion: "unified_v2" as const, canRequestNoMatch: true, ownNoMatchRequests: [] }
+    const request = find<Parameters<typeof ActivityNoMatchRequest>[0]>(render(value), ActivityNoMatchRequest)
+    expect(request).toBeDefined()
+    request!.onSaved({ id: "request", targetMemberId: "partner", reason: "", status: "pending", version: 1, createdAt: "2026-11-24T00:00:00Z", updatedAt: "2026-11-24T00:00:00Z" })
+    const tree = render(value)
+    expect(editor(tree).canReview).toBe(true)
+    expect(find<Parameters<typeof ReviewRegistrationReturn>[0]>(tree, ReviewRegistrationReturn)?.completed).toBe(false)
+    expect(find<Parameters<typeof ActivityNoMatchRequest>[0]>(tree, ActivityNoMatchRequest)?.existing?.status).toBe("pending")
+  })
+  it("prefers refreshed request status and identity masking over a locally saved request", () => {
+    const value = { ...context, policyVersion: "unified_v2" as const, canRequestNoMatch: true, ownNoMatchRequests: [] }
+    const request = { id: "request", targetMemberId: "partner", targetName: "先前可见姓名", reason: "本人申请说明", status: "pending" as const, version: 1, createdAt: "2026-11-24T00:00:00Z", updatedAt: "2026-11-24T00:00:00Z" }
+    find<Parameters<typeof ActivityNoMatchRequest>[0]>(render(value), ActivityNoMatchRequest)!.onSaved(request)
+    const tree = render({ ...value, eligible: false, participants: [], ownNoMatchRequests: [{ ...request, version: 2, status: "resolved", targetName: null }] })
+    expect(content(tree)).toContain("已记录处理")
+    expect(content(tree)).toContain("玩家信息暂不可用")
+    expect(content(tree)).toContain("本人申请说明")
+    expect(content(tree)).not.toContain("先前可见姓名")
+    expect(content(tree)).not.toContain("partner")
   })
 })

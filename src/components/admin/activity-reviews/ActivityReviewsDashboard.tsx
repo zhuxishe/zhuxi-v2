@@ -13,6 +13,7 @@ import { confirmActivityReviewNavigation } from "./use-unsaved-activity-reviews"
 import type { AdminReviewRequirementsResult } from "@/lib/activity-reviews/requirements"
 import { ReviewRequirementPanel, type SaveReviewExemptionAction } from "./ReviewRequirementPanel"
 import type { RestoreReviewRegistrationAction } from "@/lib/activity-reviews/restore-registration-types"
+import { ActivityReviewVersion, activityReviewVersionLabel } from "./ActivityReviewVersion"
 
 export const ACTIVITY_REVIEW_STATUS_LABELS: Record<ActivityReviewStatus, string> = { unavailable: "未开放", scheduled: "待开放", open: "开放中", closed: "已截止", paused: "已暂停" }
 export interface AdminActivityReviewActions {
@@ -44,13 +45,15 @@ export function ActivityReviewsDashboard({ data, actions, requirements, onNaviga
     </header>
     {data.setupRequired ? <div role="alert" className="rounded-xl border border-amber-300 bg-amber-50 p-5 text-sm leading-6 text-amber-950">活动互评的数据迁移尚未就绪。请完成数据库升级后再确认名册及开放互评；此页面暂不提供提交操作。</div> : <>
       <form onSubmit={(submitEvent) => { submitEvent.preventDefault(); if (!roundId || !confirmActivityReviewNavigation()) return; onNavigate(`/admin/activity-reviews?${new URLSearchParams({ roundId, ...(data.memberFilter ? { memberId: data.memberFilter } : {}) })}`) }} className="flex flex-col gap-3 rounded-xl border border-border bg-card p-4 sm:flex-row sm:items-end">
-        <label className="min-w-0 flex-1 space-y-1.5 text-sm font-medium"><span>选择活动</span><select aria-label="选择互评活动" value={roundId} onChange={(changeEvent) => setRoundId(changeEvent.target.value)} className={fieldClass}><option value="" disabled>请选择一个报名活动</option>{data.events.map((item) => <option key={item.roundId} value={item.roundId}>{item.title} · {item.settings.version === 0 ? "待配置" : ACTIVITY_REVIEW_STATUS_LABELS[item.status]}</option>)}</select></label>
+        <label className="min-w-0 flex-1 space-y-1.5 text-sm font-medium"><span>选择活动</span><select aria-label="选择互评活动" value={roundId} onChange={(changeEvent) => setRoundId(changeEvent.target.value)} className={fieldClass}><option value="" disabled>请选择一个报名活动</option>{data.events.map((item) => <option key={item.roundId} value={item.roundId}>{item.title} · {activityReviewVersionLabel(item.settings.reviewSystem, item.settings.policyVersion)} · {item.settings.version === 0 ? "待配置" : ACTIVITY_REVIEW_STATUS_LABELS[item.status]}</option>)}</select></label>
         <button type="submit" disabled={!roundId} className={primaryButtonClass}>查看活动</button>
       </form>
       {data.memberFilter ? <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm"><span>当前仅查看与 {memberName?.fullName || memberName?.nickname || "所选成员"} 有关的评分及举报。</span><Link href={`/admin/activity-reviews${context ? `?roundId=${encodeURIComponent(context.roundId)}` : ""}`} className="font-medium text-primary underline underline-offset-4">清除成员筛选</Link></div> : null}
       {context ? <>
         <section className="space-y-4" aria-label="活动互评概览">
-          <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold">{context.title}</h2><span className={`rounded-full px-3 py-1 text-xs font-medium ${event?.status === "open" ? "bg-emerald-50 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{context.settings.version === 0 ? "待配置" : ACTIVITY_REVIEW_STATUS_LABELS[event?.status ?? "unavailable"]}</span></div>
+          <div className="flex flex-wrap items-center gap-3"><h2 className="text-lg font-semibold">{context.title}</h2><ActivityReviewVersion reviewSystem={context.settings.reviewSystem} policyVersion={context.settings.policyVersion} /><span className={`rounded-full px-3 py-1 text-xs font-medium ${event?.status === "open" ? "bg-emerald-50 text-emerald-800" : "bg-muted text-muted-foreground"}`}>{context.settings.version === 0 ? "待配置" : ACTIVITY_REVIEW_STATUS_LABELS[event?.status ?? "unavailable"]}</span></div>
+          <p className="text-xs leading-5 text-muted-foreground">评分规则按活动版本保留。调整名册、开放时间或截止时间不会将旧活动切换为新版。</p>
+          {context.settings.policyVersion === "unified_v2" ? <Link href="/admin/matching/avoidance-requests" className="inline-flex min-h-10 items-center text-sm font-medium text-primary hover:underline">查看不再配对申请 · 独立人工处理</Link> : null}
           <p className="text-xs text-muted-foreground">开放时间：{formatAdminDateTime(context.settings.opensAt, "未设置")} — {formatAdminDateTime(context.settings.closesAt, "未设置")}（日本时间）</p>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Metric icon={Users} label="确认参与人数" value={selectedParticipants} />

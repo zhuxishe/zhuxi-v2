@@ -4,12 +4,13 @@ import { useRef, useState } from "react"
 import { AlertCircle, Check, ChevronDown, ShieldCheck } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { submitActivityReviewAction } from "@/app/app/matches/rounds/[roundId]/reviews/actions"
-import { activityReviewCopy, activityReviewErrorMessage } from "@/lib/activity-reviews/copy"
-import type { ActivityReportCategory, ActivityReviewActionResult, ActivityReviewParticipant, ActivityReviewSystem, SubmitActivityReviewInput } from "@/lib/activity-reviews/types"
+import { activityReviewCopy, activityReviewErrorMessage, activityReviewV2Copy } from "@/lib/activity-reviews/copy"
+import type { ActivityReportCategory, ActivityReviewActionResult, ActivityReviewParticipant, ActivityReviewSystem, ActivityReviewPolicyVersion, SubmitActivityReviewInput } from "@/lib/activity-reviews/types"
 import { ActivityReviewScorePicker } from "./ActivityReviewScorePicker"
 
 export type ActivityReviewAction = (input: SubmitActivityReviewInput) => Promise<ActivityReviewActionResult>
 export interface ActivityReviewDraft {
+  interactionConfirmed?: boolean
   score: number | null; comment: string; category: ActivityReportCategory; detail: string; supplement: string; reportOpen: boolean
 }
 type SaveKind = "review" | "report" | "combined" | "combined_supplement" | "supplement" | "edit_report"
@@ -17,11 +18,12 @@ type Confirmation = { type: "report" | "one_point" } | { type: "submit"; kind: S
 const inputClass = "w-full rounded-xl border border-border bg-background px-3 py-3 text-sm leading-6 outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 disabled:opacity-60"
 const buttonClass = "inline-flex min-h-12 items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
 
-export function ActivityReviewEditor({ roundId, participant, canReview, canReport, locale, lateReview = false, reviewSystem = "legacy",
+export function ActivityReviewEditor({ roundId, participant, canReview, canReport, locale, lateReview = false, reviewSystem = "legacy", policyVersion,
   action = submitActivityReviewAction, onSaved, draft, onDraftChange, onBusyChange, mode = "all", onCancel }: {
   roundId: string; participant: ActivityReviewParticipant; canReview: boolean; canReport: boolean; locale: string
   lateReview?: boolean
   reviewSystem?: ActivityReviewSystem
+  policyVersion?: ActivityReviewPolicyVersion
   action?: ActivityReviewAction; onSaved?: (result: ActivityReviewActionResult) => void
   draft?: ActivityReviewDraft; onDraftChange?: (draft: ActivityReviewDraft) => void; onBusyChange?: (busy: boolean) => void
   mode?: "all" | "review" | "report"; onCancel?: () => void
@@ -45,10 +47,13 @@ export function ActivityReviewEditor({ roundId, participant, canReview, canRepor
   const reportPanelRef = useRef<HTMLDivElement>(null)
   const focusReportOnClose = useRef(false)
   const errorRef = useRef<HTMLParagraphElement>(null)
-  const onePointReview = score === 1 && mode !== "report"
+  const isV2 = policyVersion === "unified_v2"
+  const v2copy = activityReviewV2Copy(locale)
+  const [interactionConfirmed, setInteractionConfirmed] = useState(draft?.interactionConfirmed ?? participant.review?.interactionConfirmed ?? false)
+  const onePointReview = !isV2 && score === 1 && mode !== "report"
 
   function persistDraft(change: Partial<ActivityReviewDraft>) {
-    onDraftChange?.({ score, comment, category, detail, supplement, reportOpen, ...change })
+    onDraftChange?.({ score, comment, category, detail, supplement, reportOpen, ...(isV2 ? { interactionConfirmed } : {}), ...change })
   }
   function showError(message: string) {
     setError(message)
@@ -72,21 +77,23 @@ export function ActivityReviewEditor({ roundId, participant, canReview, canRepor
     setError(null); setSuccess(null)
     if (usesSupplement && report && report.supplements.length >= 50) { showError(copy.reportSupplementLimit); return }
     if (includesReview && (score === null || score < 1 || score > 5 || !Number.isInteger(score * 2))) { showError(copy.errors.score); return }
+    if (includesReview && isV2 && !interactionConfirmed) { showError(v2copy.interactionRequired); return }
     if (includesReview && Array.from(comment.trim()).length > 500) { showError(copy.errors.comment); return }
     // Keep every legacy interaction unchanged. Only a unified review already
     // saved at one point may reuse its existing report for a comment-only edit.
     const reusesOnePointReport = reviewSystem === "unified" && review?.score === 1 && Boolean(report)
-    if (kind === "review" && score === 1 && !reusesOnePointReport) {
+    if (!isV2 && kind === "review" && score === 1 && !reusesOnePointReport) {
       if (!canReport) { showError(copy.reportUnavailable); return }
       setConfirmation({ type: "one_point" }); return
     }
     const reportDetail = (usesSupplement ? supplement : detail).trim()
     if (includesReport && (Array.from(reportDetail).length < 10 || Array.from(reportDetail).length > 2000)) { showError(copy.errors.report); return }
-    if (score === 1 && includesReport && !confirmed) { setConfirmation({ type: "submit", kind }); return }
+    if (!isV2 && score === 1 && includesReport && !confirmed) { setConfirmation({ type: "submit", kind }); return }
     const input: SubmitActivityReviewInput = {
       operation: kind === "supplement" ? "append_report" : kind === "edit_report" ? "edit_report" : "save", roundId, targetMemberId: participant.memberId,
       ...(includesReview ? { review: { score: score!, comment: comment.trim(), expectedVersion: review?.version ?? 0 } } : {}),
       ...(includesReport ? { report: { category: usesSupplement ? report?.category ?? category : category, detail: reportDetail, expectedVersion: report?.version ?? 0 } } : {}),
+      ...(isV2 ? { policyVersion: "unified_v2" as const, interactionConfirmed } : {}),
     }
     const signature = JSON.stringify(input)
     if (!retry.current || retry.current.signature !== signature) retry.current = { signature, requestId: crypto.randomUUID() }
@@ -134,7 +141,9 @@ export function ActivityReviewEditor({ roundId, participant, canReview, canRepor
     </header>}
 
     {mode !== "report" && <>
+    {isV2 && <label className="flex items-start gap-3 rounded-xl bg-primary/5 p-3 text-sm leading-6"><input type="checkbox" checked={interactionConfirmed} disabled={!canReview || review?.valid === false || Boolean(busy)} onChange={event => { setInteractionConfirmed(event.target.checked); persistDraft({ interactionConfirmed: event.target.checked }) }} className="mt-1 size-4 shrink-0" />{v2copy.interaction}</label>}
     <ActivityReviewScorePicker value={score} onChange={(value) => { setScore(value); persistDraft({ score: value }) }} disabled={!canReview || review?.valid === false || Boolean(busy)} copy={copy} />
+    {isV2 && <p className="text-xs leading-5 text-muted-foreground">{v2copy.scoreHelp}</p>}
     <div className="space-y-2">
       <label htmlFor="activity-review-comment" className="flex items-center justify-between gap-3 text-sm font-semibold">{copy.comment}<span className="text-xs font-normal text-muted-foreground">{copy.optional}</span></label>
       <textarea id="activity-review-comment" value={comment} onChange={(event) => { setComment(event.target.value); persistDraft({ comment: event.target.value }) }} disabled={!canReview || review?.valid === false || Boolean(busy)} maxLength={1000} rows={4} placeholder={copy.commentPlaceholder} className={inputClass} />

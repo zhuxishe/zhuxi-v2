@@ -69,6 +69,7 @@ jobs:
           node supabase/audits/round-audience-admin-pglite.mjs
           node supabase/audits/registration-review-gate-pglite.mjs
           node supabase/audits/unified-activity-peer-scores-pglite.mjs
+          node supabase/audits/unified-peer-confirmation-and-requests-pglite.mjs
           node supabase/audits/admin-peer-score-directory-pglite.mjs
           node supabase/audits/questionnaire-templates-pglite.mjs
 

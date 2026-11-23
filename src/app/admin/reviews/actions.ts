@@ -14,10 +14,11 @@ import {
 } from "@/lib/direct-image-upload"
 import { managedContentImageUrlIsCanonical } from "@/lib/content-media-url"
 import { normalizeAdminAuditReason } from "@/lib/member-master/audit-reason"
+import { isLargeActivityCoverAspectRatio } from "@/lib/player-activity/cover-aspect-ratio"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import type { TablesUpdate } from "@/types/database.types"
-import { ACTIVITY_MEDIA_BUCKET, managedActivityMediaPath } from "./media"
+import { ACTIVITY_MEDIA_BUCKET, MAX_ACTIVITY_IMAGE_BYTES, managedActivityMediaPath } from "./media"
 
 export type LargeActivityStatus = "draft" | "published" | "cancelled"
 export type RegistrationStatus = "open" | "closed" | "coming_soon" | "ended"
@@ -32,6 +33,7 @@ export interface ReviewInput {
   content_ja?: string
   tags?: string[]
   cover_url: string
+  cover_aspect_ratio?: string
   gallery_urls?: string[]
   source_url?: string
   event_date?: string
@@ -57,7 +59,24 @@ export interface ReviewInput {
   player_library_order?: number
 }
 
-const MAX_ACTIVITY_IMAGE_BYTES = 8 * 1024 * 1024
+const NEW_REVIEW_COVER_FALLBACK = "/images/landing/mobile-redesign/activity-large-bg.webp"
+const UNPUBLISHED_REVIEW = {
+  status: "draft",
+  is_published: false,
+  is_player_visible: false,
+} as const
+
+export type ReviewPublication = Required<Pick<ReviewInput, "status" | "is_published" | "is_player_visible">>
+
+interface PreparedReviewMediaUpload {
+  error?: string
+  success?: true
+  bucket?: string
+  path?: string
+  token?: string
+  preparedUpdatedAt?: string
+}
+
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 const ACTIVITY_STATUSES: LargeActivityStatus[] = ["draft", "published", "cancelled"]
 const REGISTRATION_STATUSES: RegistrationStatus[] = ["open", "closed", "coming_soon", "ended"]
@@ -72,6 +91,7 @@ const ALLOWED_UPDATE_FIELDS = new Set([
   "content_ja",
   "tags",
   "cover_url",
+  "cover_aspect_ratio",
   "gallery_urls",
   "source_url",
   "event_date",
@@ -164,6 +184,9 @@ function validateReviewInput(
   if ("title" in input && !input.title?.trim()) return "标题不能为空"
   if ("summary" in input && !input.summary?.trim()) return "简介不能为空"
   if ("cover_url" in input && !input.cover_url?.trim()) return "封面图 URL 不能为空"
+  if (input.cover_aspect_ratio !== undefined && !isLargeActivityCoverAspectRatio(input.cover_aspect_ratio)) {
+    return "请选择有效的详情页封面比例"
+  }
   if (input.title && input.title.trim().length > 120) return "标题不能超过 120 字符"
   if (input.title_ja && input.title_ja.trim().length > 120) return "日文标题不能超过 120 字符"
   if (input.summary && input.summary.trim().length > 500) return "简介不能超过 500 字符"
@@ -252,6 +275,7 @@ function normalizeReviewPayload(input: ReviewInput, auditReason: string) {
     content_ja: input.content_ja?.trim() || null,
     tags: normalizeTags(input.tags),
     cover_url: input.cover_url.trim(),
+    ...(input.cover_aspect_ratio !== undefined && { cover_aspect_ratio: input.cover_aspect_ratio }),
     gallery_urls: normalizeGalleryUrls(input.gallery_urls),
     source_url: input.source_url?.trim() || null,
     event_date: input.event_date || null,
@@ -288,12 +312,19 @@ export async function createPastEventReview(input: ReviewInput, rawReason: strin
   const requestId = input.request_id ?? crypto.randomUUID()
   if (!UUID_PATTERN.test(requestId)) return { error: "新建请求编号无效，请刷新页面后重试" }
 
+  const result = await insertPastEventReview(input, reasonResult.reason, requestId)
+  if (!result.reviewId) return { error: result.error }
+  revalidateReviewPaths(result.reviewId)
+  return { success: true, reviewId: result.reviewId }
+}
+
+async function insertPastEventReview(input: ReviewInput, reason: string, requestId: string) {
   const supabase = await createClient()
-  const payload = { id: requestId, ...normalizeReviewPayload(input, reasonResult.reason) }
+  const payload = { id: requestId, ...normalizeReviewPayload(input, reason) }
   const { data, error } = await supabase
     .from("past_event_reviews")
     .insert(payload)
-    .select("id")
+    .select("id, updated_at")
     .single()
 
   if (error?.code === "23505") {
@@ -303,25 +334,62 @@ export async function createPastEventReview(input: ReviewInput, rawReason: strin
       .eq("id", requestId)
       .maybeSingle()
     if (!existingError && existing && !existing.archived_at && reviewCreationPayloadMatches(existing, payload)) {
-      return { success: true, reviewId: existing.id }
+      return { reviewId: existing.id, updatedAt: existing.updated_at }
     }
-    return { error: "新建请求编号已被占用，请刷新页面后重试" }
+    return { error: "新建请求编号已被占用，请返回列表核对活动后重试" }
   }
   if (error) {
     console.error("[createPastEventReview]", error)
     return { error: formatReviewDbError(error) }
   }
-  revalidateReviewPaths(data.id)
-  return { success: true, reviewId: data.id }
+  return { reviewId: data.id, updatedAt: data.updated_at }
 }
 
 function reviewCreationPayloadMatches(
   existing: Record<string, unknown>,
   expected: Record<string, unknown>,
 ) {
-  return Object.entries(expected).every(([key, value]) => (
-    key === "audit_reason" || JSON.stringify(existing[key]) === JSON.stringify(value)
-  ))
+  return Object.entries(expected).every(([key, value]) => {
+    if (key === "audit_reason") return true
+    const stored = existing[key]
+    if ((key === "start_at" || key === "end_at" || key === "registration_deadline")
+      && typeof stored === "string" && typeof value === "string") {
+      return Date.parse(stored) === Date.parse(value)
+    }
+    return JSON.stringify(stored) === JSON.stringify(value)
+  })
+}
+
+export async function prepareNewPastEventReviewCoverUpload(
+  input: Omit<ReviewInput, "cover_url"> & { request_id: string },
+  fileMetadata: DirectImageUploadMetadata,
+  rawReason: string,
+): Promise<PreparedReviewMediaUpload & { reviewId?: string }> {
+  await requireAdmin()
+  const reasonResult = validateReason(rawReason)
+  if (!reasonResult.ok) return { error: reasonResult.error }
+  if (!UUID_PATTERN.test(input.request_id)) return { error: "新建请求编号无效，请刷新页面后重试" }
+  const metadata = validateDirectImageUploadMetadata(fileMetadata, MAX_ACTIVITY_IMAGE_BYTES)
+  if (!metadata.ok) return { error: metadata.error }
+
+  const draft = { ...input, cover_url: NEW_REVIEW_COVER_FALLBACK }
+  const validationError = validateReviewInput(draft)
+  if (validationError) return { error: validationError }
+  if (!(await contentMediaCleanupOutboxIsReady())) {
+    return { error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传活动图片" }
+  }
+
+  // Storage requires an active parent row. Keep the row off both public surfaces
+  // until the uploaded image and the requested publication settings can be saved together.
+  const result = await insertPastEventReview(
+    { ...draft, ...UNPUBLISHED_REVIEW },
+    reasonResult.reason,
+    input.request_id,
+  )
+  if (!result.reviewId) return { error: result.error }
+  revalidatePath("/admin/reviews")
+  const upload = await signReviewMedia(result.reviewId, "cover", metadata.extension)
+  return { ...upload, reviewId: result.reviewId, preparedUpdatedAt: result.updatedAt }
 }
 
 export async function updatePastEventReview(
@@ -533,7 +601,7 @@ export async function preparePastEventReviewMediaUpload(
   fileMetadata: DirectImageUploadMetadata,
   rawReason: string,
   expectedUpdatedAt: string,
-) {
+): Promise<PreparedReviewMediaUpload> {
   await requireAdmin()
   if (!(await contentMediaCleanupOutboxIsReady())) {
     return { error: "数据库尚未完成内容管理 V2 Contract，暂时不能上传活动图片" }
@@ -561,7 +629,16 @@ export async function preparePastEventReviewMediaUpload(
   const currentGallery = normalizeGalleryUrls(review.gallery_urls as unknown as string[])
   if (kind === "gallery" && currentGallery.length >= 30) return { error: "活动图片最多 30 张" }
 
-  const objectPath = `activities/${id}/${kind}/${crypto.randomUUID()}.${metadata.extension}`
+  const upload = await signReviewMedia(id, kind, metadata.extension)
+  return { ...upload, preparedUpdatedAt: review.updated_at }
+}
+
+async function signReviewMedia(
+  id: string,
+  kind: "cover" | "gallery",
+  extension: string,
+): Promise<PreparedReviewMediaUpload> {
+  const objectPath = `activities/${id}/${kind}/${crypto.randomUUID()}.${extension}`
   const { data: signed, error: signedError } = await createAdminClient().storage
     .from(ACTIVITY_MEDIA_BUCKET)
     .createSignedUploadUrl(objectPath, { upsert: false })
@@ -574,7 +651,6 @@ export async function preparePastEventReviewMediaUpload(
     bucket: ACTIVITY_MEDIA_BUCKET,
     path: objectPath,
     token: signed.token,
-    preparedUpdatedAt: review.updated_at,
   }
 }
 
@@ -584,6 +660,7 @@ export async function finalizePastEventReviewMediaUpload(
   objectPath: string,
   rawReason: string,
   preparedUpdatedAt: string,
+  publication?: ReviewPublication,
 ) {
   const admin = await requireAdmin()
   if (!(await contentMediaCleanupOutboxIsReady())) {
@@ -598,29 +675,45 @@ export async function finalizePastEventReviewMediaUpload(
   if ((kind !== "cover" && kind !== "gallery") || !reviewMediaPathIsValid(objectPath, id, kind)) {
     return { error: "图片上传路径无效" }
   }
+  if (publication !== undefined && (
+    !publication || kind !== "cover"
+    || !ACTIVITY_STATUSES.includes(publication.status)
+    || typeof publication.is_published !== "boolean"
+    || typeof publication.is_player_visible !== "boolean"
+  )) return { error: "发布设置无效" }
 
   const storage = createAdminClient().storage.from(ACTIVITY_MEDIA_BUCKET)
   const { data: urlData } = storage.getPublicUrl(objectPath)
   const supabase = await createClient()
   const { data: review, error: reviewError } = await supabase
     .from("past_event_reviews")
-    .select("cover_url, gallery_urls, archived_at, updated_at")
+    .select("cover_url, gallery_urls, archived_at, updated_at, status, is_published, is_player_visible")
     .eq("id", id)
     .maybeSingle()
   const currentGallery = normalizeGalleryUrls(review?.gallery_urls as unknown as string[])
 
   // A retry after a lost response must not delete the successfully committed object.
   if (kind === "cover" && review?.cover_url === urlData.publicUrl) {
+    if (publication) revalidateReviewPaths(id)
     return { success: true, url: urlData.publicUrl, updatedAt: review.updated_at }
   }
   if (kind === "gallery" && currentGallery.includes(urlData.publicUrl)) {
     return { success: true, url: urlData.publicUrl, updatedAt: review?.updated_at }
   }
-  if (reviewError || !review || review.archived_at) {
+  if (reviewError) {
+    console.error("[finalizePastEventReviewMediaUpload:lookup]", reviewError)
+    return { error: "暂时无法确认图片是否已保存，请重试", retryable: true as const }
+  }
+  if (!review || review.archived_at) {
     const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
     return { error: cleanup.success ? "大型活动不存在或已进入回收站" : `大型活动不存在或已进入回收站；${cleanup.error}` }
   }
-  if (review.updated_at !== revisionResult.updatedAt) {
+  if (review.updated_at !== revisionResult.updatedAt || (publication && (
+    review.cover_url !== NEW_REVIEW_COVER_FALLBACK
+    || review.status !== "draft"
+    || review.is_published
+    || review.is_player_visible
+  ))) {
     const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
     return { error: cleanup.success ? STALE_REVIEW_ERROR : `${STALE_REVIEW_ERROR}；${cleanup.error}` }
   }
@@ -643,7 +736,15 @@ export async function finalizePastEventReviewMediaUpload(
     ? [...currentGallery, urlData.publicUrl]
     : undefined
   const payload = kind === "cover"
-    ? { cover_url: urlData.publicUrl, audit_reason: reasonResult.reason }
+    ? {
+        cover_url: urlData.publicUrl,
+        audit_reason: reasonResult.reason,
+        ...(publication && {
+          status: publication.status,
+          is_published: publication.is_published,
+          is_player_visible: publication.is_player_visible,
+        }),
+      }
     : { gallery_urls: nextGallery, audit_reason: reasonResult.reason }
   const { data, error } = await supabase
     .from("past_event_reviews")
@@ -669,7 +770,7 @@ export async function finalizePastEventReviewMediaUpload(
       return { success: true, url: urlData.publicUrl, updatedAt: committed?.updated_at }
     }
     if (confirmError) {
-      return { error: "图片保存结果无法确认，请刷新页面核对后再操作" }
+      return { error: "暂时无法确认图片是否已保存，请重试", retryable: true as const }
     }
     const cleanup = await discardPreparedReviewMedia(admin.id, id, objectPath, reasonResult.reason)
     return {

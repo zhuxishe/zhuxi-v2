@@ -4,10 +4,15 @@ import { useState } from "react"
 import type { ReviewInput } from "./actions"
 import type { PastEventReview } from "@/lib/queries/past-event-reviews"
 import {
+  LARGE_ACTIVITY_COVER_ASPECT_RATIOS,
+  resolveLargeActivityCoverAspectRatio,
+} from "@/lib/player-activity/cover-aspect-ratio"
+import {
   formatTokyoDateTimeLocal,
   parseTokyoDateTimeLocal,
 } from "@/lib/player-activity/tokyo-datetime"
 import { ActivityMediaManager } from "./ActivityMediaManager"
+import { ACTIVITY_IMAGE_ACCEPT } from "./media"
 
 export const activityInputClass = "rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
 
@@ -21,6 +26,7 @@ export function reviewInputFromFormData(formData: FormData): ReviewInput {
     content_ja: text(formData, "content_ja"),
     tags: splitValues(formData.get("tags")),
     cover_url: text(formData, "cover_url"),
+    ...(formData.has("cover_aspect_ratio") && { cover_aspect_ratio: text(formData, "cover_aspect_ratio") }),
     gallery_urls: splitValues(formData.get("gallery_urls")),
     source_url: text(formData, "source_url"),
     event_date: text(formData, "event_date"),
@@ -63,7 +69,10 @@ function splitValues(value: FormDataEntryValue | null) {
     .filter(Boolean)
 }
 
-export function LargeActivityFields({ item }: { item?: PastEventReview }) {
+export function LargeActivityFields({
+  item,
+  showCoverAspectRatio = item?.cover_aspect_ratio !== undefined,
+}: { item?: PastEventReview; showCoverAspectRatio?: boolean }) {
   const [coverUrl, setCoverUrl] = useState(item?.cover_url ?? "")
   const [galleryUrlText, setGalleryUrlText] = useState((item?.gallery_urls ?? []).join("\n"))
   const galleryUrls = splitValues(galleryUrlText)
@@ -112,7 +121,28 @@ export function LargeActivityFields({ item }: { item?: PastEventReview }) {
 
       <FieldSection title="图片与来源">
         <div className="grid gap-3 sm:grid-cols-2">
-          <Field label="封面图 URL" required className="sm:col-span-2"><input name="cover_url" required value={coverUrl} onChange={(event) => setCoverUrl(event.target.value)} className={activityInputClass} /></Field>
+          {item ? (
+            <Field label="封面图 URL" required className="sm:col-span-2">
+              <input name="cover_url" required value={coverUrl} onChange={(event) => setCoverUrl(event.target.value)} className={activityInputClass} />
+            </Field>
+          ) : (
+            <Field label="封面图片" required hint="选择本地 JPG、PNG 或 WebP 图片，最大 8 MB，保存时上传。" className="sm:col-span-2">
+              <input name="cover_file" type="file" accept={ACTIVITY_IMAGE_ACCEPT} required className={`${activityInputClass} file:mr-3 file:font-medium`} />
+            </Field>
+          )}
+          {showCoverAspectRatio && (
+            <Field label="详情页封面比例" hint="宽:高。玩家端详情页会按此比例居中裁切。" className="sm:col-span-2">
+              <select
+                name="cover_aspect_ratio"
+                defaultValue={resolveLargeActivityCoverAspectRatio(item?.cover_aspect_ratio)}
+                className={activityInputClass}
+              >
+                {LARGE_ACTIVITY_COVER_ASPECT_RATIOS.map((ratio) => (
+                  <option key={ratio} value={ratio}>{ratio} {COVER_ASPECT_RATIO_LABELS[ratio]}</option>
+                ))}
+              </select>
+            </Field>
+          )}
           <Field label="更多图片 URL" hint="每行一个" className="sm:col-span-2"><textarea name="gallery_urls" value={galleryUrlText} onChange={(event) => setGalleryUrlText(event.target.value)} rows={3} className={activityInputClass} /></Field>
           <Field label="来源链接" className="sm:col-span-2"><input name="source_url" type="url" defaultValue={item?.source_url ?? ""} className={activityInputClass} /></Field>
         </div>
@@ -125,9 +155,7 @@ export function LargeActivityFields({ item }: { item?: PastEventReview }) {
             onCoverUrlChange={setCoverUrl}
             onGalleryUrlsChange={(urls) => setGalleryUrlText(urls.join("\n"))}
           />
-        ) : (
-          <p className="text-xs text-muted-foreground">首次保存后可直接上传、替换封面或追加活动图片；外部图片 URL 仍可使用。</p>
-        )}
+        ) : null}
       </FieldSection>
 
       <FieldSection title="发布与玩家端展示">
@@ -159,6 +187,15 @@ export function LargeActivityFields({ item }: { item?: PastEventReview }) {
       </FieldSection>
     </div>
   )
+}
+
+const COVER_ASPECT_RATIO_LABELS = {
+  "3:4": "竖版（默认）",
+  "2:3": "竖版",
+  "9:16": "手机竖版",
+  "1:1": "方形",
+  "4:3": "横版",
+  "16:9": "宽屏横版",
 }
 
 function FieldSection({ title, children }: { title: string; children: React.ReactNode }) {

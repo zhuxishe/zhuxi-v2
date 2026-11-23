@@ -45,7 +45,10 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
         backLabel={t("backToLarge")}
       />
 
-      <div className="relative aspect-[4/3] overflow-hidden rounded-[22px] border border-border bg-ink shadow-soft">
+      <div
+        className="relative overflow-hidden rounded-[22px] border border-border bg-ink shadow-soft"
+        style={{ aspectRatio: activity.coverAspectRatio.replace(":", " / ") }}
+      >
         <Image src={cover} alt="" fill unoptimized={cover.startsWith("https://")} priority sizes="(min-width: 448px) 416px, calc(100vw - 32px)" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/8" />
         <span className="absolute bottom-4 right-4 rounded-full border border-white/60 bg-white/92 px-3 py-1.5 text-xs font-semibold text-primary backdrop-blur-md">

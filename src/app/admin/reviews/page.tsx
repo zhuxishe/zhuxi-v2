@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { requireAdmin } from "@/lib/auth/admin"
-import { fetchPastEventReviewAdminState } from "@/lib/queries/past-event-reviews"
+import { fetchPastEventReviewAdminState, largeActivityCoverAspectRatioIsReady } from "@/lib/queries/past-event-reviews"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { Pagination } from "@/components/shared/Pagination"
@@ -36,7 +36,7 @@ export default async function AdminReviewsPage({ searchParams }: Props) {
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1
   const status = STATUS_OPTIONS.find((option) => option.value && option.value === params.status)?.value || undefined
   const archived = params.view === "archived"
-  const [{ reviews, setupRequired, total, pageSize }, cleanupJobs] = await Promise.all([
+  const [{ reviews, setupRequired, total, pageSize }, cleanupJobs, coverAspectRatioReady] = await Promise.all([
     fetchPastEventReviewAdminState({
       search: params.search,
       status,
@@ -46,6 +46,7 @@ export default async function AdminReviewsPage({ searchParams }: Props) {
     admin.role === "super_admin"
       ? fetchPendingContentMediaCleanupJobs("past_event_review")
       : Promise.resolve([]),
+    archived ? Promise.resolve(false) : largeActivityCoverAspectRatioIsReady(),
   ])
 
   return (
@@ -102,7 +103,7 @@ export default async function AdminReviewsPage({ searchParams }: Props) {
           </div>
         ) : (
           <>
-            {!archived && <ReviewForm />}
+            {!archived && <ReviewForm coverAspectRatioReady={coverAspectRatioReady} />}
             {reviews.length === 0 ? (
               <EmptyState
                 icon={Images}

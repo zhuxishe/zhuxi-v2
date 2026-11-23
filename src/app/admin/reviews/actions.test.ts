@@ -15,7 +15,9 @@ vi.mock("next/cache", () => ({ revalidatePath: mocks.revalidatePath }))
 import {
   archivePastEventReview,
   createPastEventReview,
+  finalizePastEventReviewMediaUpload,
   permanentlyDeletePastEventReview,
+  prepareNewPastEventReviewCoverUpload,
   preparePastEventReviewMediaUpload,
   removePastEventReviewGalleryImage,
   restorePastEventReview,
@@ -25,6 +27,9 @@ import {
 const reviewId = "11111111-1111-4111-8111-111111111111"
 const initialUpdatedAt = "2026-09-03T00:00:00.000Z"
 const nextUpdatedAt = "2026-09-03T00:01:00.000Z"
+const fallbackCover = "/images/landing/mobile-redesign/activity-large-bg.webp"
+const coverPath = `activities/${reviewId}/cover/33333333-3333-4333-8333-333333333333.png`
+const coverUrl = `https://api.zhuxishe.com/storage/v1/object/public/activity-media/${coverPath}`
 
 const validReview = {
   title: "测试活动",
@@ -105,6 +110,118 @@ describe("past event review V2 actions", () => {
       registration_label: "外部报名",
       audit_reason: reason,
     }))
+  })
+
+  it.each([
+    { size: 1024, type: "application/pdf" },
+    { size: 8 * 1024 * 1024 + 1, type: "image/png" },
+  ])("rejects an unsupported new cover before creating the draft", async (metadata) => {
+    const result = await prepareNewPastEventReviewCoverUpload(
+      { ...validReview, request_id: reviewId },
+      metadata,
+      "录入九月大型活动资料",
+    )
+
+    expect(result.error).toBeTruthy()
+    expect(mocks.createClient).not.toHaveBeenCalled()
+    expect(mocks.createAdminClient).not.toHaveBeenCalled()
+  })
+
+  it("rejects an arbitrary cover ratio before creating a new activity", async () => {
+    const result = await prepareNewPastEventReviewCoverUpload(
+      { ...validReview, request_id: reviewId, cover_aspect_ratio: "99:100" },
+      { size: 1024, type: "image/png" },
+      "录入大型活动并设置封面比例",
+    )
+
+    expect(result.error).toBe("请选择有效的详情页封面比例")
+    expect(mocks.createClient).not.toHaveBeenCalled()
+  })
+
+  it("reserves an unpublished draft before signing a new cover and reuses the draft on retry", async () => {
+    const success = { data: { id: reviewId, updated_at: initialUpdatedAt }, error: null }
+    const single = vi.fn()
+      .mockResolvedValueOnce(success)
+      .mockResolvedValueOnce({ data: null, error: { code: "23505" } })
+    const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) })
+    const existing = vi.fn().mockImplementation(async () => ({
+      data: { ...insert.mock.calls[0][0], start_at: "2026-09-20T03:00:00+00:00", updated_at: initialUpdatedAt },
+      error: null,
+    }))
+    const select = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: existing }) })
+    mocks.createClient.mockResolvedValue({ from: vi.fn().mockReturnValue({ insert, select }) })
+    const sign = vi.fn().mockResolvedValue({ data: { token: "signed-cover-upload" }, error: null })
+    mockReviewCoverStorage({ createSignedUploadUrl: sign })
+    const input = {
+      ...validReview,
+      request_id: reviewId,
+      is_player_visible: true,
+      cover_aspect_ratio: "9:16",
+      start_at: "2026-09-20T12:00:00+09:00",
+    }
+    const metadata = { size: 1024, type: "image/png" }
+    const reason = "录入九月大型活动资料"
+
+    const result = await prepareNewPastEventReviewCoverUpload(input, metadata, reason)
+    const retry = await prepareNewPastEventReviewCoverUpload(input, metadata, reason)
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({
+      id: reviewId,
+      cover_url: fallbackCover,
+      cover_aspect_ratio: "9:16",
+      status: "draft",
+      is_published: false,
+      is_player_visible: false,
+      audit_reason: reason,
+    }))
+    expect(single.mock.invocationCallOrder[0]).toBeLessThan(sign.mock.invocationCallOrder[0])
+    for (const prepared of [result, retry]) {
+      expect(prepared).toMatchObject({ success: true, reviewId, preparedUpdatedAt: initialUpdatedAt })
+      expect(prepared.path).toMatch(new RegExp(`^activities/${reviewId}/cover/[a-f0-9-]+\\.png$`))
+    }
+  })
+
+  it("saves the verified cover and requested publication in a single update and safely retries", async () => {
+    const bytes = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
+    const info = vi.fn().mockResolvedValue({ data: { size: bytes.length, contentType: "image/png" }, error: null })
+    mockReviewCoverStorage({
+      getPublicUrl: vi.fn().mockReturnValue({ data: { publicUrl: coverUrl } }),
+      info,
+      download: vi.fn().mockResolvedValue({ data: new Blob([bytes]), error: null }),
+    })
+    const draft = {
+      cover_url: fallbackCover, gallery_urls: [], archived_at: null,
+      updated_at: initialUpdatedAt, status: "draft", is_published: false, is_player_visible: false,
+    }
+    const publication = { status: "published", is_published: false, is_player_visible: true } as const
+    const chain = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+      is: vi.fn().mockReturnThis(),
+      update: vi.fn().mockReturnThis(),
+      maybeSingle: vi.fn()
+        .mockResolvedValueOnce({ data: draft, error: null })
+        .mockResolvedValueOnce({ data: { id: reviewId, updated_at: nextUpdatedAt }, error: null })
+        .mockResolvedValueOnce({
+          data: { ...draft, ...publication, cover_url: coverUrl, updated_at: nextUpdatedAt },
+          error: null,
+        }),
+    }
+    mocks.createClient.mockResolvedValue({ from: vi.fn().mockReturnValue(chain) })
+    const reason = "录入九月大型活动资料"
+
+    const result = await finalizePastEventReviewMediaUpload(
+      reviewId, "cover", coverPath, reason, initialUpdatedAt, publication,
+    )
+    const retry = await finalizePastEventReviewMediaUpload(
+      reviewId, "cover", coverPath, reason, initialUpdatedAt, publication,
+    )
+
+    expect(result).toMatchObject({ success: true, url: coverUrl, updatedAt: nextUpdatedAt })
+    expect(retry).toEqual({ success: true, url: coverUrl, updatedAt: nextUpdatedAt })
+    expect(info).toHaveBeenCalledExactlyOnceWith(coverPath)
+    expect(chain.update).toHaveBeenCalledExactlyOnceWith({ ...publication, cover_url: coverUrl, audit_reason: reason })
+    expect(chain.eq).toHaveBeenCalledWith("updated_at", initialUpdatedAt)
   })
 
   it.each([
@@ -317,13 +434,14 @@ describe("past event review V2 actions", () => {
 
     const result = await updatePastEventReview(
       reviewId,
-      { is_published: false },
+      { is_published: false, cover_aspect_ratio: "4:3" },
       "根据运营安排隐藏官网活动",
       initialUpdatedAt,
     )
 
     expect(result).toEqual({ success: true, updatedAt: nextUpdatedAt })
     expect(chain.eq).toHaveBeenCalledWith("updated_at", initialUpdatedAt)
+    expect(chain.update).toHaveBeenCalledWith(expect.objectContaining({ cover_aspect_ratio: "4:3" }))
   })
 
   it("does not remove a gallery image when the media UI revision is stale", async () => {
@@ -357,3 +475,12 @@ describe("past event review V2 actions", () => {
     expect(mocks.createAdminClient).not.toHaveBeenCalled()
   })
 })
+
+function mockReviewCoverStorage(storage: Record<string, unknown>) {
+  mocks.createAdminClient.mockReturnValue({
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ error: null }) }),
+    }),
+    storage: { from: vi.fn().mockReturnValue(storage) },
+  })
+}

@@ -6,7 +6,7 @@ vi.mock("@/lib/supabase/server", () => ({ createClient }))
 
 type QueryResponse = {
   data: unknown
-  error: { message?: string } | null
+  error: { code?: string; message?: string } | null
   count?: number | null
 }
 
@@ -175,10 +175,45 @@ describe("Player Activity V2 queries", () => {
     const result = await fetchPlayerActivityHub("zh")
 
     expect(largeQuery.eq).toHaveBeenCalledWith("show_on_player_home", true)
+    expect(largeQuery.select.mock.calls[0][0]).not.toContain("cover_aspect_ratio")
     expect(largeQuery.limit).toHaveBeenCalledWith(2)
     expect(socialQuery.eq).toHaveBeenCalledWith("show_on_player_activity", true)
     expect(socialQuery.limit).toHaveBeenCalledWith(3)
     expect(result.largeActivities).toHaveLength(1)
     expect(result.socialScripts).toHaveLength(1)
+  })
+
+  it("reads the stored cover ratio for a visible large activity detail", async () => {
+    const detail = queryResult({ data: { id: "large-1", title: "大型活动", cover_aspect_ratio: "9:16" }, error: null })
+    createClient
+      .mockResolvedValueOnce(clientFor(queryResult({ data: settings(), error: null })))
+      .mockResolvedValueOnce(clientFor(detail))
+
+    const { fetchPlayerLargeActivity } = await import("./queries")
+    const result = await fetchPlayerLargeActivity("large-1", "zh")
+
+    expect(detail.select).toHaveBeenCalledWith(expect.stringContaining("cover_aspect_ratio"))
+    expect(detail.eq).toHaveBeenCalledWith("is_player_visible", true)
+    expect(detail.is).toHaveBeenCalledWith("archived_at", null)
+    expect(result?.coverAspectRatio).toBe("9:16")
+  })
+
+  it("keeps details available with the portrait default before the ratio migration", async () => {
+    const beforeMigration = queryResult({
+      data: null,
+      error: { code: "42703", message: "column past_event_reviews.cover_aspect_ratio does not exist" },
+    })
+    const legacyDetail = queryResult({ data: { id: "large-1", title: "旧活动" }, error: null })
+    createClient
+      .mockResolvedValueOnce(clientFor(queryResult({ data: settings(), error: null })))
+      .mockResolvedValueOnce({ from: vi.fn()
+        .mockReturnValueOnce(beforeMigration)
+        .mockReturnValueOnce(legacyDetail) })
+
+    const { fetchPlayerLargeActivity } = await import("./queries")
+    const result = await fetchPlayerLargeActivity("large-1", "zh")
+
+    expect(result?.coverAspectRatio).toBe("3:4")
+    expect(legacyDetail.select.mock.calls[0][0]).not.toContain("cover_aspect_ratio")
   })
 })

@@ -2,6 +2,7 @@ import type { Json } from "@/types/database.types"
 import { createAdminClient } from "@/lib/supabase/admin"
 import { createClient } from "@/lib/supabase/server"
 import { sanitizePostgrestValue } from "@/lib/sanitize"
+import { isMissingLargeActivityCoverAspectRatioColumn } from "@/lib/player-activity/cover-aspect-ratio"
 
 export interface PastEventReview {
   id: string
@@ -14,6 +15,7 @@ export interface PastEventReview {
   content_ja: string | null
   tags: string[]
   cover_url: string
+  cover_aspect_ratio?: string
   gallery_urls: string[]
   source_url: string | null
   event_date: string | null
@@ -188,6 +190,13 @@ export async function fetchPublishedPastEventReviewsState(locale = "zh"): Promis
 
 export async function fetchPublishedPastEventReviews(locale = "zh"): Promise<PastEventReviewPublic[]> {
   return (await fetchPublishedPastEventReviewsState(locale)).reviews
+}
+
+export async function largeActivityCoverAspectRatioIsReady(): Promise<boolean> {
+  const { error } = await createAdminClient().from("past_event_reviews").select("cover_aspect_ratio").limit(0)
+  if (!error) return true
+  if (error.code === "PGRST205" || isMissingLargeActivityCoverAspectRatioColumn(error)) return false
+  throw error
 }
 
 export async function fetchPastEventReviewAdminState(

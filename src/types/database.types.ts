@@ -2423,6 +2423,7 @@ export type Database = {
           capacity_note_ja: string | null
           content: string | null
           content_ja: string | null
+          cover_aspect_ratio: string
           cover_url: string
           created_at: string
           end_at: string | null
@@ -2464,6 +2465,7 @@ export type Database = {
           capacity_note_ja?: string | null
           content?: string | null
           content_ja?: string | null
+          cover_aspect_ratio?: string
           cover_url: string
           created_at?: string
           end_at?: string | null
@@ -2505,6 +2507,7 @@ export type Database = {
           capacity_note_ja?: string | null
           content?: string | null
           content_ja?: string | null
+          cover_aspect_ratio?: string
           cover_url?: string
           created_at?: string
           end_at?: string | null

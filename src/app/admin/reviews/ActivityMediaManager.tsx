@@ -7,7 +7,6 @@ import { ArrowDown, ArrowUp, ImagePlus, RefreshCw, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import { rewriteStorageUrl } from "@/lib/storage-url"
-import { createClient } from "@/lib/supabase/client"
 import {
   discardPastEventReviewMediaUpload,
   finalizePastEventReviewMediaUpload,
@@ -15,6 +14,8 @@ import {
   removePastEventReviewGalleryImage,
   updatePastEventReview,
 } from "./actions"
+import { ACTIVITY_IMAGE_ACCEPT } from "./media"
+import { uploadActivityImage } from "./upload"
 
 interface Props {
   reviewId: string
@@ -124,12 +125,7 @@ export function ActivityMediaManager({
       return { error: prepared.error ?? "无法准备图片上传" }
     }
     try {
-      const { error: uploadError } = await createClient().storage
-        .from(prepared.bucket ?? "activity-media")
-        .uploadToSignedUrl(prepared.path, prepared.token, file, {
-          contentType: file.type,
-          cacheControl: "31536000",
-        })
+      const { error: uploadError } = await uploadActivityImage(prepared.path, prepared.token, file)
       if (uploadError) {
         await discardPastEventReviewMediaUpload(reviewId, kind, prepared.path, auditReason)
         return { error: `图片上传失败: ${uploadError.message}` }
@@ -235,7 +231,7 @@ export function ActivityMediaManager({
           <input
             ref={coverInput}
             type="file"
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            accept={ACTIVITY_IMAGE_ACCEPT}
             disabled={pending}
             onChange={(event) => setCoverFile(event.target.files?.[0] ?? null)}
             className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1"
@@ -251,7 +247,7 @@ export function ActivityMediaManager({
             ref={galleryInput}
             type="file"
             multiple
-            accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+            accept={ACTIVITY_IMAGE_ACCEPT}
             disabled={pending}
             onChange={(event) => setGalleryFiles(Array.from(event.target.files ?? []))}
             className="block w-full text-xs text-muted-foreground file:mr-2 file:rounded file:border-0 file:bg-muted file:px-2 file:py-1"

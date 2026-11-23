@@ -1,5 +1,6 @@
 import { sanitizePostgrestValue } from "@/lib/sanitize"
 import { createClient } from "@/lib/supabase/server"
+import { isMissingLargeActivityCoverAspectRatioColumn, resolveLargeActivityCoverAspectRatio } from "./cover-aspect-ratio"
 import {
   buildLargeActivitySections,
   buildSocialScriptSections,
@@ -23,6 +24,7 @@ const DEFAULT_LIBRARY_PAGE_SIZE = 24
 const MAX_LIBRARY_PAGE_SIZE = 48
 
 const LARGE_ACTIVITY_COLUMNS = "id, source_key, title, title_ja, summary, summary_ja, content, content_ja, cover_url, gallery_urls, start_at, end_at, event_date, location, location_ja, fee_note, fee_note_ja, capacity_note, capacity_note_ja, registration_url, registration_status, registration_deadline, registration_label, status, tags, show_on_player_home, player_home_order, pin_in_player_library, player_library_order, created_at" as const
+const LARGE_ACTIVITY_DETAIL_COLUMNS = `${LARGE_ACTIVITY_COLUMNS}, cover_aspect_ratio` as const
 
 export const PLAYER_SCRIPT_SUMMARY_COLUMNS = "id, title, title_ja, author, cover_url, genre_tags, player_count_min, player_count_max, duration_minutes, budget, location, created_at, is_featured, is_social_script, show_on_player_activity, player_activity_order, pin_in_social_library, social_library_order" as const
 
@@ -177,17 +179,27 @@ export async function fetchPlayerLargeActivity(id: string, locale: string) {
   if (!settings.largeActivitiesEnabled) return null
 
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const fetchDetail = <Columns extends string>(columns: Columns) => supabase
     .from("past_event_reviews")
-    .select(LARGE_ACTIVITY_COLUMNS)
+    .select(columns)
     .eq("id", id)
     .eq("is_player_visible", true)
     .is("archived_at", null)
     .in("status", ["published", "cancelled"])
     .maybeSingle()
 
+  const detail = await fetchDetail(LARGE_ACTIVITY_DETAIL_COLUMNS)
+  const { data, error } = detail.error && isMissingLargeActivityCoverAspectRatioColumn(detail.error)
+    ? await fetchDetail(LARGE_ACTIVITY_COLUMNS)
+    : detail
   if (error) throw error
-  return data ? mapLargeRows([data], locale)[0] ?? null : null
+  if (!data) return null
+  const activity = mapLargeActivityRow(data, normalizePlayerActivityLocale(locale))
+  if (!activity) return null
+  const coverAspectRatio = resolveLargeActivityCoverAspectRatio(
+    "cover_aspect_ratio" in data ? data.cover_aspect_ratio : undefined,
+  )
+  return { ...activity, coverAspectRatio }
 }
 
 export async function fetchPlayerSocialLibrary(locale: string) {

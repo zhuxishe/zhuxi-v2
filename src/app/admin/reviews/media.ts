@@ -1,6 +1,8 @@
 import { managedContentImageUrlIsCanonical } from "@/lib/content-media-url"
 
 export const ACTIVITY_MEDIA_BUCKET = "activity-media"
+export const MAX_ACTIVITY_IMAGE_BYTES = 8 * 1024 * 1024
+export const ACTIVITY_IMAGE_ACCEPT = "image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
 
 const ACTIVITY_MEDIA_HOSTS = new Set([
   "wjjhprflldvclulistcx.supabase.co",

@@ -5,9 +5,12 @@ import { formatAdminDateTime } from "@/lib/admin-datetime"
 import Link from "next/link"
 import { CalendarClock, CheckCircle2, Plus, Shuffle, Users, type LucideIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ActivityRegistrationLink } from "@/components/admin/ActivityRegistrationLink"
 import { EmptyState } from "@/components/shared/EmptyState"
 import { getSurveyWindowState } from "@/lib/matching/survey-window"
 import { getRoundPurpose } from "@/lib/matching/round-config"
+import { isLinkableSignupRound } from "@/lib/activity-registration-links/eligibility"
+import type { ActivityRegistrationLinkSummaries } from "@/lib/activity-registration-links/admin-summaries"
 
 interface Round {
   id: string
@@ -18,6 +21,7 @@ interface Round {
   activity_start: string
   activity_end: string
   purpose?: string
+  is_test?: boolean
 }
 
 interface Session {
@@ -41,7 +45,11 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   closed: { label: "已截止", cls: "bg-yellow-100 text-yellow-700" },
   matched: { label: "已匹配", cls: "bg-blue-100 text-blue-700" },
 }
-export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessions: Session[] }) {
+export function MatchingWorkbench({ rounds, sessions, registrationLinks }: {
+  rounds: Round[]
+  sessions: Session[]
+  registrationLinks?: ActivityRegistrationLinkSummaries | null
+}) {
   const [selectedRoundId, setSelectedRoundId] = useState<string | null>(null)
   const current = rounds.find((r) => r.id === selectedRoundId)
     ?? rounds.find((r) => r.status === "open")
@@ -65,7 +73,14 @@ export function MatchingWorkbench({ rounds, sessions }: { rounds: Round[]; sessi
         <p className="border-b border-border/70 px-4 py-2 text-xs text-muted-foreground">点击条目查看概览，右侧按钮进入详情。</p>
         <div className="divide-y divide-border/70">
           {rounds.map((round) => (
-            <RoundOption key={round.id} round={round} active={round.id === current?.id} onSelect={() => setSelectedRoundId(round.id)} />
+            <div key={round.id}>
+              <RoundOption round={round} active={round.id === current?.id} onSelect={() => setSelectedRoundId(round.id)} />
+              {registrationLinks && (registrationLinks[round.id] || isLinkableSignupRound(round)) && (
+                <div className="px-4 pb-3">
+                  <ActivityRegistrationLink target={{ roundId: round.id }} title={round.round_name} current={registrationLinks[round.id] ?? null} compact />
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </aside>

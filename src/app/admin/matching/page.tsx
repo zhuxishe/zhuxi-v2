@@ -5,6 +5,7 @@ import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { MatchingWorkbench } from "@/components/admin/MatchingWorkbench"
 import { DeletedRoundsTrash } from "@/components/admin/DeletedRoundsTrash"
 import { fetchDeletedRounds } from "@/lib/queries/deleted-rounds"
+import { fetchLinkedLargeActivitySummaries } from "@/lib/activity-registration-links/admin-summaries"
 
 export default async function MatchingPage({ searchParams }: { searchParams: Promise<{ deletedPage?: string | string[] }> }) {
   const admin = await requireAdmin()
@@ -18,12 +19,14 @@ export default async function MatchingPage({ searchParams }: { searchParams: Pro
       return null
     }) : Promise.resolve(null),
   ])
+  // Keep existing links manageable if a formal round stops accepting new links.
+  const registrationLinks = await fetchLinkedLargeActivitySummaries(rounds.filter((round) => !round.is_test).map((round) => round.id))
 
   return (
     <div>
       <AdminTopBar admin={admin} title="匹配管理" />
       <div className="p-6 space-y-6">
-        <MatchingWorkbench rounds={rounds} sessions={sessions} />
+        <MatchingWorkbench rounds={rounds} sessions={sessions} registrationLinks={registrationLinks} />
         <DeletedRoundsTrash data={deleted} canView={admin.role === "super_admin"} expanded={query.deletedPage !== undefined} error={trashError} />
       </div>
     </div>

@@ -56,6 +56,7 @@ describe("fetchPastEventReviewAdminState", () => {
     mocks.createAdminClient.mockReturnValue({ from })
 
     const result = await fetchPastEventReviewAdminState({
+      activityId: "11111111-1111-4111-8111-111111111111",
       archived: true,
       status: "cancelled",
       search: "危险,.(搜索)",
@@ -66,6 +67,7 @@ describe("fetchPastEventReviewAdminState", () => {
     expect(reviewSelect).toHaveBeenCalledWith("*", { count: "exact" })
     expect(reviewQuery.range).toHaveBeenCalledWith(20, 39)
     expect(reviewQuery.not).toHaveBeenCalledWith("archived_at", "is", null)
+    expect(reviewQuery.eq).toHaveBeenCalledWith("id", "11111111-1111-4111-8111-111111111111")
     expect(reviewQuery.eq).toHaveBeenCalledWith("status", "cancelled")
     expect(reviewQuery.or).toHaveBeenCalledWith(expect.stringContaining("%危险搜索%"))
     expect(reviewQuery.or.mock.calls[0][0]).not.toContain("危险,.(搜索)")

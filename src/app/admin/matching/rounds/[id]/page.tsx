@@ -10,6 +10,8 @@ import { fetchAdminActivityReviewRoundSummary } from "@/lib/activity-reviews/que
 import { getRoundPurpose } from "@/lib/matching/round-config"
 import { fetchRoundMatchingRuns } from "@/lib/queries/matching-runs"
 import { fetchMatchingEligibilitySummary } from "@/lib/matching/eligibility-summary"
+import { fetchLinkedLargeActivitySummaries } from "@/lib/activity-registration-links/admin-summaries"
+import { isLinkableSignupRound } from "@/lib/activity-registration-links/eligibility"
 
 interface Props {
   params: Promise<{ id: string }>
@@ -26,7 +28,7 @@ export default async function RoundDetailPage({ params }: Props) {
     notFound()
   }
 
-  const [submissions, stats, allMembers, activityReviewSummary, runs, eligibility] = await Promise.all([
+  const [submissions, stats, allMembers, activityReviewSummary, runs, eligibility, registrationLinks] = await Promise.all([
     fetchRoundSubmissions(id),
     fetchRoundStats(id),
     fetchMemberBriefList(),
@@ -38,7 +40,9 @@ export default async function RoundDetailPage({ params }: Props) {
         error: "暂时无法读取本轮资格人数，请刷新后重试；当前资格人数未知，不能据此判断无人符合资格。",
       }))
       : Promise.resolve({ summary: null, error: null }),
+    !round.is_test ? fetchLinkedLargeActivitySummaries([id]) : Promise.resolve(null),
   ])
+  const registrationLink = registrationLinks?.[id]
 
   return (
     <div>
@@ -63,6 +67,7 @@ export default async function RoundDetailPage({ params }: Props) {
           initialRuns={runs}
           eligibilitySummary={eligibility.summary}
           eligibilitySummaryError={eligibility.error}
+          registrationLink={registrationLink ?? (registrationLinks && isLinkableSignupRound(round) ? null : undefined)}
         />
       </div>
     </div>

@@ -4,9 +4,11 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Archive, Eye, EyeOff, Pencil, RotateCcw, Smartphone, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ActivityRegistrationLink } from "@/components/admin/ActivityRegistrationLink"
 import { cssImageUrl } from "@/lib/css-image-url"
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import type { PastEventReview } from "@/lib/queries/past-event-reviews"
+import type { ActivityRegistrationLinkSummaries, ActivityRegistrationLinkSummary } from "@/lib/activity-registration-links/admin-summaries"
 import {
   archivePastEventReview,
   permanentlyDeletePastEventReview,
@@ -22,9 +24,10 @@ interface Props {
   total: number
   archived: boolean
   canManageRecycleBin: boolean
+  linkedRounds?: ActivityRegistrationLinkSummaries
 }
 
-export function ReviewList({ reviews, total, archived, canManageRecycleBin }: Props) {
+export function ReviewList({ reviews, total, archived, canManageRecycleBin, linkedRounds }: Props) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">共 {total} 个{archived ? "已归档" : "当前"}大型活动</p>
@@ -34,13 +37,21 @@ export function ReviewList({ reviews, total, archived, canManageRecycleBin }: Pr
           item={review}
           archived={archived}
           canManageRecycleBin={canManageRecycleBin}
+          linkedRound={review.registration_round_id
+            ? linkedRounds?.[review.registration_round_id] ?? { id: review.registration_round_id, title: "报名轮次不可用", archived: true }
+            : null}
         />
       ))}
     </div>
   )
 }
 
-function ReviewItem({ item, archived, canManageRecycleBin }: { item: PastEventReview; archived: boolean; canManageRecycleBin: boolean }) {
+function ReviewItem({ item, archived, canManageRecycleBin, linkedRound }: {
+  item: PastEventReview
+  archived: boolean
+  canManageRecycleBin: boolean
+  linkedRound: ActivityRegistrationLinkSummary | null
+}) {
   const router = useRouter()
   const [editing, setEditing] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -182,6 +193,10 @@ function ReviewItem({ item, archived, canManageRecycleBin }: { item: PastEventRe
           </div>
         )}
       </div>
+
+      {!archived && item.registration_round_id !== undefined && (
+        <ActivityRegistrationLink target={{ largeActivityId: item.id }} title={item.title} current={linkedRound} disabled={loading} />
+      )}
 
       <label className="grid gap-1 text-xs font-medium">
         本次操作理由 *

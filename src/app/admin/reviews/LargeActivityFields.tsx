@@ -99,8 +99,8 @@ export function LargeActivityFields({
           <Field label="开始时间（日本时间）"><input name="start_at" type="datetime-local" defaultValue={formatTokyoDateTimeLocal(item?.start_at)} className={activityInputClass} /></Field>
           <Field label="结束时间（日本时间）"><input name="end_at" type="datetime-local" defaultValue={formatTokyoDateTimeLocal(item?.end_at)} className={activityInputClass} /></Field>
           <Field label="官网兼容日期" hint="官网往期回顾仍用此日期排序"><input name="event_date" type="date" defaultValue={item?.event_date ?? ""} className={activityInputClass} /></Field>
-          <Field label="报名链接"><input name="registration_url" type="url" defaultValue={item?.registration_url ?? ""} className={activityInputClass} /></Field>
-          <Field label="报名状态">
+          <Field label={item?.registration_round_id ? "备用报名链接" : "报名链接"} hint={item?.registration_round_id ? "当前使用关联的报名轮次。解除关联后恢复手填链接和下方的报名设置。" : undefined}><input name="registration_url" type="url" defaultValue={item?.registration_url ?? ""} className={activityInputClass} /></Field>
+          <Field label={item?.registration_round_id ? "备用报名状态" : "报名状态"}>
             <select name="registration_status" defaultValue={item?.registration_status ?? "coming_soon"} className={activityInputClass}>
               <option value="coming_soon">即将开放</option>
               <option value="open">报名开放</option>
@@ -108,7 +108,7 @@ export function LargeActivityFields({
               <option value="ended">报名结束</option>
             </select>
           </Field>
-          <Field label="报名截止时间（日本时间）"><input name="registration_deadline" type="datetime-local" defaultValue={formatTokyoDateTimeLocal(item?.registration_deadline)} className={activityInputClass} /></Field>
+          <Field label={item?.registration_round_id ? "备用报名截止时间（日本时间）" : "报名截止时间（日本时间）"}><input name="registration_deadline" type="datetime-local" defaultValue={formatTokyoDateTimeLocal(item?.registration_deadline)} className={activityInputClass} /></Field>
           <Field label="报名按钮文字" hint="留空时使用玩家端默认文字"><input name="registration_label" maxLength={80} defaultValue={item?.registration_label ?? ""} className={activityInputClass} /></Field>
           <Field label="地点（中文）"><input name="location" defaultValue={item?.location ?? ""} className={activityInputClass} /></Field>
           <Field label="地点（日文）"><input name="location_ja" defaultValue={item?.location_ja ?? ""} className={activityInputClass} /></Field>

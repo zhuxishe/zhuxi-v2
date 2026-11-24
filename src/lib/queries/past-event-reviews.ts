@@ -28,6 +28,7 @@ export interface PastEventReview {
   capacity_note: string | null
   capacity_note_ja: string | null
   registration_url: string | null
+  registration_round_id?: string | null
   registration_status: "open" | "closed" | "coming_soon" | "ended"
   registration_deadline: string | null
   registration_label: string | null
@@ -66,6 +67,7 @@ export interface PastEventReviewAdminState {
 }
 
 export interface PastEventReviewAdminOptions {
+  activityId?: string
   search?: string
   status?: "draft" | "published" | "cancelled"
   archived?: boolean
@@ -220,6 +222,7 @@ export async function fetchPastEventReviewAdminState(
   query = options.archived
     ? query.not("archived_at", "is", null)
     : query.is("archived_at", null)
+  if (options.activityId) query = query.eq("id", options.activityId)
   if (options.status) query = query.eq("status", options.status)
   const search = sanitizePostgrestValue((options.search?.trim() ?? "").slice(0, 100))
   if (search) {

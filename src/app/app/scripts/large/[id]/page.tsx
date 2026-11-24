@@ -4,17 +4,21 @@ import { getLocale, getTranslations } from "next-intl/server"
 import { CalendarClock, CalendarDays, ExternalLink, MapPin, Ticket, Users } from "lucide-react"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerLargeActivity } from "@/lib/player-activity/queries"
-import { effectiveRegistrationStatus, getLargeActivityBadge } from "@/lib/player-activity/selection"
+import { resolveLargeActivityRegistration } from "@/lib/player-activity/registration"
+import { getLargeActivityBadge } from "@/lib/player-activity/selection"
 import { rewriteStorageUrl } from "@/lib/storage-url"
 import { formatTokyoDateTimeRange } from "@/lib/player-activity/tokyo-datetime"
 import { ActivityPageIntro } from "@/components/player/activity/ActivityPageIntro"
+import { MatchingSurveyLink } from "@/components/player/MatchingSurveyLink"
 
 interface LargeActivityDetailPageProps {
   params: Promise<{ id: string }>
 }
 
+const REGISTRATION_BUTTON_CLASS = "flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+
 export default async function LargeActivityDetailPage({ params }: LargeActivityDetailPageProps) {
-  await requirePlayer()
+  const player = await requirePlayer()
   const [{ id }, locale, t] = await Promise.all([
     params,
     getLocale(),
@@ -27,11 +31,10 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
   const cover = rewriteStorageUrl(activity.coverUrl)
     ?? "/images/landing/mobile-redesign/activity-large-bg.webp"
   const badge = getLargeActivityBadge(activity, activity.latestActivityId, now)
-  const registrationUrl = safeExternalUrl(activity.registrationUrl)
-  const registrationStatus = effectiveRegistrationStatus(activity)
-  const registrationOpen = activity.status !== "cancelled"
-    && registrationStatus === "open"
-    && Boolean(registrationUrl)
+  const registration = await resolveLargeActivityRegistration(activity, player.memberId, now)
+  const registrationUrl = activity.status !== "cancelled" && registration.status === "open"
+    ? registration.href
+    : null
   const gallery = activity.galleryUrls
     .map((url) => rewriteStorageUrl(url))
     .filter((url): url is string => Boolean(url && url !== cover))
@@ -70,13 +73,13 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
         <DetailMeta
           icon={Ticket}
           label={t("registrationStatusLabel")}
-          value={t(`registrationStatuses.${registrationStatus}`)}
+          value={t(`registrationStatuses.${registration.status}`)}
         />
-        {activity.registrationDeadline && (
+        {registration.deadline && (
           <DetailMeta
             icon={CalendarClock}
             label={t("registrationDeadlineLabel")}
-            value={formatDeadline(activity.registrationDeadline, locale)}
+            value={formatDeadline(registration.deadline, locale)}
           />
         )}
       </section>
@@ -113,23 +116,26 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
         <p className="flex min-h-12 items-center justify-center rounded-xl bg-muted px-4 text-sm font-semibold text-muted-foreground" aria-disabled="true">
           {t("registrationCancelled")}
         </p>
-      ) : registrationOpen && registrationUrl ? (
-        <a
-          href={registrationUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex min-h-12 items-center justify-center gap-2 rounded-xl bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
-        >
-          {activity.registrationLabel ?? t("registerExternal")}
-          <ExternalLink className="size-4" aria-hidden="true" />
-        </a>
+      ) : registrationUrl ? (
+        registration.source === "round" ? (
+          <MatchingSurveyLink href={registrationUrl} className={REGISTRATION_BUTTON_CLASS}>
+            {t("registerExternal")}
+          </MatchingSurveyLink>
+        ) : (
+          <a href={registrationUrl} target="_blank" rel="noopener noreferrer" className={REGISTRATION_BUTTON_CLASS}>
+            {activity.registrationLabel ?? t("registerExternal")}
+            <ExternalLink className="size-4" aria-hidden="true" />
+          </a>
+        )
       ) : (
         <p className="flex min-h-12 items-center justify-center rounded-xl bg-secondary px-4 text-sm font-semibold text-primary" aria-disabled="true">
-          {registrationStatus === "closed"
+          {registration.status === "closed"
             ? t("registrationClosed")
-            : registrationStatus === "ended"
+            : registration.status === "ended"
               ? t("registrationEnded")
-              : t("registrationPending")}
+              : registration.source === "round"
+                ? t("registrationStatuses.coming_soon")
+                : t("registrationPending")}
         </p>
       )}
     </article>
@@ -153,16 +159,6 @@ function DetailMeta({
       <span className="mt-1 block text-sm font-semibold leading-5 [overflow-wrap:anywhere]">{value}</span>
     </div>
   )
-}
-
-function safeExternalUrl(value: string | null) {
-  if (!value) return null
-  try {
-    const url = new URL(value)
-    return url.protocol === "https:" || url.protocol === "http:" ? value : null
-  } catch {
-    return null
-  }
 }
 
 function plainText(value: string | null) {

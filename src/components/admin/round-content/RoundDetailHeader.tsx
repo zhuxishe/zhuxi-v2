@@ -9,14 +9,17 @@ import { getRoundPurpose, normalizeRoundConfig } from "@/lib/matching/round-conf
 import { adminAuditReasonIsValid } from "@/lib/member-master/audit-reason"
 import { canRunRoundMatching } from "../round-detail-rules"
 import { RoundStatusBadge } from "./RoundStatusBadge"
+import { ActivityRegistrationLink } from "@/components/admin/ActivityRegistrationLink"
+import type { ActivityRegistrationLinkSummary } from "@/lib/activity-registration-links/admin-summaries"
 
 interface Props {
   round: RoundRecord; windowState: string; loading: boolean; count: number; matchingReason: string
   matchingEligibleCount?: number; matchingEligibilityKnown?: boolean
+  registrationLink?: ActivityRegistrationLinkSummary | null
   onOpen: () => void; onClose: () => void; onMatch: () => void
 }
 
-export function RoundDetailHeader({ round, windowState, loading, count, matchingEligibleCount, matchingEligibilityKnown = true, matchingReason, onOpen, onClose, onMatch }: Props) {
+export function RoundDetailHeader({ round, windowState, loading, count, matchingEligibleCount, matchingEligibilityKnown = true, matchingReason, onOpen, onClose, onMatch, registrationLink }: Props) {
   const purpose = getRoundPurpose(round.purpose)
   const config = normalizeRoundConfig(round.content_config)
   const noun = purpose === "matching" ? "问卷" : purpose === "registration" ? "报名" : "通知"
@@ -25,6 +28,11 @@ export function RoundDetailHeader({ round, windowState, loading, count, matching
       <div className="mb-1 flex items-center gap-2"><h2 className="text-lg font-bold">{round.round_name}</h2><RoundStatusBadge status={windowState} /></div>
       <p className="text-xs text-muted-foreground">{noun}（日本时间）: {formatAdminDateTime(round.survey_start)} ~ {formatAdminDateTime(round.survey_end)}</p>
       <p className="text-xs text-muted-foreground">活动: {purpose !== "matching" && config.eventStart ? `${formatAdminDateTime(config.eventStart)} ~ ${formatAdminDateTime(config.eventEnd)}（日本时间）` : `${round.activity_start} ~ ${round.activity_end}`}</p>
+      {registrationLink !== undefined && (
+        <div className="mt-3">
+          <ActivityRegistrationLink target={{ roundId: round.id }} title={round.round_name} current={registrationLink} disabled={loading} />
+        </div>
+      )}
     </div>
     <div className="flex flex-wrap gap-2">
       <Link href={`/admin/matching/rounds/${round.id}/edit`}><Button size="sm" variant="outline"><Pencil className="mr-1 size-4" />内容、问卷与预览</Button></Link>

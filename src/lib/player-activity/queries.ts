@@ -26,7 +26,8 @@ const MAX_LIBRARY_PAGE_SIZE = 48
 const LARGE_ACTIVITY_DATE_BATCH_SIZE = 500
 
 const LARGE_ACTIVITY_COLUMNS = "id, source_key, title, title_ja, summary, summary_ja, content, content_ja, cover_url, gallery_urls, start_at, end_at, event_date, location, location_ja, fee_note, fee_note_ja, capacity_note, capacity_note_ja, registration_url, registration_status, registration_deadline, registration_label, status, tags, show_on_player_home, player_home_order, pin_in_player_library, player_library_order, created_at" as const
-const LARGE_ACTIVITY_DETAIL_COLUMNS = `${LARGE_ACTIVITY_COLUMNS}, cover_aspect_ratio` as const
+const LARGE_ACTIVITY_COVER_COLUMNS = `${LARGE_ACTIVITY_COLUMNS}, cover_aspect_ratio` as const
+const LARGE_ACTIVITY_DETAIL_COLUMNS = `${LARGE_ACTIVITY_COVER_COLUMNS}, registration_round_id` as const
 
 export const PLAYER_SCRIPT_SUMMARY_COLUMNS = "id, title, title_ja, author, cover_url, genre_tags, player_count_min, player_count_max, duration_minutes, budget, location, created_at, is_featured, is_social_script, show_on_player_activity, player_activity_order, pin_in_social_library, social_library_order" as const
 
@@ -226,13 +227,27 @@ export async function fetchPlayerLargeActivity(id: string, locale: string, now =
     .in("status", ["published", "cancelled"])
     .maybeSingle()
 
+  async function fetchCompatibleDetail() {
+    const detail = await fetchDetail(LARGE_ACTIVITY_DETAIL_COLUMNS)
+    if (!detail.error) return detail
+    if (isMissingLargeActivityCoverAspectRatioColumn(detail.error)) {
+      return fetchDetail(LARGE_ACTIVITY_COLUMNS)
+    }
+    if ((detail.error.code === "42703" || detail.error.code === "PGRST204")
+      && detail.error.message.includes("registration_round_id")) {
+      const previous = await fetchDetail(LARGE_ACTIVITY_COVER_COLUMNS)
+      return previous.error && isMissingLargeActivityCoverAspectRatioColumn(previous.error)
+        ? fetchDetail(LARGE_ACTIVITY_COLUMNS)
+        : previous
+    }
+    return detail
+  }
+
   const [detail, latestActivityId] = await Promise.all([
-    fetchDetail(LARGE_ACTIVITY_DETAIL_COLUMNS),
+    fetchCompatibleDetail(),
     fetchLatestCompletedPlayerLargeActivityId(now),
   ])
-  const { data, error } = detail.error && isMissingLargeActivityCoverAspectRatioColumn(detail.error)
-    ? await fetchDetail(LARGE_ACTIVITY_COLUMNS)
-    : detail
+  const { data, error } = detail
   if (error) throw error
   if (!data) return null
   const activity = mapLargeActivityRow(data, normalizePlayerActivityLocale(locale))
@@ -240,7 +255,10 @@ export async function fetchPlayerLargeActivity(id: string, locale: string, now =
   const coverAspectRatio = resolveLargeActivityCoverAspectRatio(
     "cover_aspect_ratio" in data ? data.cover_aspect_ratio : undefined,
   )
-  return { ...activity, coverAspectRatio, latestActivityId }
+  const registrationRoundId = "registration_round_id" in data && typeof data.registration_round_id === "string"
+    ? data.registration_round_id
+    : null
+  return { ...activity, coverAspectRatio, latestActivityId, registrationRoundId }
 }
 
 export async function fetchPlayerSocialLibrary(locale: string) {

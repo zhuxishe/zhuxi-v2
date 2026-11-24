@@ -183,8 +183,11 @@ describe("Player Activity V2 queries", () => {
     expect(result.socialScripts).toHaveLength(1)
   })
 
-  it("reads the stored cover ratio for a visible large activity detail", async () => {
-    const detail = queryResult({ data: { id: "large-1", title: "大型活动", cover_aspect_ratio: "9:16" }, error: null })
+  it("reads the cover ratio and signup round for a visible large activity detail", async () => {
+    const detail = queryResult({
+      data: { id: "large-1", title: "大型活动", cover_aspect_ratio: "9:16", registration_round_id: "round-1" },
+      error: null,
+    })
     const dateQuery = queryResult({
       data: [{ id: "latest-in-library", start_at: null, end_at: null, event_date: "2026-07-16" }],
       error: null,
@@ -198,10 +201,38 @@ describe("Player Activity V2 queries", () => {
     const result = await fetchPlayerLargeActivity("large-1", "zh", new Date("2026-07-17T12:00:00+09:00"))
 
     expect(detail.select).toHaveBeenCalledWith(expect.stringContaining("cover_aspect_ratio"))
+    expect(detail.select).toHaveBeenCalledWith(expect.stringContaining("registration_round_id"))
     expect(detail.eq).toHaveBeenCalledWith("is_player_visible", true)
     expect(detail.is).toHaveBeenCalledWith("archived_at", null)
     expect(result?.coverAspectRatio).toBe("9:16")
     expect(result?.latestActivityId).toBe("latest-in-library")
+    expect(result?.registrationRoundId).toBe("round-1")
+  })
+
+  it("keeps existing cover ratios and manual links before the signup link migration", async () => {
+    const pendingMigration = queryResult({
+      data: null,
+      error: { code: "42703", message: "column past_event_reviews.registration_round_id does not exist" },
+    })
+    const previousDetail = queryResult({
+      data: { id: "large-1", title: "大型活动", cover_aspect_ratio: "9:16", registration_url: "https://example.com/form" },
+      error: null,
+    })
+    createClient
+      .mockResolvedValueOnce(clientFor(queryResult({ data: settings(), error: null })))
+      .mockResolvedValueOnce({ from: vi.fn()
+        .mockReturnValueOnce(pendingMigration)
+        .mockReturnValueOnce(previousDetail) })
+      .mockResolvedValueOnce(clientFor(queryResult({ data: [], error: null })))
+
+    const { fetchPlayerLargeActivity } = await import("./queries")
+    const result = await fetchPlayerLargeActivity("large-1", "zh")
+
+    expect(previousDetail.select).toHaveBeenCalledWith(expect.stringContaining("cover_aspect_ratio"))
+    expect(previousDetail.select.mock.calls[0][0]).not.toContain("registration_round_id")
+    expect(result).toMatchObject({
+      coverAspectRatio: "9:16", registrationUrl: "https://example.com/form", registrationRoundId: null,
+    })
   })
 
   it("keeps details available with the portrait default before the ratio migration", async () => {

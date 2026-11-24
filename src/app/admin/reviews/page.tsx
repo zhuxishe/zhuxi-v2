@@ -10,6 +10,8 @@ import { ReviewForm } from "./ReviewForm"
 import { ReviewList } from "./ReviewList"
 import { ContentMediaCleanupJobs } from "@/components/admin/ContentMediaCleanupJobs"
 import { fetchPendingContentMediaCleanupJobs } from "@/lib/content-media-cleanup"
+import { isReviewUuid } from "@/lib/activity-reviews/validation"
+import { fetchLinkedRoundSummaries } from "@/lib/activity-registration-links/admin-summaries"
 
 type ReviewStatus = "draft" | "published" | "cancelled"
 
@@ -19,6 +21,7 @@ interface Props {
     status?: string
     view?: string
     page?: string
+    activityId?: string
   }>
 }
 
@@ -36,18 +39,23 @@ export default async function AdminReviewsPage({ searchParams }: Props) {
   const page = Number.isFinite(parsedPage) && parsedPage > 0 ? parsedPage : 1
   const status = STATUS_OPTIONS.find((option) => option.value && option.value === params.status)?.value || undefined
   const archived = params.view === "archived"
+  const activityId = isReviewUuid(params.activityId) ? params.activityId : undefined
   const [{ reviews, setupRequired, total, pageSize }, cleanupJobs, coverAspectRatioReady] = await Promise.all([
     fetchPastEventReviewAdminState({
       search: params.search,
       status,
       archived,
       page,
+      activityId,
     }),
     admin.role === "super_admin"
       ? fetchPendingContentMediaCleanupJobs("past_event_review")
       : Promise.resolve([]),
     archived ? Promise.resolve(false) : largeActivityCoverAspectRatioIsReady(),
   ])
+  const linkedRounds = archived ? {} : await fetchLinkedRoundSummaries(reviews.flatMap((review) => (
+    review.registration_round_id ? [review.registration_round_id] : []
+  )))
 
   return (
     <div>
@@ -116,6 +124,7 @@ export default async function AdminReviewsPage({ searchParams }: Props) {
                 total={total}
                 archived={archived}
                 canManageRecycleBin={admin.role === "super_admin"}
+                linkedRounds={linkedRounds}
               />
             )}
             <Pagination total={total} page={page} pageSize={pageSize} />

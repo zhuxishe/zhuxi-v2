@@ -1,11 +1,12 @@
 import { renderToStaticMarkup } from "react-dom/server"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ admin: vi.fn(), rounds: vi.fn(), sessions: vi.fn(), deleted: vi.fn() }))
+const mocks = vi.hoisted(() => ({ admin: vi.fn(), rounds: vi.fn(), sessions: vi.fn(), deleted: vi.fn(), links: vi.fn() }))
 vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.admin }))
 vi.mock("@/lib/queries/rounds", () => ({ fetchRounds: mocks.rounds }))
 vi.mock("@/lib/queries/matching", () => ({ fetchMatchSessions: mocks.sessions }))
 vi.mock("@/lib/queries/deleted-rounds", () => ({ fetchDeletedRounds: mocks.deleted }))
+vi.mock("@/lib/activity-registration-links/admin-summaries", () => ({ fetchLinkedLargeActivitySummaries: mocks.links }))
 vi.mock("@/components/admin/AdminTopBar", () => ({ AdminTopBar: () => null }))
 vi.mock("@/components/admin/MatchingWorkbench", () => ({ MatchingWorkbench: () => "正常匹配管理" }))
 import MatchingPage from "./page"
@@ -16,6 +17,7 @@ describe("matching page trash visibility", () => {
     mocks.admin.mockResolvedValue({ role: "super_admin" })
     mocks.rounds.mockResolvedValue([]); mocks.sessions.mockResolvedValue([])
     mocks.deleted.mockResolvedValue({ items: [], total: 0, page: 1, pageSize: 10, totalPages: 1 })
+    mocks.links.mockResolvedValue({})
   })
   afterEach(() => { vi.restoreAllMocks() })
 
@@ -42,5 +44,17 @@ describe("matching page trash visibility", () => {
     expect(html).toContain("暂时无法加载删除记录")
     expect(html).not.toContain("private database failure")
     expect(html).not.toContain("0 条")
+  })
+
+  it("loads associations for formal rounds so an existing link can still be managed after a round changes", async () => {
+    mocks.rounds.mockResolvedValue([
+      { id: "registration", purpose: "registration", status: "open", is_test: false },
+      { id: "matching", purpose: "matching", status: "closed", is_test: false },
+      { id: "draft", purpose: "registration", status: "draft", is_test: false },
+      { id: "test", purpose: "registration", status: "open", is_test: true },
+      { id: "announcement", purpose: "announcement", status: "open", is_test: false },
+    ])
+    await MatchingPage({ searchParams: Promise.resolve({}) })
+    expect(mocks.links).toHaveBeenCalledExactlyOnceWith(["registration", "matching", "draft", "announcement"])
   })
 })

@@ -2441,6 +2441,7 @@ export type Database = {
           player_library_order: number
           registration_deadline: string | null
           registration_label: string | null
+          registration_round_id: string | null
           registration_status: string
           registration_url: string | null
           show_on_player_home: boolean
@@ -2483,6 +2484,7 @@ export type Database = {
           player_library_order?: number
           registration_deadline?: string | null
           registration_label?: string | null
+          registration_round_id?: string | null
           registration_status?: string
           registration_url?: string | null
           show_on_player_home?: boolean
@@ -2525,6 +2527,7 @@ export type Database = {
           player_library_order?: number
           registration_deadline?: string | null
           registration_label?: string | null
+          registration_round_id?: string | null
           registration_status?: string
           registration_url?: string | null
           show_on_player_home?: boolean
@@ -2546,6 +2549,13 @@ export type Database = {
             columns: ["archived_by"]
             isOneToOne: false
             referencedRelation: "admin_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "past_event_reviews_registration_round_id_fkey"
+            columns: ["registration_round_id"]
+            isOneToOne: true
+            referencedRelation: "match_rounds"
             referencedColumns: ["id"]
           },
         ]
@@ -3263,6 +3273,15 @@ export type Database = {
           p_expected_ignored_at?: string | null
         }
         Returns: Json
+      }
+      admin_set_large_activity_registration_link: {
+        Args: {
+          p_activity_id: string | null
+          p_round_id: string | null
+          p_counterpart_id: string | null
+          p_expected_counterpart_id: string | null
+        }
+        Returns: { activity_ids: string[]; round_ids: string[] }[]
       }
       get_admin_questionnaires: { Args: Record<PropertyKey, never>; Returns: Json }
       initialize_questionnaire_template: { Args: { p_kind: string; p_template: Json }; Returns: Json }

@@ -21,6 +21,7 @@ import { MatchingRunRecords } from "./MatchingRunRecords"
 import { MatchingEligibilityCard } from "./MatchingEligibilityCard"
 import { clearMatchingRequestId, matchingRequestId } from "./matching-run-request"
 import type { RoundStats } from "@/lib/matching/round-stats"
+import type { ActivityRegistrationLinkSummary } from "@/lib/activity-registration-links/admin-summaries"
 type Sub = Record<string, any>
 interface Props {
   round: RoundRecord
@@ -34,6 +35,7 @@ interface Props {
   initialRuns?: MatchingRunRecord[]
   eligibilitySummary?: MatchingEligibilitySummary | null
   eligibilitySummaryError?: string | null
+  registrationLink?: ActivityRegistrationLinkSummary | null
 }
 export function RoundDetailClient({
   round,
@@ -47,6 +49,7 @@ export function RoundDetailClient({
   initialRuns = [],
   eligibilitySummary = null,
   eligibilitySummaryError = null,
+  registrationLink,
 }: Props) {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
@@ -140,7 +143,7 @@ export function RoundDetailClient({
   }
   return (
     <div className="space-y-6">
-      <RoundDetailHeader round={round} windowState={windowState} loading={loading} count={activeCount} matchingEligibleCount={eligibilitySummary?.eligible_count} matchingEligibilityKnown={eligibilitySummary !== null} matchingReason={matchingReason} onOpen={() => setOpening(true)} onClose={() => handleStatusChange("closed")} onMatch={handleRunMatch} />
+      <RoundDetailHeader round={round} windowState={windowState} loading={loading} count={activeCount} matchingEligibleCount={eligibilitySummary?.eligible_count} matchingEligibilityKnown={eligibilitySummary !== null} matchingReason={matchingReason} onOpen={() => setOpening(true)} onClose={() => handleStatusChange("closed")} onMatch={handleRunMatch} registrationLink={registrationLink} />
       {purpose === "registration" ? <RoundActivityReviewSummary roundId={round.id} summary={activityReviewSummary} /> : null}
       {error && <p className="text-sm text-destructive">{error}</p>}
       {opening && <RoundOpeningDialog round={round} onClose={() => setOpening(false)} />}

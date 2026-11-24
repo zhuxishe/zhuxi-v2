@@ -11,7 +11,7 @@ export async function fetchRounds() {
   const supabase = await createClient()
   let { data, error } = await supabase
     .from("match_rounds")
-    .select("id, round_name, status, survey_start, survey_end, activity_start, activity_end, purpose")
+    .select("id, round_name, status, survey_start, survey_end, activity_start, activity_end, purpose, is_test")
     .is("deleted_at", null)
     .order("created_at", { ascending: false })
     .limit(100)
@@ -20,7 +20,7 @@ export async function fetchRounds() {
       .select("id, round_name, status, survey_start, survey_end, activity_start, activity_end")
       .is("deleted_at", null)
       .order("created_at", { ascending: false }).limit(100)
-    data = legacy.data?.map((round) => ({ ...round, purpose: "matching" })) ?? null
+    data = legacy.data?.map((round) => ({ ...round, purpose: "matching", is_test: false })) ?? null
     error = legacy.error
   }
   if (error) throw error

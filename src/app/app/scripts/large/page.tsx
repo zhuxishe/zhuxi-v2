@@ -2,6 +2,7 @@ import { getLocale, getTranslations } from "next-intl/server"
 import { notFound } from "next/navigation"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerLargeActivityLibrary } from "@/lib/player-activity/queries"
+import { getLargeActivityBadge } from "@/lib/player-activity/selection"
 import { ActivityPageIntro } from "@/components/player/activity/ActivityPageIntro"
 import { ActivitySectionHeader } from "@/components/player/activity/ActivitySectionHeader"
 import { LargeActivityCard } from "@/components/player/activity/LargeActivityCard"
@@ -12,7 +13,8 @@ export default async function LargeActivityLibraryPage() {
     getLocale(),
     getTranslations("activity"),
   ])
-  const sections = await fetchPlayerLargeActivityLibrary(locale)
+  const now = new Date()
+  const sections = await fetchPlayerLargeActivityLibrary(locale, now)
   if (!sections) notFound()
   const labels = {
     upcoming: t("badges.upcoming"),
@@ -36,7 +38,15 @@ export default async function LargeActivityLibraryPage() {
         {sections.upcoming.length > 0 ? (
           <div className="space-y-3">
             {sections.upcoming.map((activity, index) => (
-              <LargeActivityCard key={activity.id} activity={activity} labels={labels} locale={locale} compact priority={index === 0} />
+              <LargeActivityCard
+                key={activity.id}
+                activity={activity}
+                badge={getLargeActivityBadge(activity, sections.latestActivityId, now)}
+                labels={labels}
+                locale={locale}
+                compact
+                priority={index === 0}
+              />
             ))}
           </div>
         ) : <LibraryEmpty label={t("noUpcoming")} />}
@@ -47,7 +57,15 @@ export default async function LargeActivityLibraryPage() {
         {sections.latest.length > 0 ? (
           <div className="space-y-3">
             {sections.latest.map((activity, index) => (
-              <LargeActivityCard key={activity.id} activity={activity} labels={labels} locale={locale} compact priority={sections.upcoming.length === 0 && index === 0} />
+              <LargeActivityCard
+                key={activity.id}
+                activity={activity}
+                badge={getLargeActivityBadge(activity, sections.latestActivityId, now)}
+                labels={labels}
+                locale={locale}
+                compact
+                priority={sections.upcoming.length === 0 && index === 0}
+              />
             ))}
           </div>
         ) : <LibraryEmpty label={t("noLatest")} />}

@@ -1,6 +1,7 @@
 import { getLocale, getTranslations } from "next-intl/server"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerActivityHub } from "@/lib/player-activity/queries"
+import { getLargeActivityBadge } from "@/lib/player-activity/selection"
 import { ActivityPageIntro } from "@/components/player/activity/ActivityPageIntro"
 import { ActivitySectionHeader } from "@/components/player/activity/ActivitySectionHeader"
 import { LargeActivityCard } from "@/components/player/activity/LargeActivityCard"
@@ -13,7 +14,8 @@ export default async function PlayerActivityPage() {
     getLocale(),
     getTranslations("activity"),
   ])
-  const data = await fetchPlayerActivityHub(locale)
+  const now = new Date()
+  const data = await fetchPlayerActivityHub(locale, now, { includeLatestBadge: true })
   const cardLabels = {
     upcoming: t("badges.upcoming"),
     latest: t("badges.latest"),
@@ -35,6 +37,7 @@ export default async function PlayerActivityPage() {
                 <LargeActivityCard
                   key={activity.id}
                   activity={activity}
+                  badge={getLargeActivityBadge(activity, data.latestActivityId, now)}
                   labels={cardLabels}
                   locale={locale}
                   compact

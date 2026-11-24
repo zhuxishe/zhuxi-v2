@@ -3,10 +3,12 @@ import {
   buildLargeActivitySections,
   buildSocialScriptSections,
   filterPlayerScripts,
+  getLargeActivityBadge,
   isUpcomingLargeActivity,
   mapLargeActivityRow,
   mapPlayerScriptRow,
   selectLargeActivitiesForHome,
+  selectLatestCompletedLargeActivityId,
   sortSocialScriptsForHome,
 } from "./selection"
 import type { LargeActivitySummary, PlayerScriptSummary } from "./types"
@@ -161,6 +163,32 @@ describe("Player activity selection", () => {
 
     expect(isUpcomingLargeActivity(dateOnly, new Date("2026-07-20T23:30:00+09:00"))).toBe(true)
     expect(isUpcomingLargeActivity(dateOnly, new Date("2026-07-21T00:01:00+09:00"))).toBe(false)
+  })
+
+  it("badges only the most recent completed published activity, regardless of pinning", () => {
+    const older = activity({ id: "pinned", startAt: "2026-07-14T17:00:00+09:00", pinInPlayerLibrary: true })
+    const latest = activity({ id: "latest", startAt: null, eventDate: "2026-07-15" })
+    const ongoing = activity({ id: "ongoing", startAt: "2026-07-16T10:00:00+09:00", endAt: "2026-07-17T18:00:00+09:00" })
+    const cancelled = activity({ id: "cancelled", startAt: "2026-07-16T18:00:00+09:00", status: "cancelled" })
+    const draft = activity({ id: "draft", startAt: "2026-07-16T18:00:00+09:00", status: "draft" })
+    const undated = activity({ id: "undated", startAt: null, eventDate: null })
+    const activities = [older, latest, ongoing, cancelled, draft, undated]
+
+    const latestId = selectLatestCompletedLargeActivityId(activities, NOW)
+
+    expect(latestId).toBe("latest")
+    expect(activities.map((item) => getLargeActivityBadge(item, latestId, NOW))).toEqual([
+      null, "latest", "upcoming", "cancelled", null, null,
+    ])
+    expect(selectLatestCompletedLargeActivityId([ongoing, cancelled, draft, undated], NOW)).toBeNull()
+  })
+
+  it("selects one stable winner when eligible activity dates tie", () => {
+    const first = activity({ id: "a", startAt: "2026-07-16T12:00:00+09:00" })
+    const second = activity({ id: "b", startAt: "2026-07-16T12:00:00+09:00" })
+
+    expect(selectLatestCompletedLargeActivityId([second, first], NOW)).toBe("a")
+    expect(selectLatestCompletedLargeActivityId([first, second], NOW)).toBe("a")
   })
 
   it("places upcoming before latest and retains cancelled entries in the child library", () => {

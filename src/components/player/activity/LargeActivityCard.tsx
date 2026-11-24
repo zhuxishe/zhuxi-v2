@@ -3,7 +3,7 @@ import Link from "next/link"
 import { CalendarDays, MapPin } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { rewriteStorageUrl } from "@/lib/storage-url"
-import { isUpcomingLargeActivity } from "@/lib/player-activity/selection"
+import type { LargeActivityBadge } from "@/lib/player-activity/selection"
 import type { LargeActivitySummary } from "@/lib/player-activity/types"
 
 interface LargeActivityCardLabels {
@@ -17,6 +17,7 @@ interface LargeActivityCardLabels {
 interface LargeActivityCardProps {
   activity: LargeActivitySummary
   labels: LargeActivityCardLabels
+  badge: LargeActivityBadge | null
   locale: string
   compact?: boolean
   priority?: boolean
@@ -25,15 +26,13 @@ interface LargeActivityCardProps {
 export function LargeActivityCard({
   activity,
   labels,
+  badge,
   locale,
   compact = false,
   priority = false,
 }: LargeActivityCardProps) {
   const cover = rewriteStorageUrl(activity.coverUrl)
     ?? "/images/landing/mobile-redesign/activity-large-bg.webp"
-  const badge = activity.status === "cancelled"
-    ? labels.cancelled
-    : isUpcomingLargeActivity(activity) ? labels.upcoming : labels.latest
 
   return (
     <Link
@@ -57,7 +56,7 @@ export function LargeActivityCard({
       />
       <span className="absolute inset-0 bg-gradient-to-b from-black/8 via-black/20 to-black/82" />
       <span className={cn("absolute inset-x-0 bottom-0 text-white", compact ? "p-3.5" : "p-4")}>
-        <span className={cn("block pr-24 heading-display font-semibold leading-tight drop-shadow-sm", compact ? "text-[1.35rem]" : "text-[1.55rem]")}>
+        <span className={cn("block heading-display font-semibold leading-tight drop-shadow-sm", badge && "pr-24", compact ? "text-[1.35rem]" : "text-[1.55rem]")}>
           {activity.title}
         </span>
         <span className={cn("flex min-w-0 items-center gap-3 text-[13px] font-medium text-white/92", compact ? "mt-1.5" : "mt-2")}>
@@ -71,15 +70,17 @@ export function LargeActivityCard({
           </span>
         </span>
       </span>
-      <span className={cn(
-        "absolute rounded-full border px-3 py-1.5 text-xs font-semibold backdrop-blur-md",
-        compact ? "bottom-3.5 right-3.5" : "bottom-4 right-4",
-        activity.status === "cancelled"
-          ? "border-white/35 bg-black/45 text-white/90"
-          : "border-white/65 bg-white/92 text-primary",
-      )}>
-        {badge}
-      </span>
+      {badge && (
+        <span className={cn(
+          "absolute rounded-full border px-3 py-1.5 text-xs font-semibold backdrop-blur-md",
+          compact ? "bottom-3.5 right-3.5" : "bottom-4 right-4",
+          badge === "cancelled"
+            ? "border-white/35 bg-black/45 text-white/90"
+            : "border-white/65 bg-white/92 text-primary",
+        )}>
+          {labels[badge]}
+        </span>
+      )}
     </Link>
   )
 }

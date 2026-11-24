@@ -8,6 +8,7 @@ import {
   mapPlayerScriptRow,
   normalizePlayerActivityLocale,
   selectLargeActivitiesForHome,
+  selectLatestCompletedLargeActivityId,
   sortSocialScriptsForHome,
 } from "./selection"
 import type {
@@ -22,6 +23,7 @@ const DEFAULT_LARGE_HOME_LIMIT = 2
 const DEFAULT_SOCIAL_HOME_LIMIT = 5
 const DEFAULT_LIBRARY_PAGE_SIZE = 24
 const MAX_LIBRARY_PAGE_SIZE = 48
+const LARGE_ACTIVITY_DATE_BATCH_SIZE = 500
 
 const LARGE_ACTIVITY_COLUMNS = "id, source_key, title, title_ja, summary, summary_ja, content, content_ja, cover_url, gallery_urls, start_at, end_at, event_date, location, location_ja, fee_note, fee_note_ja, capacity_note, capacity_note_ja, registration_url, registration_status, registration_deadline, registration_label, status, tags, show_on_player_home, player_home_order, pin_in_player_library, player_library_order, created_at" as const
 const LARGE_ACTIVITY_DETAIL_COLUMNS = `${LARGE_ACTIVITY_COLUMNS}, cover_aspect_ratio` as const
@@ -111,6 +113,34 @@ async function fetchPlayerLargeHomeActivities(
   return selectLargeActivitiesForHome(mapLargeRows(data, locale), new Date(), limit)
 }
 
+async function fetchLatestCompletedPlayerLargeActivityId(now: Date): Promise<string | null> {
+  const supabase = await createClient()
+  const activities: Pick<LargeActivitySummary, "id" | "status" | "startAt" | "endAt" | "eventDate">[] = []
+  for (let offset = 0; ; offset += LARGE_ACTIVITY_DATE_BATCH_SIZE) {
+    const { data, error } = await supabase
+      .from("past_event_reviews")
+      .select("id, start_at, end_at, event_date")
+      .eq("is_player_visible", true)
+      .eq("status", "published")
+      .is("archived_at", null)
+      .order("id", { ascending: true })
+      .range(offset, offset + LARGE_ACTIVITY_DATE_BATCH_SIZE - 1)
+    if (error) throw error
+
+    for (const row of data) {
+      activities.push({
+        id: row.id,
+        status: "published",
+        startAt: row.start_at,
+        endAt: row.end_at,
+        eventDate: row.event_date,
+      })
+    }
+    if (data.length < LARGE_ACTIVITY_DATE_BATCH_SIZE) break
+  }
+  return selectLatestCompletedLargeActivityId(activities, now)
+}
+
 async function fetchPlayerScripts(
   locale: string,
   options: { socialOnly?: boolean; homeOnly?: boolean; limit?: number } = {},
@@ -140,7 +170,7 @@ async function fetchPlayerScripts(
 export async function fetchPlayerActivityHub(
   locale: string,
   now = new Date(),
-  options: { largeLimit?: number } = {},
+  options: { largeLimit?: number; includeLatestBadge?: boolean } = {},
 ) {
   const settings = await fetchPlayerActivitySettings()
   const requestedLargeLimit = options.largeLimit === undefined
@@ -148,7 +178,7 @@ export async function fetchPlayerActivityHub(
     : clampHomeLimit(options.largeLimit, settings.largeHomeLimit)
   const largeLimit = Math.min(requestedLargeLimit, settings.largeHomeLimit)
 
-  const [largeActivities, socialScripts] = await Promise.all([
+  const [largeActivities, socialScripts, latestActivityId] = await Promise.all([
     settings.largeActivitiesEnabled
       ? fetchPlayerLargeHomeActivities(locale, largeLimit)
       : Promise.resolve([]),
@@ -159,11 +189,15 @@ export async function fetchPlayerActivityHub(
         limit: settings.socialHomeLimit,
       })
       : Promise.resolve([]),
+    settings.largeActivitiesEnabled && largeLimit > 0 && options.includeLatestBadge
+      ? fetchLatestCompletedPlayerLargeActivityId(now)
+      : Promise.resolve(null),
   ])
 
   return {
     settings,
     largeActivities: selectLargeActivitiesForHome(largeActivities, now, largeLimit),
+    latestActivityId,
     socialScripts: sortSocialScriptsForHome(socialScripts, settings.socialHomeLimit),
   }
 }
@@ -171,10 +205,14 @@ export async function fetchPlayerActivityHub(
 export async function fetchPlayerLargeActivityLibrary(locale: string, now = new Date()) {
   const settings = await fetchPlayerActivitySettings()
   if (!settings.largeActivitiesEnabled) return null
-  return buildLargeActivitySections(await fetchPlayerLargeActivities(locale), now)
+  const [activities, latestActivityId] = await Promise.all([
+    fetchPlayerLargeActivities(locale),
+    fetchLatestCompletedPlayerLargeActivityId(now),
+  ])
+  return { ...buildLargeActivitySections(activities, now), latestActivityId }
 }
 
-export async function fetchPlayerLargeActivity(id: string, locale: string) {
+export async function fetchPlayerLargeActivity(id: string, locale: string, now = new Date()) {
   const settings = await fetchPlayerActivitySettings()
   if (!settings.largeActivitiesEnabled) return null
 
@@ -188,7 +226,10 @@ export async function fetchPlayerLargeActivity(id: string, locale: string) {
     .in("status", ["published", "cancelled"])
     .maybeSingle()
 
-  const detail = await fetchDetail(LARGE_ACTIVITY_DETAIL_COLUMNS)
+  const [detail, latestActivityId] = await Promise.all([
+    fetchDetail(LARGE_ACTIVITY_DETAIL_COLUMNS),
+    fetchLatestCompletedPlayerLargeActivityId(now),
+  ])
   const { data, error } = detail.error && isMissingLargeActivityCoverAspectRatioColumn(detail.error)
     ? await fetchDetail(LARGE_ACTIVITY_COLUMNS)
     : detail
@@ -199,7 +240,7 @@ export async function fetchPlayerLargeActivity(id: string, locale: string) {
   const coverAspectRatio = resolveLargeActivityCoverAspectRatio(
     "cover_aspect_ratio" in data ? data.cover_aspect_ratio : undefined,
   )
-  return { ...activity, coverAspectRatio }
+  return { ...activity, coverAspectRatio, latestActivityId }
 }
 
 export async function fetchPlayerSocialLibrary(locale: string) {

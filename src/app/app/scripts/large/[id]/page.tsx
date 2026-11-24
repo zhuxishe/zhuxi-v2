@@ -4,7 +4,7 @@ import { getLocale, getTranslations } from "next-intl/server"
 import { CalendarClock, CalendarDays, ExternalLink, MapPin, Ticket, Users } from "lucide-react"
 import { requirePlayer } from "@/lib/auth/player"
 import { fetchPlayerLargeActivity } from "@/lib/player-activity/queries"
-import { effectiveRegistrationStatus, isUpcomingLargeActivity } from "@/lib/player-activity/selection"
+import { effectiveRegistrationStatus, getLargeActivityBadge } from "@/lib/player-activity/selection"
 import { rewriteStorageUrl } from "@/lib/storage-url"
 import { formatTokyoDateTimeRange } from "@/lib/player-activity/tokyo-datetime"
 import { ActivityPageIntro } from "@/components/player/activity/ActivityPageIntro"
@@ -20,14 +20,13 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
     getLocale(),
     getTranslations("activity"),
   ])
-  const activity = await fetchPlayerLargeActivity(id, locale)
+  const now = new Date()
+  const activity = await fetchPlayerLargeActivity(id, locale, now)
   if (!activity) notFound()
 
   const cover = rewriteStorageUrl(activity.coverUrl)
     ?? "/images/landing/mobile-redesign/activity-large-bg.webp"
-  const badge = activity.status === "cancelled"
-    ? t("badges.cancelled")
-    : isUpcomingLargeActivity(activity) ? t("badges.upcoming") : t("badges.latest")
+  const badge = getLargeActivityBadge(activity, activity.latestActivityId, now)
   const registrationUrl = safeExternalUrl(activity.registrationUrl)
   const registrationStatus = effectiveRegistrationStatus(activity)
   const registrationOpen = activity.status !== "cancelled"
@@ -51,9 +50,11 @@ export default async function LargeActivityDetailPage({ params }: LargeActivityD
       >
         <Image src={cover} alt="" fill unoptimized={cover.startsWith("https://")} priority sizes="(min-width: 448px) 416px, calc(100vw - 32px)" className="object-cover" />
         <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-black/8" />
-        <span className="absolute bottom-4 right-4 rounded-full border border-white/60 bg-white/92 px-3 py-1.5 text-xs font-semibold text-primary backdrop-blur-md">
-          {badge}
-        </span>
+        {badge && (
+          <span className="absolute bottom-4 right-4 rounded-full border border-white/60 bg-white/92 px-3 py-1.5 text-xs font-semibold text-primary backdrop-blur-md">
+            {t(`badges.${badge}`)}
+          </span>
+        )}
       </div>
 
       <section className="grid grid-cols-2 gap-2 rounded-[20px] border border-border bg-card p-3 shadow-soft">

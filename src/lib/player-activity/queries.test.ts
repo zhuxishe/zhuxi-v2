@@ -185,17 +185,23 @@ describe("Player Activity V2 queries", () => {
 
   it("reads the stored cover ratio for a visible large activity detail", async () => {
     const detail = queryResult({ data: { id: "large-1", title: "大型活动", cover_aspect_ratio: "9:16" }, error: null })
+    const dateQuery = queryResult({
+      data: [{ id: "latest-in-library", start_at: null, end_at: null, event_date: "2026-07-16" }],
+      error: null,
+    })
     createClient
       .mockResolvedValueOnce(clientFor(queryResult({ data: settings(), error: null })))
       .mockResolvedValueOnce(clientFor(detail))
+      .mockResolvedValueOnce(clientFor(dateQuery))
 
     const { fetchPlayerLargeActivity } = await import("./queries")
-    const result = await fetchPlayerLargeActivity("large-1", "zh")
+    const result = await fetchPlayerLargeActivity("large-1", "zh", new Date("2026-07-17T12:00:00+09:00"))
 
     expect(detail.select).toHaveBeenCalledWith(expect.stringContaining("cover_aspect_ratio"))
     expect(detail.eq).toHaveBeenCalledWith("is_player_visible", true)
     expect(detail.is).toHaveBeenCalledWith("archived_at", null)
     expect(result?.coverAspectRatio).toBe("9:16")
+    expect(result?.latestActivityId).toBe("latest-in-library")
   })
 
   it("keeps details available with the portrait default before the ratio migration", async () => {
@@ -209,11 +215,38 @@ describe("Player Activity V2 queries", () => {
       .mockResolvedValueOnce({ from: vi.fn()
         .mockReturnValueOnce(beforeMigration)
         .mockReturnValueOnce(legacyDetail) })
+      .mockResolvedValueOnce(clientFor(queryResult({ data: [], error: null })))
 
     const { fetchPlayerLargeActivity } = await import("./queries")
     const result = await fetchPlayerLargeActivity("large-1", "zh")
 
     expect(result?.coverAspectRatio).toBe("3:4")
     expect(legacyDetail.select.mock.calls[0][0]).not.toContain("cover_aspect_ratio")
+  })
+
+  it("finds the latest badge from all visible activities independently of the menu recommendations", async () => {
+    const menuQuery = queryResult({
+      data: [{ id: "older-recommendation", title: "活动", status: "published", show_on_player_home: true }],
+      error: null,
+    })
+    const dates = queryResult({
+      data: [{ id: "latest-in-library", event_date: "2026-07-16", start_at: null, end_at: null }],
+      error: null,
+    })
+    createClient
+      .mockResolvedValueOnce(clientFor(queryResult({ data: settings({ social_scripts_enabled: false }), error: null })))
+      .mockResolvedValueOnce(clientFor(menuQuery))
+      .mockResolvedValueOnce(clientFor(dates))
+
+    const { fetchPlayerActivityHub } = await import("./queries")
+    const result = await fetchPlayerActivityHub("zh", new Date("2026-07-17T12:00:00+09:00"), { includeLatestBadge: true })
+
+    expect(result.largeActivities.map((item) => item.id)).toEqual(["older-recommendation"])
+    expect(result.latestActivityId).toBe("latest-in-library")
+    expect(dates.eq).toHaveBeenCalledWith("is_player_visible", true)
+    expect(dates.eq).toHaveBeenCalledWith("status", "published")
+    expect(dates.is).toHaveBeenCalledWith("archived_at", null)
+    expect(dates.eq).not.toHaveBeenCalledWith("show_on_player_home", expect.anything())
+    expect(dates.range).toHaveBeenCalledWith(0, 499)
   })
 })

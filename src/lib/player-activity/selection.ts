@@ -133,8 +133,13 @@ export function mapPlayerScriptRow(
   }
 }
 
-function timestamp(activity: LargeActivitySummary): number | null {
-  const raw = activity.startAt ?? activity.eventDate
+type LargeActivityTiming = Pick<LargeActivitySummary, "startAt" | "endAt" | "eventDate">
+type LargeActivityBadgeCandidate = LargeActivityTiming & Pick<LargeActivitySummary, "id" | "status">
+
+export type LargeActivityBadge = "upcoming" | "latest" | "cancelled"
+
+function timestamp(activity: Pick<LargeActivityTiming, "startAt" | "eventDate">): number | null {
+  const raw = activity.startAt ?? (activity.eventDate ? `${activity.eventDate}T00:00:00+09:00` : null)
   if (!raw) return null
   const value = Date.parse(raw)
   return Number.isNaN(value) ? null : value
@@ -158,7 +163,7 @@ export function hasExplicitLargeActivityStartTime(
   return !activity.eventDate || activity.startAt !== `${activity.eventDate}T00:00:00+09:00`
 }
 
-export function isUpcomingLargeActivity(activity: LargeActivitySummary, now = new Date()): boolean {
+export function isUpcomingLargeActivity(activity: LargeActivityTiming, now = new Date()): boolean {
   const endValue = activity.endAt ? Date.parse(activity.endAt) : Number.NaN
   if (!Number.isNaN(endValue)) return endValue >= now.getTime()
 
@@ -171,6 +176,35 @@ export function isUpcomingLargeActivity(activity: LargeActivitySummary, now = ne
   if (value == null) return false
   const startOfTodayInTokyo = Date.parse(`${todayInTokyo}T00:00:00+09:00`)
   return value >= startOfTodayInTokyo
+}
+
+export function selectLatestCompletedLargeActivityId(
+  activities: readonly LargeActivityBadgeCandidate[],
+  now: Date,
+): string | null {
+  let latestId: string | null = null
+  let latestTime = -Infinity
+
+  for (const activity of activities) {
+    if (activity.status !== "published" || isUpcomingLargeActivity(activity, now)) continue
+    const time = timestamp(activity) ?? Date.parse(activity.endAt ?? "")
+    if (time > latestTime || (time === latestTime && (latestId === null || activity.id < latestId))) {
+      latestId = activity.id
+      latestTime = time
+    }
+  }
+  return latestId
+}
+
+export function getLargeActivityBadge(
+  activity: LargeActivityBadgeCandidate,
+  latestActivityId: string | null,
+  now: Date,
+): LargeActivityBadge | null {
+  if (activity.status === "cancelled") return "cancelled"
+  if (activity.status !== "published") return null
+  if (isUpcomingLargeActivity(activity, now)) return "upcoming"
+  return activity.id === latestActivityId ? "latest" : null
 }
 
 export function effectiveRegistrationStatus(

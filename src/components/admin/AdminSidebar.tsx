@@ -25,7 +25,7 @@ const NAV_GROUPS: Array<{ label: string; items: NavItem[] }> = [
       { href: "/admin/members", label: "成员管理", icon: Users },
       { href: "/admin/matching", label: "匹配管理", icon: Shuffle },
       { href: "/admin/activity-reviews", label: "活动互评", icon: Star },
-      { href: "/admin/peer-scores", label: "合拍分数", icon: Sparkles },
+      { href: "/admin/peer-scores", label: "合拍分数", icon: Sparkles, superAdminOnly: true },
       { href: "/admin/matching/cancellations", label: "取消申请", icon: XCircle },
       { href: "/admin/matching/avoidance-requests", label: "拒配申请", icon: UserRoundMinus },
     ],

@@ -11,7 +11,7 @@ import { detailMemberId, detailRoundIds, memberPeerScoreDetailFixture } from "@/
 
 beforeEach(() => {
   vi.resetAllMocks()
-  mocks.auth.mockResolvedValue({ id: "admin", name: "管理员", role: "admin" })
+  mocks.auth.mockResolvedValue({ id: "admin", name: "管理员", role: "super_admin" })
   mocks.fetch.mockResolvedValue({ status: "ready", data: normalizeMemberPeerScoreDetail(memberPeerScoreDetailFixture(), detailMemberId) })
 })
 const props = (query = {}) => ({ params: Promise.resolve({ memberId: detailMemberId }), searchParams: Promise.resolve(query) })
@@ -26,6 +26,11 @@ describe("administrator peer-score member route", () => {
   it("does not read data before administrator authorization completes", async () => {
     mocks.auth.mockRejectedValueOnce(new Error("denied"))
     await expect(Page(props())).rejects.toThrow("denied")
+    expect(mocks.fetch).not.toHaveBeenCalled()
+  })
+  it("returns not found before reading data for an ordinary administrator", async () => {
+    mocks.auth.mockResolvedValueOnce({ id: "admin", name: "管理员", role: "admin" })
+    await expect(Page(props())).rejects.toThrow("not-found")
     expect(mocks.fetch).not.toHaveBeenCalled()
   })
   it("returns not found for a malformed ID or a member outside the directory scope", async () => {

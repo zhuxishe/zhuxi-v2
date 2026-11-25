@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/admin"
+import { requireSuperAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
 import type { MemberPeerScore, MemberPeerScoreResult, MemberPeerScoreReview, MemberPeerScoreSource } from "@/types/member-peer-score"
 
@@ -74,7 +74,7 @@ export function normalizeMemberPeerScore(value: unknown, memberId: string): Memb
 }
 
 export async function fetchMemberPeerScore(memberId: string): Promise<MemberPeerScoreResult> {
-  await requireAdmin()
+  await requireSuperAdmin()
   const client = await createClient() as unknown as PeerScoreRpcClient
   const { data, error } = await client.rpc(RPC_NAME, { p_member_id: memberId })
   if (error) {

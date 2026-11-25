@@ -14,6 +14,7 @@ interface Props {
 
 export default async function MemberPeerScoreDetailPage({ params, searchParams }: Props) {
   const [admin, { memberId }, query] = await Promise.all([requireAdmin(), params, searchParams])
+  if (admin.role !== "super_admin") notFound()
   if (!isReviewUuid(memberId)) notFound()
   const filters = parseMemberPeerScoreDetailFilters(query)
   let result: MemberPeerScoreDetailResult | { status: "error" }

@@ -214,6 +214,27 @@ const tests = String.raw`
     const v=await list();assert.equal(v.total,1007);assert.equal(v.members.length,30)
     assert.ok(v.members.every(row=>!('sources' in row)&&!('reviews' in row)))
   })
+
+  const readers = [
+    ['admin_list_member_peer_scores', [], 'unified_peer_review.list_member_scores()'],
+    ['admin_get_member_peer_score_detail', [member(1)], 'unified_peer_review.member_score_detail($1)'],
+    ['admin_get_member_peer_score', [member(1)], 'unified_peer_review.member_peer_score($1)'],
+  ]
+  const superAdminResults = []
+  for (const [name, args] of readers) superAdminResults.push(await call(10, name, args))
+  await db.exec(read('supabase/migrations/20261125094930_restrict_admin_peer_scores_to_super_admin.sql'))
+  for (const [index, [name, args, internalCall]] of readers.entries()) {
+    await no('ordinary administrator cannot read ' + name, () => call(11, name, args), 'PEER_SUPER_ADMIN_REQUIRED')
+    await no('internal reader enforces the same role for ' + name, () => as(11, () => query('SELECT ' + internalCall, args)), 'PEER_SUPER_ADMIN_REQUIRED')
+    await no('player cannot read ' + name, () => call(1, name, args), 'PEER_ADMIN_REQUIRED')
+    await no('anonymous cannot read ' + name, () => call(null, name, args, 'anon'), 'permission denied')
+    await ok('super administrator retains identical results from ' + name, async () => {
+      assert.deepEqual(await call(10, name, args), superAdminResults[index])
+    })
+  }
+  await ok('ordinary administrators retain access to activity review operations', async () => {
+    assert.ok(await call(11, 'admin_get_round_review_requirements', [round(1)]))
+  })
   console.log('PASS '+passed+' admin peer-score directory checks')
 } finally { await db.close() }
 `

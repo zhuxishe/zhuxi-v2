@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/admin"
+import { requireSuperAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
 import { isReviewUuid } from "@/lib/activity-reviews/validation"
 import type { MemberPeerScoreDetail, MemberPeerScoreDetailFilters, MemberPeerScoreDetailResult, PeerScoreDetailActivity, PeerScoreDetailReview, PeerScoreDetailReviewer } from "@/types/member-peer-score-detail"
@@ -96,7 +96,7 @@ export function normalizeMemberPeerScoreDetail(value: unknown, memberId: string)
 }
 
 export async function fetchMemberPeerScoreDetail(memberId: string, filters: MemberPeerScoreDetailFilters): Promise<MemberPeerScoreDetailResult> {
-  await requireAdmin()
+  await requireSuperAdmin()
   if (!isReviewUuid(memberId)) return { status: "not_found" }
   if (!["valid", "invalid", "all"].includes(filters.validity) || (filters.roundId !== null && !isReviewUuid(filters.roundId))
     || !Number.isSafeInteger(filters.page) || filters.page < 1 || filters.page > 1_000_000 || !Number.isSafeInteger(filters.pageSize) || filters.pageSize < 1 || filters.pageSize > 100) {

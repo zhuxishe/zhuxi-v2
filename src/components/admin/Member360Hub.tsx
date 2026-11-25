@@ -397,7 +397,7 @@ export function Member360Hub({ data, activeTab, adminRole, auditPage, compositeS
 
       {activeTab === "activity" ? (
         <div className="space-y-4">
-          {!isHistoricalRecord && !isAnonymized ? <Suspense fallback={<MemberPeerScoreCard result={{ status: "loading" }} />}>
+          {isSuperAdmin && !isHistoricalRecord && !isAnonymized ? <Suspense fallback={<MemberPeerScoreCard result={{ status: "loading" }} />}>
             <MemberPeerScorePanel memberId={memberId} />
           </Suspense> : null}
           <div className="grid gap-4 lg:grid-cols-2">

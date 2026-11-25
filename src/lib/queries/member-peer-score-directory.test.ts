@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-const mocks = vi.hoisted(() => ({ requireAdmin: vi.fn(), rpc: vi.fn(), createClient: vi.fn() }))
-vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.requireAdmin }))
+const mocks = vi.hoisted(() => ({ requireSuperAdmin: vi.fn(), rpc: vi.fn(), createClient: vi.fn() }))
+vi.mock("@/lib/auth/admin", () => ({ requireSuperAdmin: mocks.requireSuperAdmin }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }))
 import { fetchMemberPeerScoreDirectory, normalizeMemberPeerScoreDirectory } from "./member-peer-score-directory"
 import { normalizePeerScoreDirectoryControls, peerScoreDirectoryHref } from "@/lib/member-master/peer-score-directory-controls"
@@ -13,7 +13,7 @@ const response = { members: [emptyMember], total: 1, page: 1, page_size: 30, sor
 describe("member peer score directory query", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.requireAdmin.mockResolvedValue({ role: "admin" })
+    mocks.requireSuperAdmin.mockResolvedValue({ role: "super_admin" })
     mocks.createClient.mockResolvedValue({ rpc: mocks.rpc })
     mocks.rpc.mockResolvedValue({ data: response, error: null })
   })
@@ -22,9 +22,9 @@ describe("member peer score directory query", () => {
     expect(mocks.rpc).toHaveBeenCalledWith("admin_list_member_peer_scores", {
       p_search: "", p_page: 1, p_page_size: 30, p_sort: "latest_review_at", p_direction: "desc", p_sample_status: "all",
     })
-    expect(mocks.requireAdmin.mock.invocationCallOrder[0]).toBeLessThan(mocks.rpc.mock.invocationCallOrder[0])
+    expect(mocks.requireSuperAdmin.mock.invocationCallOrder[0]).toBeLessThan(mocks.rpc.mock.invocationCallOrder[0])
     expect(result).toMatchObject({ status: "ready", data: { total: 1, members: [{ memberId, score: null, reviewCount: 0, sampleStatus: "unrated" }] } })
-    mocks.requireAdmin.mockRejectedValueOnce(new Error("ADMIN_REQUIRED"))
+    mocks.requireSuperAdmin.mockRejectedValueOnce(new Error("ADMIN_REQUIRED"))
     mocks.rpc.mockClear()
     await expect(fetchMemberPeerScoreDirectory()).rejects.toThrow("ADMIN_REQUIRED")
     expect(mocks.rpc).not.toHaveBeenCalled()
@@ -36,13 +36,11 @@ describe("member peer score directory query", () => {
       p_search: "林秋", p_page: 1, p_page_size: 30, p_sort: "reviewer_count", p_direction: "asc", p_sample_status: "ready",
     })
   })
-  it("allows member numbers only when both the current admin and the database permit them", async () => {
+  it("allows member numbers when permitted by the database response", async () => {
     const numbered = { ...response, can_view_member_number: true, members: [{ ...emptyMember, member_number: "102" }] }
     mocks.rpc.mockResolvedValueOnce({ data: numbered, error: null })
-    await expect(fetchMemberPeerScoreDirectory()).rejects.toThrow("数据格式无效")
-    mocks.requireAdmin.mockResolvedValueOnce({ role: "super_admin" })
-    mocks.rpc.mockResolvedValueOnce({ data: numbered, error: null })
     expect(await fetchMemberPeerScoreDirectory()).toMatchObject({ status: "ready", data: { canViewMemberNumber: true, members: [{ memberNumber: "102" }] } })
+    expect(() => normalizeMemberPeerScoreDirectory(numbered, false)).toThrow("数据格式无效")
     expect(() => normalizeMemberPeerScoreDirectory({ ...response, members: [{ ...emptyMember, member_number: "102" }] }, true)).toThrow("数据格式无效")
   })
   it("corrects a stale out-of-range page with one bounded read", async () => {

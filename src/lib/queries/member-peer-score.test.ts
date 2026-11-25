@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
-const mocks = vi.hoisted(() => ({ rpc: vi.fn(), createClient: vi.fn(), requireAdmin: vi.fn() }))
+const mocks = vi.hoisted(() => ({ rpc: vi.fn(), createClient: vi.fn(), requireSuperAdmin: vi.fn() }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: mocks.createClient }))
-vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.requireAdmin }))
+vi.mock("@/lib/auth/admin", () => ({ requireSuperAdmin: mocks.requireSuperAdmin }))
 import { fetchMemberPeerScore, normalizeMemberPeerScore } from "./member-peer-score"
 
 const empty = { member_id: "member-id", score: null, reviewer_count: 0, activity_count: 0, review_count: 0, eligible_for_publication: false, sources: [] }
@@ -22,7 +22,7 @@ const rated = {
 describe("administrator-only member peer score", () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mocks.requireAdmin.mockResolvedValue({ role: "admin" })
+    mocks.requireSuperAdmin.mockResolvedValue({ role: "super_admin" })
     mocks.createClient.mockResolvedValue({ rpc: mocks.rpc })
     mocks.rpc.mockResolvedValue({ data: empty, error: null })
   })
@@ -30,8 +30,8 @@ describe("administrator-only member peer score", () => {
   it("checks administrator identity before reading and retains a real empty result", async () => {
     expect(await fetchMemberPeerScore("member-id")).toEqual({ status: "ready", data: empty })
     expect(mocks.rpc).toHaveBeenCalledWith("admin_get_member_peer_score", { p_member_id: "member-id" })
-    expect(mocks.requireAdmin.mock.invocationCallOrder[0]).toBeLessThan(mocks.rpc.mock.invocationCallOrder[0])
-    mocks.requireAdmin.mockRejectedValueOnce(new Error("ADMIN_REQUIRED"))
+    expect(mocks.requireSuperAdmin.mock.invocationCallOrder[0]).toBeLessThan(mocks.rpc.mock.invocationCallOrder[0])
+    mocks.requireSuperAdmin.mockRejectedValueOnce(new Error("ADMIN_REQUIRED"))
     mocks.rpc.mockClear()
     await expect(fetchMemberPeerScore("member-id")).rejects.toThrow("ADMIN_REQUIRED")
     expect(mocks.rpc).not.toHaveBeenCalled()

@@ -1,4 +1,4 @@
-import { requireAdmin } from "@/lib/auth/admin"
+import { requireSuperAdmin } from "@/lib/auth/admin"
 import { createClient } from "@/lib/supabase/server"
 import { normalizePeerScoreDirectoryControls, PEER_SCORE_DIRECTORY_SORTS, PEER_SCORE_DIRECTORY_STATUSES, isPeerScoreDirectoryDirection, type PeerScoreDirectorySearchParams } from "@/lib/member-master/peer-score-directory-controls"
 import type { MemberPeerScoreDirectory, MemberPeerScoreDirectoryResult, PeerScoreDirectoryMember } from "@/types/member-peer-score-directory"
@@ -64,7 +64,7 @@ export function normalizeMemberPeerScoreDirectory(value: unknown, canViewMemberN
 }
 
 export async function fetchMemberPeerScoreDirectory(input: PeerScoreDirectorySearchParams = {}): Promise<MemberPeerScoreDirectoryResult> {
-  const admin = await requireAdmin()
+  const admin = await requireSuperAdmin()
   const controls = normalizePeerScoreDirectoryControls(input)
   const client = await createClient() as unknown as DirectoryRpcClient
   async function readPage(page: number): Promise<MemberPeerScoreDirectoryResult> {

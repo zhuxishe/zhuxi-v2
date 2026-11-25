@@ -1,4 +1,4 @@
-import { unstable_rethrow } from "next/navigation"
+import { notFound, unstable_rethrow } from "next/navigation"
 import { requireAdmin } from "@/lib/auth/admin"
 import { AdminTopBar } from "@/components/admin/AdminTopBar"
 import { PeerScoreDirectory } from "@/components/admin/peer-scores/PeerScoreDirectory"
@@ -8,6 +8,7 @@ import type { MemberPeerScoreDirectoryResult } from "@/types/member-peer-score-d
 
 export default async function AdminPeerScoresPage({ searchParams }: { searchParams: Promise<PeerScoreDirectorySearchParams> }) {
   const admin = await requireAdmin()
+  if (admin.role !== "super_admin") notFound()
   const params = await searchParams
   const controls = normalizePeerScoreDirectoryControls(params)
   let result: MemberPeerScoreDirectoryResult | { status: "error" }

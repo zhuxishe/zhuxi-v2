@@ -1,13 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 
 const mocks = vi.hoisted(() => ({ rpc: vi.fn(), auth: vi.fn() }))
-vi.mock("@/lib/auth/admin", () => ({ requireAdmin: mocks.auth }))
+vi.mock("@/lib/auth/admin", () => ({ requireSuperAdmin: mocks.auth }))
 vi.mock("@/lib/supabase/server", () => ({ createClient: async () => ({ rpc: mocks.rpc }) }))
 import { fetchMemberPeerScoreDetail, normalizeMemberPeerScoreDetail, parseMemberPeerScoreDetailFilters } from "./member-peer-score-detail"
 import { detailMemberId, detailRoundIds, memberPeerScoreDetailFixture } from "./__fixtures__/member-peer-score-detail"
 
 const filters = { validity: "valid" as const, roundId: null, page: 1, pageSize: 20 }
-beforeEach(() => { vi.resetAllMocks(); mocks.auth.mockResolvedValue({ role: "admin" }); mocks.rpc.mockResolvedValue({ data: memberPeerScoreDetailFixture(), error: null }) })
+beforeEach(() => { vi.resetAllMocks(); mocks.auth.mockResolvedValue({ role: "super_admin" }); mocks.rpc.mockResolvedValue({ data: memberPeerScoreDetailFixture(), error: null }) })
 
 describe("administrator peer-score detail data", () => {
   it("authenticates before invoking the caller-scoped detail RPC", async () => {
